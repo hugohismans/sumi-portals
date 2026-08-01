@@ -2,7 +2,14 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- `user-scalable=no` empêche le double-tap de zoomer en plein jeu, et
+         `viewport-fit=cover` évite la bande blanche sous les écrans à encoche. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#efe7d6" />
     <title>Sumi Portals — prototype</title>
     <style>
       :root {
@@ -12,7 +19,15 @@
         --indigo: #2f4b7c;
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100%; height: 100%; overflow: hidden; background: var(--paper); }
+      /* `100dvh` suit la barre d'adresse des navigateurs mobiles, qui se replie
+         en cours de route ; `100vh` laisserait une bande vide en bas. Le repli
+         en `100%` couvre les navigateurs qui l'ignorent encore. */
+      html, body {
+        width: 100%; height: 100%; height: 100dvh;
+        overflow: hidden; background: var(--paper);
+        overscroll-behavior: none;
+        -webkit-text-size-adjust: 100%;
+      }
       body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); }
       canvas { display: block; }
 
@@ -51,6 +66,32 @@
         opacity: 0; transition: opacity .4s ease;
       }
       #hint.show { opacity: 1; }
+
+      /* --- Commandes tactiles ------------------------------------------- */
+      /* Rien de tout ça n'existe au clavier : c'est `body.touch` qui l'ouvre. */
+      #touch-surface, #touch-buttons { display: none; }
+
+      body.touch #touch-surface {
+        display: block; position: fixed; inset: 0;
+        touch-action: none; z-index: 5;
+      }
+      body.touch #touch-buttons {
+        display: flex; flex-direction: column; gap: 10px;
+        position: fixed; right: 16px; bottom: 22px; z-index: 6;
+      }
+      body.touch #touch-buttons button {
+        min-width: 104px; padding: 15px 18px;
+        font: 600 15px/1 "Segoe UI", system-ui, sans-serif;
+        color: var(--ink); background: rgba(239, 231, 214, .82);
+        border: 2px solid var(--ink); border-radius: 3px;
+        box-shadow: 3px 3px 0 rgba(27, 23, 20, .22);
+        touch-action: none; -webkit-user-select: none; user-select: none;
+      }
+      body.touch #touch-buttons button:active {
+        transform: translate(3px, 3px); box-shadow: none;
+      }
+      /* Le réticule ne sert à rien sans souris, et gêne la lecture. */
+      body.touch #crosshair { display: none; }
 
       #overlay {
         position: fixed; inset: 0;
@@ -101,12 +142,21 @@
   <body>
     <div id="crosshair"></div>
 
+    <!-- Commandes tactiles. Masquées tant qu'on joue au clavier. -->
+    <div id="touch-surface"></div>
+    <div id="touch-buttons">
+      <button id="btn-take" type="button">Prendre</button>
+      <button id="btn-throw" type="button">Lancer</button>
+      <button id="btn-jump" type="button">Sauter</button>
+    </div>
+
     <div id="hud">
       <div id="scale-readout">
         <div class="label">Échelle</div>
         <div class="value" id="scale-value">×1</div>
         <div class="sub" id="scale-sub">taille normale</div>
         <div class="sub peers" id="peers"></div>
+        <div class="sub peers" id="fps"></div>
       </div>
       <div id="hint"></div>
     </div>

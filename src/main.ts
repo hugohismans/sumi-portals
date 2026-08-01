@@ -101,6 +101,7 @@ const scaleSub = el('scale-sub');
 const hintBox = el('hint');
 const peersBox = el('peers');
 const suiteEl = el<HTMLAnchorElement>('suite');
+const fpsBox = el('fps');
 
 const SCALE_LABELS: Record<number, [string, string]> = {
   [-2]: ['×1/16', 'seize fois plus petit'],
@@ -128,6 +129,21 @@ const flash = (text: string, seconds = 2.4): void => {
 // d'onglet, retour sur la page). Sans ça il disparaissait au premier clic et
 // plus rien ne permettait de reprendre la main : le jeu semblait figé.
 overlay.addEventListener('click', () => input.requestLock());
+
+// --- Tactile ---------------------------------------------------------------
+// Sur téléphone, il n'y a pas de capture de souris : le pouce gauche déplace,
+// le côté droit fait pivoter le regard, et trois boutons font le reste.
+//
+// Le basculement peut survenir À TOUT MOMENT — au premier doigt posé, ou après
+// un refus de capture — et pas seulement au démarrage. On s'abonne donc plutôt
+// que de tester une fois pour toutes.
+input.onTouchMode = () => {
+  document.body.classList.add('touch');
+  input.bindTouchButton(el('btn-take'), 'KeyE');
+  input.bindTouchButton(el('btn-throw'), 'Mouse0');
+  input.bindTouchButton(el('btn-jump'), 'Space');
+};
+if (input.touchOnly) input.onTouchMode();
 
 input.onLockChange = (locked) => {
   overlay.classList.toggle('hidden', locked);
@@ -242,12 +258,18 @@ function resize(): void {
   inkUniforms.uResolution.value.set(w, h);
 }
 window.addEventListener('resize', resize);
+// Sur téléphone, la barre d'adresse se replie en cours de partie et la rotation
+// change tout : deux événements que `resize` seul ne couvre pas partout.
+window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+window.visualViewport?.addEventListener('resize', resize);
 resize();
 
 // --- Boucle -------------------------------------------------------------------
 let last = performance.now();
 let accumulator = 0;
 let boilTimer = 0;
+let fpsFrames = 0;
+let fpsSince = performance.now();
 const BOIL_PERIOD = 1 / BOIL_HZ;
 
 function frame(now: number): void {
@@ -343,6 +365,16 @@ function frame(now: number): void {
   ring.rotation.z += dt * 0.7;
   const pulse = 1 + Math.sin(inkUniforms.uTime.value * 2.2) * 0.07;
   goalMarker.scale.setScalar(pulse);
+
+  // --- Cadence ----------------------------------------------------------------
+  // Affichée en clair : c'est la seule mesure qui dise si le rendu tient sur un
+  // appareil donné, et elle vaut mieux qu'une impression.
+  fpsFrames++;
+  if (now - fpsSince >= 700) {
+    fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} images/s`;
+    fpsFrames = 0;
+    fpsSince = now;
+  }
 
   // --- Indices ----------------------------------------------------------------
   updateHints(now);
