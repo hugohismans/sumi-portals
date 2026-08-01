@@ -278,6 +278,13 @@ function frame(now: number): void {
   camera,
   portals,
   avatar,
+  /** Éprouve la liaison Firebase de bout en bout. Voir src/net/connection.ts. */
+  async testReseau() {
+    const { testConnection } = await import('./net/connection.js');
+    const r = await testConnection();
+    console.table(r);
+    return r;
+  },
   /**
    * Pose un second bonhomme, figé, à un endroit donné. Sert à juger l'allure du
    * personnage de face — et à préfigurer ce que donnera le multijoueur.
