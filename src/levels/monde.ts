@@ -601,14 +601,20 @@ export const MONDE: LevelDef = {
   // avant qu'on en ait fait un seul.
   // ═══════════════════════════════════════════════════════════════════════════
   carryables: [
-    // DÉPLACÉ DE 505 À 512, ET C'ÉTAIT UNE ERREUR DE MA PART, PAS DU JARDIN.
-    // Posé à 505, l'encrier tombait à l'intérieur d'une dalle qui existait déjà
+    // 505, PUIS 512, PUIS 516,5 — ET DEUX FOIS J'AVAIS TORT.
+    //
+    // À 505 il tombait DANS une dalle de l'escalier de sortie, qui existait
     // avant que j'écrive cette quête : la seule chose à rapporter du jeu était
-    // enterrée dans la pierre, donc inatteignable, et rien ne le disait. Une
-    // vérification interdit désormais qu'un objet ou un logement naisse dans un
-    // solide — dans aucun niveau. L'emplacement a été cherché par balayage :
-    // sol dégagé sur toute la hauteur de l'objet, et 1,60 m de manœuvre autour.
-    { id: 'encrier', position: [512, -0.17, 0], size: 0.36, ink: 3 },
+    // enterrée dans la pierre, et rien ne le disait. Une vérification interdit
+    // désormais qu'un objet ou un logement naisse dans un solide, où que ce soit.
+    //
+    // À 512 il était dégagé, mais de 4,20 m seulement — alors que j'avais
+    // exigé 6 m de tout le monde. Mon balayage ne mesurait qu'un rayon de
+    // manœuvre de 1,60, donc il ne pouvait pas voir que je me contredisais.
+    //
+    // À 516,5 : 8,70 m de dégagement, sol plat, rien au-dessus, et 3,5 m de
+    // marge sur le bord de la parcelle.
+    { id: 'encrier', position: [516.5, -0.17, 0], size: 0.36, ink: 3 },
     { id: 'braise', position: [-500, 0, 0], size: 2.8, ink: 3 },
   ],
 

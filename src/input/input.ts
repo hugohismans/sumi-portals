@@ -2,6 +2,16 @@ import type { InputCommand } from '../core/types.js';
 
 const LOOK_SENSITIVITY = 0.0022;
 
+/**
+ * Écart de souris au-delà duquel on considère l'événement aberrant, en pixels.
+ *
+ * Une souris rapide parcourt cent à cent cinquante pixels entre deux images.
+ * Trois cent vingt est donc largement au-dessus de tout mouvement humain, et
+ * très en dessous des milliers de pixels que le navigateur rapporte parfois au
+ * moment de reprendre la capture du curseur.
+ */
+const SAUT_ABERRANT = 320;
+
 /** Au doigt, on balaie moins vite qu'à la souris pour le même geste. */
 const TOUCH_LOOK_SENSITIVITY = 0.0042;
 
@@ -41,6 +51,8 @@ export class InputManager {
   private lookTouch: number | null = null;
   private moveX = 0;
   private moveY = 0;
+  /** Vrai juste après la prise de capture : le premier écart est suspect. */
+  private premierMouvement = false;
   private yaw: number;
   private pitch = 0;
   locked = false;
@@ -66,6 +78,11 @@ export class InputManager {
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.canvas;
       if (!this.locked) this.keys.clear();
+      // On jette le tout premier mouvement qui suit la prise de capture : le
+      // navigateur y rapporte parfois l'écart depuis la dernière position
+      // absolue du curseur, c'est-à-dire un bond de plusieurs milliers de
+      // pixels. Voir le garde-fou de `mousemove`.
+      else this.premierMouvement = true;
       this.onLockChange?.(this.locked);
     });
 
@@ -88,6 +105,33 @@ export class InputManager {
 
     document.addEventListener('mousemove', (e) => {
       if (!this.locked) return;
+
+      // ─── LE GARDE-FOU DES ÉCARTS ABERRANTS ────────────────────────────────
+      //
+      // Bug signalé en jouant : « de temps en temps, sans raison, comme si
+      // j'étais téléporté en rotation ». C'était bien ça, et ce n'était pas le
+      // jeu — c'est le navigateur.
+      //
+      // `movementX` est censé donner l'écart depuis le mouvement précédent.
+      // Mais au moment où la capture du curseur est prise ou reprise, il
+      // rapporte parfois l'écart depuis la dernière position ABSOLUE du
+      // curseur : plusieurs milliers de pixels d'un coup. La vue pivote d'un
+      // bloc, une fois de temps en temps, de façon impossible à reproduire —
+      // exactement le symptôme décrit.
+      //
+      // Deux gardes, et aucun ne coûte quoi que ce soit à un mouvement normal :
+      // on jette le premier événement après la prise de capture, et on jette
+      // tout écart au-delà de 320 pixels. Une souris rapide fait cent à cent
+      // cinquante pixels entre deux images ; personne n'en fait trois cents,
+      // et personne n'en fait trois mille.
+      if (this.premierMouvement) {
+        this.premierMouvement = false;
+        return;
+      }
+      if (Math.abs(e.movementX) > SAUT_ABERRANT || Math.abs(e.movementY) > SAUT_ABERRANT) {
+        return;
+      }
+
       this.yaw -= e.movementX * LOOK_SENSITIVITY;
       this.pitch -= e.movementY * LOOK_SENSITIVITY;
       const limit = Math.PI / 2 - 0.02;

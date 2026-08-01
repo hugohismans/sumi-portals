@@ -974,6 +974,77 @@ console.log('\n— Le hall : les trois leçons —');
     pos(petitFente),
   );
 }
+// =============================================================================
+console.log('\n— Le jardin : la pomme de pin, et la route de l’encrier —');
+{
+  // ON VA CHERCHER L'ENCRIER À PIED, PAR LE CHEMIN LE PLUS LARGE QUI EXISTE.
+  //
+  // L'itinéraire vient de qui a bâti le lieu, et il l'a cherché par balayage
+  // plutôt que deviné : son point le plus serré laisse 1,50 m de chaque côté,
+  // soit un couloir de 3 m pour un joueur qui en fait 0,17. Dix-huit fois sa
+  // largeur — c'est franc, et c'est ce qu'on veut d'un chemin obligatoire.
+  const petit = new Simulation(MONDE);
+  petit.player.scaleLevel = -1;
+  petit.player.position = { x: 310, y: 0.2, z: 0 };
+  for (const p of [
+    [401, 0, 23],
+    [420.5, 0, 27],
+    [446.5, 0, 27.5],
+    [501.5, 0, 27.5],
+    [516.5, 0, 0],
+  ] as [number, number, number][]) {
+    walkTo(petit, p, 60 * 130);
+  }
+  settle(petit, 60);
+  check(
+    'à ×1/4, on atteint l’encrier à pied, sans un seul saut',
+    Math.hypot(petit.player.position.x - 516.5, petit.player.position.z) < 6,
+    pos(petit),
+  );
+
+  // LA POMME DE PIN : on y monte, et une chute ne coûte que du temps.
+  //
+  // Le bond entre écailles est de 0,26 — au-dessus de l'enjambée (0,225), donc
+  // on ne monte jamais en marchant, et la chute est réellement possible ; sous
+  // le saut (0,32), donc elle reste franchissable. C'est cet intervalle de six
+  // centimètres qui fait tout le morceau.
+  // LE TALUS SE REMONTE À PIED. C'est la seule partie de l'ascension que ce
+  // fichier peut vérifier, et c'est la plus importante : c'est par là qu'on
+  // revient après une chute. Des crans de 0,14, sous l'enjambée de 0,225 — donc
+  // on remonte en marchant, sans avoir à réussir quoi que ce soit.
+  const grimpeur = new Simulation(MONDE);
+  grimpeur.player.scaleLevel = -1;
+  grimpeur.player.position = { x: 336, y: 0.2, z: -11 };
+  walkTo(grimpeur, [336, 0.7, -17], 60 * 120);
+  settle(grimpeur, 60);
+  check(
+    'à ×1/4, le talus se remonte à pied — c’est par là qu’on revient après une chute',
+    grimpeur.player.position.y > 0.5,
+    pos(grimpeur),
+  );
+
+  // LA SPIRALE ELLE-MÊME N'EST PAS VÉRIFIÉE ICI, et je préfère l'écrire.
+  // Elle monte en lacets — gauche-droite, puis droite-gauche, cinq volées — et
+  // l'assistant de marche de ce fichier ne sait aller qu'en ligne droite. Elle
+  // a été éprouvée par qui l'a bâtie, qui a provoqué cinquante-huit chutes
+  // depuis chaque appui : cinquante-huit rattrapées par la vire du dessous. Ce
+  // n'est pas rien, mais ce n'est pas non plus vérifié ici, et le prétendre
+  // serait pire que de le taire.
+
+  // ET SURTOUT : on ne meurt pas, on ne sort pas du monde, on retombe dedans.
+  // C'est la seule chose que le joueur avait demandée pour cette ascension.
+  const chuteur = new Simulation(MONDE);
+  chuteur.player.scaleLevel = -1;
+  chuteur.player.position = { x: 336, y: 8.6, z: -22 };
+  settle(chuteur, 300);
+  check(
+    'et une chute du sommet est rattrapée par le relief, jamais mortelle',
+    chuteur.player.grounded && chuteur.player.position.y > -1,
+    pos(chuteur),
+  );
+}
+
+
 
 // =============================================================================
 console.log('\n— La côte rouge : le versant des fours —');

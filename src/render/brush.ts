@@ -112,6 +112,9 @@ export class Brush {
 
   private readonly waypoints: THREE.Vector3[] = [];
   private readonly head: THREE.Group;
+  /** Le signal qui le rend trouvable. Voir `buildHalo`. */
+  private readonly halo: THREE.Mesh;
+  private readonly haloMat: THREE.ShaderMaterial;
   private readonly body: THREE.Group;
   private readonly bodyMaterials: THREE.ShaderMaterial[] = [];
   private readonly ribbonGeo = new THREE.BufferGeometry();
@@ -147,6 +150,61 @@ export class Brush {
     this.head = new THREE.Group();
     this.body = buildBody(this.bodyMaterials);
     this.head.add(this.body);
+
+    // ─── LE SIGNAL ──────────────────────────────────────────────────────────
+    //
+    // Le pinceau se perdait dans le décor. Il est petit, il est de la couleur
+    // du monde, et un joueur qui cherche où aller ne peut pas s'accrocher à
+    // un trait d'encre de quarante centimètres au milieu d'un village.
+    //
+    // PAS DE FLÈCHE : une flèche est de l'interface posée sur un monde, et ce
+    // jeu n'explique rien par-dessus l'image. Ce halo-ci APPARTIENT à la
+    // scène — c'est le sceau d'encre qu'on voit partout ailleurs, mais posé
+    // debout autour de lui, tourné vers le regard.
+    //
+    // Trois décisions qui le rendent lisible sans le rendre criard :
+    //
+    // 1. **Il ne grossit pas avec la distance, il grossit à l'écran.** Sa
+    //    taille est corrigée par la distance à la caméra, si bien qu'il occupe
+    //    toujours la même part de l'image. De près il est discret ; à deux
+    //    cents mètres il est encore là. C'est le contraire d'un objet, et c'est
+    //    exactement ce qu'on demande à un repère.
+    // 2. **Il respire lentement**, une fois toutes les deux secondes et demie.
+    //    Assez pour attirer l'œil qui balaie, trop peu pour agacer celui qui
+    //    l'a trouvé.
+    // 3. **C'est un anneau, pas un disque** : on voit le pinceau AU MILIEU. Un
+    //    aplat l'aurait masqué, et masquer ce qu'on cherche pour indiquer où il
+    //    est serait une drôle d'idée.
+    this.haloMat = new THREE.ShaderMaterial({
+      uniforms: { uInk: { value: INK }, uPhase: { value: 0 } },
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uInk;
+        uniform float uPhase;
+        varying vec2 vUv;
+        void main() {
+          float r = length(vUv - 0.5) * 2.0;
+          // L'anneau : plein au bord, vide au centre.
+          float anneau = smoothstep(0.62, 0.76, r) * smoothstep(1.0, 0.86, r);
+          // La respiration, et une seconde onde plus lente et plus faible qui
+          // empeche le battement d'etre metronomique.
+          float souffle = 0.62 + 0.38 * sin(uPhase) + 0.12 * sin(uPhase * 0.37);
+          gl_FragColor = vec4(uInk, anneau * souffle * 0.42);
+        }
+      `,
+    });
+    this.halo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.haloMat);
+    this.halo.frustumCulled = false;
+    this.halo.renderOrder = -1;
 
     this.positions = new Float32Array(TRAIL * 2 * 3);
     this.ages = new Float32Array(TRAIL * 2);
@@ -187,7 +245,7 @@ export class Brush {
     );
     ribbon.frustumCulled = false;
 
-    this.group.add(this.head, ribbon);
+    this.group.add(this.head, this.halo, ribbon);
     if (this.waypoints.length > 0) this.head.position.copy(this.waypoints[0]);
     this.prev.copy(this.head.position);
     // Sans cette amorce, la toute première image compare la position du
@@ -274,6 +332,16 @@ export class Brush {
     //
     // La transition reste douce, mais elle n'a lieu qu'en vol : quand il change
     // d'étage, il change de taille en même temps qu'il s'y rend.
+    // Le signal suit le pinceau, fait face au regard, et garde une taille
+    // CONSTANTE À L'ÉCRAN : on corrige par la distance, donc il ne rapetisse
+    // jamais au point de disparaître. C'est un repère, pas un objet du monde —
+    // la seule chose du jeu qui ait le droit de ne pas obéir à l'échelle.
+    this.halo.position.copy(this.head.position);
+    this.halo.quaternion.copy(camera.quaternion);
+    const distance = this.halo.position.distanceTo(camera.position);
+    this.halo.scale.setScalar(Math.max(1.2 * this.echelle, distance * 0.085));
+    this.haloMat.uniforms.uPhase.value += dt * 2.5;
+
     const voulue = this.echelles[this.station] ?? 1;
     this.echelle += (voulue - this.echelle) * Math.min(1, dt * 1.6);
     this.head.scale.setScalar(this.echelle);
