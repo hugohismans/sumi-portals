@@ -14,6 +14,7 @@ import { PortalRenderer } from './render/portalRenderer.js';
 import { Avatar } from './render/avatar.js';
 import { Brush } from './render/brush.js';
 import { CarryableViews } from './render/carryableViews.js';
+import { Feuilles } from './render/feuilles.js';
 import { SocketViews } from './render/socketViews.js';
 import { RemotePlayers } from './render/remotePlayers.js';
 import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
@@ -89,8 +90,12 @@ const socketViews = new SocketViews();
 socketViews.build(sim.sockets.items);
 scene.add(socketViews.group);
 
-// Le Pinceau. Il ne se montre que si le joueur tourne en rond — un joueur qui
-// trouve seul ne le verra jamais, et c'est voulu.
+// Quelques feuilles portées par le vent, qui laissent une traînée d'encre. Une
+// douzaine, pas davantage : une planche encrée tire sa force de ses vides.
+const feuilles = new Feuilles();
+scene.add(feuilles.group);
+
+// Le Pinceau. Il vit dans le monde, se laisse rejoindre, puis file plus loin.
 const brush = new Brush(LEVEL.guide);
 scene.add(brush.group);
 
@@ -435,6 +440,8 @@ function frame(now: number): void {
   socketViews.update(sim.sockets.items, dt, inkUniforms.uTime.value);
   socketViews.syncInk();
   brush.update(sim.player, scale, dt, camera);
+  feuilles.update(dt, camera, scale);
+  feuilles.syncInk();
 
   // --- Les autres joueurs -----------------------------------------------------
   if (presenceActive) {
