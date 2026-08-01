@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { PlayerState } from '../core/types.js';
-import { INK } from './ink.js';
+import { INK, createCelMaterial, createOutlineMaterial, syncInkUniforms } from './ink.js';
+import { buildWorldGeometry } from './worldMesh.js';
 
 /**
  * LE PINCEAU — et, à travers lui, le jeu tout entier.
@@ -40,11 +41,73 @@ interface Sample {
   age: number;
 }
 
+/**
+ * LE CORPS DU PERSONNAGE.
+ *
+ * Un signe d'encre était propre, mais ce n'était pas quelqu'un. Un personnage
+ * se reconnaît en ombre chinoise : il lui faut une silhouette. Celle-ci est
+ * celle d'un pinceau, lue de bas en haut — la touffe encrée qui s'effile en
+ * pointe, la virole qui la serre, la hampe claire qui s'élance.
+ *
+ * Bâti dans les MÊMES matériaux que le décor, donc cerné du même trait : il
+ * appartient au monde au lieu d'y être posé.
+ *
+ * Il pointe vers le BAS au repos, comme un pinceau qu'on tient prêt à écrire.
+ */
+const buildBody = (materials: THREE.ShaderMaterial[]): THREE.Group => {
+  const g = new THREE.Group();
+
+  const piece = (
+    boxes: [[number, number, number], [number, number, number]][],
+    couleur: string,
+    trait: number,
+  ): void => {
+    const cel = createCelMaterial(new THREE.Color(couleur));
+    const outline = createOutlineMaterial();
+    outline.uniforms.uThickness.value = trait;
+    materials.push(cel, outline);
+    const geo = buildWorldGeometry(boxes.map(([min, max]) => ({ min, max, ink: 0 })));
+    const edge = new THREE.Mesh(geo, outline);
+    const fill = new THREE.Mesh(geo, cel);
+    edge.frustumCulled = false;
+    fill.frustumCulled = false;
+    g.add(edge, fill);
+  };
+
+  // La touffe : trois volumes qui se resserrent jusqu'à la pointe.
+  piece(
+    [
+      [[-0.22, -0.04, -0.22], [0.22, 0.34, 0.22]],
+      [[-0.14, -0.4, -0.14], [0.14, -0.02, 0.14]],
+      [[-0.06, -0.7, -0.06], [0.06, -0.36, 0.06]],
+    ],
+    '#171310',
+    0.004,
+  );
+  // La virole, qui serre la touffe. Le seul éclat du personnage.
+  piece([[[-0.25, 0.32, -0.25], [0.25, 0.5, 0.25]]], '#b08a48', 0.004);
+  // La hampe, claire, qui s'amincit vers le haut.
+  piece(
+    [
+      [[-0.17, 0.48, -0.17], [0.17, 1.45, 0.17]],
+      [[-0.12, 1.43, -0.12], [0.12, 2.12, 0.12]],
+      [[-0.15, 2.08, -0.15], [0.15, 2.26, 0.15]],
+    ],
+    '#dccbaa',
+    0.004,
+  );
+
+  g.scale.setScalar(0.55);
+  return g;
+};
+
 export class Brush {
   readonly group = new THREE.Group();
 
   private readonly waypoints: THREE.Vector3[] = [];
-  private readonly head: THREE.Mesh;
+  private readonly head: THREE.Group;
+  private readonly body: THREE.Group;
+  private readonly bodyMaterials: THREE.ShaderMaterial[] = [];
   private readonly ribbonGeo = new THREE.BufferGeometry();
   private readonly positions: Float32Array;
   private readonly ages: Float32Array;
@@ -60,18 +123,17 @@ export class Brush {
   private readonly prev = new THREE.Vector3();
   private readonly side = new THREE.Vector3();
   private readonly dir = new THREE.Vector3();
-  private readonly up = new THREE.Vector3(0, 1, 0);
+  private readonly down = new THREE.Vector3(0, -1, 0);
+  private readonly tiltAxis = new THREE.Vector3(0, 0, 1);
+  private readonly aim = new THREE.Quaternion();
+  private readonly prevOriented = new THREE.Vector3();
 
   constructor(points: [number, number, number][] = []) {
     for (const p of points) this.waypoints.push(new THREE.Vector3(p[0], p[1], p[2]));
 
-    // La touffe : une goutte d'encre effilée. Assez grosse pour se repérer de
-    // loin — c'est une cible qu'on poursuit, pas un détail à dénicher.
-    this.head = new THREE.Mesh(
-      new THREE.ConeGeometry(0.42, 1.9, 6),
-      new THREE.MeshBasicMaterial({ color: INK }),
-    );
-    this.head.frustumCulled = false;
+    this.head = new THREE.Group();
+    this.body = buildBody(this.bodyMaterials);
+    this.head.add(this.body);
 
     this.positions = new Float32Array(TRAIL * 2 * 3);
     this.ages = new Float32Array(TRAIL * 2);
@@ -115,6 +177,10 @@ export class Brush {
     this.group.add(this.head, ribbon);
     if (this.waypoints.length > 0) this.head.position.copy(this.waypoints[0]);
     this.prev.copy(this.head.position);
+    // Sans cette amorce, la toute première image compare la position du
+    // personnage à l'origine du monde : il se croit lancé à pleine vitesse et
+    // apparaît couché.
+    this.prevOriented.copy(this.head.position);
   }
 
   /** Le fait filer tout de suite, pour la mise au point. */
@@ -144,16 +210,19 @@ export class Brush {
         this.station = Math.min(this.station + 1, this.waypoints.length - 1);
       }
     } else {
-      // À l'arrêt il flotte et tourne. Un point immobile se confond avec le
-      // décor ; un point qui bouge accroche l'œil à travers tout un village.
+      // À l'arrêt il RESPIRE, il ne tourne plus. Le mouvement circulaire
+      // remplissait l'air d'un gribouillis permanent : une tache d'encre qui
+      // monte et descend doucement se remarque tout aussi bien, et reste
+      // propre.
       this.wander += dt;
       const st = this.waypoints[this.station];
-      const r = 1.1 * playerScale;
       this.head.position.set(
-        st.x + Math.cos(this.wander * 1.6) * r,
-        st.y + 2.4 * playerScale + Math.sin(this.wander * 2.2) * 0.4 * playerScale,
-        st.z + Math.sin(this.wander * 1.2) * r,
+        st.x,
+        st.y + (2.4 + Math.sin(this.wander * 1.5) * 0.32) * playerScale,
+        st.z,
       );
+      // Et surtout : pas de traînée à l'arrêt. Elle n'a de sens qu'en vol.
+      this.samples.length = 0;
 
       // Rejoint : il repart. Le voyage avance parce qu'on l'a rattrapé.
       const p = player.position;
@@ -163,9 +232,36 @@ export class Brush {
       }
     }
 
-    this.pushSample(dt);
+    if (this.fleeing > 0) this.pushSample(dt);
     this.rebuildRibbon(camera, playerScale);
     this.head.scale.setScalar(playerScale);
+    this.orient(dt);
+    for (const m of this.bodyMaterials) syncInkUniforms(m);
+  }
+
+  /**
+   * L'attitude du personnage.
+   *
+   * En vol il PIQUE : la pointe part la première, la hampe suit — c'est
+   * l'inclinaison qui donne l'élan, bien plus qu'une trajectoire rapide. Au
+   * repos il se redresse et oscille doucement, comme un pinceau qu'on tient.
+   *
+   * Le redressement est progressif : une bascule instantanée ferait mécanique,
+   * et c'est précisément ce qu'on cherche à éviter.
+   */
+  private orient(dt: number): void {
+    this.dir.copy(this.head.position).sub(this.prevOriented);
+    const moving = this.dir.lengthSq() > 1e-7;
+    if (moving) {
+      // La touffe (−Y en repère local) montre la direction du vol.
+      this.dir.normalize();
+      this.aim.setFromUnitVectors(this.down, this.dir);
+    } else {
+      // Au repos : debout, avec un balancement lent.
+      this.aim.setFromAxisAngle(this.tiltAxis, Math.sin(this.wander * 1.1) * 0.16);
+    }
+    this.body.quaternion.slerp(this.aim, 1 - Math.exp(-dt / 0.14));
+    this.prevOriented.copy(this.head.position);
   }
 
   /** Départ vers l'endroit suivant. */
@@ -188,10 +284,6 @@ export class Brush {
     });
     if (this.samples.length > TRAIL) this.samples.length = TRAIL;
 
-    this.dir.copy(this.head.position).sub(this.prev);
-    if (this.dir.lengthSq() > 1e-8) {
-      this.head.quaternion.setFromUnitVectors(this.up, this.dir.normalize());
-    }
     this.prev.copy(this.head.position);
   }
 
@@ -200,7 +292,12 @@ export class Brush {
     const pos = this.positions;
     const ages = this.ages;
     const n = this.samples.length;
-    if (n === 0) return;
+    if (n === 0) {
+      // Ruban replié sur un point : invisible, sans avoir à masquer l'objet.
+      this.positions.fill(0);
+      this.ribbonGeo.attributes.position.needsUpdate = true;
+      return;
+    }
 
     for (let i = 0; i < TRAIL; i++) {
       const s = this.samples[Math.min(i, n - 1)];
@@ -210,8 +307,12 @@ export class Brush {
       if (this.dir.lengthSq() < 1e-10) this.dir.set(0, 0, 1);
       this.side
         .set(s.x - camera.position.x, s.y - camera.position.y, s.z - camera.position.z)
-        .cross(this.dir)
-        .normalize();
+        .cross(this.dir);
+      // Quand le regard s'aligne avec la trajectoire, ce produit s'effondre et
+      // le ruban se retournait d'un coup — c'était le « ça saute ». On retombe
+      // alors sur une perpendiculaire stable plutôt que sur du bruit.
+      if (this.side.lengthSq() < 1e-8) this.side.set(0, 1, 0).cross(this.dir);
+      this.side.normalize();
 
       // Le trait s'affine vers la queue : c'est ce qui le fait lire comme un
       // coup de pinceau et non comme un tube.
