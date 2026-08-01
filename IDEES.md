@@ -43,6 +43,110 @@ dessiner sur le papier.
 
 ---
 
+## LE LAVIS — un monde qui a perdu ses couleurs
+
+*(idée d'Hugo)*
+
+**C'est devenu l'idée directrice du jeu, et elle lui donne son nom.**
+
+Au début, tout est gris. Pas noir, pas éteint : un lavis d'encre, où les valeurs
+sont là mais où la couleur manque. Chaque monde visité en rend une, et le monde
+central se repeint par morceaux. La quête, c'est d'aller chercher les couleurs.
+
+Ça ne coûte presque rien, pour une raison d'architecture : la palette de chaque
+région est déjà un uniforme de shader, et le décor est déjà découpé par région.
+Griser, c'est mélanger chaque teinte vers sa luminance. Rien à redessiner.
+
+### Ce qui rapporte la couleur : un PINCEAU, pas un objet
+
+*(idée d'Hugo — et ce n'est PAS ce qui est implémenté aujourd'hui)*
+
+Dans chaque monde, il y a un pinceau de la couleur de ce monde : le pinceau vert
+dans le monde vert, le rouge dans le rouge. On va le chercher, **et il nous
+suit**. De retour au monde central, une petite musique, et **il s'envole peindre
+lui-même** : tous les éléments de sa couleur, gris jusque-là, se peignent d'un
+coup. Il est content, il a repeint le monde.
+
+Ce qui est fait aujourd'hui est plus pauvre : on rapporte un objet (l'encrier,
+la braise), on le pose sur un socle, et la couleur revient en fondu. Le geste y
+est, le personnage non — or c'est le personnage qui fait la scène.
+
+Ce qu'il manque techniquement : **plusieurs pinceaux à l'écran**, chacun avec son
+vol et sa couleur. Le Pinceau est aujourd'hui unique et écrit comme tel.
+
+### La galerie des piédestaux
+
+*(idée d'Hugo)*
+
+Sur la place, un socle par couleur, tous vides au départ. **C'est leur TAILLE qui
+dit lequel attend quoi**, et elle raconte le voyage qui le remplira :
+
+- un grand creux pour le monde où l'on est petit, donc d'où l'on revient avec
+  quelque chose d'énorme ;
+- un creux minuscule pour le monde dont la porte est étroite, où il faut
+  rapetisser pour entrer ;
+- un socle RETOURNÉ, suspendu, le creux vers le sol — pour le monde du plafond,
+  qu'on n'atteindra qu'avec un portail de gravité.
+
+On les voit à la première minute, gris et vides : on comprend qu'il y a plusieurs
+voyages à faire et qu'ils ne se ressemblent pas. La galerie EST la jauge de
+progression, et elle ne ressemble à aucune barre.
+
+### La fin
+
+*(idée d'Hugo)*
+
+L'artefact final n'est pas dans le monde vert : il est dans le DERNIER monde
+qu'on ouvre, et il est **multicolore**. Le piédestal qui l'attend l'est aussi.
+Quand on l'y pose, **tous les pinceaux dansent**.
+
+## L'ÉNIGME CHROMATIQUE — pour les niveaux enchaînés
+
+*(idée d'Hugo)*
+
+Pas pour l'aventure d'introduction, qui reste sans clic. Pour la suite.
+
+Dans la pièce, **un tableau montre l'état où le monde devrait être** — une image
+de la pièce elle-même, d'un point de vue fixe, avec les bonnes couleurs. On doit
+la reproduire.
+
+Le geste : on va chercher un pinceau, on **clique sur un élément**, et tous les
+éléments de la même famille prennent cette couleur. Quand la pièce ressemble au
+tableau, le pinceau autorise à dessiner le portail suivant.
+
+**Le piège à éviter, et il est sérieux.** « Réharmoniser les couleurs » demande
+au joueur de savoir trois choses : à quoi ressemble le faux, quel geste change
+quoi, et s'il s'approche du but. Sans les trois, c'est une devinette. Le tableau
+répond à la première et à la troisième ; le clic sur une famille répond à la
+deuxième. Il faut les trois, sinon rien.
+
+**Enseigner par paliers** : une seule couleur fausse au premier niveau — on clique
+n'importe où, on voit une famille entière basculer, on a compris sans un mot.
+Deux au suivant, et c'est déjà un choix. Trois, et c'est une énigme.
+
+Note technique : le tableau peut être **littéralement une photo**. Un rendu de la
+pièce fait une seule fois au chargement, depuis un point fixe, avec la palette
+cible. La machinerie existe déjà — c'est ce que fait un portail. Coût ponctuel,
+zéro par image.
+
+### L'objet chiral et coloré, énigme composite
+
+*(idée d'Hugo)*
+
+Le tableau montre l'objet à poser. L'objet est là, mais il n'est **ni de la bonne
+couleur ni de la bonne main** : il est en image miroir. Il faut donc comprendre
+qu'il faut le passer au miroir, et peindre le bout de ses blocs avec des pinceaux
+trouvés ailleurs.
+
+Trois contraintes qui convergent sur un seul socle : la main, la couleur, la
+taille. **Ne pas les cumuler d'emblée** — trois inconnues font huit combinaisons,
+et le joueur tire au sort au lieu de raisonner. La main d'abord, seule. Puis la
+couleur. Puis les deux, en morceau de bravoure.
+
+Il manque pour ça que les objets soient **composites** — quelques blocs, chacun
+sa teinte — au lieu de cubes d'une seule couleur. Le même chantier débloque la
+molécule chirale.
+
 ## Portails miroirs — la chiralité
 
 *(idée d'Hugo)*

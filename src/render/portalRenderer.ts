@@ -122,6 +122,28 @@ class PortalFaceView {
   readonly materialDeep: THREE.ShaderMaterial;
   readonly fallback: THREE.MeshBasicMaterial;
   twin!: PortalFaceView;
+  /** Matériau du cadre, et sa teinte pleine — pour pouvoir la lui retirer. */
+  private frameMat!: THREE.MeshBasicMaterial;
+  private teinteCadre!: THREE.Color;
+
+  /**
+   * LE CADRE SE GRISE COMME LE MONDE.
+   *
+   * Les portails gardaient leur vermillon et leur indigo dans un village en
+   * lavis : deux taches de couleur qu'on voyait à cent mètres, et les seules
+   * qui restaient. On aurait pu les défendre — « ce sont eux qui portent la
+   * mécanique » —, mais c'est faux : ce qui distingue les deux faces, c'est
+   * leur TAILLE, l'une est quatre fois l'autre. Le signal est géométrique, pas
+   * chromatique. Les griser ne coûte donc aucune lisibilité.
+   *
+   * Et ça rend la règle du jeu entière : dans ce monde, la couleur est ce qu'on
+   * rapporte, jamais ce qui est déjà là.
+   */
+  setCouleur(v: number): void {
+    const gris =
+      this.teinteCadre.r * 0.299 + this.teinteCadre.g * 0.587 + this.teinteCadre.b * 0.114;
+    this.frameMat.color.setRGB(gris, gris, gris).lerp(this.teinteCadre, v);
+  }
 
   private readonly posts: THREE.Mesh[] = [];
 
@@ -162,6 +184,8 @@ class PortalFaceView {
 
     // Cadre façon torii : deux montants et deux linteaux.
     const frameMat = new THREE.MeshBasicMaterial({ color });
+    this.frameMat = frameMat;
+    this.teinteCadre = new THREE.Color(color);
     const inkMat = new THREE.MeshBasicMaterial({ color: INK });
     for (let i = 0; i < 4; i++) {
       const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), i === 3 ? inkMat : frameMat);
@@ -263,6 +287,11 @@ export class PortalRenderer {
       view.material.uniforms.uTrace.value = trace;
       view.materialDeep.uniforms.uTrace.value = trace;
     }
+  }
+
+  /** Grise ou rend leur couleur à tous les cadres. Voir PortalFaceView. */
+  setCouleurCadres(v: number): void {
+    for (const view of this.views) view.setCouleur(v);
   }
 
   /** Où en est le tracé d'une paire. 1 si elle n'a jamais été effacée. */

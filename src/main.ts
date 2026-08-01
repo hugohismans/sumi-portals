@@ -218,6 +218,9 @@ scene.add(portals.group);
 // renderer de portails construit — d'où la séparation avec la déclaration plus
 // haut, qui n'a besoin que de la simulation.
 if (MODE === 'monde') portals.tracer(PORTE_A_DESSINER, 0);
+// Les cadres des portails se grisent avec le reste : dans ce monde, la couleur
+// est ce qu'on rapporte, jamais ce qui est déjà là.
+if (pigmentDe.size > 0) portals.setCouleurCadres(pigments.nombre / 2);
 
 const paper = new PaperPass(window.innerWidth, window.innerHeight);
 
@@ -658,7 +661,8 @@ function frame(now: number): void {
       // qu'on lui demandait, et c'est le seul moment où l'on retire au joueur
       // la maîtrise de sa caméra — pour lui montrer ce qu'il vient de repeindre.
       // Le monde reprend ses couleurs ; les socles avec lui.
-      socketViews.setCouleur(pigments.nombre / Math.max(1, pigmentDe.size ? 2 : 1));
+      socketViews.setCouleur(pigments.nombre / 2);
+      portals.setCouleurCadres(pigments.nombre / 2);
       if (reste === 0) {
         // LA MAQUETTE CESSE DE MENTIR. Depuis la première minute, elle montre
         // un encrier sur la pointe de l'Aiguille ; il s'y pose enfin, monté par
