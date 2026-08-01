@@ -1,11 +1,30 @@
 {
+  // Règles d'accès de la base temps réel.
+  // À coller dans : Realtime Database → onglet Règles → Publier.
+  //
+  // Elles remplacent le « mode test », qui laisse n'importe qui sur Internet
+  // tout lire, tout écrire et tout effacer — et qui expire au bout de 30 jours.
+  //
+  // Principe : on voit tout le monde, on n'écrit que soi-même.
   "rules": {
+    // Par défaut, rien n'est accessible. Seuls les chemins nommés ci-dessous
+    // ouvrent une porte.
+    ".read": false,
+    ".write": false,
+
     "lobby": {
+      // Tout joueur connecté voit l'ensemble du hall : c'est le principe même
+      // d'un lieu commun.
       ".read": "auth != null",
 
       "$uid": {
-        "//": "Chacun n'écrit que sa propre position. C'est la règle qui remplace le mode test : sans elle, n'importe qui sur Internet peut effacer tout le lobby.",
+        // Mais chacun n'écrit que sa propre fiche. C'est la règle qui empêche
+        // un visiteur d'effacer le hall ou de déplacer les autres.
         ".write": "auth != null && auth.uid === $uid",
+
+        // Une fiche complète, ou rien. Les suppressions ne sont pas concernées :
+        // Firebase n'applique pas la validation quand la donnée disparaît, ce
+        // qui laisse fonctionner l'effacement automatique à la déconnexion.
         ".validate": "newData.hasChildren(['x', 'y', 'z', 'yaw', 'lvl', 't'])",
 
         "x": { ".validate": "newData.isNumber()" },
@@ -15,21 +34,16 @@
         "lvl": { ".validate": "newData.isNumber() && newData.val() >= -4 && newData.val() <= 4" },
         "mv": { ".validate": "newData.isNumber()" },
         "sol": { ".validate": "newData.isNumber()" },
-        "t": { ".validate": "newData.isNumber()" },
-        "$autre": { ".validate": false }
+        "t": { ".validate": "newData.isNumber()" }
       }
     },
 
     "_diagnostic": {
-      "//": "Bac à sable du test de liaison. Chacun n'y touche que sa propre entrée.",
+      // Bac à sable du test de liaison. Même principe : chacun chez soi.
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid"
       }
-    },
-
-    "//": "Tout ce qui n'est pas nommé ci-dessus est refusé.",
-    ".read": false,
-    ".write": false
+    }
   }
 }
