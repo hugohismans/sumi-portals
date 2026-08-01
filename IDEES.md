@@ -94,6 +94,39 @@ l'attente.
 
 ---
 
+## Deux arches dans le hall : seul, ou à deux
+
+*(idée d'Hugo)*
+
+Le hall n'offre plus une sortie mais **deux**, côte à côte et clairement
+distinctes :
+
+- **Aventure en solitaire** — on passe, on part, personne à attendre.
+- **Aventure à deux** — on passe, et on attend. Dès qu'un second joueur
+  franchit la même arche, la partie se lance **pour les deux à la fois**, dans
+  un monde à eux.
+
+Ce que j'aime dans cette forme : le choix est **spatial, pas administratif**. Pas
+de menu, pas de bouton « chercher une partie » — deux portes, on prend celle
+qu'on veut. C'est cohérent avec tout le reste du jeu, qui n'explique jamais rien
+par du texte.
+
+Deux points à ne pas rater :
+
+**Celui qui attend doit savoir qu'il attend**, et depuis combien de temps. Une
+salle d'attente muette est insupportable au bout de vingt secondes. Il faut
+quelque chose à regarder ou à faire — idéalement les portails du hall restent
+accessibles pendant l'attente, pour continuer à jouer avec sa taille.
+
+**Les niveaux à deux sont un jeu à part**, pas les niveaux solo avec un second
+joueur en plus. Une énigme conçue pour une personne ne devient pas coopérative
+parce qu'on est deux : elle devient juste plus facile. Il faut des énigmes
+qu'**une seule personne ne peut pas résoudre**, où l'un est grand et l'autre
+petit, et où chacun voit ce que l'autre ne peut pas faire.
+
+Côté technique, c'est peu de chose : une file d'attente dans la base, le premier
+arrivé crée un salon, le second le rejoint, et les deux basculent ensemble.
+
 ## La boîte à formes
 
 *(idée d'Hugo)*
