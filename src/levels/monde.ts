@@ -1,6 +1,7 @@
 import type { BoxDef, LevelDef } from '../core/types.js';
 import { BELVEDERE } from './regions/belvedere.js';
 import { JARDIN } from './regions/jardin.js';
+import { ROUGE } from './regions/rouge.js';
 import { TERRASSE } from './regions/terrasse.js';
 
 /**
@@ -40,6 +41,7 @@ import { TERRASSE } from './regions/terrasse.js';
  *   escalier B  x [ 38,  92]   y [ 24, 120]   z [ 126, 200]   ×4 → ×16
  *   belvédère   x [-260, 260]  y [ 114, 300]  z [ 190, 380]   échelle ×16
  *   jardin      x [ 300, 520]  y [ -6,  60]   z [-120, 100]   échelle ×1/4
+ *   côte rouge  x [-520,-300]  y [ -6, 120]   z [-120, 100]   échelle ×4
  *
  * Le jardin est à part : il n'est pas un étage de la spirale mais un DÉTOUR.
  * On y descend d'un cran au lieu de monter, et l'on en revient par où l'on est
@@ -384,11 +386,13 @@ export const MONDE: LevelDef = {
     TERRASSE.region,
     BELVEDERE.region,
     JARDIN.region,
+    ROUGE.region,
     {
       name: 'hauteurs',
-      // Les hauteurs attendent le vert. C'est arbitraire aujourd'hui, et ça ne
-      // le restera pas : chaque monde rendra la couleur qui lui ressemble.
-      pigment: 'vert',
+      // Les hauteurs attendent le ROUGE, le village le VERT. Deux mondes, deux
+      // moitiés du monde central : ni l'un ni l'autre voyage ne suffit à tout
+      // repeindre, et l'on voit exactement ce qu'il reste à faire.
+      pigment: 'rouge',
       min: [-300, 20, 40],
       max: [300, 320, 420],
       paper: '#dde3e6',
@@ -488,6 +492,9 @@ export const MONDE: LevelDef = {
 
     // Le détour minuscule, loin à l'est. Région autonome : voir regions/jardin.ts.
     ...JARDIN.boxes,
+
+    // Le versant des fours, loin à l'ouest. Région autonome : voir regions/rouge.ts.
+    ...ROUGE.boxes,
   ],
 
   portals: [
@@ -517,6 +524,25 @@ export const MONDE: LevelDef = {
       // toujours rester DERRIÈRE soi.
       small: { position: [0, TERRASSE_Y, 70], yaw: Math.PI }, // normale -Z, prise en montant
       big: { position: [0, BELVEDERE_Y, 300], yaw: Math.PI }, // normale -Z, regarde tout
+    },
+    {
+      // Paire D — LA CÔTE ROUGE. Elle fait GRANDIR, comme la première porte du
+      // village, mais elle mène ailleurs : un chantier de potiers abandonné, où
+      // tout a déjà brûlé. Plantée à l'ouest lointain, à cinquante mètres de la
+      // porte verte pour qu'on ne puisse pas les confondre — deux portes
+      // voisines de couleurs différentes, c'est une seule porte pour le joueur.
+      id: 'cote-rouge',
+      colorBig: 0xcc7040,
+      colorSmall: 0x7d2b1c,
+      // Petite face au village : on la franchit vers l'ouest et l'on ressort
+      // quatre fois plus grand, de l'autre côté du monde.
+      small: { position: [-52, VILLAGE_Y, -30], yaw: Math.PI / 2 },
+      // LA GRANDE FACE REGARDE VERS L'OUEST, pas vers l'est, et les deux lacets
+      // ne sont donc pas les mêmes. On ressort en marchant dans le sens de la
+      // normale : tournée vers l'est, elle déposait le joueur dos au monde
+      // rouge, et son premier pas en avant lui faisait retraverser la porte —
+      // renvoyé au village sans avoir rien vu, sans rien comprendre.
+      big: { position: [-304, 0, 0], yaw: -Math.PI / 2 },
     },
     {
       // Paire C — LA DESCENTE. Les deux autres font monter ; celle-ci fait

@@ -197,243 +197,6 @@ const galet = (cx: number, cz: number, rx: number, rz: number, h: number, ink: n
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
-// LA POMME DE PIN — c'est-à-dire une tour, et la seule chose qu'on rate ici
-// ═════════════════════════════════════════════════════════════════════════════
-//
-// LE PROBLÈME. Le jardin était plat : quatre stations, quatre détours, et pas
-// un seul endroit où l'on puisse tomber. Or un monde où l'on ne rate rien est
-// un monde où l'on ne réussit rien non plus.
-//
-// LA RÉPONSE. Une pomme de pin tombée, debout dans une clairière. Six assises
-// qui rétrécissent — c'est exactement le galet du chemin, en plus haut — et
-// entre deux assises, une hélice d'écailles ROUSSES qui fait l'escalier. Le
-// roux est la consigne de la région : partout ailleurs il dit « c'est par là
-// qu'on monte », ici aussi. Sur un corps vert d'ombre, la route se lit de
-// cinquante mètres.
-//
-// LES QUATRE NOMBRES DU JOUEUR décident de tout, et rien n'est jugé à vue :
-//
-//   BOND = 0,26. C'est la hauteur d'un appui au suivant. Au-dessus de
-//     l'enjambée (0,225) : on ne monte donc JAMAIS en marchant, il faut sauter,
-//     et c'est ce qui rend la chute possible. Sous le saut (0,32) : il reste
-//     6 cm de marge, assez pour que ce ne soit pas un supplice, trop peu pour
-//     qu'on y arrive sans regarder.
-//   ÉCART = 0,55. Le pas de côté d'une écaille à la suivante. Une écaille fait
-//     0,40 de large, donc il y a 0,15 de VIDE entre deux : le saut est réel.
-//     Un joueur qui court franchit 0,86 en s'élevant de 0,26 — la marge est
-//     confortable, mais elle ne pardonne pas l'inattention.
-//   Les écailles saillent de 0,50 hors de l'assise : le joueur, épais de 0,17,
-//     tient dessus avec de la place de chaque côté, jamais des deux.
-//   L'assise du dessus est en retrait de 0,75 sur celle du dessous. Ce retrait
-//     n'est pas décoratif : c'est LA VIRE, l'anneau plat qui fait le tour de la
-//     tour et qui rattrape les chutes.
-//
-// CE QUI SE PASSE QUAND ON TOMBE. Rien. On retombe sur la vire d'en dessous,
-// six appuis plus bas au pire, et l'on recommence. Si l'on tombe de la
-// première volée, on retombe dans l'herbe, au pied du talus de feuilles
-// mortes, et l'on remonte à pied. Aucune mort, aucun renvoi, aucun message :
-// une erreur coûte du temps, jamais autre chose.
-//
-// CE QU'IL Y A LÀ-HAUT. Une goutte de résine — la même goutte de rosée que
-// portent les grands brins d'herbe, sauf que celle-ci, on peut la toucher. Et
-// autour d'elle, une couronne d'écailles dressées : garde-corps ajouré, comme
-// l'exige le contrat, parce qu'être monté ne sert à rien si l'on ne peut pas
-// regarder en bas.
-
-/** Où la pomme de pin est plantée. Choisi par balayage, jamais à l'œil. */
-const PIN_X = 336.0;
-const PIN_Z = -22.0;
-/** Demi-largeur des six assises. Le retrait de 0,75 EST la vire. */
-const PIN_T = [4.95, 4.20, 3.45, 2.70, 1.95, 1.20];
-/** Sommet de chaque assise. 1,56 d'écart = six bonds de 0,26. */
-const PIN_Y = [0.72, 2.28, 3.84, 5.40, 6.96, 8.52];
-/** La hauteur d'un appui : entre l'enjambée (0,225) et le saut (0,32). */
-const BOND = 0.26;
-/** Le pas de côté d'un appui au suivant. */
-const ECART = 0.55;
-
-/**
- * UNE ÉCAILLE — c'est-à-dire une prise.
- *
- * `f` est une fraction du tour de l'assise, comptée dans le sens des aiguilles
- * d'une montre depuis le coin sud-ouest. C'est ce qui permet à l'hélice de
- * rester CONTINUE quand elle passe d'une assise à la suivante, plus étroite :
- * la fraction se conserve, la distance parcourue au sol aussi.
- *
- * L'écaille MORD de 15 cm dans l'assise : sa face interne se retrouve enterrée
- * dans le corps de la pomme de pin, donc invisible, donc jamais coplanaire avec
- * le flanc qui la porte. Et comme deux écailles voisines sont toujours à 26 cm
- * l'une de l'autre en hauteur, aucune ne peut en toucher une autre.
- */
-const ecaille = (
-  T: number,
-  f: number,
-  yHaut: number,
-  ink: number,
-  demi = 0.2,
-  saillie = 0.5,
-): BoxDef => {
-  const MORD = 0.15;
-  const s = (((f % 1) + 1) % 1) * 8 * T;
-  const bas = yHaut - 0.16;
-  if (s < 2 * T) {
-    const x = PIN_X - T + s; // face sud, celle qui regarde le chemin
-    return box([x - demi, bas, PIN_Z + T - MORD], [x + demi, yHaut, PIN_Z + T + saillie], ink);
-  }
-  if (s < 4 * T) {
-    const z = PIN_Z + T - (s - 2 * T); // face est
-    return box([PIN_X + T - MORD, bas, z - demi], [PIN_X + T + saillie, yHaut, z + demi], ink);
-  }
-  if (s < 6 * T) {
-    const x = PIN_X + T - (s - 4 * T); // face nord
-    return box([x - demi, bas, PIN_Z - T - saillie], [x + demi, yHaut, PIN_Z - T + MORD], ink);
-  }
-  const z = PIN_Z - T + (s - 6 * T); // face ouest
-  return box([PIN_X - T - saillie, bas, z - demi], [PIN_X - T + MORD, yHaut, z + demi], ink);
-};
-
-/**
- * UN MONTANT de la couronne du sommet.
- *
- * Contrat, règle 6 : on protège le vide par des barreaux, jamais par un mur —
- * sinon on ne voit plus ce qu'on est monté voir. Épais de 0,11 et espacés de
- * 0,15, ils sont plus serrés que le joueur n'est large (0,17) : il ne passe
- * pas. Hauts de 0,40, ils dépassent son saut (0,32) : il ne monte pas dessus.
- * Ils sont plantés de 12 cm dans la vire, donc sans face commune avec elle.
- */
-const montant = (T: number, f: number, y: number): BoxDef => {
-  const s = (((f % 1) + 1) % 1) * 8 * T;
-  const d = 0.055;
-  const a = y - 0.12;
-  const b = y + 0.4;
-  if (s < 2 * T) {
-    const x = PIN_X - T + s;
-    return box([x - d, a, PIN_Z + T - 0.15], [x + d, b, PIN_Z + T - 0.04], 1);
-  }
-  if (s < 4 * T) {
-    const z = PIN_Z + T - (s - 2 * T);
-    return box([PIN_X + T - 0.15, a, z - d], [PIN_X + T - 0.04, b, z + d], 1);
-  }
-  if (s < 6 * T) {
-    const x = PIN_X + T - (s - 4 * T);
-    return box([x - d, a, PIN_Z - T + 0.04], [x + d, b, PIN_Z - T + 0.15], 1);
-  }
-  const z = PIN_Z - T + (s - 6 * T);
-  return box([PIN_X - T + 0.04, a, z - d], [PIN_X - T + 0.15, b, z + d], 1);
-};
-
-const pommeDePin = (): BoxDef[] => {
-  const out: BoxDef[] = [];
-
-  // ─── Le corps : six assises qui rétrécissent ───────────────────────────────
-  // Chaque assise plonge de 15 cm dans celle du dessous, donc sa face basse est
-  // enterrée et ne peut être coplanaire avec la face haute qui la porte. La
-  // première est plantée à -0,58 dans la terre, comme tous les galets d'ici.
-  for (let k = 0; k < 6; k++) {
-    const T = PIN_T[k];
-    const bas = k === 0 ? -0.58 : PIN_Y[k - 1] - 0.15;
-    out.push(box([PIN_X - T, bas, PIN_Z - T], [PIN_X + T, PIN_Y[k], PIN_Z + T], 2));
-  }
-
-  // ─── L'HÉLICE ROUSSE : le chemin, et le seul ───────────────────────────────
-  //
-  // Cinq volées de cinq écailles. Six bonds de 0,26 mènent d'une vire à la
-  // suivante — la cinquième écaille est à 0,26 sous la vire, et c'est le
-  // sixième bond qui vous y pose.
-  //
-  // POURQUOI CINQ ET PAS VINGT : c'est la longueur de la chute. Rater le
-  // dernier appui d'une volée vous rend six bonds ; rater le dernier appui
-  // d'une tour de vingt-cinq vous rendrait toute la tour, et personne ne
-  // recommencerait. La vire n'est pas là pour décorer, elle est là pour que la
-  // punition reste courte.
-  //
-  // L'hélice fait presque exactement un tour complet du bas au sommet : on
-  // arrive là-haut au-dessus de l'endroit d'où l'on est parti, huit mètres
-  // plus haut. C'est le genre de chose qu'on ne remarque pas et qu'on sent.
-  const helice: { k: number; f: number }[] = [];
-  let f = 0.05;
-  for (let k = 1; k <= 5; k++) {
-    const T = PIN_T[k];
-    const pas = ECART / (8 * T);
-    for (let i = 1; i <= 5; i++) {
-      out.push(ecaille(T, f, PIN_Y[k - 1] + i * BOND, 3));
-      helice.push({ k, f });
-      f += pas;
-    }
-    f += pas; // le sixième bond : celui qui ne se pose pas sur une écaille
-  }
-  const F_BRECHE = f - ECART * 0.5 / (8 * PIN_T[5]);
-
-  // ─── Les écailles mortes : du relief, jamais une prise ─────────────────────
-  //
-  // Sans elles la pomme de pin n'est qu'un empilement de caisses. Elles sont
-  // VERTES et non rousses — la couleur seule dit qu'on ne monte pas par là — et
-  // posées à 0,91 au-dessus de leur vire, soit bien plus que le saut de 0,32 :
-  // on ne les atteint pas depuis le plat. On écarte celles qui tomberaient sur
-  // l'hélice (moins de 1,1 de distance) : elles se percuteraient.
-  for (let k = 0; k <= 5; k++) {
-    const T = PIN_T[k];
-    const y = k === 0 ? 0.46 : PIN_Y[k - 1] + 0.91;
-    for (let i = 0; i < 8; i++) {
-      const g = (i + 0.35) / 8;
-      if (k === 0 && g > 0.05 && g < 0.2) continue; // là où le talus s'appuie
-      const collision = helice.some((h) => {
-        if (h.k !== k) return false;
-        const e = Math.abs((((h.f % 1) + 1) % 1) - g);
-        return Math.min(e, 1 - e) * 8 * T < 1.1;
-      });
-      if (collision) continue;
-      // Chacune 4 mm plus haute que la précédente : huit écailles au même
-      // niveau autour d'une assise, ce sont huit dessus dans le même plan.
-      out.push(ecaille(T, g, y + i * 0.004, 1, 0.26, 0.34));
-    }
-  }
-
-  // ─── LA COURONNE DU SOMMET ─────────────────────────────────────────────────
-  // Une brèche de 1,3 à l'aplomb de la dernière écaille : c'est par là qu'on
-  // entre, et c'est par là qu'on ressort si l'on tient à redescendre vite.
-  const T5 = PIN_T[5];
-  const nMontants = Math.round((8 * T5) / 0.26);
-  for (let i = 0; i < nMontants; i++) {
-    const g = (i + 0.5) / nMontants;
-    const e = Math.abs(g - (((F_BRECHE % 1) + 1) % 1));
-    if (Math.min(e, 1 - e) * 8 * T5 < 0.65) continue;
-    out.push(montant(T5, g, PIN_Y[5]));
-  }
-
-  // ─── LA GOUTTE DE RÉSINE ───────────────────────────────────────────────────
-  // Ce qu'il y a là-haut. Les grands brins d'herbe en portent une, à quarante
-  // mètres, et l'on passe la région entière à les regarder sans pouvoir les
-  // atteindre. Celle-ci fait 0,70 de haut — plus grande que le joueur — et on
-  // en fait le tour. Son pied est noyé dans la vire : aucune face à l'air libre.
-  out.push(box([PIN_X - 0.34, PIN_Y[5] - 0.12, PIN_Z - 0.34], [PIN_X + 0.34, PIN_Y[5] + 0.58, PIN_Z + 0.34], 0));
-
-  // ─── LE TALUS DE FEUILLES MORTES : la pente ────────────────────────────────
-  //
-  // C'est elle qu'on remonte après chaque chute. Cinq crans de 0,14, soit les
-  // deux tiers de l'enjambée : on ne saute pas, on MARCHE. C'est voulu — le
-  // retour au pied de la tour ne doit demander aucune adresse, seulement de la
-  // patience. Le talus part du bord même du chemin (z = -11,15, le couloir
-  // s'arrête à -11) : depuis le sentier on voit la pente, et au bout de la
-  // pente la tour. On n'a rien à chercher.
-  //
-  // Le dernier cran mord de 20 cm dans l'assise du bas et culmine 6 cm sous
-  // elle : ni face commune, ni marche à monter.
-  for (let i = 0; i < 5; i++) {
-    const zn = -17.25 + i * 1.2;
-    out.push(
-      box(
-        [PIN_X - 1.6 - i * 0.02, -0.7 - i * 0.03, zn],
-        [PIN_X + 1.6 + i * 0.015, 0.66 - i * 0.14, zn + 1.3],
-        3,
-      ),
-    );
-  }
-
-  return out;
-};
-
-// ═════════════════════════════════════════════════════════════════════════════
 // LE DÉCOR
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -690,25 +453,18 @@ const decor = (): BoxDef[] => {
     out.push(...galet(gx, gz, 2 + r() * 5, 1.8 + r() * 4.5, 0.8 + r() * 3.4, r() < 0.3 ? 2 : 0, r));
   }
 
-  // ─── LE DÉTOUR QUI MONTE ───────────────────────────────────────────────────
-  // Ajouté en dernier, et surtout PAS dans la boucle d'herbe : la pomme de pin
-  // ne tire pas un seul nombre au hasard, donc elle ne décale pas d'un pouce ce
-  // qui existait déjà. La clairière où elle est plantée n'a pas été dégagée,
-  // elle a été TROUVÉE — le semis d'herbe l'avait laissée vide tout seul.
-  out.push(...pommeDePin());
-
   return out;
 };
 
 /**
  * LE JARDIN.
  *
- * Cinq stations, et aucune qui se prenne d'un pas : le galet blanc à 0,92
- * (on fait le tour, la brindille est derrière), la pomme de pin à 8,52 (on
- * grimpe, et l'on retombe), le grand galet à 3,30 (on trouve la branche
- * appuyée), l'île à 0,60 au milieu de l'eau (on passe par la feuille), la
- * coquille à 3,66 (on contourne le coquillage). Le pinceau vole ; nous, non —
- * et à cette taille, chaque écart de vingt centimètres est une question.
+ * Quatre stations, et aucune qui se prenne d'un pas : le galet blanc à 0,92
+ * (on fait le tour, la brindille est derrière), le grand galet à 3,30 (on
+ * trouve la branche appuyée), l'île à 0,60 au milieu de l'eau (on passe par la
+ * feuille), la coquille à 3,66 (on contourne le coquillage). Le pinceau vole ;
+ * nous, non — et à cette taille, chaque écart de vingt centimètres est une
+ * question.
  */
 export const JARDIN: RegionModule = {
   region: {
@@ -737,13 +493,7 @@ export const JARDIN: RegionModule = {
     // 1. Le galet blanc du seuil. Vu dès l'entrée, à 0,92 — presque trois sauts.
     //    La brindille qui y mène est de l'autre côté : il faut contourner.
     [318.2, 0.92, -6.0],
-    // 2. Le sommet de la pomme de pin, à 8,52 — dix-neuf fois la taille du
-    //    joueur, et le point le plus haut où l'on puisse poser le pied dans
-    //    tout le jardin. Celle-ci ne se contourne pas : elle se grimpe, appui
-    //    par appui, et l'on tombe en chemin. C'est la seule station du jardin
-    //    dont le prix soit du temps.
-    [PIN_X, PIN_Y[5], PIN_Z + 0.75],
-    // 3. La mousse du grand galet, à 3,30. Sept fois la taille du joueur. On le
+    // 2. La mousse du grand galet, à 3,30. Sept fois la taille du joueur. On le
     //    contourne par le sud sans le gravir, jusqu'à voir la branche couchée.
     [374.8, 3.3, -1.4],
     // 3. L'île, au milieu de la flaque. À 0,60, soit 1,06 au-dessus de l'eau :

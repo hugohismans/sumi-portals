@@ -976,6 +976,52 @@ console.log('\n— Le hall : les trois leçons —');
 }
 
 // =============================================================================
+console.log('\n— La côte rouge : le versant des fours —');
+{
+  // On franchit la porte de l'ouest et l'on doit se retrouver à ×4 dans un
+  // monde qui a son propre sol — une région posée sur le vide laisserait
+  // tomber le joueur indéfiniment, et rien dans le fichier ne le dirait.
+  const aller = new Simulation(MONDE);
+  aller.player.position = { x: -44, y: 0.3, z: -30 };
+  walkTo(aller, [-64, 0, -30], 60 * 12, { stopOnEvent: true });
+  check(
+    'la porte de l’ouest dépose sur la côte rouge, quatre fois plus grand',
+    aller.player.scaleLevel === 1 && aller.player.position.x < -300,
+    `échelle ${aller.player.scaleLevel}, ${pos(aller)}`,
+  );
+
+  // Et l'on traverse la région à pied, d'un bout à l'autre.
+  //
+  // EN CONTOURNANT, et c'est le sujet même du lieu : le dernier four barre la
+  // voie et ne se gravit pas depuis le bol. Un premier essai en ligne droite
+  // butait dessus — ce n'était pas un défaut de la région, c'était son énigme,
+  // et un test qui va tout droit ne teste que sa propre naïveté.
+  settle(aller, 90);
+  check(
+    'on y tient debout — la région porte son propre sol',
+    aller.player.grounded && aller.player.position.y > -1,
+    pos(aller),
+  );
+
+  // LA TRAVERSÉE COMPLÈTE N'EST PAS ENCORE VÉRIFIÉE ICI, et je préfère l'écrire
+  // que de faire semblant. L'assistant de marche de ce fichier vise un point et
+  // fonce dessus : il ne sait pas longer un mur ni contourner. Or la côte rouge
+  // est bâtie sur des détours — son dernier four barre volontairement la voie.
+  // Un test qui irait tout droit ne mesurerait que sa propre naïveté, et le
+  // faire passer en baissant l'exigence serait pire que ne rien tester.
+  // La suite de points de passage est demandée à qui a construit le lieu.
+
+  // Et l'on en revient : le seul chemin de retour est la porte, elle doit
+  // tenir dans les deux sens.
+  walkTo(aller, [-300, 0, 0], 60 * 160, { stopOnEvent: true });
+  check(
+    'et l’on en revient au village, redevenu normal',
+    aller.player.scaleLevel === 0 && aller.player.position.x > -100,
+    `échelle ${aller.player.scaleLevel}, ${pos(aller)}`,
+  );
+}
+
+// =============================================================================
 // =============================================================================
 console.log('\n— Le rêve : cent graines, aucune impasse —');
 {
