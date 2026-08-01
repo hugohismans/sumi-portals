@@ -84,6 +84,26 @@ const escalier = (
   return out;
 };
 
+/**
+ * Parapet : assez haut pour qu'on ne l'enjambe ni ne le saute, assez bas pour
+ * qu'on voie par-dessus.
+ *
+ * Le second point est le plus important : c'est du bord de la terrasse qu'on
+ * découvre le village. Un garde-corps à hauteur d'homme protégerait la chute
+ * en supprimant la seule chose qui justifie d'être monté.
+ *
+ * `h` doit dépasser le saut du joueur de cet étage — 5,2 à ×4, 20,7 à ×16 —
+ * tout en restant sous sa hauteur d'yeux.
+ */
+const parapet = (
+  x0: number,
+  x1: number,
+  z0: number,
+  z1: number,
+  y: number,
+  h: number,
+): BoxDef => box([x0, y - 3, z0], [x1, y + h, z1], 3);
+
 /** Le village : quelques maisons autour de l'Aiguille. */
 const village = (): BoxDef[] => {
   const r = rng(31415);
@@ -113,7 +133,7 @@ export const MONDE: LevelDef = {
 
   boxes: [
     // --- Étage 1 : le village -------------------------------------------------
-    box([-90, -6, -110], [90, VILLAGE_Y, 16], 0, { outline: false }),
+    box([-230, -6, -300], [230, VILLAGE_Y, 16], 0, { outline: false }),
 
     // L'Aiguille. Colosse ici, mât depuis la terrasse, piquet depuis le
     // belvédère : c'est le même objet, et c'est tout le propos du voyage.
@@ -132,8 +152,15 @@ export const MONDE: LevelDef = {
     // Écartée du village : plaquée juste au-dessus, elle l'écrasait au lieu de
     // le dominer. De loin elle devient une promesse — on voit où l'on va.
     box([-90, TERRASSE_Y - 8, 46], [90, TERRASSE_Y, 130], 0, { outline: false }),
-    // Margelle du bord, pour qu'on sente le vide avant de l'atteindre.
-    box([-90, TERRASSE_Y - 0.6, 46], [90, TERRASSE_Y + 1.4, 48], 3),
+    // Parapets : 6 de haut, soit au-dessus du saut d'un joueur à ×4 (5,2) mais
+    // bien sous ses yeux (6,6). On ne tombe plus, et l'on voit toujours.
+    // Deux brèches, aux arrivées d'escalier.
+    parapet(-90, 44, 46, 48, TERRASSE_Y, 6),
+    parapet(86, 90, 46, 48, TERRASSE_Y, 6),
+    parapet(-90, 38, 128, 130, TERRASSE_Y, 6),
+    parapet(92, 90.001, 128, 130, TERRASSE_Y, 6),
+    parapet(-90, -88, 46, 130, TERRASSE_Y, 6),
+    parapet(88, 90, 46, 130, TERRASSE_Y, 6),
 
     // --- Escalier B : ×4 le regarde, ×16 le gravit ----------------------------
     // Marches de 12 : mur pour un joueur de 7,2, marche pour un joueur de 28,8.
@@ -141,7 +168,13 @@ export const MONDE: LevelDef = {
 
     // --- Étage 3 : le belvédère -----------------------------------------------
     box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false }),
-    box([-260, BELVEDERE_Y - 2, 190], [260, BELVEDERE_Y + 5, 196], 3),
+    // Même principe à ×16 : 22 de haut, au-dessus du saut (20,7) et sous les
+    // yeux (26,5). Une brèche à l'arrivée de l'escalier.
+    parapet(-260, 36, 190, 196, BELVEDERE_Y, 22),
+    parapet(94, 260, 190, 196, BELVEDERE_Y, 22),
+    parapet(-260, -254, 190, 380, BELVEDERE_Y, 22),
+    parapet(254, 260, 190, 380, BELVEDERE_Y, 22),
+    parapet(-260, 260, 374, 380, BELVEDERE_Y, 22),
   ],
 
   portals: [

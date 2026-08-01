@@ -517,5 +517,31 @@ console.log('\n— Le monde : on ne reste jamais piégé —');
   );
 }
 
+// =============================================================================
+console.log('\n— Le monde : on ne tombe pas dans le vide —');
+{
+  // Les parapets doivent tenir à la taille de LEUR étage : c'est le saut du
+  // joueur de cet étage qu'ils doivent dépasser, pas celui d'un joueur normal.
+  const bord = (level: number, from: [number, number, number], vers: [number, number, number]) => {
+    const sim = new Simulation(MONDE);
+    sim.player.scaleLevel = level;
+    sim.player.position = { x: from[0], y: from[1], z: from[2] };
+    walkTo(sim, vers, 60 * 25, { jump: true, sprint: true });
+    settle(sim, 90);
+    return sim.player.position.y;
+  };
+
+  check(
+    'à ×4, le parapet de la terrasse retient',
+    bord(1, [-40, 30.3, 60], [-40, 30, 20]) > 26,
+    'chute depuis la terrasse',
+  );
+  check(
+    'à ×16, le parapet du belvédère retient',
+    bord(2, [-140, 120.3, 220], [-140, 120, 150]) > 110,
+    'chute depuis le belvédère',
+  );
+}
+
 console.log(failures === 0 ? '\nTout passe.\n' : `\n${failures} vérification(s) en échec.\n`);
 process.exit(failures === 0 ? 0 : 1);
