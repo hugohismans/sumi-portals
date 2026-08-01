@@ -59,6 +59,18 @@ export class Simulation {
   goalReached = false;
   /** Un seuil ne se franchit qu'une fois : au-delà, la page part ailleurs. */
   seuilFranchi = false;
+  /**
+   * Portes qui ne sont PAS ENCORE DESSINÉES.
+   *
+   * Une porte peut exister dans le monde sans que le monde d'en face y soit
+   * tracé. Elle est alors une feuille vierge, et l'on ne traverse pas une
+   * feuille vierge. C'est le pinceau qui l'ouvre en la dessinant.
+   *
+   * C'est le rendu qui décide quand — ce fichier ne sait pas ce qu'est une
+   * tache d'encre. Il se contente de refuser, comme il refuse une porte trop
+   * étroite : le joueur n'a pas à connaître la différence.
+   */
+  readonly portesFermees = new Set<string>();
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
@@ -194,16 +206,14 @@ export class Simulation {
       // Une porte scellée fait mur exactement comme une porte trop petite. Le
       // joueur n'a pas à connaître la différence : dans les deux cas, il ne
       // passe pas, et dans les deux cas la raison est visible dans le monde.
-      const reason: 'tooBig' | 'scaleLimit' | 'scelle' | null = estScelle(
-        face,
-        this.sockets.pourvus,
-      )
-        ? 'scelle'
-        : !canPass(face, scale)
-          ? 'tooBig'
-          : nextLevel < SCALE_MIN_LEVEL || nextLevel > SCALE_MAX_LEVEL
-            ? 'scaleLimit'
-            : null;
+      const reason: 'tooBig' | 'scaleLimit' | 'scelle' | null =
+        this.portesFermees.has(face.pairId) || estScelle(face, this.sockets.pourvus)
+          ? 'scelle'
+          : !canPass(face, scale)
+            ? 'tooBig'
+            : nextLevel < SCALE_MIN_LEVEL || nextLevel > SCALE_MAX_LEVEL
+              ? 'scaleLimit'
+              : null;
 
       if (reason) {
         pl.position.x = prevPos.x;

@@ -10,7 +10,9 @@ import { MONDE } from './levels/monde.js';
 import { reve } from './levels/reve.js';
 import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
+import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
+import { Tracage } from './render/tracage.js';
 import { AttenteDuo } from './net/attente.js';
 import { CaissesPartagees } from './net/caisses.js';
 import { Presence, type RemoteSnapshot } from './net/presence.js';
@@ -136,6 +138,26 @@ brush.onEnvol = (etape, total) => {
 };
 scene.add(brush.group);
 
+// ─── LA PORTE QUI N'EST PAS ENCORE DESSINÉE ────────────────────────────────
+//
+// La seconde porte du monde n'existe pas au départ : son cadre est planté, mais
+// la toile est vierge et l'on ne traverse pas une toile vierge. Le pinceau vous
+// y attend, et quand vous l'avez rejoint, il la dessine — par taches, avec un
+// bruit à chaque coup — et le belvédère apparaît dedans avant qu'on y aille.
+//
+// C'est ce qui donne enfin un SENS au fait d'avoir couru après lui : il ne
+// montrait pas le chemin, il le fabriquait.
+const PORTE_A_DESSINER = 'ascension-2';
+/** Le jalon devant cette porte. Repéré par sa POSITION, pas par son rang :
+ *  ajouter une station ailleurs dans le guide ne doit rien casser ici. */
+const JALON_PORTE: [number, number, number] = [0, 30, 58];
+const tracage = new Tracage();
+/** Le plan de fin. Ne se déclenche qu'une fois, et seulement dans le monde. */
+const sacre = new Cinematique();
+let coupsPoses = 0;
+
+if (MODE === 'monde') sim.portesFermees.add(PORTE_A_DESSINER);
+
 // Le bonhomme du joueur local. Il vit dans la scène comme n'importe quel objet,
 // donc il apparaît tout seul dans les vues de portail : on se voit soi-même, de
 // dos et minuscule, à travers le grand torii.
@@ -149,6 +171,11 @@ const portals = new PortalRenderer(
   window.innerHeight,
 );
 scene.add(portals.group);
+
+// La toile de la seconde porte part vierge. Il faut le faire ICI, une fois le
+// renderer de portails construit — d'où la séparation avec la déclaration plus
+// haut, qui n'a besoin que de la simulation.
+if (MODE === 'monde') portals.tracer(PORTE_A_DESSINER, 0);
 
 const paper = new PaperPass(window.innerWidth, window.innerHeight);
 
@@ -500,7 +527,16 @@ function frame(now: number): void {
       if (events.carry.taken) caisses.reclamer(events.carry.id);
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
-    if (events.socketFilled) {
+    // LE SACRE. L'encrier se pose sur la pointe de l'Aiguille, et le monde
+    // répond. C'est la seule fin du jeu, et la seule fois où l'on retire au
+    // joueur la maîtrise de sa caméra — quatorze secondes, pour lui montrer
+    // d'où il vient.
+    if (events.socketFilled?.socketId === 'socle-aiguille') {
+      sacre.jouer([0, 114.2, 0], camera.position);
+      ambiance.retrouvaille();
+      document.exitPointerLock();
+      flash('L’encrier est posé. Regarde le chemin que tu as fait.', 13);
+    } else if (events.socketFilled) {
       flash(
         sim.sockets.allFilled
           ? 'Tous les logements sont pourvus.'
@@ -524,9 +560,14 @@ function frame(now: number): void {
   }
 
   // --- Caméra -----------------------------------------------------------------
-  const eye = sim.eyePosition();
-  camera.position.set(eye.x, eye.y, eye.z);
-  camera.rotation.set(sim.player.pitch, sim.player.yaw + Math.PI, 0);
+  // Pendant le sacre, elle ne suit plus le joueur : elle prend du recul autour
+  // de l'Aiguille et redescend vers le village. Tout le reste du jeu continue
+  // de tourner derrière — le vent, les feuilles, les portails.
+  if (!sacre.update(dt, camera)) {
+    const eye = sim.eyePosition();
+    camera.position.set(eye.x, eye.y, eye.z);
+    camera.rotation.set(sim.player.pitch, sim.player.yaw + Math.PI, 0);
+  }
 
   // --- Grain « dessiné », figé à 10 Hz ----------------------------------------
   boilTimer += dt;
@@ -560,6 +601,34 @@ function frame(now: number): void {
   socketViews.update(sim.sockets.items, dt, inkUniforms.uTime.value);
   socketViews.syncInk();
   brush.update(sim.player, scale, dt, camera);
+
+  // Le pinceau a-t-il atteint le jalon planté devant la porte vierge ?
+  if (MODE === 'monde' && sim.portesFermees.has(PORTE_A_DESSINER) && !tracage.enCours) {
+    const d = brush.destination;
+    if (
+      d &&
+      Math.hypot(d.x - JALON_PORTE[0], d.y - JALON_PORTE[1], d.z - JALON_PORTE[2]) < 1 &&
+      Math.hypot(
+        sim.player.position.x - JALON_PORTE[0],
+        sim.player.position.z - JALON_PORTE[2],
+      ) <
+        14 * scale
+    ) {
+      tracage.commencer(PORTE_A_DESSINER);
+      flash('Le pinceau se met à écrire. Regarde la porte.', 4);
+    }
+  }
+
+  const trace = tracage.update(
+    dt,
+    () => ambiance.tache(coupsPoses++),
+    (paire) => {
+      sim.portesFermees.delete(paire);
+      ambiance.progression(1, 2);
+      flash('La porte est dessinée. Elle s’ouvre.', 5);
+    },
+  );
+  if (trace !== null) portals.tracer(tracage.pairEnCours ?? PORTE_A_DESSINER, trace);
   feuilles.update(dt, camera, scale);
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
@@ -660,7 +729,10 @@ function frame(now: number): void {
 
   // Mais pas de tête dans la vue principale : elle est pile dans la caméra.
   // Le buste et les jambes, eux, restent visibles quand on baisse les yeux.
-  avatar.setHeadVisible(false);
+  //
+  // Sauf pendant le sacre : la caméra est à trois cents mètres de là, et un
+  // personnage décapité au milieu du plan de fin serait une belle sortie.
+  avatar.setHeadVisible(sacre.actif);
   // Retour à l'ambiance de là où l'on se tient réellement.
   applyAmbience(camera.position);
   renderer.setRenderTarget(paper.target);

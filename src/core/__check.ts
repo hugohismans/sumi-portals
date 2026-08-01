@@ -1124,6 +1124,29 @@ console.log('\n— L’encrier : la quête du monde —');
     `${arrivee.toFixed(2)} <= ${PORTEE(scaleOfLevel(2)).toFixed(2)}`,
   );
 
+  // La porte vierge fait mur tant que le pinceau ne l’a pas dessinee. C’est le
+  // meme refus qu’une porte trop etroite : le joueur n’a pas a connaitre la
+  // difference, il voit seulement qu’il ne passe pas.
+  const vierge = new Simulation(MONDE);
+  vierge.portesFermees.add('ascension-2');
+  vierge.player.scaleLevel = 1;
+  vierge.player.position = { x: 0, y: 30.3, z: 62 };
+  const barre = walkTo(vierge, [0, 30, 80], 60 * 20, { stopOnEvent: true });
+  check(
+    'une porte non dessinee ne se traverse pas',
+    barre.refused?.reason === 'scelle' && vierge.player.scaleLevel === 1,
+    `${barre.refused?.reason ?? 'aucun refus'}`,
+  );
+
+  // Et une fois tracee, elle s’ouvre — sans quoi le jeu serait sans issue.
+  vierge.portesFermees.delete('ascension-2');
+  const ouverte = walkTo(vierge, [0, 30, 80], 60 * 20, { stopOnEvent: true });
+  check(
+    'une fois dessinee, elle laisse passer',
+    ouverte.traversed?.pairId === 'ascension-2',
+    `${ouverte.traversed?.pairId ?? 'rien'}`,
+  );
+
   // L’eperon : du sommet du monde jusqu’a la pointe de l’Aiguille, et retour.
   const geant = new Simulation(MONDE);
   geant.player.scaleLevel = 2;

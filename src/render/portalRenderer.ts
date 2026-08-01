@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { faceWorldSize, traversalScale, type PortalFace } from '../core/portals.js';
 import type { PortalPairDef } from '../core/types.js';
-import { INK } from './ink.js';
+import { INK, PAPER } from './ink.js';
 
 const FLIP = new THREE.Matrix4().makeRotationY(Math.PI);
 /**
@@ -19,6 +19,10 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
     uniforms: {
       uMap: { value: map },
       uInk: { value: INK },
+      uPaper: { value: PAPER },
+      // 0 : rien n'est dessiné, la porte n'est qu'une feuille blanche.
+      // 1 : le monde d'en face est entièrement là.
+      uTrace: { value: 1 },
     },
     vertexShader: /* glsl */ `
       varying vec4 vClip;
@@ -32,8 +36,16 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
     fragmentShader: /* glsl */ `
       uniform sampler2D uMap;
       uniform vec3 uInk;
+      uniform vec3 uPaper;
+      uniform float uTrace;
       varying vec4 vClip;
       varying vec2 vUv;
+
+      float hash12(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
 
       void main() {
         // La texture a été rendue depuis la caméra virtuelle avec la MÊME
@@ -48,6 +60,36 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
         vec2 uv = (vClip.xy / vClip.w) * 0.5 + 0.5;
 
         vec3 col = texture2D(uMap, uv).rgb;
+
+        // ─── LE MONDE QUI SE DESSINE ─────────────────────────────────────
+        //
+        // Une porte peut n'être pas encore tracée. Elle est alors une feuille
+        // vierge, et le monde d'en face y apparaît PAR TACHES, une à une,
+        // jamais en fondu.
+        //
+        // Le fondu était le premier réflexe, et c'était le mauvais : un
+        // dégradé se lit comme une transparence qu'on augmente — un effet
+        // d'écran. Des taches qui tombent l'une après l'autre se lisent comme
+        // une MAIN qui travaille. Le même coût, une intention complètement
+        // différente.
+        //
+        // Chaque cellule d'une grille irrégulière reçoit son propre seuil ;
+        // quand la trace le dépasse, la cellule bascule d'un coup. Le bord de
+        // chaque tache est bruité, pour qu'aucune ne soit un carré.
+        if (uTrace < 0.999) {
+          vec2 cell = uv * vec2(11.0, 15.0);
+          vec2 id = floor(cell);
+          vec2 f = fract(cell) - 0.5;
+          float seuil = hash12(id);
+          // Les taches naissent plutôt du bas, comme un pinceau qui remonte.
+          seuil = seuil * 0.72 + (1.0 - uv.y) * 0.28;
+          float bord = 0.5 - length(f) * (0.75 + hash12(id + 7.3) * 0.5);
+          float encrée = step(seuil, uTrace) * step(-0.16, bord);
+          col = mix(uPaper, col, encrée);
+          // La tache la plus fraîche est encore sombre : l'encre sèche ensuite.
+          float fraiche = smoothstep(0.09, 0.0, uTrace - seuil) * encrée;
+          col = mix(col, uInk, fraiche * 0.55);
+        }
 
         // Liseré d'encre sur le pourtour, pour que ce ne soit pas une découpe nette.
         vec2 e = min(vUv, 1.0 - vUv);
@@ -197,6 +239,29 @@ export class PortalRenderer {
       view.twin = this.views.find((v) => v.face === view.face.twin)!;
     }
     this.applySizes();
+  }
+
+  /**
+   * LE MONDE QUI SE DESSINE, côté commande.
+   *
+   * `trace` va de 0 (feuille vierge) à 1 (monde entier). On l'avance par petits
+   * paliers plutôt qu'en continu : c'est ce qui donne le « clac, clac » — une
+   * poignée de taches d'un coup, un silence, une autre poignée. Avancé
+   * doucement et sans à-coup, l'effet redevient un fondu, et un fondu ne
+   * raconte rien.
+   */
+  tracer(pairId: string, trace: number): void {
+    for (const view of this.views) {
+      if (view.face.pairId !== pairId) continue;
+      view.material.uniforms.uTrace.value = trace;
+      view.materialDeep.uniforms.uTrace.value = trace;
+    }
+  }
+
+  /** Où en est le tracé d'une paire. 1 si elle n'a jamais été effacée. */
+  traceDe(pairId: string): number {
+    const view = this.views.find((v) => v.face.pairId === pairId);
+    return view ? (view.material.uniforms.uTrace.value as number) : 1;
   }
 
   /**

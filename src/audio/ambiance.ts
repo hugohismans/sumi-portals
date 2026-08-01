@@ -314,6 +314,34 @@ export class Ambiance {
   }
 
   /**
+   * UNE TACHE D'ENCRE TOMBE SUR LA PORTE.
+   *
+   * Court, mat, un peu sourd — le contraire d'une cloche. Une goutte d'encre
+   * sur du papier ne résonne pas : elle s'arrête net et s'étale. D'où une
+   * enveloppe très brève sur une fréquence basse, et rien qui traîne.
+   *
+   * La hauteur monte légèrement à chaque coup (`rang`), si bien que la
+   * succession dessine une petite phrase montante sans qu'on l'ait écrite. On
+   * entend la porte se remplir.
+   */
+  tache(rang: number): void {
+    const ctx = this.ctx;
+    const maitre = this.maitre;
+    if (!ctx || !maitre) return;
+    try {
+      const t = ctx.currentTime;
+      const f = 150 * Math.pow(1.09, rang) * this.facteur();
+      this.cloche(f, 0.16, 0.08, t);
+      // Un souffle très bref par-dessus : c'est lui qui fait « papier » plutôt
+      // que « note ». Sans lui, on entend un instrument ; avec, on entend un
+      // contact.
+      this.cloche(f * 5.7, 0.05, 0.012, t);
+    } catch {
+      /* idem */
+    }
+  }
+
+  /**
    * ON AVANCE — un arpège, une station du Pinceau de plus.
    *
    * Il manquait au jeu la chose la plus simple : un son qui dise « c'est
