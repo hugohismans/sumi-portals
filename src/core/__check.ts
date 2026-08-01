@@ -12,6 +12,8 @@ import { TICK_DT, scaleOfLevel } from './constants.js';
 import { transformPoint } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
+import { CaissesPartagees } from '../net/caisses.js';
+import type { RemoteSnapshot } from '../net/presence.js';
 import {
   DALLE_GEANT,
   DALLE_MINUSCULE,
@@ -809,6 +811,66 @@ console.log('\n— La clairière : ce qu’une personne seule ne peut pas faire 
     'et surtout pas si une seule personne occupe les deux dalles',
     !retrouvailles(sur(DALLE_GEANT, 0), sur(DALLE_GEANT, 0), dalles),
     'deux fois la même dalle',
+  );
+}
+
+// =============================================================================
+console.log('\n— Les caisses partagées —');
+{
+  // net/caisses.ts n'importe Firebase que pour des types, donc il tourne ici
+  // tel quel. C'est précieux : la synchronisation d'objets est exactement le
+  // genre de code dont les défauts n'apparaissent qu'à deux, sur deux machines,
+  // une fois sur dix.
+  const sim = new Simulation(construireDuo('geant'));
+  const part = new CaissesPartagees();
+  const pair = (
+    lot: Record<string, { x: number; y: number; z: number; s: number; m?: number }>,
+  ): Map<string, RemoteSnapshot> =>
+    new Map([
+      ['autre', { uid: 'autre', x: 0, y: 0, z: 0, yaw: 0, lvl: 0, mv: 0, sol: 1, t: Date.now(), caisses: lot }],
+    ]);
+
+  // Ce que publie un joueur qui n'a rien touché : rien du tout. Publier des
+  // caisses dont on n'est pas responsable, c'est se disputer avec l'autre à
+  // dix envois par seconde.
+  check('sans rien avoir ramassé, on ne publie aucune caisse', part.aPublier(sim.carryables) === undefined, '');
+
+  part.reclamer('galet');
+  const publie = part.aPublier(sim.carryables);
+  check(
+    'une fois ramassée, elle part avec sa taille',
+    publie !== undefined && 'galet' in publie && !('pierre-lourde' in publie),
+    Object.keys(publie ?? {}).join(', '),
+  );
+
+  // Le pair déplace une caisse dont je ne réponds pas : je la suis.
+  part.appliquer(pair({ 'pierre-lourde': { x: 5, y: 1, z: -3, s: 2.4 } }), sim.carryables);
+  const pierre = sim.carryables.items.find((c) => c.id === 'pierre-lourde')!;
+  check(
+    'on suit les caisses dont l’autre répond',
+    pierre.position.x === 5 && pierre.position.z === -3,
+    `${pierre.position.x}, ${pierre.position.z}`,
+  );
+
+  // Le cas qui tranche : le pair annonce qu'il TIENT le galet, dont je me
+  // croyais responsable. Celui qui l'a vraiment en main gagne, sinon les deux
+  // publient en même temps et la caisse tremble entre deux positions.
+  part.appliquer(pair({ galet: { x: 9, y: 0, z: 9, s: 0.28, m: 1 } }), sim.carryables);
+  const apres = part.aPublier(sim.carryables);
+  check(
+    'celui qui tient la caisse l’emporte sur celui qui l’a tenue',
+    apres === undefined || !('galet' in apres),
+    `${Object.keys(apres ?? {}).join(', ') || 'plus rien'}`,
+  );
+
+  // Une caisse logée est acquise : ni le réseau ni personne ne la ressort.
+  const logee = sim.carryables.items.find((c) => c.id === 'pierre-lourde')!;
+  logee.locked = true;
+  part.appliquer(pair({ 'pierre-lourde': { x: -99, y: 0, z: -99, s: 2.4 } }), sim.carryables);
+  check(
+    'une caisse déjà logée ne bouge plus, quoi qu’annonce le réseau',
+    logee.position.x === 5,
+    `${logee.position.x}`,
   );
 }
 

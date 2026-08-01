@@ -49,6 +49,8 @@ export interface RemoteSnapshot {
   duo?: number;
   /** Salon rejoint, une fois apparié. Vide tant qu'on attend. */
   salon?: string;
+  /** Les caisses dont ce joueur répond. Voir net/caisses.ts. */
+  caisses?: Record<string, { x: number; y: number; z: number; s: number; m?: number }>;
 }
 
 /** Palette des joueurs. Teintes d'encre, lisibles sur le papier crème. */
@@ -82,6 +84,8 @@ export class Presence {
    */
   duoDepuis = 0;
   salon = '';
+  /** Caisses publiées avec ma fiche. Renseigné par CaissesPartagees. */
+  caisses: Record<string, { x: number; y: number; z: number; s: number; m?: number }> | undefined;
   private lastDuo = 0;
   private lastSalon = '';
 
@@ -152,6 +156,9 @@ export class Presence {
       t: Date.now(),
       duo: this.duoDepuis,
       salon: this.salon,
+      // `null` et non `undefined` : Firebase refuse `undefined` dans un objet,
+      // alors que `null` efface proprement la clé côté serveur.
+      caisses: this.caisses ?? null,
     };
 
     // Un envoi raté est signalé UNE fois. Une version antérieure avalait

@@ -11,6 +11,7 @@ import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Talisman } from './render/talisman.js';
 import { AttenteDuo } from './net/attente.js';
+import { CaissesPartagees } from './net/caisses.js';
 import { Presence, type RemoteSnapshot } from './net/presence.js';
 import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
@@ -252,6 +253,7 @@ input.onReset = () => {
 // niveaux se jouent seul, et n'ouvrent donc aucune connexion.
 const presence = new Presence();
 const attenteDuo = new AttenteDuo();
+const caisses = new CaissesPartagees();
 let presenceActive = false;
 let transitionEnCours = false;
 
@@ -476,6 +478,9 @@ function frame(now: number): void {
     if (events.carry && !events.carry.taken) ambiance.caisse();
     if (events.socketFilled) ambiance.caisse();
     if (events.carry) {
+      // Ramasser, c'est s'approprier : à partir de maintenant, c'est moi qui
+      // publie cette caisse, et l'autre joueur suit ce que j'en fais.
+      if (events.carry.taken) caisses.reclamer(events.carry.id);
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
     if (events.socketFilled) {
@@ -548,6 +553,10 @@ function frame(now: number): void {
     // peut alors animer la démarche sans rien savoir de l'échelle de l'émetteur.
     const speedInBodies =
       Math.hypot(sim.player.velocity.x, sim.player.velocity.z) / (scale * PLAYER_HEIGHT);
+    // On renseigne ses caisses AVANT de publier : sans quoi le paquet partirait
+    // avec l'état de l'image précédente, et une caisse posée arriverait chez
+    // l'autre un dixième de seconde en retard sur le bruit qu'elle fait.
+    if (EN_DUO) caisses.brancher(presence, sim.carryables);
     presence.publish(sim.player, dt, speedInBodies);
 
     // Le hall et le duo partagent le même chemin dans la base — c'est ce qui
@@ -561,7 +570,10 @@ function frame(now: number): void {
     }
     remotePlayers.sync(visibles);
 
-    if (EN_DUO) surveillerRetrouvailles(visibles);
+    if (EN_DUO) {
+      caisses.appliquer(visibles, sim.carryables);
+      surveillerRetrouvailles(visibles);
+    }
 
     // --- Le rendez-vous à deux ------------------------------------------------
     if (attenteDuo.actif && !transitionEnCours) {
