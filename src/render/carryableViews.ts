@@ -34,10 +34,12 @@ interface View {
   outline: THREE.ShaderMaterial;
 
   ghost: THREE.Group;
+  ghostMeshes: THREE.Mesh[];
   ghostCel: THREE.ShaderMaterial;
   ghostOutline: THREE.ShaderMaterial;
 
   size: number;
+  ghostSize: number;
 }
 
 export class CarryableViews {
@@ -69,10 +71,15 @@ export class CarryableViews {
       mesh.frustumCulled = false;
       group.add(outlineMesh, mesh);
 
+      // Le double a sa PROPRE géométrie, taillée à la bonne dimension. Le
+      // grossir par une matrice étirerait aussi son contour d'encre, et la
+      // couture entre les deux moitiés sauterait aux yeux : trait épais d'un
+      // côté, trait fin de l'autre.
       const spectre = make();
       const ghost = new THREE.Group();
-      const ghostOutlineMesh = new THREE.Mesh(geo, spectre.outline);
-      const ghostMesh = new THREE.Mesh(geo, spectre.cel);
+      const ghostGeo = cubeGeometry(item.size);
+      const ghostOutlineMesh = new THREE.Mesh(ghostGeo, spectre.outline);
+      const ghostMesh = new THREE.Mesh(ghostGeo, spectre.cel);
       ghostOutlineMesh.frustumCulled = false;
       ghostMesh.frustumCulled = false;
       ghost.add(ghostOutlineMesh, ghostMesh);
@@ -86,9 +93,11 @@ export class CarryableViews {
         cel: real.cel,
         outline: real.outline,
         ghost,
+        ghostMeshes: [ghostOutlineMesh, ghostMesh],
         ghostCel: spectre.cel,
         ghostOutline: spectre.outline,
         size: item.size,
+        ghostSize: item.size,
       });
     }
   }
@@ -103,7 +112,6 @@ export class CarryableViews {
         view.mesh.geometry.dispose();
         view.mesh.geometry = geo;
         view.outlineMesh.geometry = geo;
-        view.ghost.children.forEach((m) => ((m as THREE.Mesh).geometry = geo));
         view.size = item.size;
       }
 
@@ -152,8 +160,17 @@ export class CarryableViews {
       const s = traversalScale(face);
       const there = transformPoint(face, { x: cx, y: cy, z: cz });
 
+      // Géométrie retaillée plutôt que mise à l'échelle : c'est ce qui donne au
+      // double exactement la même épaisseur de trait que la moitié restée ici.
+      const wanted = item.size * s;
+      if (Math.abs(view.ghostSize - wanted) > 1e-6) {
+        const geo = cubeGeometry(wanted);
+        view.ghostMeshes[0].geometry.dispose();
+        for (const m of view.ghostMeshes) m.geometry = geo;
+        view.ghostSize = wanted;
+      }
+
       view.ghost.position.set(there.x, there.y, there.z);
-      view.ghost.scale.setScalar(s);
       view.ghost.rotation.set(
         item.rotation.x,
         item.rotation.y + yawDelta(face),
