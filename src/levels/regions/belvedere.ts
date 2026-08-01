@@ -135,8 +135,11 @@ const boxes: BoxDef[] = [];
 boxes.push(
   box([-236, ASSISE, 202], [-36, 120.9, 234], 0),
   box([36, ASSISE, 202], [160, 120.9, 234], 0),
-  box([-236, 119.4, 200.8], [-36, 122.4, 208], 2),
-  box([36, 119.4, 200.8], [160, 122.4, 208], 2),
+  // La bande sud dépassait déjà le dallage VERS LE SUD ; elle le déborde
+  // maintenant aussi SUR LES CÔTÉS (40 cm), sans quoi ses joues est et ouest
+  // restaient exactement dans le plan de celles du dallage.
+  box([-236.4, 119.4, 200.8], [-35.6, 122.4, 208], 2),
+  box([35.6, 119.4, 200.8], [160.4, 122.4, 208], 2),
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -287,13 +290,16 @@ boxes.push(
   // les affronter dans le même plan.
   box([104, 194, 288], [196, 208, 308], 2),
   box([104, 194, 316], [196, 208, 336], 2),
-  box([104, 193.6, 294], [124, 209.2, 330], 2),
-  box([176, 193.6, 294], [196, 209.2, 330], 2),
+  // Elles débordent aussi de 0,4 EN LARGEUR, et pas seulement en hauteur : à
+  // 104 tout rond, leur joue tombait dans le plan exact de celle des poutres
+  // nord/sud, et les deux se disputaient 196 m² de façade au sommet du monde.
+  box([103.6, 193.6, 294], [124, 209.2, 330], 2),
+  box([176, 193.6, 294], [196.4, 209.2, 330], 2),
   // Corniche en anneau, débordante : c'est elle qui donne au sommet sa ligne.
   box([100, 206, 284], [200, 214.6, 310], 3),
   box([100, 206, 314], [200, 214.6, 340], 3),
-  box([100, 205.6, 308], [126, 215.4, 316], 3),
-  box([174, 205.6, 308], [200, 215.4, 316], 3),
+  box([99.6, 205.6, 308], [126, 215.4, 316], 3),
+  box([174, 205.6, 308], [200.4, 215.4, 316], 3),
 );
 // L'autel et sa vasque. La vasque coiffe l'autel et le noie : sa face haute est
 // à 151,5, soit 18,2 au-dessus du stylobate — sous le saut (20,7) mais très

@@ -91,7 +91,18 @@ const escalier = (
   for (let i = 0; i < n; i++) {
     const y = yStart + (i + 1) * rise;
     const z = zStart + i * depth;
-    out.push(box([x0, yStart - 4, z], [x1, Math.min(y, yEnd), z + depth], ink));
+    // LE DERNIER GRADIN S'ARRÊTE 12 CM SOUS L'ÉTAGE QU'IL DESSERT.
+    //
+    // Écrêté à `yEnd` tout rond, sa face supérieure tombait dans le plan exact
+    // de la dalle d'arrivée. Deux faces confondues se disputent la profondeur,
+    // et vues en enfilade depuis le haut des marches, ça donnait une grande
+    // écharpe scintillante en travers de la terrasse.
+    //
+    // Enfoncé de 12 cm, le gradin disparaît simplement DANS la dalle : plus
+    // aucune face commune, et rien à voir puisque c'est la dalle qui fait le
+    // sol à cet endroit. Douze centimètres ne se sentent à aucune échelle —
+    // le plus petit joueur du jeu enjambe déjà 22 cm.
+    out.push(box([x0, yStart - 4, z], [x1, Math.min(y, yEnd - 0.12), z + depth], ink));
   }
   return out;
 };
@@ -287,7 +298,7 @@ export const MONDE: LevelDef = {
 
     // L'Aiguille. Colosse ici, mât depuis la terrasse, piquet depuis le
     // belvédère : c'est le même objet, et c'est tout le propos du voyage.
-    box([-3, -6, -3], [3, AIGUILLE_H, 3], 2),
+    box([-3, -5.6, -3], [3, AIGUILLE_H, 3], 2),
     box([-4.4, AIGUILLE_H - 1, -4.4], [4.4, AIGUILLE_H + 3, 4.4], 3),
 
     ...village(),
@@ -307,23 +318,27 @@ export const MONDE: LevelDef = {
     ...balustrade(-88.4, 44, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
     ...balustrade(86, 88.4, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
     ...balustrade(-88.4, 38, 127.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
-    ...balustrade(-88.7, -87.3, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
-    ...balustrade(87.3, 88.7, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
+    ...balustrade(-88.7, -87.3, 47.65, 128.35, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
+    ...balustrade(87.3, 88.7, 47.65, 128.35, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
 
     // Le jardin sec, posé sur la dalle. Région autonome : voir regions/terrasse.ts.
     ...TERRASSE.boxes,
 
     // --- Escalier B : ×4 le regarde, ×16 le gravit ----------------------------
     // Marches de 12 : mur pour un joueur de 7,2, marche pour un joueur de 28,8.
-    ...escalier(40, 90, 126, TERRASSE_Y, BELVEDERE_Y, 12, 9, 2).map(haut),
+    // Rentré à 89,6 : à 90 pile, sa joue est tombait dans le plan du bord de
+    // la terrasse, seize mètres carrés de façade en pleine vue.
+    ...escalier(40, 89.6, 126, TERRASSE_Y, BELVEDERE_Y, 12, 9, 2).map(haut),
 
     // --- Étage 3 : le belvédère -----------------------------------------------
     box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false, region: 'hauteurs' }),
     // Même principe à ×16, à l'échelle de l'étage.
     ...balustrade(-255, 36, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
     ...balustrade(94, 255, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
-    ...balustrade(-256, -253, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
-    ...balustrade(253, 256, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+    // Les garde-corps latéraux sont 40 cm plus hauts que les frontaux : aux
+    // quatre angles, leurs lisses se recouvraient à l'altitude exacte.
+    ...balustrade(-256, -253, 193.35, 376.65, BELVEDERE_Y, 22.4, 6.5, 2.6).map(haut),
+    ...balustrade(253, 256, 193.35, 376.65, BELVEDERE_Y, 22.4, 6.5, 2.6).map(haut),
     ...balustrade(-255, 255, 374, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
 
     // Le sommet du voyage. Région autonome : voir regions/belvedere.ts.

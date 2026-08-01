@@ -60,7 +60,9 @@ const arche = (cx: number, z: number, w: number, h: number, ink: number, t = 0.4
   box([cx - w - t, -0.4, z - t], [cx - w, h, z + t], ink),
   box([cx + w, -0.4, z - t], [cx + w + t, h, z + t], ink),
   box([cx - w - t * 2.4, h, z - t * 1.3], [cx + w + t * 2.4, h + t * 1.2, z + t * 1.3], ink),
-  box([cx - w - t, h * 0.82, z - t * 0.9], [cx + w + t, h * 0.82 + t * 0.45, z + t * 0.9], 2),
+  // La traverse basse rentre de 4 cm dans les montants au lieu d'affleurer :
+  // à l'identique, ses joues gauche et droite se confondaient avec les leurs.
+  box([cx - w - t + 0.04, h * 0.82, z - t * 0.9], [cx + w + t - 0.04, h * 0.82 + t * 0.45, z + t * 0.9], 2),
 ];
 
 /**
@@ -95,9 +97,10 @@ const arches = (): BoxDef[] => {
   // est mince : on voit à travers, on comprend qu'il en faut deux.
   out.push(...arche(ARCHE_DUO_X - 2.9, SEUIL_Z, 2.1, 5.4, 3));
   out.push(...arche(ARCHE_DUO_X + 2.9, SEUIL_Z, 2.1, 5.4, 3));
-  // Linteau commun, posé PAR-DESSUS les deux — il mord de 20 cm sur chacun
-  // plutôt que d'affleurer, sinon les deux faces grésillent.
-  out.push(box([ARCHE_DUO_X - 6.0, 5.4, SEUIL_Z - 0.75], [ARCHE_DUO_X + 6.0, 6.1, SEUIL_Z + 0.75], 2));
+  // Linteau commun, posé PAR-DESSUS les deux. Il mord de 20 cm en largeur, et
+  // surtout il DESCEND de 10 cm dans les deux arches (5,3 au lieu de 5,4) :
+  // posé pile sur leur sommet, sa face inférieure se confondait avec la leur.
+  out.push(box([ARCHE_DUO_X - 6.0, 5.3, SEUIL_Z - 0.75], [ARCHE_DUO_X + 6.0, 6.1, SEUIL_Z + 0.75], 2));
   out.push(box([ARCHE_DUO_X - 2.6, -0.35, -19.2], [ARCHE_DUO_X - 0.5, 0.16, -17.4], 2));
   out.push(box([ARCHE_DUO_X + 0.5, -0.35, -19.2], [ARCHE_DUO_X + 2.6, 0.16, -17.4], 2));
 

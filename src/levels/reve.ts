@@ -97,9 +97,12 @@ const salle = (
   ] as const) {
     out.push(box([x0 - MUR, 0, za], [-PORTE / 2 + cx, PLAFOND, zb], 1));
     out.push(box([PORTE / 2 + cx, 0, za], [x1 + MUR, PLAFOND, zb], 1));
-    // Linteau au-dessus de l'embrasure. Il DÉBORDE de 30 cm sur les deux
-    // jambages au lieu d'affleurer : deux faces dans le même plan grésillent.
-    out.push(box([-PORTE / 2 + cx - 0.3, 11.6, za], [PORTE / 2 + cx + 0.3, PLAFOND, zb], 2));
+    // Linteau au-dessus de l'embrasure. Il déborde sur les jambages EN LARGEUR
+    // (30 cm) mais aussi EN PROFONDEUR (25 cm de chaque côté du mur), et c'est
+    // le second débord qui manquait : sans lui, ses faces avant et arrière
+    // tombaient exactement dans le plan du mur, et chaque embrasure du rêve
+    // grésillait pile à hauteur d'œil. Quatre-vingt-huit fois par rêve.
+    out.push(box([-PORTE / 2 + cx - 0.3, 11.6, za - 0.25], [PORTE / 2 + cx + 0.3, PLAFOND, zb + 0.25], 2));
   }
 
   // Le mobilier du vide : quelques piliers, et rien d'autre. Un lieu vide n'est

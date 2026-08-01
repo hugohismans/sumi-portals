@@ -12,6 +12,7 @@ import { TICK_DT, scaleOfLevel } from './constants.js';
 import { buildFaces, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
+import { facesConfondues } from './coplanaires.js';
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
 import {
@@ -24,6 +25,7 @@ import { Simulation } from './simulation.js';
 import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
+import { LOBBY } from '../levels/lobby.js';
 import { MONDE } from '../levels/monde.js';
 import { reve } from '../levels/reve.js';
 import { verifierParcelle } from '../levels/regions/contrat.js';
@@ -1033,6 +1035,29 @@ console.log('\n— Le miroir : la gauche et la droite —');
     near(retour.x, p.x, 1e-9) && near(retour.y, p.y, 1e-9) && near(retour.z, p.z, 1e-9),
     `(${retour.x.toFixed(2)}, ${retour.y.toFixed(2)}, ${retour.z.toFixed(2)})`,
   );
+}
+
+// =============================================================================
+console.log('\n— Aucune face confondue et exposée —');
+{
+  // Le défaut le plus fréquent du projet, enfin vérifié. Il a mordu quatre
+  // fois : sur des bordures, sur des garde-corps, puis sur tout le haut d'un
+  // escalier — où deux dalles au même niveau donnaient une écharpe grésillante
+  // en travers de la terrasse, que seul un joueur pouvait voir.
+  //
+  // Le seuil est de 2 m². En dessous, un recouvrement ne se remarque pas, et
+  // exiger la perfection rendrait le décor pénible à écrire pour rien.
+  for (const [nom, niveau] of [
+    ['le monde', MONDE],
+    ['le hall', LOBBY],
+    ['la clairière', construireDuo('geant')],
+    ['la cour', LEVEL_01],
+    ['la caisse', LEVEL_02],
+    ['un rêve', reve(7)],
+  ] as const) {
+    const fautes = facesConfondues(niveau.boxes, 2);
+    check(`${nom} n'a aucune face confondue`, fautes.length === 0, fautes[0] ?? '');
+  }
 }
 
 // ─── Les régions restent dans leur parcelle ──────────────────────────────────

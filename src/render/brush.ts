@@ -20,13 +20,27 @@ import { buildWorldGeometry } from './worldMesh.js';
  * Il vit désormais dans le monde, sans minuterie : on peut le suivre des yeux,
  * le perdre, le retrouver. C'est un compagnon, pas une notification.
  *
- * Sa taille suit celle du joueur, et c'est délibéré : il garde la même présence
- * apparente à toutes les échelles. Il n'appartient pas au système de tailles —
- * il est ce qui dessine le monde, pas ce qui l'habite.
+ * SA TAILLE EST CELLE DE L'ÉTAGE OÙ IL SE TIENT, pas la vôtre. Il a d'abord
+ * suivi la vôtre en permanence, ce qui paraissait commode — il gardait la même
+ * présence apparente partout. Mais en montant d'un étage on faisait alors
+ * grossir un objet posé deux étages plus bas, et l'on voyait depuis le
+ * belvédère un pinceau seize fois trop gros couché sur la terrasse.
+ *
+ * Il ne se met à votre échelle que lorsque vous êtes auprès de lui, et
+ * progressivement. C'est la même règle que pour les portails : ce qui est dans
+ * le monde garde la taille du monde, et c'est vous qui changez.
  */
 
 /** Distance d'approche qui le fait décoller, en hauteurs de joueur. */
 const CATCH = 9;
+
+/**
+ * Rayon, en tailles de pinceau, à l'intérieur duquel il se met à votre échelle.
+ * Choisi plus court que la hauteur qui sépare deux étages du monde (30 puis 90)
+ * : c'est ce qui garantit qu'on ne redimensionne jamais un pinceau qu'on
+ * regarde d'en haut.
+ */
+const VOISINAGE = 20;
 
 /** Durée d'une fuite, en secondes. */
 const FLIGHT = 3.6;
@@ -115,6 +129,8 @@ export class Brush {
   private samples: Sample[] = [];
   private fleeing = 0;
   private station = 0;
+  /** Sa taille à lui, qui n'est pas la vôtre. Voir `update`. */
+  private echelle = 1;
   private wander = 0;
 
   private readonly from = new THREE.Vector3();
@@ -234,7 +250,29 @@ export class Brush {
 
     if (this.fleeing > 0) this.pushSample(dt);
     this.rebuildRibbon(camera, playerScale);
-    this.head.scale.setScalar(playerScale);
+
+    // LE PINCEAU N'EST PAS UN ACCESSOIRE DU JOUEUR, C'EST UN HABITANT DU LIEU.
+    //
+    // Il adoptait la taille du joueur à chaque image, où qu'il se trouve. En
+    // montant d'un étage on faisait donc grossir un objet posé deux étages plus
+    // bas : depuis le belvédère, on voyait sur la terrasse un pinceau seize
+    // fois trop gros. C'est la même faute de logique que les portails qui
+    // grandissaient avec nous, et elle se corrige de la même façon — ce qui est
+    // dans le monde garde la taille du monde.
+    //
+    // Il ne se met donc à votre échelle que lorsque vous êtes AUPRÈS DE LUI,
+    // et le fait progressivement. De loin, il garde la taille de l'étage où il
+    // se tient. Le seuil est proportionnel à sa propre taille : à ×1 vingt
+    // mètres, à ×16 trois cents — soit, dans les deux cas, « la pièce où l'on
+    // est » et pas l'étage d'en dessous.
+    const dx = player.position.x - this.head.position.x;
+    const dy = player.position.y - this.head.position.y;
+    const dz = player.position.z - this.head.position.z;
+    const loin = Math.hypot(dx, dy, dz) > VOISINAGE * this.echelle;
+    if (!loin) {
+      this.echelle += (playerScale - this.echelle) * Math.min(1, dt * 2.5);
+    }
+    this.head.scale.setScalar(this.echelle);
     this.orient(dt);
     for (const m of this.bodyMaterials) syncInkUniforms(m);
   }
