@@ -210,6 +210,8 @@ const paper = new PaperPass(window.innerWidth, window.innerHeight);
 const ambiance = new Ambiance();
 /** Cadence des pas, en foulées par seconde et par taille de corps. */
 let stepPhase = 0;
+/** Retard vertical de l'œil sur le corps, après une marche. Toujours ≤ 0. */
+let lissageMarche = 0;
 
 // --- Entrées ------------------------------------------------------------------
 const input = new InputManager(renderer.domElement, LEVEL.spawnYaw);
@@ -554,8 +556,34 @@ function frame(now: number): void {
     const raw = input.sample();
     // Souris relâchée : on garde l'orientation mais on coupe les déplacements.
     const command = input.locked ? raw : { ...raw, forward: 0, strafe: 0, jump: false };
+    const avantY = sim.player.position.y;
     const events = sim.step(command, TICK_DT);
     accumulator -= TICK_DT;
+
+    // ─── LE LISSAGE DES MARCHES ─────────────────────────────────────────────
+    //
+    // Monter une marche TÉLÉPORTE le joueur vers le haut. Ce n'est pas un
+    // défaut de la physique : elle soulève le corps de la hauteur d'enjambée,
+    // vérifie qu'il passe, puis le repose — c'est net, stable, et c'est ce
+    // qu'on veut d'un moteur. Mais l'œil, lui, fait un bond, et l'on monte un
+    // escalier par saccades.
+    //
+    // On NE TOUCHE DONC PAS À LA SIMULATION — la corriger reviendrait à rendre
+    // instable quelque chose qui marche. On retarde seulement le REGARD : au
+    // moment du bond, l'œil garde son ancienne hauteur, puis rattrape le corps
+    // en un dixième de seconde. Le personnage a déjà monté, le joueur le voit
+    // monter. C'est ce que font tous les jeux à la première personne, et c'est
+    // invisible tant qu'on ne l'a pas enlevé.
+    if (!events.traversed && sim.player.grounded) {
+      const montee = sim.player.position.y - avantY;
+      // Borné à l'enjambée : au-delà, ce n'est plus une marche mais un
+      // ascenseur, une chute rattrapée ou une téléportation, et retarder le
+      // regard n'aurait aucun sens.
+      const marcheMax = PLAYER_HEIGHT * 0.5 * scaleOfLevel(sim.player.scaleLevel);
+      if (montee > 0.01 && montee <= marcheMax * 1.05) {
+        lissageMarche = Math.max(-marcheMax, lissageMarche - montee);
+      }
+    }
 
     if (events.traversed) {
       ambiance.portail();
@@ -641,9 +669,16 @@ function frame(now: number): void {
   // Pendant le sacre, elle ne suit plus le joueur : elle prend du recul autour
   // de l'Aiguille et redescend vers le village. Tout le reste du jeu continue
   // de tourner derrière — le vent, les feuilles, les portails.
+  // Le retard de l'œil se résorbe en un dixième de seconde, proportionnellement
+  // à la taille du joueur : un géant monte de grandes marches, et le rattrapage
+  // doit se sentir pareil à toutes les échelles.
+  if (lissageMarche < 0) {
+    lissageMarche = Math.min(0, lissageMarche + dt * 9 * sim.scale);
+  }
+
   if (!sacre.update(dt, camera)) {
     const eye = sim.eyePosition();
-    camera.position.set(eye.x, eye.y, eye.z);
+    camera.position.set(eye.x, eye.y + lissageMarche, eye.z);
     camera.rotation.set(sim.player.pitch, sim.player.yaw + Math.PI, 0);
   }
 
