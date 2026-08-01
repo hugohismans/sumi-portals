@@ -415,11 +415,21 @@ export class Brush {
     // CONSTANTE À L'ÉCRAN : on corrige par la distance, donc il ne rapetisse
     // jamais au point de disparaître. C'est un repère, pas un objet du monde —
     // la seule chose du jeu qui ait le droit de ne pas obéir à l'échelle.
+    // LE HALO SE CENTRE SUR LE CORPS, PAS SUR LE PIED.
+    //
+    // Le point d'ancrage du personnage est au bas de sa touffe, et son corps
+    // s'élève au-dessus — de −0,70 à +2,26 en repère local, mis à l'échelle
+    // 0,55. Centré sur l'ancrage, l'anneau se retrouvait donc nettement plus
+    // bas que ce qu'il désigne : on voyait un cercle et, à côté, un pinceau.
+    // Un repère décalé de ce qu'il repère est pire que pas de repère.
     this.halo.position.copy(this.head.position);
+    this.halo.position.y += 0.43 * this.echelle;
     this.halo.quaternion.copy(camera.quaternion);
     const distance = this.halo.position.distanceTo(camera.position);
-    // Plancher relevé : de près il ne doit pas disparaître non plus.
-    this.halo.scale.setScalar(Math.max(1.8 * this.echelle, distance * 0.11));
+    // Deux planchers : il ne doit ni disparaître de près, ni devenir plus petit
+    // que le personnage qu'il entoure — à ×16 le pinceau fait vingt-six mètres,
+    // et un anneau plus étroit que lui ne l'entoure plus, il le barre.
+    this.halo.scale.setScalar(Math.max(2.6 * this.echelle, distance * 0.11));
     this.haloMat.uniforms.uPhase.value += dt * (this.fleeing > 0 ? 5.5 : 2.5);
     this.haloMat.uniforms.uVol.value = this.fleeing > 0 ? 1 : 0;
 
