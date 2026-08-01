@@ -60,6 +60,19 @@ export const clePigments = (): string => CLE;
  */
 const DUREE = 2.4;
 
+/**
+ * Au-delà, le brouillard a tout mangé : le front peut y courir aussi vite qu'il
+ * veut, personne ne le verra. C'est la portée du brouillard du jeu.
+ */
+const VUE = 300;
+
+/**
+ * Part du temps consacrée à ce qu'on voit. Les quatre cinquièmes du geste sont
+ * donc employés à traverser les trois cents unités qui comptent ; le dernier
+ * cinquième rattrape tout le reste de la région, dans la brume.
+ */
+const LISIBLE = 0.8;
+
 interface Chantier {
   materiaux: THREE.ShaderMaterial[];
   avancement: number;
@@ -192,14 +205,34 @@ export class Pigments {
     if (this.chantiers.length === 0) return;
     for (const c of this.chantiers) {
       c.avancement = Math.min(1, c.avancement + dt / DUREE);
-      // Départ franc, fin douce : 1 − (1 − t)³. L'encre prend d'un coup puis
-      // s'épuise, comme un lavis qui rencontre la fibre. L'inverse — hésiter
-      // puis remplir — se lisait comme une jauge qui se remplit.
-      const t = 1 - Math.pow(1 - c.avancement, 3);
-      const fini = c.avancement >= 1;
+      // ─── LA VITESSE DU FRONT SE RÈGLE SUR CE QU'ON VOIT ────────────────────
+      //
+      // Elle se réglait sur la BOÎTE de la région, et ça ne pouvait pas marcher.
+      // Les hauteurs vont du village au belvédère : six cent quatre-vingts
+      // unités de long, dont l'écrasante majorité est au-delà du brouillard.
+      // Le front devait donc couvrir sept cents unités en deux secondes et
+      // demie, ce qui lui faisait traverser TOUT LE VISIBLE en un sixième de
+      // seconde. Mesuré : trois cents unités au bout de quatre dixièmes. On ne
+      // voyait rien venir — non pas parce que rien ne venait, mais parce que
+      // c'était déjà passé.
+      //
+      // On règle donc la course sur la PORTÉE DU BROUILLARD, qui est par
+      // définition la distance au-delà de laquelle plus rien ne se lit. Le
+      // front met l'essentiel du temps à parcourir ce qu'on peut voir, puis
+      // rattrape le reste dans le dernier cinquième — invisible, donc gratuit.
+      const visible = Math.min(c.portee, VUE);
+      const a = c.avancement;
+      // Décélération douce sur la part visible : l'encre part fort et s'épuise
+      // en rencontrant la fibre. En cube elle était trop brutale ; au carré on
+      // suit encore le front à l'œil pendant toute sa course.
+      const rayon =
+        a < LISIBLE
+          ? visible * (1 - Math.pow(1 - a / LISIBLE, 2))
+          : visible + (c.portee - visible) * ((a - LISIBLE) / (1 - LISIBLE));
+      const fini = a >= 1;
       for (const m of c.materiaux) {
         if (pinceau && m.uniforms.uCentre) m.uniforms.uCentre.value.copy(pinceau);
-        if (m.uniforms.uRayon) m.uniforms.uRayon.value = fini ? 0 : c.portee * t;
+        if (m.uniforms.uRayon) m.uniforms.uRayon.value = fini ? 0 : rayon;
         // La teinte pleine n'est posée qu'à la toute fin, et d'un coup : tant
         // que le front court, c'est LUI qui décide de ce qui est peint. Les
         // faire monter ensemble redonnerait la jauge d'avant, par-dessous.

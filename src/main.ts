@@ -174,6 +174,16 @@ const peintres = new Map<string, PinceauPeintre>();
 /** Celui qui est en train de peindre. Le front d'encre le suit. */
 let peintreEnCours: PinceauPeintre | null = null;
 /** Quel veilleur correspond à quel pinceau. */
+/**
+ * Vers où lever les yeux quand une couleur revient. Voir l'usage, plus bas :
+ * chaque pinceau repeint une moitié du monde qui n'est pas celle où l'on se
+ * tient, et sans un mot le geste se joue derrière la tête du joueur.
+ */
+const OU_REGARDER: Record<string, string> = {
+  rouge: 'Lève les yeux : il repeint les hauteurs.',
+  vert: 'Regarde autour de toi : il repeint le village.',
+};
+
 const PINCEAU_DE_VEILLEUR = new Map<string, string>([
   ['pinceau-vert', 'socle-vert'],
   ['pinceau-rouge', 'socle-rouge'],
@@ -253,11 +263,18 @@ if (MODE === 'monde') {
       portals.setCouleurCadres(pigments.nombre / 2);
       ambiance.progression(pigments.nombre, 3);
 
+      // ON DIT OÙ REGARDER, et ce n'est pas un détail d'interface.
+      //
+      // Chaque pinceau repeint SA moitié du monde, et ce n'est pas celle où l'on
+      // se tient : le rouge prend les hauteurs, le vert le village. On revenait
+      // donc du monde rouge, on rendait sa couleur, on regardait droit devant
+      // soi — et rien ne changeait, parce que tout se passait au-dessus et
+      // derrière. Le plus beau moment du jeu se jouait hors champ.
       const reste = AUX_SOCLES.length - pigments.nombre;
       flash(
         reste > 0
-          ? `Le ${pigment} revient au monde. Regarde-le peindre. Il en manque ${reste}.`
-          : 'La dernière couleur est rendue. Le monde est entier.',
+          ? `Le ${pigment} revient au monde. ${OU_REGARDER[pigment] ?? 'Regarde-le peindre.'} Il en manque ${reste}.`
+          : `${OU_REGARDER[pigment] ?? ''} La dernière couleur est rendue — le monde est entier.`,
         7,
       );
 
