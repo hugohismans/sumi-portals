@@ -112,13 +112,22 @@ const balustrade = (
   const long = x1 - x0 > z1 - z0;
   const from = long ? x0 : z0;
   const to = long ? x1 : z1;
+  // Les montants s'arrêtent SOUS la lisse, qui les coiffe en débordant. Sans ce
+  // décalage, leurs faces hautes et latérales seraient exactement coplanaires
+  // avec celles de la lisse — et deux surfaces au même endroit, c'est le
+  // grésillement qu'on a déjà chassé deux fois.
+  const hp = h - 0.35 * (post / 0.7);
   for (let t = from; t < to; t += gap + post) {
     const a = t;
     const b = Math.min(t + post, to);
-    out.push(long ? box([a, y - 3, z0], [b, y + h, z1], 3) : box([x0, y - 3, a], [x1, y + h, b], 3));
+    out.push(
+      long ? box([a, y - 2, z0], [b, y + hp, z1], 3) : box([x0, y - 2, a], [x1, y + hp, b], 3),
+    );
   }
-  // Lisse haute : elle relie les montants et donne la ligne d'encre du bord.
-  out.push(box([x0, y + h - post * 0.6, z0], [x1, y + h, z1], 3));
+  // Lisse haute, débordante de tous côtés : elle relie les montants et donne au
+  // bord sa ligne d'encre.
+  const o = post * 0.22;
+  out.push(box([x0 - o, y + hp - post * 0.5, z0 - o], [x1 + o, y + h, z1 + o], 3));
   return out;
 };
 
@@ -248,11 +257,11 @@ export const MONDE: LevelDef = {
     box([-90, TERRASSE_Y - 8, 46], [90, TERRASSE_Y, 130], 0, { outline: false }),
     // Balustrade : on ne passe pas, on voit entre les montants. Brèches aux
     // arrivées d'escalier.
-    ...balustrade(-90, 44, 46, 48, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(86, 90, 46, 48, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(-90, 38, 128, 130, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(-90, -88, 46, 130, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(88, 90, 46, 130, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(-88.4, 44, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(86, 88.4, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(-88.4, 38, 127.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(-88.7, -87.3, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(87.3, 88.7, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7),
 
     // --- Escalier B : ×4 le regarde, ×16 le gravit ----------------------------
     // Marches de 12 : mur pour un joueur de 7,2, marche pour un joueur de 28,8.
@@ -261,11 +270,11 @@ export const MONDE: LevelDef = {
     // --- Étage 3 : le belvédère -----------------------------------------------
     box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false }),
     // Même principe à ×16, à l'échelle de l'étage.
-    ...balustrade(-260, 36, 190, 196, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(94, 260, 190, 196, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(-260, -254, 190, 380, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(254, 260, 190, 380, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(-260, 260, 374, 380, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(-255, 36, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(94, 255, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(-256, -253, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(253, 256, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(-255, 255, 374, 377, BELVEDERE_Y, 22, 6.5, 2.6),
   ],
 
   portals: [
