@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx esbuild *)",
+      "Bash(node .check.mjs)",
+      "Bash(rm -f .check.mjs)",
+      "Bash(npm run *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git -c user.name=FlowUP -c user.email=hugo.hismans@gmail.com commit -q -m ' *)"
+    ]
+  }
+}

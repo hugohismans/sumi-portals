@@ -1,0 +1,255 @@
+/**
+ * Vérification du niveau sans rendu.
+ *
+ * Possible uniquement parce que `core/` n'importe pas Three.js : on rejoue la
+ * partie en pilotant un joueur fictif, et on vérifie que le chemin prévu marche
+ * ET que les impasses tiennent. Une énigme dont on ne vérifie que la solution
+ * est à moitié testée : ce sont les raccourcis qui la cassent.
+ *
+ *   npm run check
+ */
+import { TICK_DT, scaleOfLevel } from './constants.js';
+import { transformPoint } from './portals.js';
+import { Simulation } from './simulation.js';
+import type { LevelDef, TickEvents } from './types.js';
+import { LEVEL_01 } from '../levels/level01.js';
+
+// Ce fichier est le seul du projet à tourner sous Node ; on déclare le strict
+// minimum plutôt que de tirer @types/node dans une base de code navigateur.
+declare const process: { exit(code: number): never };
+
+/** Hauteur du fond de la cour, cf. levels/level01.ts. */
+const COURT_FLOOR_Y = -3.0;
+
+let failures = 0;
+
+const check = (label: string, ok: boolean, detail = ''): void => {
+  if (ok) console.log(`  ok   ${label}`);
+  else {
+    failures++;
+    console.log(`  FAIL ${label}${detail ? ` — ${detail}` : ''}`);
+  }
+};
+
+const near = (a: number, b: number, eps: number): boolean => Math.abs(a - b) < eps;
+
+const pos = (sim: Simulation): string => {
+  const p = sim.player.position;
+  return `(${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}) niveau ${sim.player.scaleLevel}`;
+};
+
+/** Fait marcher le joueur vers un point et rapporte ce qui s'est passé. */
+const walkTo = (
+  sim: Simulation,
+  target: [number, number, number],
+  ticks: number,
+  opts: { jump?: boolean; sprint?: boolean; stopOnEvent?: boolean } = {},
+): TickEvents => {
+  const collected: TickEvents = {};
+  for (let i = 0; i < ticks; i++) {
+    const p = sim.player.position;
+    const dx = target[0] - p.x;
+    const dz = target[2] - p.z;
+    const dist = Math.hypot(dx, dz);
+    const e = sim.step(
+      {
+        forward: dist > scaleOfLevel(sim.player.scaleLevel) * 0.5 ? 1 : 0,
+        strafe: 0,
+        jump: opts.jump ?? false,
+        sprint: opts.sprint ?? false,
+        yaw: Math.atan2(dx, dz),
+        pitch: 0,
+      },
+      TICK_DT,
+    );
+    if (e.traversed) collected.traversed = e.traversed;
+    if (e.refused) collected.refused = e.refused;
+    if (e.reachedGoal) collected.reachedGoal = e.reachedGoal;
+    if (opts.stopOnEvent && (e.traversed || e.refused || e.reachedGoal)) break;
+  }
+  return collected;
+};
+
+/** Laisse le joueur retomber et s'immobiliser avant de conclure. */
+const settle = (sim: Simulation, ticks = 180): void => {
+  for (let i = 0; i < ticks; i++) {
+    sim.step(
+      { forward: 0, strafe: 0, jump: false, sprint: false, yaw: sim.player.yaw, pitch: 0 },
+      TICK_DT,
+    );
+  }
+};
+
+// =============================================================================
+console.log('\n— Maths des portails —');
+{
+  const sim = new Simulation(LEVEL_01);
+  const big = sim.faces.find((f) => f.kind === 'big')!;
+  const small = sim.faces.find((f) => f.kind === 'small')!;
+
+  // Aller-retour : sans cette propriété, traverser deux fois ferait dériver le
+  // joueur, et l'erreur s'accumulerait à chaque passage.
+  const p = { x: big.position.x + 3, y: big.position.y + 1.2, z: big.position.z - 8 };
+  const through = transformPoint(big, p);
+  const back = transformPoint(small, through);
+  check(
+    'aller-retour sans dérive',
+    near(back.x, p.x, 1e-9) && near(back.y, p.y, 1e-9) && near(back.z, p.z, 1e-9),
+  );
+
+  const d0 = Math.hypot(p.x - big.position.x, p.y - big.position.y, p.z - big.position.z);
+  const d1 = Math.hypot(
+    through.x - small.position.x,
+    through.y - small.position.y,
+    through.z - small.position.z,
+  );
+  check('la grande face divise la distance par 4', near(d1 * 4, d0, 1e-6), `${d0} → ${d1}`);
+}
+
+// =============================================================================
+console.log('\n— Le chemin prévu —');
+{
+  const sim = new Simulation(LEVEL_01);
+
+  walkTo(sim, [16, 0, 4], 60 * 6);
+  walkTo(sim, [15, COURT_FLOOR_Y, 0], 60 * 5);
+  settle(sim, 30);
+  check('on tombe dans la cour à ×1', sim.player.position.y < -2.5, pos(sim));
+
+  const t1 = walkTo(sim, [24, COURT_FLOOR_Y, 0], 60 * 6, { stopOnEvent: true });
+  check('la porte indigo fait grandir', t1.traversed?.newLevel === 1, pos(sim));
+  check('on ressort sur la place, au sol', near(sim.player.position.y, 0, 0.8), pos(sim));
+
+  const win = walkTo(sim, [-18, 3.3, -10], 60 * 20);
+  check('à ×4, la tour se monte à pied', sim.player.position.y > 3.0, pos(sim));
+  check('objectif atteint', win.reachedGoal === true, pos(sim));
+}
+
+// =============================================================================
+console.log('\n— Les impasses doivent tenir —');
+{
+  // À taille normale, la tour doit rester un mur : c'est tout l'intérêt.
+  const sim = new Simulation(LEVEL_01);
+  sim.player.position = { x: -5, y: 0.2, z: -10 };
+  walkTo(sim, [-18, 0, -10], 60 * 12, { jump: true });
+  settle(sim);
+  check(
+    'la tour reste infranchissable à ×1',
+    !sim.goalReached && sim.player.position.y < 2.0,
+    pos(sim),
+  );
+
+  // Tombé dans la cour à ×1, on ne remonte pas : la porte est la seule issue.
+  const trapped = new Simulation(LEVEL_01);
+  trapped.player.position = { x: 15, y: COURT_FLOOR_Y + 0.2, z: 0 };
+  walkTo(trapped, [4, COURT_FLOOR_Y, 0], 60 * 12, { jump: true });
+  settle(trapped);
+  check('on ne sort pas de la cour à pied à ×1', trapped.player.position.y < -2.5, pos(trapped));
+
+  // À ×4 en revanche, on en ressort d'une enjambée. C'est vital : à cette
+  // taille la petite porte est trop étroite, donc si la cour retenait aussi,
+  // le joueur serait piégé pour de bon.
+  const big = new Simulation(LEVEL_01);
+  big.player.scaleLevel = 1;
+  big.player.position = { x: 15, y: COURT_FLOOR_Y + 0.2, z: 0 };
+  walkTo(big, [2, 0, 0], 60 * 12);
+  settle(big);
+  check('à ×4, on ressort de la cour d’une enjambée', big.player.position.y > -0.5, pos(big));
+
+  // Le sprint ne doit ouvrir aucun raccourci : il multiplie la vitesse, jamais
+  // le saut. Un obstacle calibré sur la hauteur doit tenir à pleine course.
+  const dashTower = new Simulation(LEVEL_01);
+  dashTower.player.position = { x: -2, y: 0.2, z: -10 };
+  walkTo(dashTower, [-18, 0, -10], 60 * 12, { jump: true, sprint: true });
+  settle(dashTower);
+  check(
+    'en sprint non plus, la tour ne se monte pas à ×1',
+    !dashTower.goalReached && dashTower.player.position.y < 2.0,
+    pos(dashTower),
+  );
+
+  const dashCourt = new Simulation(LEVEL_01);
+  dashCourt.player.position = { x: 15, y: COURT_FLOOR_Y + 0.2, z: 0 };
+  walkTo(dashCourt, [4, COURT_FLOOR_Y, 0], 60 * 12, { jump: true, sprint: true });
+  settle(dashCourt);
+  check(
+    'en sprint non plus, on ne s’échappe pas de la cour à ×1',
+    dashCourt.player.position.y < -2.5,
+    pos(dashCourt),
+  );
+}
+
+// =============================================================================
+console.log('\n— Ce sont les tailles de portail qui bornent, pas un compteur —');
+{
+  // Terrain d'essai nu : on veut éprouver la règle, pas le tracé du niveau.
+  const flat: LevelDef = {
+    name: 'essai',
+    spawn: [0, 0.2, 12],
+    spawnYaw: 0,
+    boxes: [{ min: [-60, -4, -60], max: [60, 0, 60] }],
+    portals: [
+      {
+        id: 'essai',
+        colorBig: 0,
+        colorSmall: 0,
+        // Écarté sur x, mais bien POSÉ SUR LE SOL d'essai : hors de la dalle,
+        // le joueur tomberait dans le vide au lieu d'atteindre le portail.
+        big: { position: [40, 0, 0], yaw: 0 },
+        // Normale +Z : le joueur, posté en z positif, l'aborde donc par l'AVANT.
+        // Un portail ne s'entre que par sa face avant.
+        small: { position: [0, 0, 0], yaw: 0 },
+      },
+    ],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+
+  const atSmall = (level: number): TickEvents => {
+    const sim = new Simulation(flat);
+    sim.player.scaleLevel = level;
+    sim.player.position = { x: 0, y: 0.2, z: 12 };
+    return walkTo(sim, [0, 0, -30], 60 * 12, { stopOnEvent: true });
+  };
+
+  check('à ×1, on entre dans la petite porte', atSmall(0).traversed?.newLevel === 1);
+
+  // Le cœur de la règle : à ×4 on mesure 7,2 pour une porte haute de 2,8. On
+  // n'y rentre plus, donc on ne peut plus grandir. Ce n'est pas un palier
+  // arbitraire, c'est une porte trop petite — et ça se voit.
+  const blocked = atSmall(1);
+  check(
+    'à ×4, la petite porte ne fait plus grandir',
+    blocked.traversed === undefined,
+    JSON.stringify(blocked),
+  );
+
+  // Le grand torii, lui, reste franchissable à ×4 : c'est le chemin du retour,
+  // celui qui garantit qu'on n'est jamais coincé à la taille maximale.
+  const back = new Simulation(flat);
+  back.player.scaleLevel = 1;
+  back.player.position = { x: 40, y: 0.2, z: 14 };
+  const e = walkTo(back, [40, 0, -30], 60 * 14, { stopOnEvent: true });
+  check('à ×4, le grand torii reste franchissable', e.traversed?.newLevel === 0, JSON.stringify(e));
+}
+
+// =============================================================================
+console.log('\n— Raccord de la traversée —');
+{
+  // L'œil doit se raccorder exactement : un joueur posé au sol devant une face
+  // doit ressortir posé au sol devant l'autre. Sinon on « flotte » à l'arrivée
+  // et on sent le saut.
+  const sim = new Simulation(LEVEL_01);
+  sim.player.position = { x: 15, y: COURT_FLOOR_Y, z: 0 };
+  settle(sim, 20);
+  const before = sim.player.position.y;
+  const t = walkTo(sim, [24, COURT_FLOOR_Y, 0], 60 * 6, { stopOnEvent: true });
+  check('la traversée a bien eu lieu', t.traversed !== undefined, pos(sim));
+  check(
+    'on ressort les pieds au sol, sans flotter ni s’enfoncer',
+    near(sim.player.position.y, 0, 0.05),
+    `avant ${before.toFixed(2)} → après ${sim.player.position.y.toFixed(3)}`,
+  );
+}
+
+console.log(failures === 0 ? '\nTout passe.\n' : `\n${failures} vérification(s) en échec.\n`);
+process.exit(failures === 0 ? 0 : 1);

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sumi Portals — prototype</title>
+    <style>
+      :root {
+        --paper: #efe7d6;
+        --ink: #1b1714;
+        --vermilion: #c8492e;
+        --indigo: #2f4b7c;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: var(--paper); }
+      body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+      canvas { display: block; }
+
+      #hud {
+        position: fixed; inset: 0; pointer-events: none;
+        display: flex; flex-direction: column; justify-content: space-between;
+      }
+
+      #crosshair {
+        position: fixed; left: 50%; top: 50%;
+        width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
+        background: var(--ink); border-radius: 50%; opacity: .5;
+      }
+
+      #scale-readout {
+        align-self: flex-start;
+        margin: 22px;
+        padding: 10px 16px 12px;
+        background: rgba(239, 231, 214, .72);
+        border: 2px solid var(--ink);
+        border-radius: 2px;
+        box-shadow: 3px 3px 0 rgba(27, 23, 20, .25);
+      }
+      #scale-readout .label { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; }
+      #scale-readout .value { font-size: 26px; font-weight: 700; line-height: 1.15; }
+      #scale-readout .sub { font-size: 11px; opacity: .65; }
+
+      #hint {
+        align-self: center; margin: 0 0 26px;
+        padding: 8px 16px;
+        background: rgba(239, 231, 214, .72);
+        border: 2px solid var(--ink); border-radius: 2px;
+        font-size: 13px; letter-spacing: .02em;
+        opacity: 0; transition: opacity .4s ease;
+      }
+      #hint.show { opacity: 1; }
+
+      #overlay {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(239, 231, 214, .93);
+        cursor: pointer; z-index: 10;
+      }
+      #overlay.hidden { display: none; }
+      #overlay .card {
+        max-width: 460px; padding: 34px 38px;
+        border: 3px solid var(--ink); border-radius: 3px;
+        background: var(--paper);
+        box-shadow: 7px 7px 0 rgba(27, 23, 20, .18);
+      }
+      #overlay h1 { font-size: 30px; margin-bottom: 6px; letter-spacing: -.01em; }
+      #overlay .tag { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; opacity: .55; margin-bottom: 20px; }
+      #overlay p { font-size: 14px; line-height: 1.65; margin-bottom: 12px; }
+      #overlay kbd {
+        display: inline-block; padding: 1px 6px; margin: 0 1px;
+        border: 1.5px solid var(--ink); border-radius: 3px;
+        font: 600 12px/1.5 ui-monospace, monospace; background: rgba(27,23,20,.05);
+      }
+      #overlay .go { margin-top: 20px; font-weight: 700; font-size: 15px; }
+      #overlay .go::after { content: " ▸"; }
+
+      /* Après la première entrée, le panneau se fait discret : il ne sert plus
+         qu'à reprendre la souris, pas à réexpliquer la règle. */
+      #overlay.resumed .lede { display: none; }
+      #overlay .go .resume { display: none; }
+      #overlay.resumed .go .enter { display: none; }
+      #overlay.resumed .go .resume { display: inline; }
+
+      #win {
+        position: fixed; inset: 0; z-index: 9;
+        display: none; align-items: center; justify-content: center;
+        background: rgba(239, 231, 214, .82);
+      }
+      #win.show { display: flex; }
+      #win .card {
+        padding: 30px 46px; text-align: center;
+        border: 3px solid var(--vermilion); background: var(--paper);
+        box-shadow: 7px 7px 0 rgba(200, 73, 46, .2);
+      }
+      #win h2 { font-size: 30px; color: var(--vermilion); margin-bottom: 8px; }
+      #win p { font-size: 13px; opacity: .7; }
+    </style>
+  </head>
+  <body>
+    <div id="crosshair"></div>
+
+    <div id="hud">
+      <div id="scale-readout">
+        <div class="label">Échelle</div>
+        <div class="value" id="scale-value">×1</div>
+        <div class="sub" id="scale-sub">taille normale</div>
+      </div>
+      <div id="hint"></div>
+    </div>
+
+    <div id="win">
+      <div class="card">
+        <h2>Résolu</h2>
+        <p><kbd>R</kbd> pour recommencer</p>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <div class="card">
+        <h1>Sumi Portals</h1>
+        <div class="tag">prototype · une paire de portails</div>
+        <p class="lede">
+          Le <strong style="color:var(--vermilion)">portail vermillon</strong> est quatre fois plus grand
+          que le <strong style="color:var(--indigo)">portail indigo</strong>. Traverse le grand&nbsp;: tu ressors
+          par le petit, quatre fois plus petit. Traverse le petit&nbsp;: tu ressors par le grand,
+          quatre fois plus grand.
+        </p>
+        <p>
+          <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> se déplacer ·
+          <kbd>Maj</kbd> courir · <kbd>Espace</kbd> sauter · <kbd>souris</kbd> regarder<br />
+          <kbd>R</kbd> recommencer · <kbd>C</kbd> copier le point de vue · <kbd>Échap</kbd> libérer la souris
+        </p>
+        <div class="go">
+          <span class="enter">Cliquer pour entrer</span>
+          <span class="resume">Cliquer pour reprendre</span>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
