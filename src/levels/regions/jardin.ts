@@ -242,10 +242,10 @@ const galet = (cx: number, cz: number, rx: number, rz: number, h: number, ink: n
 //     confortable, mais elle ne pardonne pas l'inattention.
 //   Les écailles saillent de 0,50 hors de l'assise : le joueur, épais de 0,17,
 //     tient dessus avec de la place de chaque côté, jamais des deux.
-//   L'assise du dessus est en retrait de 0,85 sur celle du dessous. Ce retrait
+//   L'assise du dessus est en retrait de 0,95 sur celle du dessous. Ce retrait
 //     n'est pas décoratif : c'est LA VIRE, l'anneau plat qui fait le tour de la
-//     tour et qui rattrape les chutes. 0,85 parce que le joueur franchit 0,86
-//     à pleine course : une vire plus étroite le laissait passer par-dessus.
+//     tour, qui rattrape les chutes, et par lequel on circule. Voir PIN_T : ce
+//     nombre a été corrigé deux fois, chaque fois en jouant.
 //
 // CE QUI SE PASSE QUAND ON TOMBE. Rien. On retombe sur la vire d'en dessous,
 // six appuis plus bas au pire, et l'on recommence. Si l'on tombe de la
@@ -263,15 +263,24 @@ const galet = (cx: number, cz: number, rx: number, rz: number, h: number, ink: n
 const PIN_X = 336.0;
 const PIN_Z = -22.0;
 /**
- * Demi-largeur des six assises. Le retrait de 0,85 d'une assise à l'autre EST
+ * Demi-largeur des six assises. Le retrait de 0,95 d'une assise à l'autre EST
  * la vire : c'est lui, et rien d'autre, qui fait le palier.
  *
- * 0,85 et non 0,75 : à 0,75, un joueur qui sautait franchement VERS LE VIDE
- * (0,86 de portée à pleine course) passait par-dessus la vire et dégringolait
- * de deux étages. Dix centimètres de plus et la vire le rattrape. On l'a mesuré
- * en jouant, pas en regardant.
+ * 0,95 est venu en deux fois, et jamais du calcul :
+ *   — à 0,75, un joueur qui s'élançait franchement VERS LE VIDE (0,86 de portée
+ *     à pleine course) passait PAR-DESSUS la vire et dégringolait de deux
+ *     étages. On l'a vu en le faisant tomber soixante fois.
+ *   — à 0,85, la vire rattrapait tout, mais le passage sous les deux premières
+ *     écailles d'une volée — qui la surplombent à hauteur de poitrine — ne
+ *     faisait plus que 0,35, soit deux fois la largeur du joueur. On y passait ;
+ *     on n'y passait pas FRANCHEMENT. Or « de quoi passer » n'est pas une
+ *     largeur de couloir : c'est un défaut qu'aucune vérification de faces ni de
+ *     parcelle ne voit, et qu'on ne trouve qu'en faisant marcher quelqu'un.
+ * À 0,95, ce passage fait 0,45 — presque trois joueurs — et la vire rattrape
+ * toujours tout. La tour y gagne en largeur ce qu'elle perd en sveltesse ; une
+ * pomme de pin tombée depuis longtemps est de toute façon une chose qui s'ouvre.
  */
-const PIN_T = [5.45, 4.6, 3.75, 2.9, 2.05, 1.2];
+const PIN_T = [5.95, 5.0, 4.05, 3.1, 2.15, 1.2];
 /**
  * Sommet de chaque assise, c'est-à-dire hauteur de chaque vire. 1,56 d'écart =
  * six bonds de 0,26. La dernière volée n'en compte que cinq : au sommet
@@ -382,7 +391,8 @@ const pommeDePin = (): BoxDef[] => {
   // tel depuis le bas.
   //
   // Six bonds de 0,26 mènent d'une vire à la suivante : cinq écailles, puis un
-  // sixième bond qui vous pose sur la vire elle-même.
+  // sixième bond qui vous pose sur la vire elle-même. La dernière volée n'en a
+  // que cinq, faute de place sur l'assise du sommet.
   //
   // POURQUOI CINQ ET PAS VINGT : c'est la longueur de la chute. Rater le
   // dernier appui d'une volée vous rend six bonds ; rater le dernier appui
@@ -391,15 +401,17 @@ const pommeDePin = (): BoxDef[] => {
   // punition reste courte.
   //
   // LE DEMI-TOUR EST GRATUIT, et c'est voulu : la dernière écaille d'une volée
-  // et la première de la suivante sont à la MÊME abscisse. On monte sur la
-  // vire, on se retourne, la prise est là. Aucun trajet à faire, aucune route à
-  // chercher — la seule chose qui demande de l'adresse, c'est le bond.
+  // et la première de la suivante sont à la même abscisse, ou tout comme. On
+  // monte sur la vire, on se retourne, la prise est là — 0,26 plus haut et un
+  // pas en dedans. Aucun trajet à faire, aucune route à chercher : la seule
+  // chose qui demande de l'adresse, c'est le bond.
   const lacets: { k: number; f: number }[] = [];
   let u = 0;
   let sens = 1;
   for (let k = 1; k <= 5; k++) {
     const T = PIN_T[k];
     const n = k === 5 ? 4 : 5; // au sommet la face est trop courte pour cinq
+    // On repart du bord où l'on vient d'arriver : c'est ça, un lacet.
     u = (-sens * (n - 1) * ECART) / 2;
     for (let i = 1; i <= n; i++) {
       const f = auSud(T, u);
@@ -407,7 +419,7 @@ const pommeDePin = (): BoxDef[] => {
       lacets.push({ k, f });
       if (i < n) u += sens * ECART;
     }
-    sens = -sens as 1 | -1;
+    sens = -sens;
   }
   // La brèche de la couronne se met à l'aplomb de la dernière écaille : c'est
   // là qu'on débouche, et il ne faut pas y trouver un barreau.
@@ -470,7 +482,7 @@ const pommeDePin = (): BoxDef[] => {
   // Le dernier cran mord de 20 cm dans l'assise du bas et culmine 6 cm sous
   // elle : ni face commune, ni marche à monter.
   for (let i = 0; i < 5; i++) {
-    const zn = -16.75 + i * 0.95;
+    const zn = -16.25 + i * 0.95;
     out.push(
       box(
         [PIN_X - 1.6 - i * 0.02, -0.7 - i * 0.03, zn],

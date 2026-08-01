@@ -10,7 +10,7 @@
     />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#efe7d6" />
-    <title>Sumi Portals — prototype</title>
+    <title>Lavis</title>
     <style>
       :root {
         --paper: #efe7d6;
@@ -106,16 +106,36 @@
         background: var(--paper);
         box-shadow: 7px 7px 0 rgba(27, 23, 20, .18);
       }
-      #overlay h1 { font-size: 30px; margin-bottom: 6px; letter-spacing: -.01em; }
-      #overlay .tag { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; opacity: .55; margin-bottom: 20px; }
-      #overlay p { font-size: 14px; line-height: 1.65; margin-bottom: 12px; }
-      #overlay kbd {
-        display: inline-block; padding: 1px 6px; margin: 0 1px;
-        border: 1.5px solid var(--ink); border-radius: 3px;
-        font: 600 12px/1.5 ui-monospace, monospace; background: rgba(27,23,20,.05);
+      /* LE TITRE. Un seul mot, très grand, très espacé — un lavis est un dessin
+         à l'encre diluée, et c'est littéralement l'état du monde au début du
+         jeu. Le mot dit l'image et la mécanique à la fois ; il n'a besoin
+         d'aucun sous-titre pour l'expliquer. */
+      #overlay h1 {
+        font-size: clamp(46px, 13vw, 76px);
+        font-weight: 400;
+        letter-spacing: .3em;
+        margin: 0 0 4px -.3em;   /* on rattrape l'espacement pour rester centré */
+        line-height: 1;
       }
-      #overlay .go { margin-top: 20px; font-weight: 700; font-size: 15px; }
-      #overlay .go::after { content: " ▸"; }
+      #overlay .ligne { font-size: 15px; line-height: 1.7; opacity: .78; margin-bottom: 26px; }
+      #overlay .go { margin-top: 4px; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; opacity: .62; }
+
+      /* LES CINQ PINCEAUX. Ils sont gris, sauf un — celui qu'on tient déjà.
+         C'est toute la partie résumée en une image : il en manque quatre, et
+         l'on va les chercher. Ils s'encrent en passant la souris dessus, ce
+         qui n'apprend rien mais donne envie, et c'est le rôle d'une couverture. */
+      #overlay .pinceaux { display: flex; gap: 16px; justify-content: center; margin: 4px 0 24px; }
+      #overlay .pinceaux svg { width: 21px; height: 74px; overflow: visible; }
+      #overlay .pinceaux .touffe { fill: #9a948b; transition: fill .55s ease; }
+      #overlay .pinceaux svg:hover .touffe,
+      #overlay .pinceaux svg.encre .touffe { fill: var(--teinte); }
+      #overlay .pinceaux .hampe { fill: #ded3bb; }
+      #overlay .pinceaux .virole { fill: #b08a48; }
+      #overlay .pinceaux .trait { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+
+      @media (prefers-reduced-motion: reduce) {
+        #overlay .pinceaux .touffe { transition: none; }
+      }
 
       /* Après la première entrée, le panneau se fait discret : il ne sert plus
          qu'à reprendre la souris, pas à réexpliquer la règle. */
@@ -170,22 +190,49 @@
 
     <div id="overlay">
       <div class="card">
-        <h1>Sumi Portals</h1>
-        <div class="tag">prototype · une paire de portails</div>
-        <p class="lede">
-          Le <strong style="color:var(--vermilion)">portail vermillon</strong> est quatre fois plus grand
-          que le <strong style="color:var(--indigo)">portail indigo</strong>. Traverse le grand&nbsp;: tu ressors
-          par le petit, quatre fois plus petit. Traverse le petit&nbsp;: tu ressors par le grand,
-          quatre fois plus grand.
+        <h1>Lavis</h1>
+
+        <div class="pinceaux">
+          <svg class="encre" viewBox="0 0 20 70" style="--teinte: #4c7a3f" aria-hidden="true">
+            <rect class="hampe trait" x="6.5" y="2" width="7" height="40" rx="1.4" />
+            <rect class="virole trait" x="5.4" y="40" width="9.2" height="7" rx="1" />
+            <path class="touffe encre" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+            <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+          </svg>
+          <svg viewBox="0 0 20 70" style="--teinte: #c8492e" aria-hidden="true">
+            <rect class="hampe trait" x="6.5" y="2" width="7" height="40" rx="1.4" />
+            <rect class="virole trait" x="5.4" y="40" width="9.2" height="7" rx="1" />
+            <path class="touffe" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+            <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+          </svg>
+          <svg viewBox="0 0 20 70" style="--teinte: #c8a02e" aria-hidden="true">
+            <rect class="hampe trait" x="6.5" y="2" width="7" height="40" rx="1.4" />
+            <rect class="virole trait" x="5.4" y="40" width="9.2" height="7" rx="1" />
+            <path class="touffe" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+            <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+          </svg>
+          <svg viewBox="0 0 20 70" style="--teinte: #2f4b7c" aria-hidden="true">
+            <rect class="hampe trait" x="6.5" y="2" width="7" height="40" rx="1.4" />
+            <rect class="virole trait" x="5.4" y="40" width="9.2" height="7" rx="1" />
+            <path class="touffe" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+            <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+          </svg>
+          <svg viewBox="0 0 20 70" style="--teinte: #7a4c8a" aria-hidden="true">
+            <rect class="hampe trait" x="6.5" y="2" width="7" height="40" rx="1.4" />
+            <rect class="virole trait" x="5.4" y="40" width="9.2" height="7" rx="1" />
+            <path class="touffe" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+            <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
+          </svg>
+        </div>
+
+        <p class="ligne lede">
+          Un monde dessiné à l’encre, et qui a perdu ses couleurs.<br />
+          Elles sont quelque part. Il faudra changer de taille pour y aller.
         </p>
-        <p>
-          <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> se déplacer ·
-          <kbd>Maj</kbd> courir · <kbd>Espace</kbd> sauter · <kbd>souris</kbd> regarder<br />
-          <kbd>R</kbd> recommencer · <kbd>C</kbd> copier le point de vue · <kbd>Échap</kbd> libérer la souris
-        </p>
+
         <div class="go">
-          <span class="enter">Cliquer pour entrer</span>
-          <span class="resume">Cliquer pour reprendre</span>
+          <span class="enter">Tremper le pinceau</span>
+          <span class="resume">Reprendre le trait</span>
         </div>
       </div>
     </div>

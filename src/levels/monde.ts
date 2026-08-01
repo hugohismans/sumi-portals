@@ -601,7 +601,14 @@ export const MONDE: LevelDef = {
   // avant qu'on en ait fait un seul.
   // ═══════════════════════════════════════════════════════════════════════════
   carryables: [
-    { id: 'encrier', position: [505, -0.17, 0], size: 0.36, ink: 3 },
+    // DÉPLACÉ DE 505 À 512, ET C'ÉTAIT UNE ERREUR DE MA PART, PAS DU JARDIN.
+    // Posé à 505, l'encrier tombait à l'intérieur d'une dalle qui existait déjà
+    // avant que j'écrive cette quête : la seule chose à rapporter du jeu était
+    // enterrée dans la pierre, donc inatteignable, et rien ne le disait. Une
+    // vérification interdit désormais qu'un objet ou un logement naisse dans un
+    // solide — dans aucun niveau. L'emplacement a été cherché par balayage :
+    // sol dégagé sur toute la hauteur de l'objet, et 1,60 m de manœuvre autour.
+    { id: 'encrier', position: [512, -0.17, 0], size: 0.36, ink: 3 },
     { id: 'braise', position: [-500, 0, 0], size: 2.8, ink: 3 },
   ],
 
@@ -711,7 +718,7 @@ export const MONDE: LevelDef = {
     {
       position: [-30, VILLAGE_Y, -26],
       radius: 12,
-      text: 'La porte verte descend d’un cran. Regarde à travers : à cette taille-là, ce jardin est un continent.',
+      text: 'Regarde à travers. À cette taille-là, ce jardin est un continent.',
     },
     {
       position: [0, VILLAGE_Y, -40],

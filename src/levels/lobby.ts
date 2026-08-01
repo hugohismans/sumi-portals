@@ -216,22 +216,22 @@ export const LOBBY: LevelDef = {
     {
       position: [0, 0, 4],
       radius: 9,
-      text: 'Le torii vermillon rend quatre fois plus petit, la porte indigo quatre fois plus grande. Essaie — les autres te voient changer.',
+      text: 'Deux portes. L’une te fera grand, l’autre te fera petit. Essaie, on ne casse rien.',
     },
     {
       position: [ARCHE_SOLO_X, 0, -18],
       radius: 7,
-      text: 'Une seule ouverture : le voyage en solitaire.',
+      text: 'Une seule ouverture. On part seul.',
     },
     {
       position: [ARCHE_DUO_X, 0, -18],
       radius: 7,
-      text: 'Deux ouvertures jumelles : on y part à deux. Si tu es seul, tu attendras ici que quelqu’un vienne.',
+      text: 'Deux ouvertures jumelles. On n’y va pas seul — et si personne n’est là, on attend.',
     },
     {
       position: [ARCHE_REVE_X, 0, -18],
       radius: 7,
-      text: 'Cette arche-là ne tient pas droit. Derrière, rien n’est jamais deux fois pareil.',
+      text: 'Celle-ci ne tient pas droit. Derrière, rien n’est jamais deux fois pareil.',
     },
   ],
 };

@@ -1170,6 +1170,74 @@ console.log('\n— Le miroir : la gauche et la droite —');
 }
 
 // =============================================================================
+console.log('\n— Rien ne naît enterré dans la pierre —');
+{
+  // UNE VÉRIFICATION QUI MANQUAIT, ET QUI M'AURAIT ÉVITÉ UNE ACCUSATION.
+  //
+  // J'ai posé l'encrier du jardin dans une boîte qui existait déjà, puis
+  // reproché à l'agent qui travaillait dessus d'avoir enterré mon objet. Il
+  // avait raison, j'avais tort, et la faute datait du jour où j'ai écrit la
+  // quête : la seule chose à rapporter du jeu était inatteignable, et rien ne
+  // le disait.
+  //
+  // Aucune des vérifications existantes ne pouvait le voir. Elles regardaient
+  // les tailles, les portes, les parcelles, les faces — jamais si un objet a la
+  // place d'exister là où on le pose.
+  const dansUnSolide = (
+    niveau: LevelDef,
+    p: [number, number, number],
+  ): string | null => {
+    for (const b of niveau.boxes) {
+      if (b.ghost) continue;
+      if (
+        p[0] > b.min[0] && p[0] < b.max[0] &&
+        p[1] > b.min[1] && p[1] < b.max[1] &&
+        p[2] > b.min[2] && p[2] < b.max[2]
+      ) {
+        return `${JSON.stringify(b.min)}→${JSON.stringify(b.max)}`;
+      }
+    }
+    return null;
+  };
+
+  for (const [nom, niveau] of [
+    ['le monde', MONDE],
+    ['le hall', LOBBY],
+    ['la clairière', construireDuo('geant')],
+    ['la cour', LEVEL_01],
+    ['la caisse', LEVEL_02],
+  ] as const) {
+    const fautes: string[] = [];
+    for (const c of niveau.carryables ?? []) {
+      // Le centre du CUBE, pas son point d'ancrage : c'est lui qui doit avoir
+      // de la place.
+      const centre: [number, number, number] = [
+        c.position[0],
+        c.position[1] + c.size * 0.5,
+        c.position[2],
+      ];
+      const dans = dansUnSolide(niveau, centre);
+      if (dans) fautes.push(`${c.id} enterré dans ${dans}`);
+    }
+    for (const s of niveau.sockets ?? []) {
+      const centre: [number, number, number] = [
+        s.position[0],
+        s.position[1] + s.size * 0.5,
+        s.position[2],
+      ];
+      const dans = dansUnSolide(niveau, centre);
+      if (dans) fautes.push(`${s.id} enterré dans ${dans}`);
+    }
+    check(
+      `dans ${nom}, aucun objet ni logement n'est enterré`,
+      fautes.length === 0,
+      fautes[0] ?? '',
+    );
+  }
+}
+
+// =============================================================================
+// =============================================================================
 console.log('\n— Aucune face confondue et exposée —');
 {
   // Le défaut le plus fréquent du projet, enfin vérifié. Il a mordu quatre

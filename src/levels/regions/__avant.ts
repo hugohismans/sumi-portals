@@ -27,11 +27,6 @@ import type { RegionModule } from './contrat.js';
  * LE CHEMIN, d'ouest en est :
  *   le seuil et le galet blanc → la forêt d'herbe → le grand galet →
  *   la flaque et la feuille-pont → la mousse et la coquille → la sortie.
- *
- * ET UN DÉTOUR, QUI MONTE : la pomme de pin, plantée dans une clairière au
- * nord de la forêt d'herbe. Rien du chemin n'y oblige — on la voit, on y va ou
- * non. C'est le seul endroit du jardin où l'on GRIMPE, c'est-à-dire le seul où
- * l'on puisse rater. Voir tout en bas.
  */
 
 type V3 = [number, number, number];
