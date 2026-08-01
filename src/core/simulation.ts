@@ -198,7 +198,13 @@ export class Simulation {
     if (held) {
       this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale);
     }
+    // Les caisses libres franchissent les portails comme le joueur : on note
+    // leur centre avant le déplacement pour détecter le passage du plan.
+    const before = this.carryables.items.map((c) =>
+      c.held ? null : vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z),
+    );
     this.carryables.step(this.world, dt);
+    this.carryTraversal(before);
 
     // --- Objectif --------------------------------------------------------------
     if (!this.goalReached) {
@@ -266,6 +272,61 @@ export class Simulation {
 
     target.held = true;
     events.carry = { id: target.id, taken: true };
+  }
+
+  /**
+   * Traversée des caisses libres.
+   *
+   * Une caisse lancée dans un portail le franchissait sans rien déclencher :
+   * elle passait derrière comme si le plan n'existait pas. Elle subit désormais
+   * exactement le même traitement que le joueur — même transformation, même
+   * changement de taille — et pour la même raison : ce qu'on voit à travers le
+   * portail et ce qui arrive en le traversant doivent obéir à une seule règle.
+   *
+   * Une caisse trop grosse pour la face, elle, rebondit. C'est la règle qui
+   * borne déjà la taille du joueur, appliquée aux objets : on ne fait pas
+   * passer un meuble par une chatière.
+   */
+  private carryTraversal(before: (Vec3 | null)[]): void {
+    const items = this.carryables.items;
+    for (let i = 0; i < items.length; i++) {
+      const c = items[i];
+      const from = before[i];
+      if (!from || c.held) continue;
+
+      const to = vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z);
+      const crossing = this.findCrossing(from, to);
+      if (!crossing) continue;
+
+      const face = crossing.face;
+      const fits = c.size <= face.height * 0.96 && c.size <= face.width * 0.9;
+
+      if (!fits) {
+        c.position.x = from.x;
+        c.position.y = from.y - c.size * 0.5;
+        c.position.z = from.z;
+        const n = face.normal;
+        const along = c.velocity.x * n.x + c.velocity.y * n.y + c.velocity.z * n.z;
+        if (along < 0) {
+          // Rebond amorti sur la face, plutôt qu'un arrêt sec.
+          c.velocity.x -= n.x * along * 1.4;
+          c.velocity.y -= n.y * along * 1.4;
+          c.velocity.z -= n.z * along * 1.4;
+        }
+        continue;
+      }
+
+      const s = traversalScale(face);
+      const newCenter = transformPoint(face, to);
+      const newVel = transformVector(face, c.velocity, true);
+      c.size *= s;
+      c.position.x = newCenter.x;
+      c.position.y = newCenter.y - c.size * 0.5;
+      c.position.z = newCenter.z;
+      c.velocity.x = newVel.x;
+      c.velocity.y = newVel.y;
+      c.velocity.z = newVel.z;
+    }
   }
 
   /** Lancer au clic. Front montant, comme la saisie. */

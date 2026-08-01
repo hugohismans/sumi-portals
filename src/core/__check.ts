@@ -336,6 +336,66 @@ console.log('\n— « La caisse » : une fois agrandie, elle ouvre la tour —')
 }
 
 // =============================================================================
+console.log('\n— Une caisse lancée traverse aussi —');
+{
+  // Sur terrain nu : on éprouve la règle, pas le tracé.
+  const flat: LevelDef = {
+    name: 'essai',
+    spawn: [0, 0.2, 12],
+    spawnYaw: 0,
+    boxes: [{ min: [-60, -4, -60], max: [60, 0, 60] }],
+    carryables: [{ id: 'c', position: [0, 1.2, 4], size: 0.6 }],
+    portals: [
+      {
+        id: 'essai',
+        colorBig: 0,
+        colorSmall: 0,
+        big: { position: [40, 0, 0], yaw: 0 },
+        small: { position: [0, 0, 0], yaw: 0 }, // normale +Z, abordée depuis z positif
+      },
+    ],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+
+  const sim = new Simulation(flat);
+  const c = sim.carryables.items[0];
+  // Lancée droit sur la petite porte, à hauteur de son ouverture.
+  c.velocity = { x: 0, y: 0, z: -14 };
+
+  let traversee = false;
+  for (let i = 0; i < 120 && !traversee; i++) {
+    const avant = c.size;
+    sim.step(
+      { forward: 0, strafe: 0, jump: false, sprint: false, interact: false, throwIt: false, yaw: 0, pitch: 0 },
+      TICK_DT,
+    );
+    if (c.size !== avant) traversee = true;
+  }
+
+  check('la caisse lancée franchit bien le portail', traversee, `taille ${c.size}`);
+  check('et en ressort quatre fois plus grande', near(c.size, 2.4, 1e-6), `${c.size}`);
+  check('du côté de la grande face', c.position.x > 30, `x=${c.position.x.toFixed(1)}`);
+
+  // Trop grosse pour la petite porte : elle doit rebondir, pas passer.
+  const sim2 = new Simulation(flat);
+  const gros = sim2.carryables.items[0];
+  gros.size = 2.6; // la petite porte fait 1,9 de large
+  gros.position = { x: 0, y: 0, z: 4 };
+  gros.velocity = { x: 0, y: 0, z: -14 };
+  for (let i = 0; i < 120; i++) {
+    sim2.step(
+      { forward: 0, strafe: 0, jump: false, sprint: false, interact: false, throwIt: false, yaw: 0, pitch: 0 },
+      TICK_DT,
+    );
+  }
+  check(
+    'trop grosse pour la porte, elle rebondit au lieu de passer',
+    near(gros.size, 2.6, 1e-6) && gros.position.z > 0,
+    `taille ${gros.size}, z=${gros.position.z.toFixed(1)}`,
+  );
+}
+
+// =============================================================================
 console.log('\n— « La caisse » : pas de raccourci —');
 {
   // Sans la caisse, la tour doit rester imprenable à TOUTES les tailles
