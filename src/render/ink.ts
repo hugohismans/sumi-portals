@@ -53,11 +53,17 @@ const HASH = /* glsl */ `
  * Matériau d'aplat : éclairage quantifié en trois valeurs, plus une trame de
  * points façon manga dans les ombres. Aucune transition douce nulle part.
  */
-export const createCelMaterial = (): THREE.ShaderMaterial =>
+export const createCelMaterial = (solidColor?: THREE.Color): THREE.ShaderMaterial =>
   new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
-      { ...inkUniforms },
+      {
+        ...inkUniforms,
+        // Teinte propre à l'objet, qui court-circuite la palette du décor.
+        // C'est ce qui donne sa couleur à chaque joueur.
+        uSolid: { value: solidColor ?? new THREE.Color() },
+        uUseSolid: { value: solidColor ? 1 : 0 },
+      },
     ]),
     fog: true,
     clipping: true,
@@ -87,6 +93,8 @@ export const createCelMaterial = (): THREE.ShaderMaterial =>
       ${HASH}
 
       uniform vec3 uPalette[4];
+      uniform vec3 uSolid;
+      uniform float uUseSolid;
       uniform vec3 uInk;
       uniform vec3 uLightDir;
       uniform float uSeed;
@@ -102,6 +110,7 @@ export const createCelMaterial = (): THREE.ShaderMaterial =>
         if (idx == 1) base = uPalette[1];
         else if (idx == 2) base = uPalette[2];
         else if (idx == 3) base = uPalette[3];
+        base = mix(base, uSolid, uUseSolid);
 
         vec3 n = normalize(vNormalW);
 

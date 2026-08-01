@@ -6,6 +6,7 @@ import { LEVEL_01 } from './levels/level01.js';
 import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
 import { PortalRenderer } from './render/portalRenderer.js';
+import { Avatar } from './render/avatar.js';
 import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
 
 // --- Simulation ---------------------------------------------------------------
@@ -42,6 +43,12 @@ scene.add(worldView.group);
 
 const goalMarker = buildGoalMarker(LEVEL_01);
 scene.add(goalMarker);
+
+// Le bonhomme du joueur local. Il vit dans la scène comme n'importe quel objet,
+// donc il apparaît tout seul dans les vues de portail : on se voit soi-même, de
+// dos et minuscule, à travers le grand torii.
+const avatar = new Avatar(0x4c6b3c);
+scene.add(avatar.group);
 
 const portals = new PortalRenderer(
   sim.faces,
@@ -226,6 +233,8 @@ function frame(now: number): void {
   inkUniforms.uTime.value += dt;
   syncInkUniforms(worldView.cel);
   syncInkUniforms(worldView.outline);
+  avatar.update(sim.player, scaleOfLevel(sim.player.scaleLevel), dt);
+  avatar.syncInk();
   // Les surfaces de portail ne reçoivent PAS le grain : il est appliqué une
   // seule fois sur l'image finale, sinon le portail vibre comme un calque à part.
 
@@ -243,8 +252,14 @@ function frame(now: number): void {
   // À faire AVANT le rendu des vues : la surface doit déjà être écartée quand
   // les caméras virtuelles travaillent.
   portals.updateSurfaceOffsets(camera);
+
+  // Bonhomme entier dans les vues de portail — sinon on s'y verrait décapité.
+  avatar.setHeadVisible(true);
   portals.renderViews(renderer, scene, camera);
 
+  // Mais pas de tête dans la vue principale : elle est pile dans la caméra.
+  // Le buste et les jambes, eux, restent visibles quand on baisse les yeux.
+  avatar.setHeadVisible(false);
   renderer.setRenderTarget(paper.target);
   renderer.clear();
   renderer.render(scene, camera);
@@ -262,6 +277,28 @@ function frame(now: number): void {
   sim,
   camera,
   portals,
+  avatar,
+  /**
+   * Pose un second bonhomme, figé, à un endroit donné. Sert à juger l'allure du
+   * personnage de face — et à préfigurer ce que donnera le multijoueur.
+   */
+  dummy(x: number, y: number, z: number, color = 0x8a4b6b, yaw = 0) {
+    const other = new Avatar(color);
+    other.update(
+      {
+        position: { x, y, z },
+        velocity: { x: 0, y: 0, z: 0 },
+        yaw,
+        pitch: 0,
+        scaleLevel: 0,
+        grounded: true,
+      },
+      1,
+      0,
+    );
+    scene.add(other.group);
+    return other;
+  },
   tp(
     x: number,
     y: number,
