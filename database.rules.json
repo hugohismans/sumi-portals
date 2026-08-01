@@ -1,0 +1,35 @@
+{
+  "rules": {
+    "lobby": {
+      ".read": "auth != null",
+
+      "$uid": {
+        "//": "Chacun n'écrit que sa propre position. C'est la règle qui remplace le mode test : sans elle, n'importe qui sur Internet peut effacer tout le lobby.",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['x', 'y', 'z', 'yaw', 'lvl', 't'])",
+
+        "x": { ".validate": "newData.isNumber()" },
+        "y": { ".validate": "newData.isNumber()" },
+        "z": { ".validate": "newData.isNumber()" },
+        "yaw": { ".validate": "newData.isNumber()" },
+        "lvl": { ".validate": "newData.isNumber() && newData.val() >= -4 && newData.val() <= 4" },
+        "mv": { ".validate": "newData.isNumber()" },
+        "sol": { ".validate": "newData.isNumber()" },
+        "t": { ".validate": "newData.isNumber()" },
+        "$autre": { ".validate": false }
+      }
+    },
+
+    "_diagnostic": {
+      "//": "Bac à sable du test de liaison. Chacun n'y touche que sa propre entrée.",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "//": "Tout ce qui n'est pas nommé ci-dessus est refusé.",
+    ".read": false,
+    ".write": false
+  }
+}

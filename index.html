@@ -39,6 +39,8 @@
       #scale-readout .label { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; }
       #scale-readout .value { font-size: 26px; font-weight: 700; line-height: 1.15; }
       #scale-readout .sub { font-size: 11px; opacity: .65; }
+      #scale-readout .peers { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(27,23,20,.2); opacity: .5; }
+      #scale-readout .peers:empty { display: none; }
 
       #hint {
         align-self: center; margin: 0 0 26px;
@@ -104,6 +106,7 @@
         <div class="label">Échelle</div>
         <div class="value" id="scale-value">×1</div>
         <div class="sub" id="scale-sub">taille normale</div>
+        <div class="sub peers" id="peers"></div>
       </div>
       <div id="hint"></div>
     </div>
@@ -111,7 +114,7 @@
     <div id="win">
       <div class="card">
         <h2>Résolu</h2>
-        <p><kbd>R</kbd> pour recommencer</p>
+        <p><kbd>R</kbd> pour recommencer · <a href="./">retour au hall</a></p>
       </div>
     </div>
 

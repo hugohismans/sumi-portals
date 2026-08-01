@@ -1,16 +1,28 @@
 import * as THREE from 'three';
-import { TICK_DT, scaleOfLevel } from './core/constants.js';
+import { PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './core/constants.js';
 import { Simulation } from './core/simulation.js';
 import { InputManager } from './input/input.js';
 import { LEVEL_01 } from './levels/level01.js';
+import { LOBBY } from './levels/lobby.js';
+import { Presence } from './net/presence.js';
 import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
 import { PortalRenderer } from './render/portalRenderer.js';
 import { Avatar } from './render/avatar.js';
+import { RemotePlayers } from './render/remotePlayers.js';
 import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
 
+// --- Choix du niveau -----------------------------------------------------------
+// Le passage d'un niveau à l'autre se fait par rechargement de la page plutôt
+// que par reconstruction de la scène à chaud. C'est volontairement rustique :
+// une seconde de chargement entre le hall et une énigme est indolore, et ça
+// évite tout un mécanisme de démontage qui n'apporterait rien pour l'instant.
+const MODE = new URLSearchParams(location.search).get('niveau');
+const EN_AVENTURE = MODE === 'cour';
+const LEVEL = EN_AVENTURE ? LEVEL_01 : LOBBY;
+
 // --- Simulation ---------------------------------------------------------------
-const sim = new Simulation(LEVEL_01);
+const sim = new Simulation(LEVEL);
 
 // --- Rendu --------------------------------------------------------------------
 // Pas de tampon de profondeur logarithmique : il exige que CHAQUE shader écrive
@@ -38,11 +50,16 @@ scene.fog = new THREE.Fog(PAPER.clone(), 34, 300);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.02, 460);
 camera.rotation.order = 'YXZ';
 
-const worldView = buildWorldView(LEVEL_01);
+const worldView = buildWorldView(LEVEL);
 scene.add(worldView.group);
 
-const goalMarker = buildGoalMarker(LEVEL_01);
+const goalMarker = buildGoalMarker(LEVEL);
 scene.add(goalMarker);
+
+// Les autres joueurs. Vide hors du hall, mais toujours dans la scène : ils
+// apparaîtront ainsi tout seuls dans les vues de portail, sans un mot de plus.
+const remotePlayers = new RemotePlayers();
+scene.add(remotePlayers.group);
 
 // Le bonhomme du joueur local. Il vit dans la scène comme n'importe quel objet,
 // donc il apparaît tout seul dans les vues de portail : on se voit soi-même, de
@@ -52,7 +69,7 @@ scene.add(avatar.group);
 
 const portals = new PortalRenderer(
   sim.faces,
-  LEVEL_01.portals,
+  LEVEL.portals,
   window.innerWidth,
   window.innerHeight,
 );
@@ -61,7 +78,7 @@ scene.add(portals.group);
 const paper = new PaperPass(window.innerWidth, window.innerHeight);
 
 // --- Entrées ------------------------------------------------------------------
-const input = new InputManager(renderer.domElement, LEVEL_01.spawnYaw);
+const input = new InputManager(renderer.domElement, LEVEL.spawnYaw);
 
 // --- Interface ----------------------------------------------------------------
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -70,6 +87,7 @@ const winPanel = el('win');
 const scaleValue = el('scale-value');
 const scaleSub = el('scale-sub');
 const hintBox = el('hint');
+const peersBox = el('peers');
 
 const SCALE_LABELS: Record<number, [string, string]> = {
   [-2]: ['×1/16', 'seize fois plus petit'],
@@ -125,10 +143,44 @@ input.onCapture = () => {
 
 input.onReset = () => {
   sim.reset();
-  input.setYaw(LEVEL_01.spawnYaw);
+  input.setYaw(LEVEL.spawnYaw);
   winPanel.classList.remove('show');
   applyScale(true);
 };
+
+// --- Réseau --------------------------------------------------------------------
+// Le hall est peuplé, l'Aventure se joue seul pour l'instant.
+const presence = new Presence();
+let presenceActive = false;
+let transitionEnCours = false;
+
+if (!EN_AVENTURE) {
+  presence
+    .join()
+    .then(() => {
+      presenceActive = true;
+    })
+    .catch((e: Error) => {
+      // Le hall reste parfaitement jouable seul : le réseau est un supplément,
+      // jamais une condition. Une panne de Firebase ne doit pas fermer le jeu.
+      console.warn('Réseau indisponible :', e);
+      flash('Hall hors ligne — tu es seul, mais le jeu marche.', 5);
+    });
+
+  // Départ propre quand on ferme l'onglet. Le serveur efface aussi la fiche de
+  // son côté, mais autant ne pas dépendre uniquement de lui.
+  window.addEventListener('pagehide', () => void presence.leave());
+}
+
+/** Franchir l'arche du hall lance la première énigme. */
+function partirEnAventure(): void {
+  if (transitionEnCours) return;
+  transitionEnCours = true;
+  flash('Départ pour l’Aventure…', 4);
+  void presence.leave().finally(() => {
+    location.search = '?niveau=cour';
+  });
+}
 
 // --- Échelle ------------------------------------------------------------------
 let renderedLevel = Number.NaN;
@@ -215,7 +267,13 @@ function frame(now: number): void {
       );
     }
     if (events.reachedGoal) {
-      winPanel.classList.add('show');
+      if (EN_AVENTURE) {
+        winPanel.classList.add('show');
+        // On rend la souris, sinon le lien de retour du panneau est inatteignable.
+        document.exitPointerLock();
+      } else {
+        partirEnAventure();
+      }
     }
   }
 
@@ -233,8 +291,27 @@ function frame(now: number): void {
   inkUniforms.uTime.value += dt;
   syncInkUniforms(worldView.cel);
   syncInkUniforms(worldView.outline);
-  avatar.update(sim.player, scaleOfLevel(sim.player.scaleLevel), dt);
+  const scale = scaleOfLevel(sim.player.scaleLevel);
+  avatar.update(sim.player, scale, dt);
   avatar.syncInk();
+
+  // --- Les autres joueurs -----------------------------------------------------
+  if (presenceActive) {
+    // La vitesse est transmise en tailles de corps par seconde : le destinataire
+    // peut alors animer la démarche sans rien savoir de l'échelle de l'émetteur.
+    const speedInBodies =
+      Math.hypot(sim.player.velocity.x, sim.player.velocity.z) / (scale * PLAYER_HEIGHT);
+    presence.publish(sim.player, dt, speedInBodies);
+    remotePlayers.sync(presence.getPeers());
+    peersBox.textContent =
+      remotePlayers.count === 0
+        ? 'seul dans le hall'
+        : remotePlayers.count === 1
+          ? '1 autre joueur'
+          : `${remotePlayers.count} autres joueurs`;
+  }
+  remotePlayers.update(dt);
+  remotePlayers.syncInk();
   // Les surfaces de portail ne reçoivent PAS le grain : il est appliqué une
   // seule fois sur l'image finale, sinon le portail vibre comme un calque à part.
 
@@ -278,6 +355,11 @@ function frame(now: number): void {
   camera,
   portals,
   avatar,
+  presence,
+  remotePlayers,
+  get presenceActive() {
+    return presenceActive;
+  },
   /** Éprouve la liaison Firebase de bout en bout. Voir src/net/connection.ts. */
   async testReseau() {
     const { testConnection } = await import('./net/connection.js');
@@ -337,7 +419,7 @@ function updateHints(now: number): void {
   }
   const p = sim.player.position;
   let found = '';
-  for (const h of LEVEL_01.hints ?? []) {
+  for (const h of LEVEL.hints ?? []) {
     const dx = p.x - h.position[0];
     const dy = p.y - h.position[1];
     const dz = p.z - h.position[2];
