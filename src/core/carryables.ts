@@ -34,6 +34,24 @@ const GROUND_DRAG = 0.02;
 /** Rebond à l'atterrissage. Discret : une caisse n'est pas une balle. */
 const BOUNCE = 0.18;
 
+/**
+ * Distance de portage, en multiples de la caisse. Généreuse à dessein : tenue
+ * au ras du nez, une caisse mangeait la moitié du champ de vision.
+ */
+const HOLD_SPREAD = 2.0;
+
+/** Décalage vers le bas, en hauteurs de joueur : la caisse pend sous le réticule. */
+const HOLD_DROP = 0.28;
+
+/**
+ * Jusqu'où l'on peut rapprocher la caisse pour la caler contre un mur.
+ *
+ * Le plancher n'est pas décoratif : sous 0,34 environ, la caisse chevaucherait
+ * son porteur, redeviendrait solide en se posant et le soulèverait. On garde
+ * une marge confortable.
+ */
+const DROP_CLOSENESS_FLOOR = 0.4;
+
 export interface Carryable {
   id: string;
   /** Centre du bas. */
@@ -84,13 +102,21 @@ const holdPoint = (
   playerScale: number,
   closeness: number,
 ): Vec3 => {
-  const flat = PLAYER_RADIUS * playerScale + c.size * 0.62 * closeness;
+  // L'écart est proportionnel à la caisse, et généreux : tenue au ras du nez,
+  // elle mangeait la moitié de l'écran. Elle est aussi décalée vers le bas,
+  // sous le réticule, pour qu'on garde la vue dégagée en la portant.
+  const flat = PLAYER_RADIUS * playerScale + c.size * HOLD_SPREAD * closeness;
   const eyeY = playerPos.y + PLAYER_HEIGHT * EYE_FRACTION * playerScale;
+  const drop = PLAYER_HEIGHT * playerScale * HOLD_DROP;
   // Bornée : à la verticale, une tangente part à l'infini.
   const slope = Math.tan(Math.max(-1.15, Math.min(1.15, pitch)));
+  // Jamais sous ses propres pieds : en visant le sol de près, la ligne du
+  // regard passe sous le plancher, et la caisse s'y enfonçait — donc refusait
+  // de se poser, faute d'y trouver de la place.
+  const y = Math.max(eyeY + slope * flat - c.size * 0.5 - drop, playerPos.y);
   return vec3(
     playerPos.x + Math.sin(yaw) * flat,
-    eyeY + slope * flat - c.size * 0.5,
+    y,
     playerPos.z + Math.cos(yaw) * flat,
   );
 };
@@ -218,8 +244,10 @@ export class Carryables {
     // L'écart horizontal étant déjà garanti par holdPoint, il ne reste qu'à
     // éviter le décor. On se rapproche progressivement pour pouvoir caler la
     // caisse contre un mur sans l'y encastrer.
-    for (let step = 0; step <= 8; step++) {
-      const p = holdPoint(c, playerPos, yaw, pitch, playerScale, 1 - step * 0.04);
+    const steps = 8;
+    for (let step = 0; step <= steps; step++) {
+      const closeness = 1 - (1 - DROP_CLOSENESS_FLOOR) * (step / steps);
+      const p = holdPoint(c, playerPos, yaw, pitch, playerScale, closeness);
       c.position.x = p.x;
       c.position.y = p.y;
       c.position.z = p.z;
