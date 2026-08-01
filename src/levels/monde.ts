@@ -511,7 +511,17 @@ export const MONDE: LevelDef = {
       min: [-300, -20, -320],
       max: [300, 30, 40],
       paper: '#efe7d6',
-      colors: ['#e7ddc7', '#dccbaa', '#ab9f88', '#c05a3c'],
+      // LE VERT DOIT SE VOIR, sinon le voyage qui le rapporte ne se lit pas.
+      //
+      // La palette était crème, beige, taupe : rendre le vert rendait du BRUN, et
+      // l'on ne savait pas de quel monde on revenait. Le corps du village est la
+      // part du pinceau vert depuis qu'on a séparé les aplats de l'accent ; il
+      // porte donc sa couleur, et le vert franc va aux TOITURES, qui sont ce
+      // qu'on voit le plus depuis la place comme depuis la terrasse.
+      //
+      // Le papier, lui, reste crème : c'est le papier du dessin, et le teinter
+      // reviendrait à dire que le lavis n'était pas du lavis.
+      colors: ['#dfe4d1', '#c3d2ae', '#5c7a4a', '#c05a3c'],
       pigment: 'vert',
       // Mais SES ÉCLATS attendent le rouge, et ils sont partout : les auvents du
       // marché, la margelle du puits, la garde des torii. C'est ce qui donne au
