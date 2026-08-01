@@ -67,12 +67,20 @@ suit**. De retour au monde central, une petite musique, et **il s'envole peindre
 lui-même** : tous les éléments de sa couleur, gris jusque-là, se peignent d'un
 coup. Il est content, il a repeint le monde.
 
-Ce qui est fait aujourd'hui est plus pauvre : on rapporte un objet (l'encrier,
-la braise), on le pose sur un socle, et la couleur revient en fondu. Le geste y
-est, le personnage non — or c'est le personnage qui fait la scène.
+**Les quatre âges du pinceau de couleur**, tels qu'ils sont maintenant écrits :
 
-Ce qu'il manque techniquement : **plusieurs pinceaux à l'écran**, chacun avec son
-vol et sa couleur. Le Pinceau est aujourd'hui unique et écrit comme tel.
+1. **Dormant** — il attend au fond de son monde.
+2. **Compagnon** — on le prend, il s'éveille, et il tourne autour de nous comme
+   une petite fée. Il nous suit partout, avec du retard : un suiveur qui colle
+   est une interface, un suiveur qui traîne est une créature.
+3. **Peintre** — dès qu'on remet les pieds dans la région grise qu'il doit
+   repeindre, il nous quitte et part balayer. La teinte monte PENDANT son vol.
+4. **Posé** — il revient flotter au-dessus de son socle, et y reste.
+
+C'est l'âge de COMPAGNON qui manquait le plus longtemps. Sans lui, le pinceau
+jaillissait du socle au moment où l'on y posait l'objet : trop tard, et au
+mauvais endroit — on ne l'avait jamais rencontré. C'est la compagnie sur tout le
+trajet du retour qui donne envie de le ramener, bien plus qu'un objectif affiché.
 
 ### La galerie des piédestaux
 

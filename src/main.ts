@@ -163,7 +163,18 @@ if (pigmentDe.size > 0) socketViews.setCouleur(pigments.nombre / 2);
 // qu'on rapporte des couleurs, la place se peuple de pinceaux qui flottent
 // au-dessus de leurs socles. C'est la jauge de progression du jeu, et elle est
 // faite de personnages plutôt que de chiffres.
+const tmpOeil = new THREE.Vector3();
 const peintres = new Map<string, PinceauPeintre>();
+/** Quel objet réveille quel pinceau. */
+const REVEIL_PAR_OBJET = new Map<string, { socle: string }>([
+  ['encrier', { socle: 'socle-vert' }],
+  ['braise', { socle: 'socle-rouge' }],
+]);
+/** La région que chaque pinceau doit repeindre — et donc où il se met au travail. */
+const REGION_DE_SOCLE = new Map<string, string>([
+  ['socle-vert', ''],
+  ['socle-rouge', 'hauteurs'],
+]);
 if (MODE === 'monde') {
   const AUX_SOCLES: [string, string, [number, number, number], string][] = [
     ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f'],
@@ -674,6 +685,17 @@ function frame(now: number): void {
       // Ramasser, c'est s'approprier : à partir de maintenant, c'est moi qui
       // publie cette caisse, et l'autre joueur suit ce que j'en fais.
       if (events.carry.taken) caisses.reclamer(events.carry.id);
+      // ON PREND LE PINCEAU EN MÊME TEMPS QUE L'OBJET. Il dormait au fond de
+      // son monde ; il s'éveille, se met à tourner autour de vous, et ne vous
+      // quitte plus jusqu'au retour. C'est cette compagnie sur tout le trajet
+      // qui donne envie de le ramener — bien plus qu'un objectif affiché.
+      const reveil = events.carry.taken ? REVEIL_PAR_OBJET.get(events.carry.id) : undefined;
+      if (reveil) {
+        const e = sim.eyePosition();
+        peintres.get(reveil.socle)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
+        ambiance.pinceau();
+        flash('Un pinceau s’éveille et te suit. Ramène-le au monde gris.', 6);
+      }
 
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
@@ -846,7 +868,30 @@ function frame(now: number): void {
   feuilles.update(dt, camera, scale);
   pigments.update(dt);
   if (sceau.enCours) sceau.update(dt);
-  for (const p of peintres.values()) if (p.enCours) p.update(dt, scale);
+  // Les pinceaux de couleur : ils tournent autour du joueur tant qu'ils
+  // l'accompagnent, puis s'en détachent pour peindre.
+  const oeilPeintre = sim.eyePosition();
+  tmpOeil.set(oeilPeintre.x, oeilPeintre.y, oeilPeintre.z);
+  for (const [socle, p] of peintres) {
+    if (!p.enCours) continue;
+    // IL PEINT EN RENTRANT, pas en arrivant sur son socle. Dès que le joueur
+    // remet les pieds dans la région grise que ce pinceau doit repeindre, il
+    // s'en détache et part au travail. C'est le moment juste : on revient d'un
+    // monde en couleurs, on retrouve le sien en lavis, et la couleur arrive
+    // avec soi.
+    if (p.suitLeJoueur) {
+      const region = (LEVEL.regions ?? []).find((r) => r.name === REGION_DE_SOCLE.get(socle));
+      const dedans =
+        region !== undefined &&
+        tmpOeil.x >= region.min[0] && tmpOeil.x <= region.max[0] &&
+        tmpOeil.z >= region.min[2] && tmpOeil.z <= region.max[2];
+      if (dedans) {
+        p.declencher();
+        flash('Il te quitte. Regarde-le peindre.', 5);
+      }
+    }
+    p.update(dt, scale, tmpOeil);
+  }
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
 

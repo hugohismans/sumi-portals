@@ -31,10 +31,14 @@ import { buildWorldGeometry } from './worldMesh.js';
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-/** Durées des trois temps, en secondes. */
+/** Durées, en secondes. */
+const EVEIL = 0.7;
 const BOND = 0.34;
 const BALAYAGE = 4.2;
 const RETOUR = 1.6;
+
+/** Rayon de l'orbite autour du joueur, en tailles de joueur. */
+const ORBITE = 1.5;
 
 /**
  * Le corps, tenu par sa TOUFFE : c'est la seule partie qui porte la couleur du
@@ -87,8 +91,24 @@ export class PinceauPeintre {
   private readonly materiaux: THREE.ShaderMaterial[] = [];
   private readonly socle: THREE.Vector3;
   private readonly corps: THREE.Group;
+  /**
+   * LES QUATRE ÂGES DU PINCEAU DE COULEUR.
+   *
+   *   dormant  — il attend dans son monde, invisible jusqu'à ce qu'on le prenne
+   *   compagnon — il tourne autour de vous et vous suit partout
+   *   peintre  — il vous quitte pour aller repeindre, et la couleur monte
+   *   posé     — il flotte au-dessus de son socle, pour de bon
+   *
+   * C'est l'âge de COMPAGNON qui manquait, et c'était le plus important. Le
+   * pinceau jaillissait du socle au moment où l'on y posait l'objet : trop
+   * tard, et au mauvais endroit. On ne l'avait jamais rencontré. Maintenant on
+   * le prend là où il vit, il nous accompagne tout le trajet du retour, et
+   * c'est de cette compagnie que naît l'envie de le ramener.
+   */
+  private etat: 'dormant' | 'compagnon' | 'peintre' | 'pose' = 'dormant';
   private temps = -1;
   private aPeint = false;
+  private readonly cible = new THREE.Vector3();
 
   /** Appelé quand il commence réellement à peindre. C'est lui qui rend la couleur. */
   onPeint: (() => void) | null = null;
@@ -102,32 +122,80 @@ export class PinceauPeintre {
     this.group.visible = false;
   }
 
-  /** L'objet vient d'être posé : le pinceau en jaillit. */
-  declencher(): void {
-    if (this.temps >= 0) return;
+  /**
+   * ON VIENT DE LE PRENDRE, au fond de son monde. Il s'éveille et se met à
+   * tourner autour de nous. À partir de là il ne nous quitte plus — jusqu'à ce
+   * qu'on rentre, et qu'il ait du travail.
+   */
+  reveiller(ou: THREE.Vector3): void {
+    if (this.etat !== 'dormant') return;
+    this.etat = 'compagnon';
     this.temps = 0;
+    this.group.position.copy(ou);
     this.group.visible = true;
+  }
+
+  /** De retour au monde gris : il nous quitte et part peindre. */
+  declencher(): void {
+    if (this.etat !== 'compagnon') return;
+    this.etat = 'peintre';
+    this.temps = 0;
+  }
+
+  get suitLeJoueur(): boolean {
+    return this.etat === 'compagnon';
+  }
+
+  get aDejaPeint(): boolean {
+    return this.aPeint;
   }
 
   /** Déjà rapporté lors d'une partie précédente : il flotte, sans refaire la fête. */
   poserDejaAcquis(): void {
+    this.etat = 'peintre';
     this.temps = BOND + BALAYAGE + RETOUR;
     this.aPeint = true;
     this.group.visible = true;
   }
 
   get enCours(): boolean {
-    return this.temps >= 0;
+    return this.etat !== 'dormant';
   }
 
-  update(dt: number, echelleJoueur: number): void {
-    if (this.temps < 0) return;
+  update(dt: number, echelleJoueur: number, oeil: THREE.Vector3): void {
+    if (this.etat === 'dormant') return;
     this.temps += dt;
+
+    // ─── COMPAGNON ────────────────────────────────────────────────────────
+    //
+    // Il tourne autour du joueur, un peu en arrière et un peu au-dessus, à un
+    // rayon proportionnel à sa taille : à ×4 comme à ×1/4, il occupe la même
+    // place dans le champ de vision. Il suit AVEC DU RETARD, en glissant vers
+    // sa position voulue — un suiveur qui colle est une interface, un suiveur
+    // qui traîne est une créature.
+    if (this.etat === 'compagnon') {
+      const a = this.temps * 1.15;
+      const r = ORBITE * echelleJoueur;
+      this.cible.set(
+        oeil.x + Math.sin(a) * r,
+        oeil.y + 0.35 * echelleJoueur + Math.sin(this.temps * 1.7) * 0.12 * echelleJoueur,
+        oeil.z + Math.cos(a) * r,
+      );
+      this.group.position.lerp(this.cible, Math.min(1, dt * 3.2));
+      this.corps.scale.setScalar(0.42 * echelleJoueur);
+      this.corps.rotation.y += dt * 1.4;
+      // Il se redresse en une demi-seconde après l'éveil, sans à-coup.
+      this.corps.rotation.z = Math.max(0, 1 - this.temps / EVEIL) * 0.9;
+      for (const m of this.materiaux) syncInkUniforms(m);
+      return;
+    }
 
     if (this.temps < BOND) {
       // LE BOND. Il monte vite, en tournant sur lui-même.
       const t = this.temps / BOND;
-      this.group.position.set(this.socle.x, this.socle.y + doux(t) * 5.5, this.socle.z);
+      // Il part d'où il était — dans les airs, à côté du joueur — et non du
+      // socle : il vous quitte, il ne surgit pas de nulle part.
+      this.group.position.y += doux(t) * 4.5 * echelleJoueur * dt * 6;
       this.corps.rotation.y = t * Math.PI * 2.4;
       this.corps.rotation.z = doux(t) * 0.5;
       return;
