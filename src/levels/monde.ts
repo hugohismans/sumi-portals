@@ -765,6 +765,29 @@ export const MONDE: LevelDef = {
   //                place───────┐  terrasse──┐ toit  vert──────┐ porte  belvédère
   guideEchelle: [1, 1, 1, 1, 4, 4, 4, 4, 4, 1, 4, 4, 16, 16, 16],
 
+  /**
+   * PAR OÙ IL PASSE. C'est ce qui distingue « suis-moi » de « il a disparu ».
+   *
+   * Trois jalons sont derrière un portail, et pour ceux-là seulement il entre
+   * dans la porte au lieu de voler par-dessus. Le jardin est à cinq cents
+   * mètres à l'est, dans une poche du monde qu'on n'atteint pas autrement : le
+   * survoler en droite ligne ne montrait rien du tout.
+   *
+   * Partout ailleurs il vole par-dessus, et c'est voulu — c'est de l'écart
+   * entre son vol et vos jambes que naît l'énigme. On ne lui interdit de
+   * traverser l'air que là où l'air ne mène nulle part.
+   */
+  guidePorte: [
+    null, null, null, null,
+    'ascension-1', // il franchit la petite porte du village, et l'on voit où
+    null, null, null, null,
+    'descente-jardin', // la porte verte, à l'aller
+    'descente-jardin', // et au retour, pour revenir poser la couleur
+    null,
+    'ascension-2', // la porte qu'il vient de dessiner lui-même
+    null, null,
+  ],
+
   hints: [
     // Devant la maquette. C'est le seul endroit du jeu où l'on énonce le but,
     // et encore : la maquette l'a déjà dit toute seule. La phrase ne fait que

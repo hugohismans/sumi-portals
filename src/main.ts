@@ -199,7 +199,19 @@ const talisman = new Talisman([
 if (EN_DUO) scene.add(talisman.group);
 
 // Le Pinceau. Il vit dans le monde, se laisse rejoindre, puis file plus loin.
-const brush = new Brush(LEVEL.guide, LEVEL.guideEchelle);
+const brush = new Brush(
+  LEVEL.guide,
+  LEVEL.guideEchelle,
+  LEVEL.guidePorte,
+  // On lui donne les faces telles que la simulation les a construites : même
+  // source de vérité que la traversée du joueur, donc il entre exactement là où
+  // le joueur entrera.
+  sim.faces.map((f) => ({
+    pairId: f.pairId,
+    kind: f.kind,
+    position: new THREE.Vector3(f.position.x, f.position.y, f.position.z),
+  })),
+);
 // Le seul retour du jeu qui dise « tu avances ». Le son du pinceau existait
 // depuis longtemps mais n'était branché nulle part : on le rattrapait, il
 // repartait, et il ne se passait rien. L'arpège, lui, monte d'un jalon à

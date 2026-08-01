@@ -233,6 +233,22 @@ export interface LevelDef {
    * faisaient dépendre un objet du monde de qui le regarde.
    */
   guideEchelle?: number[];
+  /**
+   * Porte par laquelle le Pinceau doit PASSER pour rejoindre chaque jalon.
+   * `null` ou absent : il y va en droite ligne.
+   *
+   * Il traversait le monde en ligne droite, quel que soit le jalon. Pour la
+   * plupart c'est juste — il survole ce que le joueur devra contourner, et
+   * c'est de cet écart que naît l'énigme. Mais pour un jalon qui se trouve
+   * DERRIÈRE UN PORTAIL, la ligne droite lui faisait traverser cinq cents
+   * mètres de vide jusqu'à une poche de monde inaccessible autrement. On ne
+   * lisait pas « suis-moi », on lisait « il s'est téléporté », et le joueur
+   * restait planté là sans savoir par où passer.
+   *
+   * Nommer la porte le fait entrer dedans sous vos yeux, disparaître, et
+   * ressortir de l'autre côté. C'est une invitation, pas une disparition.
+   */
+  guidePorte?: (string | null)[];
 }
 
 /** État complet du joueur — c'est ce qui transiterait sur le réseau. */

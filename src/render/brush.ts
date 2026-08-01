@@ -141,10 +141,22 @@ export class Brush {
 
   /** Taille propre à chaque jalon. Voir LevelDef.guideEchelle. */
   private readonly echelles: number[];
+  /** Porte à emprunter pour chaque jalon. Voir LevelDef.guidePorte. */
+  private readonly portes: (string | null)[];
+  private readonly faces: { pairId: string; kind: 'big' | 'small'; position: THREE.Vector3 }[];
+  /** Face par laquelle il ressortira, s'il est en train de passer une porte. */
+  private sortie: THREE.Vector3 | null = null;
 
-  constructor(points: [number, number, number][] = [], echelles: number[] = []) {
+  constructor(
+    points: [number, number, number][] = [],
+    echelles: number[] = [],
+    portes: (string | null)[] = [],
+    faces: { pairId: string; kind: 'big' | 'small'; position: THREE.Vector3 }[] = [],
+  ) {
     for (const p of points) this.waypoints.push(new THREE.Vector3(p[0], p[1], p[2]));
     this.echelles = points.map((_, i) => echelles[i] ?? 1);
+    this.portes = points.map((_, i) => portes[i] ?? null);
+    this.faces = faces;
     this.echelle = this.echelles[0] ?? 1;
 
     this.head = new THREE.Group();
@@ -285,7 +297,23 @@ export class Brush {
         .lerp(this.to, eased)
         .addScaledVector(this.arc, Math.sin(Math.PI * t));
       if (this.fleeing <= 0) {
-        this.station = Math.min(this.station + 1, this.waypoints.length - 1);
+        if (this.sortie) {
+          // Il vient d'entrer dans la porte. Il ressort de l'autre côté et
+          // reprend sa route vers le jalon — et sa traînée est coupée net, pour
+          // qu'aucun trait d'encre ne relie les deux mondes en ligne droite.
+          const cible = this.waypoints[Math.min(this.station + 1, this.waypoints.length - 1)];
+          this.head.position.copy(this.sortie);
+          this.from.copy(this.sortie);
+          this.to.copy(cible);
+          this.arc.set(0, Math.max(4, this.from.distanceTo(this.to) * 0.25), 0);
+          this.sortie = null;
+          this.fleeing = FLIGHT * 0.75;
+          this.samples.length = 0;
+          this.prev.copy(this.head.position);
+          this.prevOriented.copy(this.head.position);
+        } else {
+          this.station = Math.min(this.station + 1, this.waypoints.length - 1);
+        }
       }
     } else {
       // À l'arrêt il RESPIRE, il ne tourne plus. Le mouvement circulaire
@@ -376,9 +404,33 @@ export class Brush {
 
   /** Départ vers l'endroit suivant. */
   private takeOff(): void {
-    const next = this.waypoints[Math.min(this.station + 1, this.waypoints.length - 1)];
+    const i = Math.min(this.station + 1, this.waypoints.length - 1);
+    const next = this.waypoints[i];
     this.from.copy(this.head.position);
-    this.to.copy(next);
+    this.sortie = null;
+
+    // IL PASSE PAR LA PORTE, il ne traverse pas le vide.
+    //
+    // Quand le jalon suivant est derrière un portail, on ne vole pas jusqu'à
+    // lui : on vole jusqu'à la FACE la plus proche de nous, on y disparaît, et
+    // l'on ressort par la face jumelle. Le joueur voit donc où entrer — c'est
+    // une invitation, et c'était tout le rôle de ce personnage.
+    const porte = this.portes[i];
+    if (porte) {
+      const paire = this.faces.filter((f) => f.pairId === porte);
+      if (paire.length === 2) {
+        const [a, b] = paire;
+        const entree = a.position.distanceTo(this.from) < b.position.distanceTo(this.from) ? a : b;
+        const sortie = entree === a ? b : a;
+        this.to.copy(entree.position);
+        this.sortie = sortie.position.clone();
+      } else {
+        this.to.copy(next);
+      }
+    } else {
+      this.to.copy(next);
+    }
+
     this.arc.set(0, Math.max(8, this.from.distanceTo(this.to) * 0.25), 0);
     this.fleeing = FLIGHT;
     this.prev.copy(this.head.position);
