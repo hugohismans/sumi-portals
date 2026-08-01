@@ -6,6 +6,7 @@ import { LEVEL_01 } from './levels/level01.js';
 import { LEVEL_02 } from './levels/level02.js';
 import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
+import { Ambiance } from './audio/ambiance.js';
 import { Presence } from './net/presence.js';
 import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
@@ -109,6 +110,14 @@ scene.add(portals.group);
 
 const paper = new PaperPass(window.innerWidth, window.innerHeight);
 
+// --- Son -----------------------------------------------------------------------
+// Entièrement synthétisé, sans un seul fichier à télécharger — le jeu reste un
+// site statique. Il ne démarre qu'au premier geste : les navigateurs
+// l'interdisent avant, et c'est une bonne chose.
+const ambiance = new Ambiance();
+/** Cadence des pas, en foulées par seconde et par taille de corps. */
+let stepPhase = 0;
+
 // --- Entrées ------------------------------------------------------------------
 const input = new InputManager(renderer.domElement, LEVEL.spawnYaw);
 
@@ -171,7 +180,11 @@ overlay.addEventListener('touchstart', () => input.enableTouchMode(), { passive:
 
 input.onLockChange = (locked) => {
   overlay.classList.toggle('hidden', locked);
-  if (locked) overlay.classList.add('resumed');
+  if (locked) {
+    overlay.classList.add('resumed');
+    // Premier geste du joueur : c'est le seul moment où le son peut démarrer.
+    ambiance.demarrer();
+  }
 };
 
 /**
@@ -343,6 +356,7 @@ function frame(now: number): void {
     accumulator -= TICK_DT;
 
     if (events.traversed) {
+      ambiance.portail();
       // Le portail a fait pivoter le regard : on recale la souris dessus,
       // sinon le prochain mouvement annulerait la rotation.
       input.setYaw(sim.player.yaw);
@@ -355,6 +369,8 @@ function frame(now: number): void {
           : 'Le portail refuse : échelle extrême atteinte.',
       );
     }
+    if (events.carry && !events.carry.taken) ambiance.caisse();
+    if (events.socketFilled) ambiance.caisse();
     if (events.carry) {
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
@@ -396,6 +412,22 @@ function frame(now: number): void {
   inkUniforms.uTime.value += dt;
   for (const m of worldView.materials) syncInkUniforms(m);
   const scale = scaleOfLevel(sim.player.scaleLevel);
+
+  // --- Son ---------------------------------------------------------------------
+  // Le pas est déclenché par la DISTANCE parcourue, pas par une minuterie : on
+  // entend donc une foulée par pas réel, et la cadence suit naturellement la
+  // vitesse — marche, course, et toutes les tailles.
+  ambiance.setEchelle(scale);
+  if (sim.player.grounded) {
+    const parcouru = Math.hypot(sim.player.velocity.x, sim.player.velocity.z) * dt;
+    stepPhase += parcouru / (scale * PLAYER_HEIGHT);
+    if (stepPhase >= 0.55) {
+      stepPhase = 0;
+      ambiance.pas();
+    }
+  }
+  ambiance.update(dt);
+
   avatar.update(sim.player, scale, dt);
   avatar.syncInk();
   carryableViews.update(sim.carryables.items, sim.faces);
