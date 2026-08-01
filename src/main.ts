@@ -180,6 +180,8 @@ if (pigmentDe.size > 0) socketViews.setCouleur(pigments.nombre / 2);
 // faite de personnages plutôt que de chiffres.
 const tmpOeil = new THREE.Vector3();
 const peintres = new Map<string, PinceauPeintre>();
+/** Combien de couleurs le monde attend en tout. Voir AUX_SOCLES. */
+let AUX_SOCLES_TOTAL = 0;
 /** Celui qui est en train de peindre. Le front d'encre le suit. */
 let peintreEnCours: PinceauPeintre | null = null;
 /** Quel veilleur correspond à quel pinceau. */
@@ -254,6 +256,7 @@ if (MODE === 'monde') {
     const socle = PINCEAU_DE_VEILLEUR.get(v.id);
     if (socle) veilleurDuSocle.set(socle, v.position);
   }
+  AUX_SOCLES_TOTAL = AUX_SOCLES.length;
   for (const [socle, pigment, ou, teinte, tailleDort, tailleRepos] of AUX_SOCLES) {
     const dort = veilleurDuSocle.get(socle);
     if (!dort) continue;
@@ -283,20 +286,20 @@ if (MODE === 'monde') {
       flash(
         reste > 0
           ? `Le ${pigment} revient au monde. ${OU_REGARDER[pigment] ?? 'Regarde-le peindre.'} Il en manque ${reste}.`
-          : `${OU_REGARDER[pigment] ?? ''} La dernière couleur est rendue — le monde est entier.`,
+          : `${OU_REGARDER[pigment] ?? ''} Le monde est entier. Il reste à porter l'encre à la pointe.`,
         7,
       );
 
-      // LA FIN. Le monde a retrouvé toutes ses couleurs — la seule chose qu'on
-      // lui demandait — et l'encre remonte à la pointe de l'Aiguille, qui est
-      // la plume de ce monde. C'est le seul moment où l'on retire au joueur la
-      // maîtrise de sa caméra, pour lui montrer ce qu'il vient de repeindre.
-      if (reste === 0) {
-        sceau.declencher();
-        sacre.jouer([0, 74, 0], camera.position);
-        ambiance.retrouvaille();
-        document.exitPointerLock();
-      }
+      // ON NE GAGNE PAS EN RENDANT LA DERNIÈRE COULEUR.
+      //
+      // Le plan de fin partait ici, c'est-à-dire à l'instant où l'on franchissait
+      // une porte, au ras du sol, sans avoir rien gravi — et il arrivait par
+      // surprise pendant qu'on regardait le pinceau peindre, en écrasant le seul
+      // geste qu'on était venu voir.
+      //
+      // Rendre les couleurs et ACHEVER LE VOYAGE sont deux choses. Le monde a
+      // retrouvé sa palette ; il reste à porter l'encre là-haut. La suite se
+      // joue à la pointe de l'Aiguille (voir `events.reachedGoal`).
     };
     // Déjà rapporté dans une partie précédente : il flotte, sans refaire la fête.
     if (pigments.a(pigment)) p.poserDejaAcquis();
@@ -991,11 +994,23 @@ function frame(now: number): void {
       );
     }
     if (events.reachedGoal) {
-      suiteEl.setAttribute('href', NIVEAU_SUIVANT[MODE!] ?? './');
-      suiteEl.textContent = MODE === 'caisse' ? 'retour au hall' : 'niveau suivant';
-      winPanel.classList.add('show');
-      // On rend la souris, sinon le lien du panneau est inatteignable.
-      document.exitPointerLock();
+      // LE SACRE, et c'est ici qu'il appartient : en haut, après l'ascension.
+      // L'encre remonte à la pointe de l'Aiguille, qui est la plume de ce monde,
+      // et la caméra quitte le corps du joueur pour lui montrer tout ce qu'il a
+      // traversé pour l'y porter. C'est le seul moment du jeu où on lui retire
+      // la maîtrise de son regard.
+      if (MODE === 'monde' && pigments.nombre >= AUX_SOCLES_TOTAL) {
+        sceau.declencher();
+        sacre.jouer([0, 74, 0], camera.position);
+        ambiance.retrouvaille();
+        document.exitPointerLock();
+      } else {
+        suiteEl.setAttribute('href', NIVEAU_SUIVANT[MODE!] ?? './');
+        suiteEl.textContent = MODE === 'caisse' ? 'retour au hall' : 'niveau suivant';
+        winPanel.classList.add('show');
+        // On rend la souris, sinon le lien du panneau est inatteignable.
+        document.exitPointerLock();
+      }
     }
   }
 

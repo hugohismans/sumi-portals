@@ -1474,6 +1474,14 @@ console.log('\n— Les pinceaux endormis : une couleur vit à une TAILLE —');
       geant.player.position.y > 112,
     pos(geant),
   );
+  // ET C'EST LÀ QUE LE JEU S'ACHÈVE. Le plan de fin partait quand on rendait la
+  // dernière couleur — donc au ras du sol, en franchissant une porte, sans avoir
+  // rien gravi. On gagnait en marchant tout droit.
+  check(
+    'et c’est la pointe, et non le belvédère, qui achève le voyage',
+    geant.goalReached,
+    pos(geant),
+  );
   walkTo(geant, [0, 120, 220], 60 * 60);
   settle(geant, 60);
   check(
@@ -1885,6 +1893,19 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
       (j) => Math.hypot(j[0] - v.position[0], j[1] - v.position[1], j[2] - v.position[2]) < v.radius + 2,
     );
     check(`le guide mène jusqu’à ${v.id}`, proche, `dort en ${v.position.join(', ')}`);
+  }
+
+  // ET IL MÈNE JUSQU'AU BOUT. Un guide qui s'arrête avant la fin laisse le
+  // joueur au belvédère sans raison de deviner qu'il reste à prendre l'éperon.
+  {
+    const dernier = (MONDE.guide ?? [])[(MONDE.guide?.length ?? 1) - 1];
+    const but = MONDE.goal;
+    const d = Math.hypot(dernier[0] - but.position[0], dernier[2] - but.position[2]);
+    check(
+      'et le dernier jalon du guide se tient sur le but',
+      d < but.radius,
+      `${d.toFixed(1)} unités du but, rayon ${but.radius}`,
+    );
   }
 }
 

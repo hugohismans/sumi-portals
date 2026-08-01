@@ -782,7 +782,21 @@ export const MONDE: LevelDef = {
     { id: 'pinceau-rouge', position: [-500, 0, 0], radius: 9, echelle: 1 },
   ],
 
-  goal: { position: [0, BELVEDERE_Y + 2, 240], radius: 16 },
+  /**
+   * LE BUT EST LA POINTE DE L'AIGUILLE, et plus le belvédère.
+   *
+   * La fin se déclenchait au moment où l'on rendait la dernière couleur — donc
+   * en franchissant une porte, au ras du sol, sans avoir rien gravi. On gagnait
+   * en marchant tout droit, et le plan de fin arrivait par surprise pendant
+   * qu'on regardait le pinceau peindre.
+   *
+   * Rendre les couleurs et ACHEVER LE VOYAGE sont deux choses. Le monde entier
+   * est bâti autour d'une plume de cent dix mètres plantée à l'origine, visible
+   * des trois étages, avec un encrier vide à sa pointe et une maquette qui la
+   * montre pleine dès la première minute. C'est là-haut que ça se termine, et
+   * nulle part ailleurs.
+   */
+  goal: { position: [0, AIGUILLE_H + 6, 0], radius: 18 },
 
   // LES STATIONS DU PINCEAU — c'est le fil du jeu.
   //
@@ -841,6 +855,10 @@ export const MONDE: LevelDef = {
     [0, BELVEDERE_Y, 258],
     [150, 151.7, 312],
     [-192, 197.4, 330],
+    // ET IL FINIT SUR LA POINTE. Le guide doit mener là où le jeu s'achève :
+    // sans ce jalon il s'arrêtait au belvédère, et le joueur n'avait aucune
+    // raison de deviner qu'il fallait encore prendre l'éperon.
+    [0, AIGUILLE_H + 8, 0],
   ],
 
   /**
@@ -856,6 +874,7 @@ export const MONDE: LevelDef = {
     4, 1, 4, // jardin : on y va grand, on y est normal, on revient grand
     4, // devant la seconde porte
     16, 16, 16, // belvédère
+    16, // la pointe de l'Aiguille
   ],
 
   /**
@@ -882,6 +901,7 @@ export const MONDE: LevelDef = {
     null,
     'ascension-2', // la porte qu'il vient de dessiner lui-même
     null, null,
+    null, // il gagne la pointe par les airs : à nous de prendre l'éperon
   ],
 
   hints: [
