@@ -622,7 +622,7 @@ const tasDeFeuilles = (): BoxDef[] => {
     for (let i = 1; i <= 3; i++) {
       const px = TAS_X + sens * (i - 2) * TAS_PAS;
       const y = depart(k) + i * TAS_BOND;
-      out.push(box([px - 1.2, y - 0.5, TAS_ZF[k] - 0.4], [px + 1.2, y, TAS_ZF[k] + 2.2], 3));
+      out.push(box([px - TAS_DEMI, y - 0.5, TAS_ZF[k] - 0.4], [px + TAS_DEMI, y, TAS_ZF[k] + 2.2], 3));
     }
   }
 
@@ -638,7 +638,7 @@ const tasDeFeuilles = (): BoxDef[] => {
   const sx1 = TAS_X + TAS_W[4] / 2;
   for (const cote of [-1, 1] as const) {
     for (let i = 0; i < 5; i++) {
-      const pz = TAS_ZB[4] + 0.45 + i * 0.95;
+      const pz = TAS_ZB[4] + 0.45 + i * 0.85;
       const px = cote < 0 ? sx0 + 0.12 : sx1 - 0.47;
       out.push(box([px, TAS_Y[4] - 0.3, pz], [px + 0.35, TAS_Y[4] + 1.5, pz + 0.35], 1));
     }
@@ -657,7 +657,7 @@ const tasDeFeuilles = (): BoxDef[] => {
   for (let i = 1; i <= 7; i++) {
     const y = TAS_Y[4] - i * 2.6;
     const cx = TAS_X + (i % 2 === 0 ? 2.0 : -2.0);
-    out.push(box([cx - 3.0, y - 0.45, -42.6 - i * 0.05], [cx + 3.0, y, -37.6 + i * 0.04], 3));
+    out.push(box([cx - 2.8, y - 0.45, -42.6 - i * 0.05], [cx + 2.8, y, -37.6 + i * 0.04], 3));
   }
 
   return out;
