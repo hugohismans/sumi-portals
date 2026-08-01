@@ -94,6 +94,34 @@ l'attente.
 
 ---
 
+## La boîte à formes
+
+*(idée d'Hugo)*
+
+Le jouet d'enfant : des pièces, des trous, et chaque pièce n'entre que dans le
+sien. Sauf qu'ici il ne suffit pas de la bonne forme — il faut aussi **la bonne
+taille**, **la bonne orientation**, et **la bonne main** s'il y a du miroir.
+
+C'est le meilleur niveau de fin qu'on puisse imaginer, et pour une raison
+précise : **il n'enseigne rien, il vérifie.** Il rassemble tout ce que le joueur
+a appris ailleurs et lui demande de s'en servir ensemble. Et sa règle n'a même
+pas besoin d'être expliquée : tout le monde a joué à ça à trois ans.
+
+Chaque pièce correctement logée déclenche une **animation de talisman** — un
+sceau d'encre qui se dessine, un trait qui s'illumine. Ce retour immédiat est
+indispensable : sans lui, le joueur ne sait pas si son échec vient de la taille,
+de l'orientation ou de la forme, et il tâtonne au lieu de raisonner.
+
+Toutes les pièces posées, on obtient une récompense — une clé, un objet — qui
+ouvre une autre branche de l'aventure. Ça donne enfin une **structure** au jeu :
+des niveaux qui débloquent des niveaux, au lieu d'une simple file.
+
+Garde-fou de conception : ne pas cumuler les contraintes d'emblée. Une pièce qui
+demande à la fois la bonne taille, le bon sens ET la bonne main, c'est huit
+combinaisons — le joueur essaie au hasard. Mieux vaut **une contrainte par
+pièce** au début, puis les croiser sur la dernière, qui devient le morceau de
+bravoure.
+
 ## Ambiance : le son et le vivant
 
 *(idée d'Hugo)*
