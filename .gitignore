@@ -1,5 +1,8 @@
 node_modules/
 dist/
+
+# Réglages propres à cette machine (permissions accordées localement).
+.claude/settings.local.json
 *.local
 .DS_Store
 Thumbs.db
