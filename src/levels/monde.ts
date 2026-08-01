@@ -1,6 +1,6 @@
 import type { BoxDef, LevelDef } from '../core/types.js';
 import { BELVEDERE } from './regions/belvedere.js';
-import { JARDIN } from './regions/jardin.js';
+import { JARDIN, SOMMET_DU_TAS } from './regions/jardin.js';
 import { ROUGE } from './regions/rouge.js';
 import { TERRASSE } from './regions/terrasse.js';
 
@@ -769,7 +769,11 @@ export const MONDE: LevelDef = {
   //   chemin — c'est le premier des deux, il doit être le plus doux.
   // ═══════════════════════════════════════════════════════════════════════════
   veilleurs: [
-    { id: 'pinceau-vert', position: [516.5, 0, 0], radius: 3, echelle: 0 },
+    // Au SOMMET DU TAS DE FEUILLES, vingt bonds au-dessus du sol du jardin.
+    // Il dormait au ras de l'herbe, et l'on n'avait qu'à marcher jusqu'à lui :
+    // un monde joli et sans épreuve. La position vient de `jardin.ts` plutôt
+    // que d'être recopiée ici — les assises du tas bougeront encore.
+    { id: 'pinceau-vert', position: SOMMET_DU_TAS, radius: 3, echelle: 0 },
     { id: 'pinceau-rouge', position: [-500, 0, 0], radius: 9, echelle: 1 },
   ],
 
@@ -824,7 +828,7 @@ export const MONDE: LevelDef = {
 
     // ── LE JARDIN. Second détour, et il exige d'être déjà géant. ────────────
     [-30, VILLAGE_Y, -24], // devant la porte verte
-    [514, 0, 0], // au fond du jardin, près de l'encrier
+    SOMMET_DU_TAS, // tout en haut du tas de feuilles, où dort le pinceau vert
     [-16, 1.5, -6], // et sur le grand socle
 
     // ── LA SECONDE PORTE, qu'il dessine lui-même, puis le sommet. ───────────

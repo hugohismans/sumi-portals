@@ -115,6 +115,52 @@ const settle = (sim: Simulation, ticks = 180): void => {
   }
 };
 
+/**
+ * MONTE SUR UN APPUI, puis LÂCHE LA TOUCHE.
+ *
+ * `walkTo(..., { jump: true })` maintient le saut enfoncé pendant toute la
+ * durée qu'on lui donne. Sur un trajet au sol c'est sans conséquence ; sur une
+ * plateforme, c'est fatal — et il a fallu une épreuve entière pour le
+ * comprendre.
+ *
+ * Une fois l'appui atteint, `forward` retombe à zéro, mais la touche de saut,
+ * elle, reste appuyée. Le joueur rebondit donc sur place pendant les trente-six
+ * secondes qui restent. Or un rebond conserve l'élan horizontal : il oscille
+ * autour de sa cible, dérive, et finit par tomber d'une feuille large de deux
+ * mètres. Mesuré : la même épreuve, avec le même pilote, donne 1/21 en
+ * accordant 40 s par appui et 21/21 en n'en accordant que 4. Ce n'était pas la
+ * géométrie qui était fausse, c'était la durée.
+ *
+ * D'où ce pilote-ci : il s'élance en tenant le saut, et DÈS QU'IL EST POSÉ sur
+ * l'appui visé, il lâche tout et se laisse immobiliser. C'est ce que fait un
+ * joueur, et c'est la seule façon honnête de vérifier un parcours de
+ * plateformes : sans timing au millième, mais sans rebond parasite non plus.
+ */
+const bondirVers = (sim: Simulation, cible: [number, number, number]): void => {
+  for (let i = 0; i < 60 * 6; i++) {
+    const p = sim.player.position;
+    const dx = cible[0] - p.x;
+    const dz = cible[2] - p.z;
+    const dist = Math.hypot(dx, dz);
+    // Posé sur l'appui : on relâche, sinon on rebondit jusqu'à en tomber.
+    if (dist < 0.6 && sim.player.grounded && p.y > cible[1] - 0.25) break;
+    sim.step(
+      {
+        forward: dist > 0.4 ? 1 : 0,
+        strafe: 0,
+        jump: true,
+        sprint: false,
+        interact: false,
+        throwIt: false,
+        yaw: Math.atan2(dx, dz),
+        pitch: 0,
+      },
+      TICK_DT,
+    );
+  }
+  settle(sim, 24);
+};
+
 // =============================================================================
 console.log('\n— Maths des portails —');
 {
@@ -1581,26 +1627,121 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     `échelle ${j.player.scaleLevel}, ${pos(j)}`,
   );
 
+  // LA MARCHE JUSQU'AU PIED DU TAS. Onze points, aucun saut : c'est le couloir
+  // le plus LARGE qui existe, cherché par balayage plutôt que deviné. Son point
+  // le plus serré laisse 3,50 m de chaque côté, soit dix fois la largeur du
+  // joueur. Un chemin obligatoire doit être franc, sinon on le rate sans
+  // comprendre qu'on l'a raté.
   for (const p of [
-    [401, 0, 23],
-    [420.5, 0, 27],
-    [446.5, 0, 27.5],
-    [501.5, 0, 27.5],
-    [516.5, 0, 0],
+    [362.5, 0, 13.5],
+    [411, 0, 14.5],
+    [412, 0, 15.5],
+    [471, 0, 26.5],
+    [474, 0, 29.5],
+    [506.5, 0, 29.5],
+    [506.5, 0, 17],
+    [508, 0, 1.5],
+    [508, 0, -8],
+    [507.3, 0, -12],
   ] as [number, number, number][]) {
     walkTo(j, p, 60 * 60);
   }
+
+  // L'ÉPREUVE. Vingt bonds, cinq volées de trois feuilles séparées par une vire,
+  // et chaque volée repart en sens inverse. Vingt mètres de montée.
+  //
+  // CE QUI REND LA CHUTE ACCEPTABLE : les appuis d'une volée SURPLOMBENT la vire
+  // d'où elle est partie. Tomber vous repose donc au départ de la volée que vous
+  // venez de rater, et vous la rejouez sans faire un pas. C'est la différence
+  // entre une épreuve et une punition.
+  for (const p of [
+    [507.3, 0.83, -16.9], [510, 1.83, -16.9], [512.7, 2.83, -16.9], [512.7, 3.83, -18.9],
+    [512.7, 4.83, -20.9], [510, 5.83, -20.9], [507.3, 6.83, -20.9], [507.3, 7.83, -22.9],
+    [507.3, 8.83, -24.9], [510, 9.83, -24.9], [512.7, 10.83, -24.9], [512.7, 11.83, -26.9],
+    [512.7, 12.83, -28.9], [510, 13.83, -28.9], [507.3, 14.83, -28.9], [507.3, 15.83, -30.9],
+    [507.3, 16.83, -32.9], [510, 17.83, -32.9], [512.7, 18.83, -32.9], [512.7, 19.83, -34.9],
+    [510, 19.83, -36],
+  ] as [number, number, number][]) {
+    bondirVers(j, p);
+  }
   settle(j, 40);
   check(
-    'on réveille le pinceau vert, au fond du jardin',
-    reveiller(j, [516.5, 0, 0]),
+    'on gravit le tas de feuilles et l’on réveille le pinceau vert à son sommet',
+    reveiller(j, [510, 19.83, -36]),
     pos(j),
   );
 
-  // Le retour par le même chemin, à l'envers. Le jardin non plus ne se traverse
-  // pas en ligne droite : c'est une forêt d'herbe, et son auteur a cherché le
-  // couloir le plus large qui existe plutôt que le premier venu.
+  // ── CE QUI REND L'ÉPREUVE ACCEPTABLE, et qu'aucun trajet ne prouve ────────
+  //
+  // Le parcours ci-dessus montre qu'on sait MONTER. Il ne dit rien de ce qui
+  // arrive quand on RATE — et c'est là, pas ailleurs, que se joue la différence
+  // entre une épreuve et une punition. Deux propriétés, éprouvées à part.
+  {
+    const SOL_TAS = -0.17;
+    const vire = (k: number): number => SOL_TAS + (k + 1) * 4.0;
+    const face = [-18.0, -22.0, -26.0, -30.0, -34.0];
+
+    // 1. LES APPUIS SURPLOMBENT LA VIRE D'OÙ LEUR VOLÉE EST PARTIE. On lâche
+    //    donc le joueur dans le vide entre deux feuilles, des deux côtés de
+    //    chacune, et l'on regarde où il se repose.
+    let bonnes = 0;
+    let total = 0;
+    let pire = 0;
+    for (let k = 0; k < 5; k++) {
+      const depart = k === 0 ? SOL_TAS : vire(k - 1);
+      const sens = k % 2 === 0 ? 1 : -1;
+      for (let i = 1; i <= 3; i++) {
+        for (const ecart of [-1.35, 1.35]) {
+          const chute = new Simulation(MONDE);
+          chute.player.position = {
+            x: 510 + sens * (i - 2) * 2.7 + ecart,
+            y: depart + i * 1.0 + 0.15,
+            z: face[k] + 1.1,
+          };
+          settle(chute, 400);
+          total++;
+          if (Math.abs(chute.player.position.y - depart) < 0.35) bonnes++;
+          pire = Math.max(pire, depart + i * 1.0 - chute.player.position.y);
+        }
+      }
+    }
+    check(
+      'tomber du tas vous repose au départ de la volée que vous ratiez',
+      bonnes === total,
+      `${bonnes}/${total}, dégringolade maximale ${pire.toFixed(2)} m sur une tour de 20`,
+    );
+
+    // 2. LA COULÉE NE SE REMONTE PAS. Ses marches font 2,60 pour un saut de
+    //    1,293 : sans ce nombre-là, tout le tas se contournerait par le dos.
+    //    On essaie de la remonter en sprintant, ce qui est le pire cas.
+    const bas = new Simulation(MONDE);
+    bas.player.position = { x: 510, y: 0.2, z: -41.5 };
+    for (let i = 0; i < 14; i++) {
+      walkTo(bas, [510 + (i % 2 === 0 ? -2 : 2), 0, -38.5], 60 * 5, { jump: true, sprint: true });
+    }
+    settle(bas, 60);
+    check(
+      'et la coulée ne se remonte pas : elle sort du tas, elle n’y mène pas',
+      bas.player.position.y < 2.0,
+      pos(bas),
+    );
+  }
+
+  // LE RETOUR PASSE AILLEURS, et c'est un choix.
+  //
+  // Redescendre le tas par où l'on est monté serait une punition infligée à qui
+  // vient de réussir : vingt bonds, tous déjà compris, avec en prime la peur de
+  // tomber d'en haut. Le dos du tas porte donc LA COULÉE, sept feuilles en
+  // cascade où l'on se laisse tomber.
+  //
+  // Ses marches font 2,60, au-dessus du saut de 1,293 : elle descend et ne
+  // remonte pas, donc elle n'escamote pas l'épreuve. C'est ce nombre-là, et lui
+  // seul, qui empêche le raccourci.
   for (const p of [
+    [508, 0, -44.5],
+    [503, 0, -44.5],
+    [503, 0, -17.5],
+    [510, 0, 0],
     [501.5, 0, 27.5],
     [446.5, 0, 27.5],
     [420.5, 0, 27],
