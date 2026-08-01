@@ -135,7 +135,12 @@ export class CarryableViews {
     for (const face of faces) {
       const n = face.normal;
       const d = (cx - face.position.x) * n.x + (cy - face.position.y) * n.y + (cz - face.position.z) * n.z;
-      if (Math.abs(d) > half) continue;
+      // Devant : rien à dédoubler. Loin derrière : ce n'est plus ce portail.
+      // Entre les deux, on double — y compris quand la caisse est ENTIÈREMENT
+      // passée, ce qui arrive tout le temps puisqu'on la tend devant soi : elle
+      // franchit le plan avant son porteur. Sans ce cas, elle réapparaissait
+      // brutalement du mauvais côté au lieu de rester vue à travers le portail.
+      if (d > half || d < -(half + item.size * 3)) continue;
 
       // Grossièrement dans l'ouverture ? Sinon la caisse passe à côté du cadre
       // et n'a aucune raison d'être dédoublée.

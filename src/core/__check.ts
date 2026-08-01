@@ -388,6 +388,27 @@ console.log('\n— Une caisse lancée traverse aussi —');
       TICK_DT,
     );
   }
+  // Le cas vicieux : portée, la caisse est tendue devant soi, donc elle passe
+  // le plan AVANT son porteur. Lâchée à cet instant, elle doit traverser — et
+  // non rester coincée derrière, à la mauvaise taille.
+  const sim3 = new Simulation(flat);
+  const lachee = sim3.carryables.items[0];
+  lachee.held = true;
+  // Joueur devant le plan, caisse déjà derrière : la situation exacte du bug.
+  sim3.player.position = { x: 0, y: 0.2, z: 1.2 };
+  sim3.player.yaw = Math.PI; // face à la porte
+  lachee.position = { x: 0, y: 0.8, z: -0.4 };
+  const base3 = {
+    forward: 0, strafe: 0, jump: false, sprint: false, yaw: Math.PI, pitch: 0,
+  };
+  sim3.step({ ...base3, interact: false, throwIt: false }, TICK_DT);
+  sim3.step({ ...base3, interact: true, throwIt: false }, TICK_DT);
+  check(
+    'lâchée alors qu’elle est déjà passée, la caisse traverse quand même',
+    lachee.size !== 0.6,
+    `taille ${lachee.size}`,
+  );
+
   check(
     'trop grosse pour la porte, elle rebondit au lieu de passer',
     near(gros.size, 2.6, 1e-6) && gros.position.z > 0,

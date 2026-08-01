@@ -64,6 +64,16 @@ export interface Carryable {
   ink: number;
   held: boolean;
   grounded: boolean;
+  /**
+   * Œil du porteur au moment du lâcher, ou null.
+   *
+   * Portée, une caisse est tendue devant soi : elle franchit donc le plan du
+   * portail AVANT son porteur. Si on la lâche là, elle se retrouve derrière
+   * sans avoir traversé — coincée du mauvais côté, à la mauvaise taille. En
+   * repartant de l'œil, qui est resté devant, le segment coupe le plan et la
+   * traversée se déclenche comme elle le doit.
+   */
+  releasedAt: Vec3 | null;
 }
 
 export const aabbOfCarryable = (c: Carryable, out: Aabb): Aabb => {
@@ -146,6 +156,7 @@ export class Carryables {
         ink: d.ink ?? 3,
         held: false,
         grounded: false,
+        releasedAt: null,
       });
     }
   }

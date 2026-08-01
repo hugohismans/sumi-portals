@@ -200,9 +200,14 @@ export class Simulation {
     }
     // Les caisses libres franchissent les portails comme le joueur : on note
     // leur centre avant le déplacement pour détecter le passage du plan.
-    const before = this.carryables.items.map((c) =>
-      c.held ? null : vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z),
-    );
+    const before = this.carryables.items.map((c) => {
+      if (c.held) return null;
+      // Une caisse qu'on vient de lâcher repart de l'œil du porteur : voir
+      // Carryable.releasedAt.
+      const from = c.releasedAt ?? vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z);
+      c.releasedAt = null;
+      return from;
+    });
     this.carryables.step(this.world, dt);
     this.carryTraversal(before);
 
@@ -258,6 +263,7 @@ export class Simulation {
       }
       held.held = false;
       held.velocity.y = 0;
+      held.releasedAt = this.eyePosition();
       events.carry = { id: held.id, taken: false };
       return;
     }
@@ -337,6 +343,7 @@ export class Simulation {
 
     const held = this.carryables.held;
     if (!held) return;
+    held.releasedAt = this.eyePosition();
     this.carryables.throwIt(held, this.player.yaw, this.player.pitch, scale);
     events.thrown = { id: held.id };
   }
