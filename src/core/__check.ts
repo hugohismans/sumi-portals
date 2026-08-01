@@ -1482,6 +1482,225 @@ console.log('\n— L’encrier : la quête du monde —');
 // chaque région tient dans la boîte qu'on lui a réservée, deux régions écrites
 // séparément ne peuvent pas s'interpénétrer, quoi qu'elles contiennent. Sans
 // cette vérification, la règle n'est qu'un vœu dans un commentaire.
+// =============================================================================
+console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
+{
+  // LA VÉRIFICATION QUI MANQUAIT, et la seule qui pouvait attraper le défaut
+  // qu'elle a servi à corriger.
+  //
+  // Tout le reste de ce fichier éprouve des MORCEAUX : cette porte s'ouvre, ce
+  // socle accepte cette taille, cette région se traverse. Chacun passait, et
+  // pourtant le parcours ne tenait pas — parce qu'on entre dans la côte rouge à
+  // taille normale et dans le jardin en étant déjà géant, et que l'ordre des
+  // jalons les mettait tous les deux au même moment du voyage.
+  //
+  // Aucun test par morceaux ne peut voir ça. Celui-ci joue la partie du début à
+  // la fin, dans l'ordre, avec un seul joueur, et vérifie qu'à l'arrivée les
+  // DEUX couleurs sont rendues.
+  const j = new Simulation(MONDE);
+
+  /**
+   * Ramasse l'objet visé. On lui donne la CIBLE et non la position courante :
+   * viser sa propre position donne un cap de zéro — atan2(0, 0) — et le joueur
+   * se retrouve à regarder le nord au lieu de l'objet à ses pieds. La saisie
+   * ne trouve alors rien devant elle.
+   */
+  const prendre = (sim: Simulation, cible: [number, number, number]): boolean => {
+    walkTo(sim, cible, 8);
+    const e = walkTo(sim, cible, 8, { interact: true });
+    return e.carry?.taken === true;
+  };
+
+  // ── Le village, à taille d'homme ────────────────────────────────────────
+  walkTo(j, [39, 0, -33], 60 * 30);
+  check('on fait le tour du village à ×1', j.player.scaleLevel === 0, pos(j));
+
+  // ── La côte rouge : on y va PETIT, et c'est le seul détour qui l'exige ──
+  //
+  // LE VILLAGE NE SE TRAVERSE PAS EN LIGNE DROITE : il est plein de maisons, et
+  // l'assistant de marche de ce fichier fonce sur sa cible sans savoir
+  // contourner. Ces points ne sont pas devinés — ils viennent d'une recherche
+  // de chemin sur une grille, avec 1,20 de marge autour du joueur. C'est donc
+  // aussi la preuve qu'un chemin large existe.
+  for (const p of [
+    [22, 0, -32],
+    [22, 0, -50],
+    [-6, 0, -50],
+    [-30, 0, -48],
+    [-30, 0, -40],
+    [-48, 0, -40],
+    [-48, 0, -30],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 30);
+  }
+  walkTo(j, [-62, 0, -30], 60 * 14, { stopOnEvent: true });
+  check(
+    'la porte de l’ouest s’ouvre à taille normale, et fait grandir',
+    j.player.scaleLevel === 1 && j.player.position.x < -300,
+    `échelle ${j.player.scaleLevel}, ${pos(j)}`,
+  );
+
+  for (const p of [
+    [-410, 0, 7],
+    [-424, 0, -11],
+    [-452, 0, -11],
+    [-490, 0, -6],
+    [-500, 0, 0],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 40);
+  }
+  settle(j, 40);
+  check('on atteint la braise, au fond du chantier', prendre(j, [-500, 0, 0]), pos(j));
+
+  // Retour par le même chemin, à l'envers.
+  for (const p of [
+    [-490, 0, -6],
+    [-452, 0, -11],
+    [-424, 0, -11],
+    [-410, 0, 7],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 40);
+  }
+  walkTo(j, [-300, 0, 0], 60 * 60, { stopOnEvent: true });
+  check(
+    'et l’on revient au village, redevenu normal, la braise en main',
+    j.player.scaleLevel === 0 && j.carryables.held?.id === 'braise',
+    `échelle ${j.player.scaleLevel}, ${j.carryables.held?.id ?? 'les mains vides'}`,
+  );
+
+  // ── Le petit socle. Sa taille annonçait ce voyage depuis la place. ──────
+  for (const p of [
+    [-48, 0, -40],
+    [-30, 0, -40],
+    [-30, 0, -48],
+    [-6, 0, -50],
+    [22, 0, -50],
+    [22, 0, -32],
+    [-3.5, 0, -17.5],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 30);
+  }
+  walkTo(j, [-3.5, 0, -17.5], 60 * 6, { interact: true });
+  settle(j, 90);
+  check(
+    'la braise entre dans le petit socle, et lui seul',
+    j.sockets.items.find((s) => s.id === 'socle-rouge')?.filledBy === 'braise',
+    `${j.sockets.filled} socle(s) sur ${j.sockets.total}`,
+  );
+
+  // ── La terrasse : on grandit pour de bon ────────────────────────────────
+  walkTo(j, [0, 0, -18], 60 * 30);
+  walkTo(j, [0, 0, -50], 60 * 30, { stopOnEvent: true });
+  check(
+    'la petite porte du village fait grandir, et dépose sur la terrasse',
+    j.player.scaleLevel === 1 && j.player.position.y > 25,
+    `échelle ${j.player.scaleLevel}, ${pos(j)}`,
+  );
+
+  // ── Le jardin : on y va GRAND, ce qui n'était possible qu'ici ───────────
+  walkTo(j, [65, 30, 55], 60 * 60);
+  walkTo(j, [65, 0, -26], 60 * 90);
+  settle(j, 60);
+  check(
+    'on redescend au village en géant',
+    j.player.scaleLevel === 1 && j.player.position.y < 5,
+    `échelle ${j.player.scaleLevel}, ${pos(j)}`,
+  );
+
+  // À ×4 le joueur fait 2,72 de diamètre : il ne passe plus où passait le
+  // joueur normal, et en revanche il ENJAMBE tout ce qui mesure moins de 3,60.
+  // La route est donc entièrement différente, et elle a été cherchée avec ses
+  // dimensions à lui.
+  for (const p of [
+    [52, 0, -26],
+    [52, 0, -34],
+    [22, 0, -34],
+    [22, 0, -22],
+    [-26, 0, -22],
+    [-26, 0, -32],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 30);
+  }
+  walkTo(j, [-44, 0, -32], 60 * 20, { stopOnEvent: true });
+  check(
+    'la porte verte, prise en géant, dépose à taille d’homme dans le jardin',
+    j.player.scaleLevel === 0 && j.player.position.x > 300,
+    `échelle ${j.player.scaleLevel}, ${pos(j)}`,
+  );
+
+  for (const p of [
+    [401, 0, 23],
+    [420.5, 0, 27],
+    [446.5, 0, 27.5],
+    [501.5, 0, 27.5],
+    [516.5, 0, 0],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 60);
+  }
+  settle(j, 40);
+  check('on atteint l’encrier, au fond du jardin', prendre(j, [516.5, -0.17, 0]), pos(j));
+
+  // Le retour par le même chemin, à l'envers. Le jardin non plus ne se traverse
+  // pas en ligne droite : c'est une forêt d'herbe, et son auteur a cherché le
+  // couloir le plus large qui existe plutôt que le premier venu.
+  for (const p of [
+    [501.5, 0, 27.5],
+    [446.5, 0, 27.5],
+    [420.5, 0, 27],
+    [401, 0, 23],
+    [312, 0, 0],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 60);
+  }
+  walkTo(j, [300, 0, 0], 60 * 40, { stopOnEvent: true });
+  check(
+    'et l’on revient au village, géant, l’encrier devenu gros',
+    j.player.scaleLevel === 1 && j.carryables.held?.id === 'encrier',
+    `échelle ${j.player.scaleLevel}, ${j.carryables.held?.id ?? 'les mains vides'}`,
+  );
+
+  for (const p of [
+    [-22, 0, -32],
+    [-22, 0, -22],
+    [-16, 0, -22],
+    [-16, 0, -6],
+  ] as [number, number, number][]) {
+    walkTo(j, p, 60 * 30);
+  }
+  walkTo(j, [-16, 0, -6], 60 * 6, { interact: true });
+  settle(j, 90);
+  check(
+    'l’encrier entre dans le grand socle',
+    j.sockets.items.find((s) => s.id === 'socle-vert')?.filledBy === 'encrier',
+    `${j.sockets.filled} socle(s) sur ${j.sockets.total}`,
+  );
+
+  // ── ET LA CONCLUSION : les deux couleurs sont rendues ───────────────────
+  check(
+    'LE MONDE A RETROUVÉ SES DEUX COULEURS — le voyage entier tient debout',
+    j.sockets.allFilled,
+    `${j.sockets.filled} sur ${j.sockets.total}`,
+  );
+}
+
+// =============================================================================
+console.log('\n— Les trois tableaux du guide sont alignés —');
+{
+  // Un décalage entre `guide`, `guideEchelle` et `guidePorte` ne se voit pas à
+  // la compilation : il donne un pinceau de la mauvaise taille au mauvais
+  // endroit, ou qui traverse une porte pour rien. On compte donc.
+  for (const [nom, niveau] of [
+    ['le monde', MONDE],
+    ['le hall', LOBBY],
+  ] as const) {
+    const g = niveau.guide?.length ?? 0;
+    const e = niveau.guideEchelle?.length ?? g;
+    const p = niveau.guidePorte?.length ?? g;
+    check(`dans ${nom}, autant d’échelles et de portes que de jalons`, e === g && p === g, `${g} jalons, ${e} échelles, ${p} portes`);
+  }
+}
+
+
 {
   console.log('\n— Les régions tiennent dans leur parcelle —');
   for (const m of [TERRASSE, BELVEDERE, JARDIN]) {

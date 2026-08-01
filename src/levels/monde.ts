@@ -259,6 +259,47 @@ const piedestal = (cx: number, cz: number, creux: number, retourne = false): Box
   ];
 };
 
+/**
+ * BOURRELET D'HORIZON — ce qui empêche de voir dehors depuis une poche.
+ *
+ * Les deux mondes de couleur sont des poches posées à côté du monde central, et
+ * l'on y voyait la dalle du monde principal : mesure faite, elle est à
+ * cinquante unités de l'entrée du jardin, et le brouillard porte à trois cents.
+ * On entrait dans un ailleurs et l'on apercevait le bord du décor.
+ *
+ * C'est une conséquence directe d'un correctif précédent — le sol a été étendu
+ * pour empêcher une chute sans fin, et il s'est approché des poches. On ne le
+ * reprend pas : il rattrape des chutes, c'est plus important. On ferme
+ * l'horizon par le décor de la poche elle-même, ce qui est de toute façon plus
+ * juste : un jardin a des talus, une carrière a des fronts de taille.
+ *
+ * LA HAUTEUR SE CALCULE, elle ne se choisit pas. Il faut que la ligne de visée
+ * partant de l'œil et rasant le sommet du bourrelet passe AU-DESSUS de tout ce
+ * qui traîne au-delà. Avec un œil à 0,41 (joueur à ×1/4), un bourrelet à 2,20
+ * cache tout ce qui est au niveau du sol jusqu'à bien plus loin que le
+ * brouillard. À ×4 l'œil est à 6,62, et il faut 14.
+ *
+ * Ils sont posés JUSTE À L'EXTÉRIEUR de la parcelle de leur région : rien n'y
+ * traîne, et ça évite de bousculer un décor déjà calibré au centimètre.
+ */
+const bourrelet = (
+  x0: number,
+  x1: number,
+  z0: number,
+  z1: number,
+  haut: number,
+  ink: number,
+  region: string,
+): BoxDef[] => {
+  const e = haut * 2.2; // épaisseur : un talus, pas une palissade
+  return [
+    box([x0 - e, -6, z0 - e], [x0, haut, z1 + e], ink, { region }),
+    box([x1, -6, z0 - e], [x1 + e, haut, z1 + e], ink, { region }),
+    box([x0, -6, z0 - e], [x1, haut, z0], ink, { region }),
+    box([x0, -6, z1], [x1, haut, z1 + e], ink, { region }),
+  ];
+};
+
 /** Maison : un corps et une toiture débordante, qui pose la ligne d'encre. */
 const maison = (
   cx: number,
@@ -408,8 +449,12 @@ export const MONDE: LevelDef = {
     // le passage de l'une à l'autre ne se voit pas — seuls les aplats changent.
     TERRASSE.region,
     BELVEDERE.region,
-    JARDIN.region,
-    ROUGE.region,
+    // Les deux poches rapprochent leur brouillard : un talus cache ce qui est
+    // au sol, pas le belvédère qui flotte à cent vingt mètres et à deux cent
+    // soixante-cinq d'ici. 230 le fait disparaître et laisse la poche entière
+    // lisible — elle ne fait que 220 de large.
+    { ...JARDIN.region, brouillard: 230 },
+    { ...ROUGE.region, brouillard: 230 },
     {
       name: 'hauteurs',
       // Les hauteurs attendent le ROUGE, le village le VERT. Deux mondes, deux
@@ -537,6 +582,11 @@ export const MONDE: LevelDef = {
 
     // Le versant des fours, loin à l'ouest. Région autonome : voir regions/rouge.ts.
     ...ROUGE.boxes,
+
+    // Les deux horizons fermés. Sans eux, on voit le monde central depuis les
+    // poches — et une poche dont on voit le dehors n'est plus un ailleurs.
+    ...bourrelet(300, 520, -120, 100, 2.2, 2, 'jardin'),
+    ...bourrelet(-520, -300, -120, 100, 14, 2, 'cote-rouge'),
   ],
 
   portals: [
@@ -679,110 +729,95 @@ export const MONDE: LevelDef = {
   // EN VOLANT. À vous de trouver votre propre route : la première étape se
   // rejoint en marchant, la deuxième exige de franchir la porte du village.
   // L'écart entre son vol et vos jambes, c'est l'énigme.
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * LE VOYAGE, ET SON ORDRE N'EST PAS UN GOÛT — IL DÉCOULE DES ÉCHELLES.
+   *
+   * On entre dans la côte rouge par une PETITE face : il faut mesurer 1,80. On
+   * entre utilement dans le jardin par une GRANDE face, en étant DÉJÀ à ×4. Les
+   * deux détours ne peuvent donc pas se faire au même moment du voyage.
+   *
+   * D'où cet ordre, et il enseigne quelque chose : le rouge d'abord, parce
+   * qu'il se fait à taille normale, avant même d'avoir appris à grandir. Le
+   * vert ensuite, parce qu'il exige d'être déjà géant. On descend avant de
+   * monter, puis on monte pour pouvoir redescendre autrement.
+   *
+   * TROIS TABLEAUX PARALLÈLES : `guide`, `guideEchelle`, `guidePorte`. Un
+   * décalage entre eux ne se voit pas à la compilation et donne un pinceau de
+   * la mauvaise taille au mauvais endroit. On les écrit ensemble, on les relit
+   * ensemble, et une vérification compte leurs longueurs.
+   * ═════════════════════════════════════════════════════════════════════════
+   */
   guide: [
-    // 1. Sur la place, à hauteur d'homme. On le rejoint en marchant : c'est la
-    //    leçon gratuite, celle qui installe la règle.
-    [6, VILLAGE_Y, -14],
+    // ── LE VILLAGE, à taille d'homme. Le tour du propriétaire. ──────────────
+    [6, VILLAGE_Y, -14], // la place, à trois pas : la leçon gratuite
+    [15.5, VILLAGE_Y, -18], // le puits
+    [-36, 1.1, -10], // un étal du marché : le premier geste qui n'est pas marcher
+    [39, VILLAGE_Y, -33], // l'étang
 
-    // 2-4. LE TOUR DU VILLAGE, avant toute chose.
-    //
-    // Le jeu poussait dehors trop vite : la deuxième station était déjà de
-    // l'autre côté d'une porte, si bien qu'on quittait le village sans l'avoir
-    // habité. Or c'est lui le carrefour — c'est ici que s'ouvriront toutes les
-    // portes, et l'on ne reconnaît pas d'en haut un endroit qu'on a traversé
-    // en ligne droite.
-    //
-    // Ces trois jalons font faire soixante-quinze mètres d'est en ouest, en
-    // passant par les trois repères qui se nomment : le puits, le marché,
-    // l'étang. Aucun n'est une énigme. C'est un tour du propriétaire, et ça
-    // n'a pas besoin d'être autre chose.
-    [15.5, VILLAGE_Y, -18],
-    // Sur un étal du marché, à 1,10 : au-dessus de l'enjambée (0,90), sous le
-    // saut (1,30). Le premier geste du jeu qui demande autre chose que marcher,
-    // et il est gratuit — mais on longe la porte verte pour y aller.
-    [-36, 1.1, -10],
-    [39, VILLAGE_Y, -33],
+    // ── LA CÔTE ROUGE. Premier détour, et le seul qu'on fasse petit. ────────
+    [-46, VILLAGE_Y, -30], // devant la porte de l'ouest
+    [-500, 0, 0], // au fond du chantier, près de la braise
+    [-3.5, 1.2, -17.5], // et sur le petit socle, qui l'attendait depuis le début
 
-    // 5-7. Le jardin sec de la terrasse. Le pinceau passe la petite porte sous
-    //      vos yeux : c'est l'invitation, et la seule route possible. On le
-    //      suit à ×4, on tourne dans son jardin.
-    //
-    //      L'ORDRE COMPTE, et pas pour la narration : ces trois stations sont
-    //      AU NORD de la seconde porte, qui ne se déclenche qu'en montant vers
-    //      le nord. Visitées maintenant — donc en arrivant par le nord et en
-    //      redescendant vers le sud — on la longe sans jamais l'ouvrir. Placées
-    //      après le toit, il fallait remonter du sud vers elles et l'on
-    //      franchissait la porte par accident, expédié au belvédère en plein
-    //      milieu du jardin.
-    ...TERRASSE.stations,
+    // ── LA TERRASSE. On grandit pour la première fois. ──────────────────────
+    [-27.5, 31.4, 92.5],
+    [45.8, 39.8, 106.4],
+    [-50, 42.7, 76.3],
 
-    // 8. Retour au village, sur le toit de la maison basse — celui qu'on
-    //    regardait tout à l'heure sans pouvoir y monter. On redescend
-    //    l'escalier et le toit n'est plus qu'une marche : le monde n'a pas
-    //    changé, c'est vous. C'est le cœur du jeu, et il fallait avoir habité
-    //    le village à taille d'homme pour que le retour ait un poids.
+    // ── LE RETOUR AU VILLAGE EN GÉANT. Le cœur du jeu. ──────────────────────
+    // Le toit qu'on regardait sans pouvoir l'atteindre n'est plus qu'une marche.
+    // Le monde n'a pas changé, c'est vous.
     [-24, 3.4, -20],
 
-    // 9-11. LE DÉTOUR VERT, et il n'était pas là.
-    //
-    // Le pinceau menait la spirale — village, terrasse, belvédère — et les
-    // couleurs étaient deux allers-retours dont il ne parlait jamais. Un joueur
-    // qui le suivait sagement arrivait en haut sans avoir ramassé une seule
-    // couleur, et les socles de la place restaient vides. Deux jeux parallèles
-    // qui ne se croisaient nulle part.
-    //
-    // Il vous emmène donc devant la porte verte — à ×4, c'est-à-dire à la
-    // taille qu'il faut avoir pour que le jardin soit à votre mesure —, puis il
-    // passe devant vous et va se poser près de l'encrier. Il ne dit pas
-    // « rapporte-le » : il se met à côté, et ça suffit.
-    [-30, VILLAGE_Y, -24],
-    [514, 0, 0],
-    // Puis sur le socle qui l'attend. C'est la seule station du jeu posée sur un
-    // objectif : là, il montre où ça va.
-    [-16, 1.5, -6],
+    // ── LE JARDIN. Second détour, et il exige d'être déjà géant. ────────────
+    [-30, VILLAGE_Y, -24], // devant la porte verte
+    [514, 0, 0], // au fond du jardin, près de l'encrier
+    [-16, 1.5, -6], // et sur le grand socle
 
-    // 12. Devant la seconde porte, côté sud. Le pinceau s'y pose et derrière lui
-    //    se dresse le grand torii : rien à expliquer.
+    // ── LA SECONDE PORTE, qu'il dessine lui-même, puis le sommet. ───────────
     [0, TERRASSE_Y, 58],
-
-    // 13-15. Le belvédère, d'où l'on voit tout ce qu'on vient de parcourir.
-    //      Ses deux dernières stations sont au NORD du grand torii, mais très à
-    //      l'écart de son axe (x=150 puis x=-192, pour une porte large de 30) :
-    //      aucune route naturelle ne repasse dedans. Et si quelqu'un s'entête à
-    //      remonter par le milieu, il redescend d'un étage — l'escalier le
-    //      ramène. Contrariant, jamais bloquant.
-    ...BELVEDERE.stations,
+    [0, BELVEDERE_Y, 258],
+    [150, 151.7, 312],
+    [-192, 197.4, 330],
   ],
 
   /**
-   * LA TAILLE DU PINCEAU À CHAQUE JALON, dans le même ordre que `guide`.
-   *
-   * C'est celle de l'ÉTAGE, jamais celle du joueur. Quatre jalons au village à
-   * ×1, trois sur la terrasse à ×4, le retour au toit du village à ×4 puisque
-   * c'est à cette taille qu'on y revient, et le belvédère à ×16. Vu d'en haut,
-   * le pinceau du village doit rester minuscule — comme le village.
+   * Sa taille à chaque jalon : celle de l'ÉTAGE, jamais celle du joueur. Elles
+   * ne valent que des puissances de 4, ce qui revient à dire « il a franchi
+   * une porte, puis une autre » — la seule façon de changer de taille ici.
    */
-  //                place───────┐  terrasse──┐ toit  vert──────┐ porte  belvédère
-  guideEchelle: [1, 1, 1, 1, 4, 4, 4, 4, 4, 1, 4, 4, 16, 16, 16],
+  guideEchelle: [
+    1, 1, 1, 1, // village
+    1, 4, 1, // côte rouge : on y va petit, on y est grand, on revient petit
+    4, 4, 4, // terrasse
+    4, // le toit, revu en géant
+    4, 1, 4, // jardin : on y va grand, on y est normal, on revient grand
+    4, // devant la seconde porte
+    16, 16, 16, // belvédère
+  ],
 
   /**
-   * PAR OÙ IL PASSE. C'est ce qui distingue « suis-moi » de « il a disparu ».
+   * Par où il PASSE. C'est ce qui distingue « suis-moi » de « il a disparu ».
    *
-   * Trois jalons sont derrière un portail, et pour ceux-là seulement il entre
-   * dans la porte au lieu de voler par-dessus. Le jardin est à cinq cents
-   * mètres à l'est, dans une poche du monde qu'on n'atteint pas autrement : le
-   * survoler en droite ligne ne montrait rien du tout.
-   *
-   * Partout ailleurs il vole par-dessus, et c'est voulu — c'est de l'écart
-   * entre son vol et vos jambes que naît l'énigme. On ne lui interdit de
-   * traverser l'air que là où l'air ne mène nulle part.
+   * Les jalons derrière un portail sont dans des poches qu'on n'atteint pas
+   * autrement : les survoler en droite ligne ne montrait rien, et le joueur
+   * restait planté sans savoir par où entrer. Partout ailleurs il vole
+   * par-dessus, et c'est voulu — c'est de l'écart entre son vol et vos jambes
+   * que naît l'énigme. On ne lui interdit l'air que là où l'air ne mène nulle
+   * part.
    */
   guidePorte: [
     null, null, null, null,
-    'ascension-1', // il franchit la petite porte du village, et l'on voit où
-    null, null, null, null,
-    'descente-jardin', // la porte verte, à l'aller
-    'descente-jardin', // et au retour, pour revenir poser la couleur
+    null, // devant la porte de l'ouest : il l'atteint à pied
+    'cote-rouge', // il y entre sous vos yeux
+    'cote-rouge', // et il en ressort avec vous
+    'ascension-1', // la petite porte du village, vers la terrasse
+    null, null,
+    null, // il redescend au village par les airs : on voit qu'on n'y peut pas
+    null, // devant la porte verte
+    'descente-jardin', // il y entre
+    'descente-jardin', // et il en revient
     null,
     'ascension-2', // la porte qu'il vient de dessiner lui-même
     null, null,

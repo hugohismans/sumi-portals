@@ -168,6 +168,21 @@ export interface RegionDef {
    * forcément, sinon il n'y aurait rien à y prendre.
    */
   pigment?: string;
+  /**
+   * Portée du brouillard dans cette région, en unités de monde.
+   *
+   * Elle existe pour une raison précise : les mondes de couleur sont des poches
+   * posées à côté du monde central, et un talus ne peut cacher que ce qui est
+   * au sol. Le belvédère est à cent vingt mètres d'altitude et à deux cent
+   * soixante-cinq du jardin — aucune butte n'y peut rien, et l'on voyait donc
+   * flotter un morceau du monde principal au-dessus d'une forêt d'herbe.
+   *
+   * Rapprocher le brouillard le fait disparaître sans rien coûter à la poche
+   * elle-même, à condition de rester au-delà de sa propre profondeur. C'est un
+   * réglage par lieu, pas un réglage global : le monde central garde le sien,
+   * et il en a besoin pour montrer ses trois étages d'un coup.
+   */
+  brouillard?: number;
 }
 
 /**

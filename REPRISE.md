@@ -1,121 +1,110 @@
 # Où j'en suis
 
 Note de passation, à lire en premier si tu reprends ce projet dans une session
-neuve. Le reste du contexte est dans les messages de commit, écrits pour être
-lus par un humain.
+neuve. Le reste du contexte est dans les messages de commit et dans `IDEES.md`,
+tous deux écrits pour être lus par un humain.
 
-## Le jeu
+## Le jeu : *Lavis*
 
-Un jeu de portails qui changent votre taille. Deux portails reliés, de tailles
-différentes : franchir le grand vous fait ressortir quatre fois plus petit par
-le petit, et l'inverse. Vue à la première personne, style encre / manga façon
-Ōkami. Ça tourne dans un navigateur, y compris sur téléphone (60 images/s
-mesurées sur iPhone 14 Pro Max).
+Un lavis est un dessin à l'encre diluée. C'est littéralement l'état du monde au
+début de la partie : **tout est gris, et la quête est d'aller chercher les
+couleurs.**
 
-Ce n'est pas une série de niveaux : **un seul monde continu**. On monte
-d'étage en étage en grandissant, et chaque étage donne à voir le précédent
-d'en haut, minuscule. Village (×1) → terrasse (×4) → belvédère (×16).
+La mécanique est celle des portails qui changent votre taille. Deux portes
+reliées, de dimensions différentes : franchir la grande vous fait ressortir
+quatre fois plus petit par la petite, et l'inverse. Vue à la première personne,
+style encre et manga. Ça tourne dans un navigateur, y compris sur téléphone.
 
-Le fil du jeu est **le Pinceau** : un personnage qui vole de station en
-station. Il passe là où on ne peut pas marcher, et c'est cet écart qui fait
-l'énigme. Ce n'est pas un système d'indices, c'est le jeu.
+Le fil est **le Pinceau** : un personnage qui vole de jalon en jalon. Il passe
+là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 2 août 2026
 
-Jouable de bout en bout, dans les trois modes. `npm run check` passe (86
-vérifications), `npm run build` passe, tout est poussé et en ligne.
+`npm run check` : **137 vérifications, tout passe.** `npm run build` passe.
 
-- **https://hugohismans.github.io/sumi-portals/** — le hall, et ses trois arches
-- `?niveau=monde` — le voyage en solitaire, village → terrasse → belvédère
-- `?niveau=reve&graine=7` — le rêve, onze salles en anneau
+- **https://hugohismans.github.io/sumi-portals/** — le hall, trois arches
+- `?niveau=monde` — le voyage. Ajouter `&neuf=1` pour oublier les couleurs déjà
+  rapportées : sans ça, on recharge, on voit des couleurs dans un monde censé
+  être en lavis, et l'on croit qu'un correctif n'est pas passé.
+- `?niveau=reve&graine=7` — le rêve génératif
+- `?niveau=duo&salon=…&role=…` — l'aventure à deux (jamais essayée à deux vraies
+  machines : c'est le premier essai à mener)
 
-**Le hall a trois sorties**, distinguées par leur forme et non par un texte :
-une ouverture simple pour partir seul, deux ouvertures jumelles pour partir à
-deux, une arche de guingois pour le rêve.
+## Le parcours de l'introduction, et pourquoi il est dans cet ordre
 
-**L'aventure à deux** (`src/levels/duo.ts`) fait commencer l'un géant et
-l'autre minuscule ; chacun descelle la porte de l'autre, et le but est de se
-retrouver à la même taille, chacun sur sa dalle. Le rendez-vous ne demande
-aucun serveur : chacun trie la file d'attente par ancienneté et trouve le même
-partenaire tout seul (`src/core/salons.ts`).
+```
+hall : trois leçons sans un mot
+  le pinceau à trois pas → on le rejoint
+  sur un plot de 2,70    → hors d'atteinte : GRANDIS
+  sous une dalle de 0,75 → ni géant ni normal : RAPETISSE
+  devant trois arches    → on choisit
 
-**Ce qui n'a jamais été essayé à deux vraies machines** : tout le duo. La
-logique est vérifiée sous Node, l'appariement comme les énigmes, mais deux
-joueurs réels dans le même salon, personne ne l'a encore fait. C'est le premier
-essai à mener.
+village (×1), tout est gris
+  tour du propriétaire : puits, marché, étang
+  CÔTE ROUGE   ×1 → ×4 là-bas → retour à ×1, avec la braise (menue)
+  terrasse     ×1 → ×4
+  le toit du village, revu en géant   ← le cœur du jeu
+  JARDIN       ×4 → ×1 là-bas → retour à ×4, avec l'encrier (gros)
+  la seconde porte, que le pinceau dessine tache par tache
+  belvédère    ×4 → ×16
+  l'éperon, la pointe de l'Aiguille, le sacre
+```
 
-## À REGARDER EN PREMIER : le rendu du miroir
+**L'ORDRE N'EST PAS UN GOÛT.** On entre dans la côte rouge par une PETITE face :
+il faut mesurer 1,80. On entre utilement dans le jardin par une GRANDE face, en
+étant DÉJÀ à ×4. Les deux détours ne peuvent donc pas se faire au même moment.
+Le rouge d'abord, avant même d'avoir appris à grandir ; le vert ensuite, parce
+qu'il l'exige.
 
-Les portails miroirs sont écrits, et leur **géométrie est prouvée** par
-`npm run check` : le trièdre s'inverse bien, deux passages rendent la forme
-d'origine. Ça, c'est sûr.
-
-En revanche, **le rendu n'a PAS été vérifié à l'œil**, et il faut le dire :
-le volet d'aperçu qui me sert à regarder le jeu fige l'animation dès qu'il
-n'est pas au premier plan, et ne permet pas de zoomer. Je n'ai pas voulu
-prétendre avoir validé quelque chose que je n'ai pas vu.
-
-Deux choses ont été écrites pour ce cas, et ce sont elles qu'il faut éprouver :
-
-1. `src/render/portalRenderer.ts` inverse le sens de parcours des triangles
-   (`gl.frontFace`) pendant la passe d'un portail miroir. Sans ça, on verrait
-   l'intérieur des murs à travers le miroir.
-2. La caméra virtuelle d'un miroir **n'est pas décomposée** en position et
-   rotation — une réflexion a un déterminant négatif et `decompose` la rend
-   fausse. Sa matrice est posée telle quelle, et le chemin ordinaire est resté
-   intact pour ne rien casser de ce qui marchait.
-
-**Comment l'éprouver en trente secondes** : ajouter `miroir: true` à la paire
-`hall` dans `src/levels/lobby.ts`, ouvrir le jeu, se placer devant le grand
-torii. Si le décor vu à travers paraît normal (les volumes pleins, les murs
-opaques), c'est bon. S'il paraît retourné ou évidé, c'est le point 1 qui
-cloche. S'il part de travers, c'est le point 2.
-
-## La prochaine tâche, déjà prête
-
-**La molécule chirale.** Tout ce qui est dessous d'elle est fait : les portails
-miroirs, le champ `main: 'L' | 'D'` sur les objets et sur les logements, la
-bascule à chaque passage, et le refus du logement quand la main est mauvaise.
-Il ne manque que **la forme**, et elle n'est pas décorative : une énigme de
-chiralité où l'objet paraît symétrique n'est pas une énigme, c'est une
-devinette. Il faut qu'on VOIE de ses yeux que les deux versions diffèrent.
-
-Ce qui bloque : les objets transportables sont aujourd'hui des cubes, et leur
-géométrie est recoupée à la volée pour la moitié qui dépasse d'un portail (voir
-`src/render/carryableViews.ts`). Y glisser une molécule demande de généraliser
-ce découpage, ce qui n'est pas anodin — c'est pour ça que ça n'a pas été fait
-à la va-vite en fin de nuit.
-
-Conseil déjà noté dans IDEES.md, et il tient toujours : quatre ou cinq boules,
-des liaisons franches, une couleur par atome, et l'asymétrie évidente à l'œil.
+Et la taille de ce qu'on rapporte raconte le voyage : petit là-bas donc gros au
+retour, grand là-bas donc menu. Les deux socles, plantés vides sur la place dès
+la première minute, annoncent cet écart avant qu'on ait fait un seul voyage.
 
 ## Les pièges appris à la dure
 
-Ils sont documentés en détail dans `src/levels/regions/contrat.ts` (7 règles) et
-dans les commentaires de `monde.ts`. Les deux qui coûtent le plus cher :
+Ils sont dans `src/levels/regions/contrat.ts` (7 règles) et dans les
+commentaires. Les cinq qui ont coûté le plus cher :
 
-- **Deux faces ne doivent jamais coïncider.** Dans un monde de boîtes, deux
-  surfaces exactement dans le même plan se disputent la profondeur et
-  grésillent. Qu'une pièce morde sur l'autre de 10 cm, ou s'en écarte
-  franchement. C'est le défaut le plus fréquent du projet.
-- **Un portail déjà franchi doit toujours rester DERRIÈRE soi.** Sinon on le
-  retraverse en allant chercher la suite, et l'on rapetisse, renvoyé en
-  arrière. C'est ce qui a imposé l'ordre actuel des stations du pinceau.
+1. **Deux faces ne doivent jamais coïncider.** Vérifié automatiquement
+   (`src/core/coplanaires.ts`, seuil 0,25 m², uniquement les faces EXPOSÉES).
+   A mordu six fois.
+2. **Un portail déjà franchi doit rester DERRIÈRE soi**, sinon on le retraverse
+   en allant chercher la suite.
+3. **Les deux faces d'une paire n'ont pas le même lacet.** Deux fois le même
+   bug : on ressort dos au monde d'arrivée et le premier pas renvoie d'où l'on
+   vient.
+4. **Pas d'accent dans un identifiant GLSL.** `float encrée` a fait disparaître
+   TOUS les portails du jeu, sans qu'aucune vérification puisse le voir — un
+   shader ne se compile que dans un navigateur. D'où `npm run preview`.
+5. **À grande échelle, la portée du bras est énorme.** Un joueur à ×4 repose ce
+   qu'il porte à huit mètres devant lui. Toute surface où l'on doit poser
+   quelque chose doit être plus large que ça, sinon le niveau est infaisable et
+   rien ne le laisse voir.
 
 ## Ce qui reste à faire
 
-- **La molécule chirale** (ci-dessus) — la forme, le reste est fait
-- **La boîte à formes** — un logement qui exige la bonne forme en plus de la
-  bonne taille et de la bonne main. Le champ `main` existe déjà ; il faudrait
-  lui adjoindre `forme`. Ne pas cumuler les trois contraintes d'emblée : une
-  seule par pièce, croisées sur la dernière.
-- **Essayer le duo à deux vraies machines**
-- Portails de gravité — entrer au sol, ressortir au plafond. Demande de lever
-  deux hypothèses du moteur : les portails sont des plans verticaux, et la
-  gravité va toujours vers −Y.
-- Les deux arches du lobby : aventure solo et aventure à deux, avec salle
-  d'attente
-- Le mode rêve / backrooms génératif
-- La grue en papier, à cacher quelque part dans le voyage
+Rien de bloqué : ce sont des chantiers, pas des impasses. Tous décrits en détail
+dans `IDEES.md`.
 
-Les idées et leurs raisons sont dans `IDEES.md`.
+- **La suite de niveaux**, à la *Portal 2* mais sans ascenseur : le pinceau
+  dessine le portail du monde suivant, et l'on ne passe qu'une fois dessiné.
+  La mécanique du tracé existe déjà (`src/render/tracage.ts`) et sert sur la
+  seconde porte du monde.
+- **L'énigme chromatique** : un tableau montre l'état où la pièce devrait être,
+  on clique sur un élément et toute sa famille prend cette couleur. Enseigner
+  par paliers — une couleur, puis deux, puis trois.
+- **Les objets composites** (quelques blocs, chacun sa teinte). Un seul
+  chantier, et il débloque la molécule chirale, la boîte à formes et l'objet
+  chiral coloré.
+- **Les portails de gravité**, pour le monde du plafond — dont le socle
+  retourné est déjà planté sur la place, en promesse.
+- **Essayer le duo à deux vraies machines.**
+
+## Une observation à trancher un jour
+
+Le jardin a été bâti pour un joueur à ×1/4, mais le parcours prévu le fait
+traverser à ×1 — c'est ce qui rend l'encrier soulevable. Entrer trop petit
+donne donc la version SPECTACULAIRE du lieu (une forêt d'herbe) mais un objet
+trop lourd ; entrer bien grandi donne un jardin plus sage et un objet qu'on peut
+prendre. C'est défendable — le spectaculaire est ce qu'on voit quand on se
+trompe — mais ce n'était pas voulu, et ça mérite d'être décidé.

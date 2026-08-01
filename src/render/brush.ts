@@ -188,9 +188,21 @@ export class Brush {
     //    aplat l'aurait masqué, et masquer ce qu'on cherche pour indiquer où il
     //    est serait une drôle d'idée.
     this.haloMat = new THREE.ShaderMaterial({
-      uniforms: { uInk: { value: INK }, uPhase: { value: 0 } },
+      uniforms: { uInk: { value: INK }, uPhase: { value: 0 }, uVol: { value: 0 } },
       transparent: true,
       depthWrite: false,
+      // ON LE VOIT À TRAVERS LE DÉCOR, et c'est une concession assumée.
+      //
+      // Le halo respectait la profondeur : dès que le pinceau passait derrière
+      // une maison — c'est-à-dire la moitié du temps, puisqu'il vole par-dessus
+      // ce qu'on doit contourner — il disparaissait complètement. On le
+      // cherchait au lieu de le suivre, ce qui est exactement l'inverse de son
+      // rôle.
+      //
+      // Le halo seul traverse les murs ; le pinceau, lui, reste caché derrière.
+      // On sait donc toujours OÙ il est, sans jamais voir au travers du décor.
+      // C'est la seule chose du jeu qui s'autorise ça, et elle le mérite.
+      depthTest: false,
       side: THREE.DoubleSide,
       vertexShader: /* glsl */ `
         varying vec2 vUv;
@@ -202,15 +214,24 @@ export class Brush {
       fragmentShader: /* glsl */ `
         uniform vec3 uInk;
         uniform float uPhase;
+        uniform float uVol;
         varying vec2 vUv;
         void main() {
           float r = length(vUv - 0.5) * 2.0;
-          // L'anneau : plein au bord, vide au centre.
-          float anneau = smoothstep(0.62, 0.76, r) * smoothstep(1.0, 0.86, r);
-          // La respiration, et une seconde onde plus lente et plus faible qui
-          // empeche le battement d'etre metronomique.
+          // DEUX anneaux, pas un. Le second, plus large et plus pale, double la
+          // surface qui accroche l'oeil sans epaissir le trait — un anneau
+          // epais ferait tache, deux anneaux fins font cible.
+          float a1 = smoothstep(0.52, 0.66, r) * smoothstep(0.80, 0.70, r);
+          float a2 = smoothstep(0.86, 0.94, r) * smoothstep(1.0, 0.96, r);
+          float anneau = a1 + a2 * 0.55;
+          // La respiration, et une seconde onde plus lente qui empeche le
+          // battement d'etre metronomique.
           float souffle = 0.62 + 0.38 * sin(uPhase) + 0.12 * sin(uPhase * 0.37);
-          gl_FragColor = vec4(uInk, anneau * souffle * 0.42);
+          // EN VOL IL BAT PLUS FORT. C'est le moment ou l'on risque de le
+          // perdre : il part, on regarde ailleurs, il est loin. Le battement
+          // s'accentue pendant la fuite et redevient discret a l'arret.
+          float force = 0.46 + uVol * 0.42;
+          gl_FragColor = vec4(uInk, anneau * souffle * force);
         }
       `,
     });
@@ -367,8 +388,10 @@ export class Brush {
     this.halo.position.copy(this.head.position);
     this.halo.quaternion.copy(camera.quaternion);
     const distance = this.halo.position.distanceTo(camera.position);
-    this.halo.scale.setScalar(Math.max(1.2 * this.echelle, distance * 0.085));
-    this.haloMat.uniforms.uPhase.value += dt * 2.5;
+    // Plancher relevé : de près il ne doit pas disparaître non plus.
+    this.halo.scale.setScalar(Math.max(1.8 * this.echelle, distance * 0.11));
+    this.haloMat.uniforms.uPhase.value += dt * (this.fleeing > 0 ? 5.5 : 2.5);
+    this.haloMat.uniforms.uVol.value = this.fleeing > 0 ? 1 : 0;
 
     const voulue = this.echelles[this.station] ?? 1;
     this.echelle += (voulue - this.echelle) * Math.min(1, dt * 1.6);

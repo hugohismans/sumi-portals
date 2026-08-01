@@ -103,7 +103,9 @@ scene.background = PAPER.clone();
 // changeaient de couleur au moment précis de la traversée. Or l'air ne
 // s'épaissit pas parce qu'on a rapetissé — une même distance, c'est la même
 // quantité d'air. Le décor doit garder exactement la teinte qu'il avait.
-scene.fog = new THREE.Fog(PAPER.clone(), 34, 300);
+/** Portée du brouillard par défaut. Une région peut la rapprocher — voir RegionDef. */
+const BROUILLARD_LOIN = 300;
+scene.fog = new THREE.Fog(PAPER.clone(), 34, BROUILLARD_LOIN);
 
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.02, 460);
 camera.rotation.order = 'YXZ';
@@ -572,6 +574,7 @@ const teinteSansCouleur = new THREE.Color();
 function applyAmbience(p: THREE.Vector3): void {
   let paper = papierParDefaut;
   let couleur = 1;
+  let portee = BROUILLARD_LOIN;
   for (const r of LEVEL.regions ?? []) {
     if (
       p.x >= r.min[0] && p.x <= r.max[0] &&
@@ -585,6 +588,7 @@ function applyAmbience(p: THREE.Vector3): void {
       const mats = worldView.parRegion.get(r.name);
       const u = mats?.[0]?.uniforms.uCouleur;
       if (u) couleur = u.value as number;
+      if (r.brouillard) portee = r.brouillard;
       break;
     }
   }
@@ -595,6 +599,8 @@ function applyAmbience(p: THREE.Vector3): void {
   }
   (scene.background as THREE.Color).copy(paper);
   fogRef.color.copy(paper);
+  // Le plan de fin ouvre le brouillard en grand : on ne le lui reprend pas.
+  if (!sacreLarge) fogRef.far = portee;
 }
 
 // --- Redimensionnement ---------------------------------------------------------
@@ -795,7 +801,7 @@ function frame(now: number): void {
   } else if (!sacre.actif && sacreLarge) {
     sacreLarge = false;
     fogRef.near = 34;
-    fogRef.far = 300;
+    fogRef.far = BROUILLARD_LOIN;
     applyScale(true);
   }
 
