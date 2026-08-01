@@ -8,6 +8,7 @@ import {
 } from 'firebase/database';
 import type { PlayerState } from '../core/types.js';
 import { getNet, signIn } from './connection.js';
+import { Fraicheur } from '../core/fraicheur.js';
 
 /**
  * Présence des joueurs dans le lobby.
@@ -26,8 +27,6 @@ import { getNet, signIn } from './connection.js';
 const PUBLISH_HZ = 10;
 const PUBLISH_PERIOD = 1 / PUBLISH_HZ;
 
-/** Au-delà, on considère le joueur parti même si sa fiche traîne encore. */
-const STALE_MS = 20_000;
 
 export interface RemoteSnapshot {
   uid: string;
@@ -73,6 +72,12 @@ export class Presence {
   private accumulator = 0;
   private lastLevel = Number.NaN;
   private peers = new Map<string, RemoteSnapshot>();
+  /**
+   * Qui est encore là. Ne compare JAMAIS notre montre à celle des autres —
+   * c'est ce qui faisait qu'un joueur en voyait un autre sans être vu de lui.
+   * Voir `src/core/fraicheur.ts`.
+   */
+  private readonly fraicheur = new Fraicheur();
 
   /**
    * File d'attente du duo, publiée dans SA PROPRE fiche.
@@ -102,18 +107,29 @@ export class Presence {
 
     const lobbyRef = ref(db, 'lobby');
     this.unsubscribe = onValue(lobbyRef, (snap) => {
-      const now = Date.now();
-      const next = new Map<string, RemoteSnapshot>();
+      const maintenant = Date.now();
+      const fiches = new Map<string, number>();
+      const brutes = new Map<string, Omit<RemoteSnapshot, 'uid'>>();
       snap.forEach((child) => {
         const uid = child.key!;
         if (uid === this.uid) return; // on ne s'affiche pas soi-même deux fois
         const v = child.val() as Omit<RemoteSnapshot, 'uid'> | null;
         if (!v || typeof v.x !== 'number') return;
-        // Deuxième filet : une fiche qui n'a pas bougé depuis longtemps est
-        // celle d'un joueur dont la déconnexion n'a pas été signalée.
-        if (now - v.t > STALE_MS) return;
-        next.set(uid, { ...v, uid });
+        fiches.set(uid, v.t);
+        brutes.set(uid, v);
       });
+
+      // Deuxième filet : une fiche figée est celle d'un joueur dont la
+      // déconnexion n'a pas été signalée. On juge ça sur NOTRE montre et sur
+      // le seul fait que son horodatage BOUGE, jamais en soustrayant son heure
+      // à la nôtre — deux machines ne sont pas d'accord sur l'heure, et
+      // l'écart rendait la disparition à sens unique.
+      const vivants = this.fraicheur.vivants(fiches, maintenant);
+      const next = new Map<string, RemoteSnapshot>();
+      for (const uid of vivants) {
+        const v = brutes.get(uid);
+        if (v) next.set(uid, { ...v, uid });
+      }
       this.peers = next;
     });
   }
@@ -177,6 +193,7 @@ export class Presence {
 
   /** Départ volontaire. */
   async leave(): Promise<void> {
+    this.fraicheur.effacer();
     this.unsubscribe?.();
     this.unsubscribe = null;
     if (this.selfRef) await remove(this.selfRef).catch(() => undefined);

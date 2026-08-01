@@ -9,6 +9,7 @@
  *   npm run check
  */
 import { TICK_DT, scaleOfLevel } from './constants.js';
+import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { buildFaces, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
@@ -1764,6 +1765,51 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     `${j.eveilles.size} sur ${MONDE.veilleurs?.length ?? 0}`,
   );
 }
+
+{
+  console.log('\n— On ne juge la présence des autres que sur SA PROPRE montre —');
+
+  // LE CAS RÉEL, rapporté en jouant à deux : « lui me voit, moi je ne le vois
+  // pas ». La fraîcheur d'une fiche était jugée en soustrayant l'horodatage de
+  // l'autre à sa propre heure ; deux montres qui ne sont pas d'accord se
+  // rendent donc invisibles L'UNE À L'AUTRE, mais dans un seul sens.
+  //
+  // Ici, Bruno retarde de trente secondes sur Alice. Avant correction, Alice
+  // l'effaçait dès la première image. On rejoue les deux points de vue.
+  const RETARD = 30_000;
+  const alice = new Fraicheur();
+  const bruno = new Fraicheur();
+
+  let vus = alice.vivants(new Map([['bruno', 1_000_000 - RETARD]]), 1_000_000);
+  check('Alice voit Bruno alors que sa montre retarde d’une demi-minute', vus.has('bruno'), [...vus].join(','));
+
+  vus = bruno.vivants(new Map([['alice', 1_000_000]]), 1_000_000 - RETARD);
+  check('et Bruno voit Alice, dont la montre avance d’autant', vus.has('alice'), [...vus].join(','));
+
+  // Il publie dix fois par seconde : tant que sa fiche BOUGE, il est là — et le
+  // décalage ne joue aucun rôle, puisqu'on ne compare que des égalités.
+  let t = 1_000_000;
+  for (let i = 0; i < 400; i++) {
+    t += 100;
+    vus = alice.vivants(new Map([['bruno', t - RETARD]]), t);
+  }
+  check('quarante secondes plus tard, Bruno est toujours là', vus.has('bruno'), `à t+${(t - 1_000_000) / 1000}s`);
+
+  // Et le fantôme disparaît quand même : sa fiche, elle, ne bouge plus.
+  const fige = t - RETARD;
+  vus = alice.vivants(new Map([['bruno', fige]]), t + STALE_MS - 1);
+  check('mais une fiche figée vit encore juste avant l’échéance', vus.has('bruno'), '');
+  vus = alice.vivants(new Map([['bruno', fige]]), t + STALE_MS + 1);
+  check('et le fantôme disparaît une fois l’échéance passée', !vus.has('bruno'), [...vus].join(','));
+
+  // Le ménage : ce qui a quitté le serveur ne doit pas rester suivi à vie.
+  const seul = new Fraicheur();
+  seul.vivants(new Map([['a', 1], ['b', 1]]), 0);
+  seul.vivants(new Map([['a', 2]]), 100);
+  const revenu = seul.vivants(new Map([['a', 3], ['b', 1]]), 200);
+  check('un joueur qui revient est neuf, pas un fantôme d’avant', revenu.has('b'), [...revenu].join(','));
+}
+
 
 // =============================================================================
 console.log('\n— Les trois tableaux du guide sont alignés —');
