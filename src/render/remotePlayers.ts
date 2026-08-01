@@ -3,6 +3,7 @@ import { PLAYER_HEIGHT, scaleOfLevel } from '../core/constants.js';
 import { wrapAngle } from '../core/math.js';
 import type { PlayerState } from '../core/types.js';
 import { colorForUid, type RemoteSnapshot } from '../net/presence.js';
+import { estUnSaut } from '../core/saut.js';
 import { Avatar } from './avatar.js';
 
 /**
@@ -61,6 +62,15 @@ export class RemotePlayers {
           speedInBodies: 0,
         };
         this.tracked.set(uid, t);
+      }
+      // UNE PORTE N'EST PAS UN DÉPLACEMENT : on ne la lisse pas, on la pose.
+      // Sans ça, celui qui regarde voit l'autre GLISSER à travers la pierre sur
+      // cent cinquante mètres en changeant de taille. Voir `src/core/saut.ts`.
+      if (estUnSaut(t.target, snap, snap.lvl, t.shown.scaleLevel)) {
+        t.shown.position.x = snap.x;
+        t.shown.position.y = snap.y;
+        t.shown.position.z = snap.z;
+        t.shown.yaw = snap.yaw;
       }
       t.target.x = snap.x;
       t.target.y = snap.y;

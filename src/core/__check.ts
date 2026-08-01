@@ -10,6 +10,7 @@
  */
 import { TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
+import { estUnSaut } from './saut.js';
 import { buildFaces, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
@@ -1808,6 +1809,51 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   seul.vivants(new Map([['a', 2]]), 100);
   const revenu = seul.vivants(new Map([['a', 3], ['b', 1]]), 200);
   check('un joueur qui revient est neuf, pas un fantôme d’avant', revenu.has('b'), [...revenu].join(','));
+}
+
+{
+  console.log('\n— Une porte franchie par un autre ne se lisse pas —');
+
+  // Rapporté en jouant à deux : celui qui traverse voit un passage fluide,
+  // celui qui regarde voit l'autre glisser à travers la pierre en rapetissant.
+  // Le lissage poursuit la position publiée ; il ne sait pas ce qu'est une
+  // porte. On lui apprend à distinguer marcher de franchir.
+  const ici = { x: 0, y: 0, z: -40 };
+
+  check(
+    'marcher entre deux envois n’est pas un saut',
+    !estUnSaut(ici, { x: 0.4, y: 0, z: -39.2 }, 0, 0),
+    '',
+  );
+  check(
+    'tomber vite n’en est pas un non plus',
+    !estUnSaut(ici, { x: 0, y: -4, z: -40 }, 0, 0),
+    '',
+  );
+  check(
+    'mais franchir les deux faces du village en est un',
+    estUnSaut(ici, { x: 0, y: 30, z: 110 }, 1, 0),
+    '',
+  );
+  check(
+    'et changer d’échelle suffit, même sans bouger',
+    estUnSaut(ici, ici, 1, 0),
+    'on ne change de taille que par une porte',
+  );
+
+  // Le seuil suit l'échelle : un géant couvre seize fois plus de terrain qu'un
+  // minuscule dans le même dixième de seconde. Un seuil fixe aurait pris ses
+  // enjambées pour des téléportations.
+  check(
+    'à ×16, une enjambée de géant reste une enjambée',
+    !estUnSaut(ici, { x: 12, y: 0, z: -40 }, 2, 2),
+    '',
+  );
+  check(
+    'et à ×1/4 la même distance est forcément une porte',
+    estUnSaut(ici, { x: 12, y: 0, z: -40 }, -1, -1),
+    '',
+  );
 }
 
 
