@@ -61,6 +61,8 @@ export interface Carryable {
   rotation: Vec3;
   spin: Vec3;
   size: number;
+  /** Main courante. Elle BASCULE à chaque passage par un portail miroir. */
+  main?: 'L' | 'D';
   ink: number;
   held: boolean;
   grounded: boolean;
@@ -160,6 +162,7 @@ export class Carryables {
         rotation: vec3(0, 0, 0),
         spin: vec3(0, 0, 0),
         size: d.size,
+        main: d.main,
         ink: d.ink ?? 3,
         held: false,
         grounded: false,

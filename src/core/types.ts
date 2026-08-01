@@ -62,6 +62,15 @@ export interface PortalPairDef {
    * nouvelle — donc aucun des ennuis habituels du jeu à plusieurs.
    */
   condition?: string;
+  /**
+   * Cette paire échange la gauche et la droite.
+   *
+   * Ce qui la traverse en ressort en image miroir — et une forme asymétrique ne
+   * peut revenir à sa forme d'origine qu'en la retraversant, jamais en la
+   * tournant. C'est la chiralité, et c'est une idée qu'un jeu transmet mieux
+   * qu'un cours.
+   */
+  miroir?: boolean;
   /** Grande face : la traverser rend PLUS PETIT. */
   big: PortalFaceDef;
   /** Petite face : la traverser rend PLUS GRAND. */
@@ -79,6 +88,15 @@ export interface PortalPairDef {
  */
 export interface CarryableDef {
   id: string;
+  /**
+   * Main de l'objet, s'il est chiral.
+   *
+   * Une forme chirale ne peut pas être superposée à son reflet — comme une main
+   * gauche et une main droite. Aucune rotation ne transforme l'une en l'autre :
+   * il faut un miroir. C'est vrai en géométrie, et c'est vrai dans le vivant,
+   * dont les protéines n'emploient qu'une seule des deux formes possibles.
+   */
+  main?: 'L' | 'D';
   /** Centre du bas de la caisse. */
   position: [number, number, number];
   /** Arête du cube, en unités du monde. */
@@ -95,6 +113,8 @@ export interface CarryableDef {
  */
 export interface SocketDef {
   id: string;
+  /** Main exigée. Le logement refuse l'autre, comme une serrure biologique. */
+  main?: 'L' | 'D';
   /** Centre du bas du logement. */
   position: [number, number, number];
   /** Arête attendue. */

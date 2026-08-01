@@ -4,6 +4,14 @@ import type { PortalPairDef } from '../core/types.js';
 import { INK } from './ink.js';
 
 const FLIP = new THREE.Matrix4().makeRotationY(Math.PI);
+/**
+ * Le retournement d'une porte MIROIR : on n'inverse que la profondeur, la
+ * latérale reste telle quelle — d'où l'échange de la gauche et de la droite.
+ * Son déterminant vaut −1, ce qui a deux conséquences sur tout ce fichier :
+ * le sens de parcours des triangles s'inverse, et la matrice ne peut plus se
+ * décomposer en position/rotation. Les deux sont traitées plus bas.
+ */
+const MIROIR = new THREE.Matrix4().makeScale(1, 1, -1);
 
 /** Surface du portail : la texture rendue, plaquée en projection écran. */
 const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
@@ -287,9 +295,28 @@ export class PortalRenderer {
       // entre, et c'est là tout l'effet.
       this.ambience?.(renderCamera.position);
 
+      // LE PIÈGE DU MIROIR, et il n'a rien d'évident.
+      //
+      // Une porte miroir transporte la caméra par une RÉFLEXION, dont le
+      // déterminant est négatif. Or un déterminant négatif retourne le sens de
+      // parcours des triangles : ce que la carte graphique tenait pour la face
+      // avant devient la face arrière, et inversement. Sans rien faire, tout le
+      // décor vu à travers le miroir serait dessiné à l'envers — on verrait
+      // l'intérieur des murs et le vide à la place des volumes.
+      //
+      // La parade tient en une ligne : on inverse la convention de parcours
+      // pendant cette passe, et on la remet aussitôt après. Three.js ne gère
+      // pas `frontFace` dans son suivi d'état, donc l'appel direct ne risque
+      // pas d'être écrasé.
+      const gl = renderer.getContext();
+      const reflechi = view.face.miroir === true;
+      if (reflechi) gl.frontFace(gl.CW);
+
       renderer.setRenderTarget(level === 'deep' ? view.rtDeep : view.rt);
       renderer.clear();
       renderer.render(scene, renderCamera);
+
+      if (reflechi) gl.frontFace(gl.CCW);
 
       renderer.clippingPlanes = [];
       view.twin.surface.visible = true;
@@ -332,17 +359,41 @@ export class PortalRenderer {
     const s = traversalScale(view.face);
     this.tmpScaleMatrix.makeScale(s, s, s);
 
+    const reflechi = view.face.miroir === true;
+
     this.tmpInverse.copy(view.group.matrixWorld).invert();
     this.tmpMatrix
       .copy(view.twin.group.matrixWorld)
-      .multiply(FLIP)
+      .multiply(reflechi ? MIROIR : FLIP)
       .multiply(this.tmpScaleMatrix)
       .multiply(this.tmpInverse)
       .multiply(source.matrixWorld);
 
-    this.tmpMatrix.decompose(out.position, this.tmpQuat, this.tmpVec);
-    out.quaternion.copy(this.tmpQuat);
-    out.scale.set(1, 1, 1);
+    if (reflechi) {
+      // ON NE DÉCOMPOSE PAS UNE RÉFLEXION.
+      //
+      // `decompose` suppose une matrice de déterminant positif ; devant un
+      // déterminant négatif elle négocie en inversant une échelle, et comme on
+      // remet ensuite l'échelle à 1, la rotation obtenue est fausse — la vue à
+      // travers le miroir partirait de travers, sans qu'on comprenne pourquoi.
+      //
+      // On installe donc la matrice telle quelle et l'on coupe la
+      // recomposition automatique. C'est aussi la raison pour laquelle ce
+      // chemin est séparé : le cas ordinaire, lui, marche depuis longtemps et
+      // n'avait aucune raison d'être touché.
+      out.matrixAutoUpdate = false;
+      out.matrix.copy(this.tmpMatrix);
+      out.matrixWorld.copy(this.tmpMatrix);
+      out.matrixWorldInverse.copy(this.tmpMatrix).invert();
+      // La position reste lisible pour qui la demande — le choix d'ambiance
+      // s'en sert, et il n'a pas à savoir qu'il regarde à travers un miroir.
+      out.position.setFromMatrixPosition(this.tmpMatrix);
+    } else {
+      out.matrixAutoUpdate = true;
+      this.tmpMatrix.decompose(out.position, this.tmpQuat, this.tmpVec);
+      out.quaternion.copy(this.tmpQuat);
+      out.scale.set(1, 1, 1);
+    }
 
     // Le champ de vision doit être identique, sinon la fenêtre « ment ».
     // On dérive de la caméra SOURCE et non de celle du joueur : en chaînant,
@@ -352,7 +403,10 @@ export class PortalRenderer {
     out.near = source.near * s;
     out.far = source.far * s;
     out.updateProjectionMatrix();
-    out.updateMatrixWorld(true);
+    // Une matrice de réflexion posée à la main serait aussitôt recalculée à
+    // partir de la position et du quaternion : on ne rafraîchit donc que le cas
+    // ordinaire.
+    if (!reflechi) out.updateMatrixWorld(true);
   }
 
   /**

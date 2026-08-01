@@ -25,11 +25,25 @@ import {
   traversalLevelDelta,
   traversalScale,
   withinFaceRect,
-  yawDelta,
+
   type PortalFace,
 } from './portals.js';
 import type { InputCommand, LevelDef, PlayerState, TickEvents } from './types.js';
 import { World } from './world.js';
+import type { Carryable } from './carryables.js';
+
+/**
+ * Une porte miroir échange la gauche et la droite de ce qui la traverse.
+ *
+ * D'où la seule règle de l'énigme chirale : on ne rattrape pas une mauvaise
+ * main en tournant l'objet, il faut le repasser au miroir. Deux passages le
+ * rendent à sa forme d'origine — sans quoi le joueur ne pourrait pas défaire
+ * son erreur.
+ */
+const retournerLaMain = (c: Carryable, face: PortalFace): void => {
+  if (!face.miroir || c.main === undefined) return;
+  c.main = c.main === 'L' ? 'D' : 'L';
+};
 
 /**
  * La simulation. Aucun import Three.js dans ce fichier ni dans ses dépendances :
@@ -366,6 +380,9 @@ export class Simulation {
       const newCenter = transformPoint(face, to);
       const newVel = transformVector(face, c.velocity, true);
       c.size *= s;
+      // Lancée à travers un miroir, elle change de main comme si on l'y avait
+      // portée. Rien ne justifierait qu'un objet jeté échappe à la géométrie.
+      retournerLaMain(c, face);
       c.position.x = newCenter.x;
       c.position.y = newCenter.y - c.size * 0.5;
       c.position.z = newCenter.z;
@@ -418,7 +435,15 @@ export class Simulation {
     pl.velocity.x = newVel.x;
     pl.velocity.y = newVel.y;
     pl.velocity.z = newVel.z;
-    pl.yaw = wrapAngle(pl.yaw + yawDelta(face));
+    // LE CAP SE DÉDUIT DU REGARD TRANSPORTÉ, il ne s'additionne pas.
+    //
+    // Pour une porte ordinaire, ajouter `yawDelta` revient au même — mais une
+    // porte miroir est une RÉFLEXION, et une réflexion ne correspond à aucun
+    // angle de rotation : il n'y a rien à additionner. En transportant le
+    // vecteur du regard puis en relisant sa direction, les deux cas se traitent
+    // de la même façon, et c'est le miroir qui dicte la forme la plus générale.
+    const regard = transformVector(face, yawToForward(pl.yaw), false);
+    pl.yaw = Math.atan2(regard.x, regard.z);
     pl.grounded = false;
 
     // La caisse portée subit exactement le même sort que son porteur. C'est
@@ -427,6 +452,7 @@ export class Simulation {
     const held = this.carryables.held;
     if (held) {
       held.size *= traversalScale(face);
+      retournerLaMain(held, face);
       this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale);
     }
   }

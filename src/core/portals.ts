@@ -29,6 +29,8 @@ export interface PortalFace {
    * ne passe pas. Absent : la porte est toujours ouverte.
    */
   condition?: string;
+  /** Cette paire échange la gauche et la droite. Voir `mainDe`. */
+  miroir?: boolean;
 }
 
 const makeFace = (
@@ -70,6 +72,8 @@ export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
     small.twin = big;
     big.condition = pair.condition;
     small.condition = pair.condition;
+    big.miroir = pair.miroir;
+    small.miroir = pair.miroir;
     faces.push(big, small);
   }
   return faces;
@@ -149,7 +153,7 @@ export const withinFaceRect = (face: PortalFace, from: Vec3, to: Vec3, t: number
 export const transformPoint = (face: PortalFace, p: Vec3): Vec3 => {
   const s = traversalScale(face);
   const local = rotateY(sub(p, face.position), -face.yaw);
-  const flipped = vec3(-local.x * s, local.y * s, -local.z * s);
+  const flipped = vec3(mainDe(face) * local.x * s, local.y * s, -local.z * s);
   const world = rotateY(flipped, face.twin.yaw);
   return vec3(
     face.twin.position.x + world.x,
@@ -166,10 +170,36 @@ export const transformPoint = (face: PortalFace, p: Vec3): Vec3 => {
 export const transformVector = (face: PortalFace, v: Vec3, applyScale: boolean): Vec3 => {
   const s = applyScale ? traversalScale(face) : 1;
   const local = rotateY(v, -face.yaw);
-  const flipped = vec3(-local.x * s, local.y * s, -local.z * s);
+  const flipped = vec3(mainDe(face) * local.x * s, local.y * s, -local.z * s);
   return rotateY(flipped, face.twin.yaw);
 };
 
-/** Rotation de lacet subie en traversant `face`. */
+/**
+ * LA CHIRALITÉ, en un seul signe.
+ *
+ * Une porte ordinaire retourne le repère de 180° autour de la verticale : la
+ * composante latérale change de signe en même temps que la profondeur. Une
+ * porte MIROIR ne retourne que la profondeur, et laisse la latérale telle
+ * quelle — ce qui échange la gauche et la droite.
+ *
+ * Mathématiquement, la différence est celle d'un déterminant : +1 pour la
+ * rotation, −1 pour la réflexion. Une transformation de déterminant négatif ne
+ * peut PAS être obtenue en tournant l'objet, quelque nombre de fois qu'on
+ * l'essaie. C'est exactement ce qu'on veut faire éprouver au joueur avec la
+ * molécule : sa main gauche ne deviendra jamais une main droite, il faut la
+ * faire passer par le miroir.
+ *
+ * Conséquence à ne pas oublier côté rendu : un déterminant négatif inverse
+ * aussi le sens de parcours des triangles.
+ */
+export const mainDe = (face: PortalFace): 1 | -1 => (face.miroir ? 1 : -1);
+
+/**
+ * Rotation de lacet subie en traversant `face`.
+ *
+ * Ne vaut que pour une porte ordinaire. Une réflexion n'est pas une rotation :
+ * il n'existe aucun angle qui la décrive, et c'est pourquoi la simulation
+ * déduit le nouveau cap du vecteur transformé plutôt que de l'additionner.
+ */
 export const yawDelta = (face: PortalFace): number =>
   wrapAngle(face.twin.yaw + Math.PI - face.yaw);

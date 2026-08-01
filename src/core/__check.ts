@@ -9,7 +9,7 @@
  *   npm run check
  */
 import { TICK_DT, scaleOfLevel } from './constants.js';
-import { transformPoint } from './portals.js';
+import { buildFaces, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { CaissesPartagees } from '../net/caisses.js';
@@ -931,6 +931,60 @@ console.log('\n— Le rêve : cent graines, aucune impasse —');
     'on marche droit devant, et l’on change de salle et de taille',
     passage.traversed !== undefined && songe.player.scaleLevel !== 0,
     `${passage.traversed?.pairId ?? 'rien'}, échelle ${songe.player.scaleLevel}`,
+  );
+}
+
+// =============================================================================
+console.log('\n— Le miroir : la gauche et la droite —');
+{
+  // La chiralité ne se vérifie pas à l'œil, elle se vérifie au SIGNE DU
+  // DÉTERMINANT. On transporte trois vecteurs formant un trièdre direct et l'on
+  // regarde s'il reste direct. Une rotation le préserve, une réflexion
+  // l'inverse — et aucune suite de rotations ne rattrapera jamais ça.
+  const paire = (miroir: boolean) =>
+    buildFaces([
+      {
+        id: 'essai',
+        colorBig: 0,
+        colorSmall: 0,
+        miroir,
+        big: { position: [0, 0, 0], yaw: 0 },
+        small: { position: [100, 0, 0], yaw: Math.PI / 2 },
+      },
+    ])[0];
+
+  const triProduit = (f: ReturnType<typeof paire>): number => {
+    const ex = transformVector(f, { x: 1, y: 0, z: 0 }, false);
+    const ey = transformVector(f, { x: 0, y: 1, z: 0 }, false);
+    const ez = transformVector(f, { x: 0, y: 0, z: 1 }, false);
+    // Produit mixte : ex · (ey × ez).
+    return (
+      ex.x * (ey.y * ez.z - ey.z * ez.y) -
+      ex.y * (ey.x * ez.z - ey.z * ez.x) +
+      ex.z * (ey.x * ez.y - ey.y * ez.x)
+    );
+  };
+
+  check(
+    'une porte ordinaire garde le trièdre direct',
+    triProduit(paire(false)) > 0.9,
+    `${triProduit(paire(false)).toFixed(3)}`,
+  );
+  check(
+    'une porte miroir l’inverse — c’est ÇA, la chiralité',
+    triProduit(paire(true)) < -0.9,
+    `${triProduit(paire(true)).toFixed(3)}`,
+  );
+
+  // Et la propriété qui fait toute l'énigme : deux passages rendent la forme
+  // d'origine. Sans elle, le joueur ne pourrait pas défaire son erreur.
+  const m = paire(true);
+  const p = { x: 3.5, y: 1.2, z: -7.25 };
+  const retour = transformPoint(m.twin, transformPoint(m, p));
+  check(
+    'deux passages au miroir rendent la forme d’origine',
+    near(retour.x, p.x, 1e-9) && near(retour.y, p.y, 1e-9) && near(retour.z, p.z, 1e-9),
+    `(${retour.x.toFixed(2)}, ${retour.y.toFixed(2)}, ${retour.z.toFixed(2)})`,
   );
 }
 

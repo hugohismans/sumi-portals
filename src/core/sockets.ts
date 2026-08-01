@@ -29,6 +29,8 @@ export interface Socket {
   position: Vec3;
   /** Arête attendue. */
   size: number;
+  /** Main exigée, s'il y en a une. */
+  main?: 'L' | 'D';
   tolerance: number;
   ink: number;
   /** Identifiant de la caisse logée, ou null. */
@@ -51,6 +53,7 @@ export class Sockets {
         id: d.id,
         position: vec3(d.position[0], d.position[1], d.position[2]),
         size: d.size,
+        main: d.main,
         tolerance: d.tolerance ?? DEFAULT_TOLERANCE,
         ink: d.ink ?? 3,
         filledBy: null,
@@ -85,6 +88,11 @@ export class Sockets {
 
   /** La caisse est-elle à la bonne taille pour ce logement ? */
   fits(socket: Socket, c: Carryable): boolean {
+    // La MAIN d'abord : c'est le refus le plus instructif du jeu. On présente
+    // la pièce, elle a la bonne taille, elle a l'air juste — et elle n'entre
+    // pas. Il n'y a qu'une façon de la retourner, et ce n'est pas en la
+    // tournant.
+    if (socket.main !== undefined && c.main !== socket.main) return false;
     return Math.abs(c.size - socket.size) <= socket.size * socket.tolerance;
   }
 
