@@ -323,18 +323,37 @@ const montagnes = (): BoxDef[] => {
   // Deux rangs : les proches, franches et sombres ; les lointaines, hautes et
   // pâles. C'est cet étagement, et lui seul, qui donne la profondeur — une
   // seule rangée aurait fait un mur.
+  // LES RAYONS SONT ÉNORMES, ET ILS DOIVENT L'ÊTRE.
+  //
+  // Elles étaient à 620 et 980 de l'origine, ce qui paraissait très loin — et
+  // c'était faux, parce que les mondes de couleur ne sont PAS à l'origine. Le
+  // jardin s'étend jusqu'à x = 520 : une montagne à 508 se retrouvait à deux
+  // cents mètres de lui, bien dans son brouillard, et l'on se prenait un mur
+  // gris de deux cents mètres de haut en pleine figure au milieu d'une forêt
+  // d'herbe.
+  //
+  // À 1400 et 1900, le point jouable le plus avancé (le fond du jardin) en est
+  // à plus de sept cents — trois fois son brouillard. Elles redeviennent
+  // invisibles partout, et ne réapparaissent qu'au sacre.
+  // ET ELLES SONT ÉTROITES, ce qui compte autant que leur éloignement.
+  //
+  // Première tentative : larges comme hautes. Une montagne de mille mètres
+  // faisait donc mille mètres de large, et son BORD arrivait cinq cents mètres
+  // avant son centre — on se prenait un mur gris en pleine figure au milieu
+  // d'une forêt d'herbe, alors que le calcul sur les centres disait « très
+  // loin ». Ce qu'on voit d'un relief, c'est son bord, jamais son milieu.
   for (const [rayon, hMin, hMax, teinte] of [
-    [620, 90, 210, 2],
-    [980, 200, 420, 1],
+    [1800, 240, 560, 2],
+    [2500, 500, 1000, 1],
   ] as const) {
-    const n = rayon < 800 ? 26 : 20;
+    const n = rayon < 2000 ? 30 : 24;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + r() * 0.16;
       const d = rayon * (0.82 + r() * 0.36);
       const cx = Math.sin(a) * d;
       const cz = Math.cos(a) * d + 60;
       const h = hMin + r() * (hMax - hMin);
-      const w = h * (0.55 + r() * 0.5);
+      const w = h * (0.28 + r() * 0.24);
       // Trois blocs décalés par sommet : une seule boîte ferait un pilier, et
       // l'on veut une CRÊTE. Le décalage suffit à donner une silhouette.
       out.push(box([cx - w, -20, cz - w], [cx + w, h, cz + w], teinte, { ghost: true }));

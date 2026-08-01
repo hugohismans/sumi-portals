@@ -518,15 +518,25 @@ const pommeDePin = (): BoxDef[] => {
 //
 // Ce tas-ci est bâti sur les nombres de ×1, et sur eux seuls :
 //
-//   BOND = 1,05. La montée d'un appui au suivant. AU-DESSUS de l'enjambée de
+//   BOND = 1,00. La montée d'un appui au suivant. AU-DESSUS de l'enjambée de
 //     0,90 : on ne gravit donc jamais ce tas en marchant, il faut sauter, et
 //     c'est ce qui rend la chute possible. SOUS le saut de 1,293 : il reste
-//     0,24 de marge — assez pour que ce ne soit pas un supplice, trop peu pour
+//     0,29 de marge — assez pour que ce ne soit pas un supplice, trop peu pour
 //     qu'on y arrive sans regarder.
-//   PAS = 4,00 d'un appui au suivant, pour des feuilles larges de 2,40 : il y a
-//     donc 1,60 de VIDE entre deux. Un joueur qui s'élance franchit 3,44 en
-//     s'élevant de 1,05 — on n'use que 47 % de sa portée. C'est confortable, et
-//     ça ne pardonne pas l'inattention.
+//   PAS = 2,70 d'un appui au suivant, pour des feuilles larges de 2,00 : il y a
+//     donc 0,70 de VIDE entre deux.
+//
+//     CE 0,70 A ÉTÉ MESURÉ, ET MON CALCUL DISAIT 1,60. Voici l'erreur, parce
+//     qu'elle vaut d'être gardée : la formule du tir balistique donne 3,44 m de
+//     portée en s'élevant de 1,05, et j'ai bâti là-dessus. Mais elle suppose un
+//     joueur DÉJÀ LANCÉ. Sur une plateforme de deux mètres, on décolle presque
+//     à l'arrêt, et la portée réelle tombe à 2,56 — dont il faut encore ôter le
+//     rayon du joueur pour qu'il soit porté à l'arrivée. Un banc d'essai à deux
+//     dalles a donné la seule règle qui vaille : depuis le MILIEU d'un appui,
+//     le bord du suivant doit être à moins de 1,80. Ici : 1,00 + 0,70 = 1,70.
+//     Le premier tas, calibré à la formule, était infranchissable dès le
+//     deuxième appui.
+//
 //   Les feuilles saillent de 2,20 : le joueur, épais de 0,68, y tient avec de la
 //     place devant et derrière.
 //   Chaque assise est en retrait de 4,00 sur celle du dessous. Ce retrait n'est
@@ -558,17 +568,19 @@ const pommeDePin = (): BoxDef[] => {
 /** L'axe du tas. Emplacement choisi par balayage de gabarit, jamais à l'œil. */
 const TAS_X = 510;
 /** Largeur de chaque assise. Elle décroît : sans quoi deux flancs seraient coplanaires. */
-const TAS_W = [13.0, 12.5, 12.0, 11.5, 11.0];
+const TAS_W = [10.5, 10.0, 9.5, 9.0, 8.5];
 /** Face sud de chaque assise — celle qu'on grimpe. Le retrait de 4,00 est la vire. */
 const TAS_ZF = [-18.0, -22.0, -26.0, -30.0, -34.0];
 /** Dos de chaque assise. Décalé de 25 cm par assise, pour la même raison de plans. */
 const TAS_ZB = [-39.0, -38.75, -38.5, -38.25, -38.0];
 /** Sommet de chaque assise, c'est-à-dire hauteur de chaque vire. */
-const TAS_Y = [0, 1, 2, 3, 4].map((k) => SOL_E + (k + 1) * 4.2);
+const TAS_Y = [0, 1, 2, 3, 4].map((k) => SOL_E + (k + 1) * 4.0);
 /** La montée d'un appui : entre l'enjambée (0,90) et le saut (1,293). */
-const TAS_BOND = 1.05;
-/** Le pas de côté d'un appui au suivant. */
-const TAS_PAS = 4.0;
+const TAS_BOND = 1.0;
+/** Le pas de côté d'un appui au suivant, pour des feuilles larges de 2,00. */
+const TAS_PAS = 2.7;
+/** Demi-largeur d'une feuille-appui. */
+const TAS_DEMI = 1.0;
 
 /** Le sommet du tas, et donc l'endroit exact où dort le pinceau vert. */
 export const SOMMET_DU_TAS: [number, number, number] = [TAS_X, TAS_Y[4], -36.0];

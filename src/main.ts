@@ -823,9 +823,9 @@ function frame(now: number): void {
   // manger le sujet.
   if (sacre.actif && !sacreLarge) {
     sacreLarge = true;
-    fogRef.near = 260;
-    fogRef.far = 1500;
-    camera.far = 1800;
+    fogRef.near = 400;
+    fogRef.far = 3400;
+    camera.far = 3800;
     camera.updateProjectionMatrix();
   } else if (!sacre.actif && sacreLarge) {
     sacreLarge = false;
