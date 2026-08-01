@@ -184,6 +184,35 @@ const peintres = new Map<string, PinceauPeintre>();
 let AUX_SOCLES_TOTAL = 0;
 /** Celui qui est en train de peindre. Le front d'encre le suit. */
 let peintreEnCours: PinceauPeintre | null = null;
+
+/**
+ * LES FAMILLES QU'ON EST EN TRAIN DE PEINDRE, une par une.
+ *
+ * Sept objets qui basculeraient au même instant se liraient comme un
+ * interrupteur. Sept objets peints l'un après l'autre par quelqu'un qui
+ * traverse la pièce disent ce qu'est une famille sans qu'un mot ait été
+ * prononcé — et le délai empêche de marteler la touche, donc de résoudre par
+ * tâtonnement au lieu de raisonner.
+ */
+const DUREE_TOUCHE = 0.22;
+interface CoupDePinceau {
+  materiaux: THREE.ShaderMaterial[];
+  teinte: THREE.Color;
+  reste: number;
+}
+const coupsEnCours: CoupDePinceau[] = [];
+
+/** Pose la teinte d'une famille, après le petit délai qui la fait voir. */
+const peindreFamille = (famille: string, pigment: string): void => {
+  const mats = worldView.parFamille.get(famille);
+  const teinte = TEINTE_DU_PIGMENT[pigment];
+  if (!mats || !teinte) return;
+  coupsEnCours.push({
+    materiaux: mats,
+    teinte: new THREE.Color(teinte),
+    reste: DUREE_TOUCHE,
+  });
+};
 /** Quel veilleur correspond à quel pinceau. */
 /**
  * Vers où lever les yeux quand une couleur revient. Voir l'usage, plus bas :
@@ -214,6 +243,19 @@ const PINCEAU_DE_VEILLEUR = new Map<string, string>([
  * plus beau que d'être dedans quand ça arrive.
  */
 const REGION_MAISON = '';
+
+/**
+ * LA TEINTE DE CHAQUE PIGMENT, quand une fée la pose sur une famille.
+ *
+ * Ce sont les mêmes couleurs que les corps des pinceaux : ce qu'on voit voler
+ * et ce qui se dépose sont la même encre, sinon le geste ne se lirait pas.
+ */
+const TEINTE_DU_PIGMENT: Record<string, string> = {
+  rouge: '#c8492e',
+  vert: '#4c7a3f',
+  bleu: '#2f6a8c',
+  or: '#c99a3c',
+};
 if (MODE === 'monde') {
   // Chaque pinceau : son socle de repos, sa couleur, ET l'endroit de son monde
   // où il dort, planté, en attendant qu'on vienne le prendre. La taille dont il
@@ -1004,6 +1046,19 @@ function frame(now: number): void {
         portals.tracer(paire.id, 0);
       }
     }
+    if (events.peinte) {
+      peindreFamille(events.peinte.famille, events.peinte.pigment);
+      ambiance.tache(0);
+    }
+    // Le refus est une leçon, pas une panne : même seuil que le « trop lourd »,
+    // et il enseigne en une seconde que la palette dépend de la taille qu'on a.
+    if (events.peintureRefusee) {
+      flash('C’est trop grand pour toi. Il faudrait grandir pour le peindre.', 4);
+    }
+    if (events.tableauSatisfait) {
+      ambiance.progression(1, 2);
+      flash('La pièce ressemble au tableau.', 5);
+    }
     if (events.reachedGoal) {
       // LE SACRE, et c'est ici qu'il appartient : en haut, après l'ascension.
       // L'encre remonte à la pointe de l'Aiguille, qui est la plume de ce monde,
@@ -1102,6 +1157,16 @@ function frame(now: number): void {
   carryableViews.syncInk();
   socketViews.update(sim.sockets.items, dt, inkUniforms.uTime.value);
   socketViews.syncInk();
+  // LA COULEUR QU'ON SAIT DIRE, à cette image : celle de la fée qui nous
+  // accompagne. Une fée ne porte que sa couleur — ce n'est pas « tu as la clé
+  // rouge », c'est « tu as le rouge, donc le rouge est ce que tu sais dire ».
+  sim.couleurEnMain = null;
+  for (const [socle, p] of peintres) {
+    if (!p.suitLeJoueur) continue;
+    sim.couleurEnMain = socle.replace('socle-', '');
+    break;
+  }
+
   brush.update(sim.player, scale, dt, camera);
 
   // ─── LES PORTES QUI SE DESSINENT SUR UNE FEUILLE ───────────────────────
@@ -1114,7 +1179,7 @@ function frame(now: number): void {
     for (const paire of LEVEL.portals) {
       if (!paire.dessinee || !paire.condition) continue;
       if (!sim.portesFermees.has(paire.id)) continue;
-      if (!sim.sockets.pourvus.has(paire.condition)) continue;
+      if (!sim.conditionsRemplies.has(paire.condition)) continue;
       tracage.commencer(paire.id);
       flash('Le pinceau se met à écrire. Regarde la porte.', 4);
       break;
@@ -1150,6 +1215,19 @@ function frame(now: number): void {
   if (trace !== null) portals.tracer(tracage.pairEnCours ?? PORTE_A_DESSINER, trace);
   feuilles.update(dt, camera, scale);
   pigments.update(dt, peintreEnCours?.group.position);
+
+  // Les coups de pinceau en attente : chacun se pose à son tour, et la famille
+  // se colore sous les yeux du joueur au lieu de basculer d'un bloc.
+  for (let i = coupsEnCours.length - 1; i >= 0; i--) {
+    const c = coupsEnCours[i];
+    c.reste -= dt;
+    if (c.reste > 0) continue;
+    for (const m of c.materiaux) {
+      if (m.uniforms.uSolid) m.uniforms.uSolid.value.copy(c.teinte);
+      if (m.uniforms.uUseSolid) m.uniforms.uUseSolid.value = 1;
+    }
+    coupsEnCours.splice(i, 1);
+  }
   if (sceau.enCours) sceau.update(dt);
   // Les pinceaux de couleur : ils tournent autour du joueur tant qu'ils
   // l'accompagnent, puis s'en détachent pour peindre.

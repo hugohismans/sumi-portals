@@ -13,6 +13,7 @@ import {
 } from './constants.js';
 import { Carryables } from './carryables.js';
 import { Sockets } from './sockets.js';
+import { Familles } from './familles.js';
 import { clamp, rotateY, vec3, wrapAngle, yawToForward, type Vec3 } from './math.js';
 import { moveAndCollide } from './physics.js';
 import {
@@ -73,6 +74,21 @@ export class Simulation {
   readonly portesFermees = new Set<string>();
   /** Pinceaux déjà réveillés : on ne les réveille pas deux fois. */
   readonly eveilles = new Set<string>();
+  /**
+   * Les familles de couleur et les tableaux qui les jugent. Voir
+   * `src/core/familles.ts` — la loi tient en dix mots : on ne peint que ce
+   * qu'on pourrait tenir.
+   */
+  readonly familles: Familles;
+  /**
+   * La couleur que le joueur SAIT DIRE en ce moment : celle de la fée qui
+   * l'accompagne. Posée de l'extérieur, parce que les pigments rapportés
+   * vivent du côté du rendu — ici on ne connaît que la règle, pas l'inventaire.
+   *
+   * Une fée ne porte que sa couleur. Ce n'est pas « tu as la clé rouge »,
+   * c'est « tu as le rouge, donc le rouge est ce que tu sais dire ».
+   */
+  couleurEnMain: string | null = null;
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
@@ -83,6 +99,7 @@ export class Simulation {
     this.faces = buildFaces(level.portals);
     this.carryables = new Carryables(level.carryables);
     this.sockets = new Sockets(level.sockets);
+    this.familles = new Familles(level.boxes, level.tableaux);
     this.player = this.spawnState();
   }
 
@@ -102,6 +119,7 @@ export class Simulation {
     this.player = this.spawnState();
     this.carryables.reset();
     this.sockets.reset();
+    this.familles.reset();
     this.goalReached = false;
     this.seuilFranchi = false;
     // UNE PORTE QUI DOIT ÊTRE DESSINÉE NAÎT FERMÉE. C'était écrit à la main dans
@@ -112,6 +130,17 @@ export class Simulation {
     for (const p of this.world.level.portals ?? []) {
       if (p.dessinee) this.portesFermees.add(p.id);
     }
+  }
+
+  /**
+   * Ce qui descelle une porte : les logements pourvus ET les tableaux
+   * satisfaits. Le joueur n'a pas à connaître la différence — dans les deux
+   * cas il a fait quelque chose, et dans les deux cas la porte s'ouvre.
+   */
+  get conditionsRemplies(): ReadonlySet<string> {
+    const out = new Set(this.sockets.pourvus);
+    for (const id of this.familles.satisfaits) out.add(id);
+    return out;
   }
 
   get scale(): number {
@@ -217,7 +246,7 @@ export class Simulation {
       // joueur n'a pas à connaître la différence : dans les deux cas, il ne
       // passe pas, et dans les deux cas la raison est visible dans le monde.
       const reason: 'tooBig' | 'scaleLimit' | 'scelle' | null =
-        this.portesFermees.has(face.pairId) || estScelle(face, this.sockets.pourvus)
+        this.portesFermees.has(face.pairId) || estScelle(face, this.conditionsRemplies)
           ? 'scelle'
           : !canPass(face, scale)
             ? 'tooBig'
@@ -371,7 +400,28 @@ export class Simulation {
     }
 
     const target = this.carryables.targeted(this.player.position, this.player.yaw, scale);
-    if (!target) return;
+    if (!target) {
+      // ─── RIEN À PRENDRE : ALORS PEUT-ÊTRE À PEINDRE ───────────────────
+      //
+      // La même touche que réveiller, prendre et poser. C'est délibéré : une
+      // commande de plus pour peindre serait une commande de plus à apprendre,
+      // et désigner un objet à travers la pièce serait une visée — donc
+      // quelque chose de pénible au doigt sur un téléphone.
+      const famille = this.familles.visee(this.player.position, this.player.yaw, scale);
+      if (!famille || this.couleurEnMain === null) return;
+      if (!this.familles.peignable(famille, scale)) {
+        // Le refus est une leçon, pas une panne : c'est le seuil du « trop
+        // lourd », déjà connu, et il enseigne en une seconde que la palette
+        // dépend de la taille qu'on a.
+        events.peintureRefusee = { famille };
+        return;
+      }
+      this.familles.peindre(famille, this.couleurEnMain);
+      events.peinte = { famille, pigment: this.couleurEnMain };
+      const neufs = this.familles.verifier();
+      if (neufs.length > 0) events.tableauSatisfait = { id: neufs[0] };
+      return;
+    }
 
     if (!this.carryables.canLift(target, scale)) {
       events.tooHeavy = { id: target.id };

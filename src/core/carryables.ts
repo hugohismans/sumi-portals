@@ -20,10 +20,10 @@ import type { Aabb, World } from './world.js';
  */
 
 /** Part de sa propre hauteur qu'on arrive à soulever. */
-const LIFT_RATIO = 0.55;
+export const LIFT_RATIO = 0.55;
 
 /** Portée de saisie, en hauteurs de joueur. */
-const REACH = 1.6;
+export const REACH = 1.6;
 
 /** Vitesse de lancer, en hauteurs de joueur par seconde. */
 const THROW_SPEED = 7;
@@ -97,7 +97,7 @@ export const aabbOfCarryable = (c: Carryable, out: Aabb): Aabb => {
 };
 
 /** Direction du regard, inclinaison comprise. */
-const lookDirection = (yaw: number, pitch: number): Vec3 => {
+export const lookDirection = (yaw: number, pitch: number): Vec3 => {
   const cp = Math.cos(pitch);
   return vec3(Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp);
 };

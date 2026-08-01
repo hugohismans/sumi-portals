@@ -10,6 +10,20 @@ export interface BoxDef {
   ink?: number;
   /** Purement décoratif : pas de collision. */
   ghost?: boolean;
+  /**
+   * FAMILLE DE COULEUR à laquelle cette boîte appartient.
+   *
+   * Les sept pots d'un séchoir, les douze tuiles d'un toit. On ne peint jamais
+   * un objet : on peint une FAMILLE, et tous ses membres basculent l'un après
+   * l'autre sous les yeux du joueur. Sept objets qui changeraient au même
+   * instant se liraient comme un interrupteur ; sept objets peints un par un
+   * par quelqu'un qui traverse la pièce disent ce qu'est une famille sans
+   * qu'un mot ait été prononcé.
+   *
+   * Une famille reçoit ses propres matériaux au rendu, exactement comme une
+   * région reçoit les siens — c'est la même idée appliquée plus finement.
+   */
+  famille?: string;
   /** Région dont cette boîte emprunte les couleurs. Voir RegionDef. */
   region?: string;
   /**
@@ -127,6 +141,52 @@ export interface CarryableDef {
  * traverser un portail. Le réceptacle fait donc du changement d'échelle un
  * objectif, et non plus seulement un moyen d'atteindre une plateforme.
  */
+/**
+ * UN TABLEAU AU MUR — la couleur qui devient une énigme.
+ *
+ * Il montre la pièce telle qu'elle devrait être. On s'approche d'un objet, on
+ * appuie sur la touche d'action, et toute sa famille prend la couleur qu'on
+ * porte. Quand la pièce ressemble au tableau, la porte suivante peut se
+ * dessiner.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA LOI QUI REND CETTE ÉNIGME POSSIBLE DANS CE JEU-CI
+ *
+ *     On ne peint que ce qu'on pourrait tenir.
+ *
+ * Même seuil que pour soulever une caisse, même refus, même sensation que le
+ * « trop lourd » déjà connu. Elle fait trois choses d'un coup :
+ *
+ * — elle MARIE LA COULEUR À L'ÉCHELLE. Un pot est peignable à ×1, un toit à ×4,
+ *   une falaise à ×16. La palette accessible est partitionnée par la taille, et
+ *   un tableau qui demande trois familles est une liste de trois tailles à
+ *   devenir. La couleur cesse d'être une couche posée sur le jeu ;
+ *
+ * — elle PROLONGE LA LOI DES VEILLEURS. Un pinceau ne s'éveille que pour un
+ *   joueur de la taille de son monde ; c'est la même phrase, appliquée au geste
+ *   au lieu de la rencontre. Une seule idée gouverne tout ;
+ *
+ * — elle SUPPRIME LA VISÉE. Désigner un objet à travers la pièce serait un
+ *   curseur, donc quelque chose de pénible au doigt sur un téléphone. On
+ *   s'approche et l'on appuie : le même geste que réveiller, prendre, poser.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ET L'ON REPEINT AUTANT QU'ON VEUT. C'est la seule chose du jeu qui se défait,
+ * délibérément à l'inverse d'un logement : un logement est un progrès, donc il
+ * verrouille ; une couleur est une décision, donc elle se reprend.
+ */
+export interface TableauDef {
+  id: string;
+  /** Centre du cadre. */
+  position: [number, number, number];
+  /** Orientation du mur qui le porte. */
+  yaw: number;
+  largeur: number;
+  hauteur: number;
+  /** Ce que le tableau montre : à chaque famille, le pigment attendu. */
+  attendu: Record<string, string>;
+}
+
 export interface SocketDef {
   id: string;
   /** Main exigée. Le logement refuse l'autre, comme une serrure biologique. */
@@ -296,6 +356,8 @@ export interface LevelDef {
   regions?: RegionDef[];
   carryables?: CarryableDef[];
   sockets?: SocketDef[];
+  /** Les cadres accrochés aux murs des ateliers. Voir TableauDef. */
+  tableaux?: TableauDef[];
   portals: PortalPairDef[];
   goal: { position: [number, number, number]; radius: number };
   /** Les sorties du hall. Absent partout ailleurs. */
@@ -410,6 +472,16 @@ export interface TickEvents {
   socketFilled?: { socketId: string; carryableId: string };
   /** Un chevalet vient de rendre sa feuille. Voir SocketDef.rend. */
   socketVide?: { socketId: string };
+  /** Une famille vient de recevoir une couleur. */
+  peinte?: { famille: string; pigment: string };
+  /**
+   * On a voulu peindre plus grand que soi. Ce refus est une leçon, pas une
+   * panne : c'est le même seuil que « trop lourd », et il enseigne en une
+   * seconde que la palette dépend de la taille qu'on a.
+   */
+  peintureRefusee?: { famille: string };
+  /** Un tableau vient d'être satisfait : la pièce lui ressemble. */
+  tableauSatisfait?: { id: string };
   /** Tous les logements sont pourvus. */
   allSocketsFilled?: boolean;
 }

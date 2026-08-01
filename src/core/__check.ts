@@ -11,6 +11,7 @@
 import { TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
+import { Familles } from './familles.js';
 import { buildFaces, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
@@ -1862,6 +1863,74 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     estUnSaut(ici, { x: 12, y: 0, z: -40 }, -1, -1),
     '',
   );
+}
+
+
+{
+  console.log('\n— On ne peint que ce qu’on pourrait tenir —');
+
+  // La couleur devient une mécanique par UNE loi, et c'est celle-ci. Le seuil
+  // est exactement celui de la caisse : le joueur a passé une heure à apprendre
+  // que ce qui dépasse un peu la moitié de sa hauteur ne se soulève pas, et il
+  // apprend en une seconde que ça ne se peint pas non plus.
+  const boites = [
+    // Sept pots de 0,90 : peignables à 1,80, pas à 45 cm.
+    ...Array.from({ length: 7 }, (_, i) => ({
+      min: [i * 2, 0, 0] as [number, number, number],
+      max: [i * 2 + 0.9, 0.9, 0.9] as [number, number, number],
+      famille: 'pots',
+    })),
+    // Une claie de 3,60 : hors de portée à 1,80, peignable à ×4.
+    { min: [-1, 0, -1] as [number, number, number], max: [2.6, 3.6, -0.6] as [number, number, number], famille: 'mur' },
+  ];
+  const tableau = {
+    id: 'atelier',
+    position: [0, 2, -1] as [number, number, number],
+    yaw: 0,
+    largeur: 1.2,
+    hauteur: 0.9,
+    attendu: { pots: 'rouge' },
+  };
+
+  const f = new Familles(boites, [tableau]);
+
+  check('une famille regroupe tous ses membres', f.noms.length === 2, f.noms.join(', '));
+  check('et sa taille est celle du PLUS GRAND', Math.abs(f.taille('mur') - 3.6) < 0.001, `${f.taille('mur')}`);
+
+  check('à 1,80 on peint des pots de 0,90', f.peignable('pots', 1), '');
+  check('et l’on ne peint pas une claie de 3,60', !f.peignable('mur', 1), '');
+  check('à 45 cm, même les pots sont hors de portée', !f.peignable('pots', 0.25), '');
+  check('et à ×4 la claie devient peignable', f.peignable('mur', 4), 'la palette est partitionnée par la taille');
+
+  // LE SEUIL EXACT, écrit une fois pour qu'on cesse de le deviner : un peu plus
+  // de la moitié de sa propre hauteur. C'est ce nombre qui décide, pour chaque
+  // salle, quelle taille il faut être pour y peindre quoi.
+  //   ×1/4 → 0,2475   ×1 → 0,99   ×4 → 3,96   ×16 → 15,84
+  const grand = new Familles(
+    [{ min: [0, 0, 0], max: [3.97, 1, 1], famille: 'juste-trop' }],
+    [],
+  );
+  check(
+    'et le seuil est exactement 0,55 fois sa hauteur',
+    !grand.peignable('juste-trop', 4) && new Familles([{ min: [0, 0, 0], max: [3.95, 1, 1], famille: 'x' }], []).peignable('x', 4),
+    '3,96 m à ×4 : 3,95 passe, 3,97 non',
+  );
+
+  // LE TABLEAU. Tant que la pièce ne lui ressemble pas, il ne dit rien.
+  check('un tableau non satisfait ne descelle rien', f.verifier().length === 0, '');
+  f.peindre('pots', 'vert');
+  check('la mauvaise couleur ne suffit pas', f.verifier().length === 0, 'pots en vert, attendu rouge');
+  f.peindre('pots', 'rouge');
+  const neufs = f.verifier();
+  check('la bonne couleur satisfait le tableau', neufs.includes('atelier'), neufs.join(','));
+  check('et il ne se satisfait qu’une fois', f.verifier().length === 0, '');
+
+  // ON REPEINT AUTANT QU'ON VEUT, mais une porte ouverte reste ouverte. Une
+  // couleur est une décision, donc elle se reprend ; un passage gagné par la
+  // réflexion ne doit pas se refermer parce qu'on a continué à jouer après.
+  f.peindre('pots', 'vert');
+  check('repeindre par-dessus est permis', f.teintes.get('pots') === 'vert', '');
+  check('mais le tableau reste satisfait', f.satisfaits.has('atelier'), 'un progrès ne se défait pas par accident');
 }
 
 
