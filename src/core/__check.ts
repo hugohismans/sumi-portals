@@ -14,6 +14,7 @@ import { Simulation } from './simulation.js';
 import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
+import { MONDE } from '../levels/monde.js';
 
 // Ce fichier est le seul du projet à tourner sous Node ; on déclare le strict
 // minimum plutôt que de tirer @types/node dans une base de code navigateur.
@@ -454,6 +455,65 @@ console.log('\n— « La caisse » : pas de raccourci —');
   check(
     'à ×1/4, la caisse est trop grosse pour être soulevée',
     !petit.carryables.canLift(petit.carryables.items[0], scaleOfLevel(-1)),
+  );
+}
+
+// =============================================================================
+console.log('\n— Le monde : la spirale monte, et chaque étage voit le précédent —');
+{
+  const sim = new Simulation(MONDE);
+
+  // Étage 1 → 2. La petite porte du village dépose sur la terrasse.
+  walkTo(sim, [0, 0, -34], 60 * 8);
+  const t1 = walkTo(sim, [0, 0, -48], 60 * 8, { stopOnEvent: true });
+  check('la porte du village fait grandir', t1.traversed?.newLevel === 1, pos(sim));
+  check('on ressort sur la terrasse, 30 m plus haut', near(sim.player.position.y, 30, 1.5), pos(sim));
+
+  // C'est LE moment du voyage : de là, le village est en contrebas.
+  check(
+    'et le village est bien en dessous',
+    sim.player.position.y - 0 >= 25,
+    `${sim.player.position.y}`,
+  );
+
+  // Étage 2 → 3. Une paire quatre fois plus grande prend le relais.
+  const t2 = walkTo(sim, [0, 30, 26], 60 * 14, { stopOnEvent: true });
+  check('la seconde porte fait grandir encore', t2.traversed?.newLevel === 2, pos(sim));
+  check('on ressort sur le belvédère', near(sim.player.position.y, 120, 3), pos(sim));
+  check(
+    'la terrasse ET le village sont en dessous',
+    sim.player.position.y - 30 >= 80,
+    `${sim.player.position.y}`,
+  );
+}
+
+// =============================================================================
+console.log('\n— Le monde : on ne reste jamais piégé —');
+{
+  // Un joueur qui saute de la terrasse revient à ×4 dans le village, où la
+  // petite porte est désormais trop étroite pour lui. Sans l'escalier calibré,
+  // il serait bloqué là pour de bon.
+  const sim = new Simulation(MONDE);
+  sim.player.scaleLevel = 1;
+  sim.player.position = { x: 65, y: 0.3, z: -26 };
+  walkTo(sim, [65, 30, 20], 60 * 30);
+  settle(sim, 60);
+  check(
+    'à ×4, l’escalier ramène du village à la terrasse',
+    sim.player.position.y > 26,
+    pos(sim),
+  );
+
+  // Et le même escalier doit rester un mur à taille normale, sinon le portail
+  // ne servirait à rien.
+  const petit = new Simulation(MONDE);
+  petit.player.position = { x: 65, y: 0.3, z: -26 };
+  walkTo(petit, [65, 30, 20], 60 * 30, { jump: true, sprint: true });
+  settle(petit, 60);
+  check(
+    'à ×1, ce même escalier reste infranchissable',
+    petit.player.position.y < 6,
+    pos(petit),
   );
 }
 

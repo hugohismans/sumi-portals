@@ -31,10 +31,12 @@ export const GROUND_FRICTION = 13;
 export const SCALE_RATIO = 4;
 export const SCALE_MIN_LEVEL = -2;
 /**
- * Butée haute. Elle n'est en pratique jamais atteinte : la taille fixe des
- * portails (voir plus bas) empêche déjà de dépasser ×4. C'est un garde-fou.
+ * Butée haute. Ce n'est qu'un garde-fou : c'est la taille des portails qui
+ * borne réellement la montée, paire par paire. Un monde en spirale enchaîne
+ * plusieurs paires, chacune taillée pour l'étage qu'elle dessert, d'où une
+ * butée plus haute qu'une seule paire ne permettrait d'atteindre.
  */
-export const SCALE_MAX_LEVEL = 1;
+export const SCALE_MAX_LEVEL = 2;
 
 export const scaleOfLevel = (level: number): number => Math.pow(SCALE_RATIO, level);
 
@@ -47,6 +49,8 @@ export const scaleOfLevel = (level: number): number => Math.pow(SCALE_RATIO, lev
 // décor et ne voulait plus rien dire. Avec des tailles fixes, la règle devient
 // physique et se lit d'un coup d'œil — à ×4 on ne rentre tout simplement plus
 // dans la petite porte, et c'est ça qui borne la montée en taille.
+// Taille PAR DÉFAUT de la petite face. Chaque paire peut fixer la sienne :
+// c'est ce qui permet d'enchaîner les étages (voir PortalPairDef.smallHeight).
 export const PORTAL_SMALL_H = 2.8;
 export const PORTAL_SMALL_W = 1.9;
 export const PORTAL_BIG_H = PORTAL_SMALL_H * SCALE_RATIO;

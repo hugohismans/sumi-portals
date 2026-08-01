@@ -5,6 +5,7 @@ import { InputManager } from './input/input.js';
 import { LEVEL_01 } from './levels/level01.js';
 import { LEVEL_02 } from './levels/level02.js';
 import { LOBBY } from './levels/lobby.js';
+import { MONDE } from './levels/monde.js';
 import { Presence } from './net/presence.js';
 import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
@@ -21,11 +22,19 @@ import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
 // une seconde de chargement entre le hall et une énigme est indolore, et ça
 // évite tout un mécanisme de démontage qui n'apporterait rien pour l'instant.
 const MODE = new URLSearchParams(location.search).get('niveau');
-const NIVEAUX: Record<string, typeof LEVEL_01> = { cour: LEVEL_01, caisse: LEVEL_02 };
+const NIVEAUX: Record<string, typeof LEVEL_01> = {
+  monde: MONDE,
+  cour: LEVEL_01,
+  caisse: LEVEL_02,
+};
 const EN_AVENTURE = MODE !== null && MODE in NIVEAUX;
 const LEVEL = EN_AVENTURE ? NIVEAUX[MODE!] : LOBBY;
 /** Enchaînement des énigmes. Le hall suit la fin de la dernière. */
-const NIVEAU_SUIVANT: Record<string, string> = { cour: '?niveau=caisse', caisse: './' };
+const NIVEAU_SUIVANT: Record<string, string> = {
+  monde: './',
+  cour: '?niveau=caisse',
+  caisse: '?niveau=monde',
+};
 
 // --- Simulation ---------------------------------------------------------------
 const sim = new Simulation(LEVEL);
@@ -219,7 +228,7 @@ function partirEnAventure(): void {
   transitionEnCours = true;
   flash('Départ pour l’Aventure…', 4);
   void presence.leave().finally(() => {
-    location.search = '?niveau=cour';
+    location.search = '?niveau=monde';
   });
 }
 

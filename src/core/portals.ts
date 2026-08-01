@@ -1,8 +1,6 @@
 import {
   PLAYER_HEIGHT,
   PLAYER_RADIUS,
-  PORTAL_BIG_H,
-  PORTAL_BIG_W,
   PORTAL_SMALL_H,
   PORTAL_SMALL_W,
   SCALE_RATIO,
@@ -32,21 +30,27 @@ const makeFace = (
   pairId: string,
   kind: FaceKind,
   def: PortalFaceDef,
+  smallW: number,
+  smallH: number,
 ): Omit<PortalFace, 'twin'> => ({
   pairId,
   kind,
   position: vec3(def.position[0], def.position[1], def.position[2]),
   yaw: def.yaw,
   normal: yawToForward(def.yaw),
-  width: kind === 'big' ? PORTAL_BIG_W : PORTAL_SMALL_W,
-  height: kind === 'big' ? PORTAL_BIG_H : PORTAL_SMALL_H,
+  width: kind === 'big' ? smallW * SCALE_RATIO : smallW,
+  height: kind === 'big' ? smallH * SCALE_RATIO : smallH,
 });
 
 export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
   const faces: PortalFace[] = [];
   for (const pair of pairs) {
-    const big = makeFace(pair.id, 'big', pair.big) as PortalFace;
-    const small = makeFace(pair.id, 'small', pair.small) as PortalFace;
+    // Taille propre à la paire, sinon celle d'origine. C'est ce qui autorise
+    // une spirale : une porte par étage, taillée pour qui l'atteint.
+    const w = pair.smallWidth ?? PORTAL_SMALL_W;
+    const h = pair.smallHeight ?? PORTAL_SMALL_H;
+    const big = makeFace(pair.id, 'big', pair.big, w, h) as PortalFace;
+    const small = makeFace(pair.id, 'small', pair.small, w, h) as PortalFace;
     big.twin = small;
     small.twin = big;
     faces.push(big, small);

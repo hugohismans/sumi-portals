@@ -40,6 +40,17 @@ export interface PortalPairDef {
   colorBig: number;
   /** Couleur d'encre de la petite face (indigo par défaut). */
   colorSmall: number;
+  /**
+   * Hauteur de la PETITE face, en mètres. La grande vaut quatre fois plus.
+   *
+   * C'est ce qui permet une spirale d'échelles : chaque étage a sa propre
+   * paire, taillée pour le joueur qui l'atteint. Une porte de 2,8 sert un
+   * joueur normal ; il faut une porte de 11,2 pour qu'un joueur déjà quatre
+   * fois plus grand puisse continuer à monter. Sans ça, on ne franchit
+   * jamais qu'un seul cran.
+   */
+  smallHeight?: number;
+  smallWidth?: number;
   /** Grande face : la traverser rend PLUS PETIT. */
   big: PortalFaceDef;
   /** Petite face : la traverser rend PLUS GRAND. */
