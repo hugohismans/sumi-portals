@@ -29,6 +29,34 @@ Note technique : le miroir n'est pas gratuit côté rendu — une transformation
 qui inverse la chiralité inverse aussi le sens des faces, donc il faudra
 retourner le tri des faces dans la vue du portail. À prévoir, pas à craindre.
 
+### Le clin d'œil à la biologie
+
+*(idée d'Hugo)*
+
+L'objet à retourner n'est pas un cube : c'est une **molécule**, dessinée comme
+sur un schéma de chimie — des atomes reliés par des liaisons, façon acide aminé.
+On la présente à son logement, elle ne rentre pas. On la passe au miroir. Elle
+rentre.
+
+Et ce n'est pas qu'un joli habillage, parce que **c'est vrai**. Les protéines du
+vivant sont bâties presque exclusivement à partir d'acides aminés de la forme
+dite L. Leur image dans un miroir, la forme D, existe chimiquement, mais la vie
+ne s'en sert pas. Une serrure biologique n'accepte qu'une seule des deux mains
+de la molécule — exactement le geste qu'on demande au joueur.
+
+Pourquoi le vivant a choisi cette main-là plutôt que l'autre reste, aujourd'hui
+encore, une question ouverte.
+
+Un joueur qui aura fait ce geste une fois comprendra, sans qu'on lui explique
+rien, pourquoi une molécule et son reflet ne sont pas interchangeables. C'est
+exactement le genre de chose qu'un jeu transmet mieux qu'un cours — et c'est ce
+qui donnerait au niveau une raison d'exister au-delà de son énigme.
+
+Conseil de mise en œuvre : garder la molécule **très lisible** — quatre ou cinq
+boules, des liaisons franches, une couleur par atome — et rendre l'asymétrie
+évidente à l'œil. Si le joueur ne voit pas de ses yeux que les deux versions
+diffèrent, l'énigme devient de la devinette.
+
 ## Objets transportables
 
 *(idée d'Hugo)*
