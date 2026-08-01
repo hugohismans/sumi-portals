@@ -18,7 +18,7 @@ import type { BoxDef, CarryableDef, LevelDef, SocketDef } from '../core/types.js
  *   pour quelqu'un qui enjambe 22 centimètres. Le logement qu'il y garnit
  *   descelle la porte DU MINUSCULE.
  *
- *   Le minuscule seul peut se glisser sous la dalle — la fente fait 50
+ *   Le minuscule seul peut se glisser sous la dalle — la fente fait 80
  *   centimètres, et le géant en mesure sept mètres. Le logement qu'il y garnit
  *   descelle la porte DU GÉANT.
  *
@@ -73,31 +73,41 @@ const parvis = (): BoxDef[] => [
   box([1.5, PARVIS + 0.16, 0.12], [2.4, PARVIS + 0.22, 0.5], 2),
 ];
 
-// ─── À l'ouest : la colonne du géant ─────────────────────────────────────────
+// ─── À l'ouest : le socle du géant ───────────────────────────────────────────
 //
 // Trois marches de 3. Le géant les enjambe (3,60) ; le minuscule enjambe 22
 // centimètres et n'en gravira jamais aucune, quoi qu'il tente. Le refus est
 // physique, pas scripté — c'est ce qui le rend lisible.
 const colonne = (): BoxDef[] => {
   const out: BoxDef[] = [];
-  const x = -26;
+  // Reculé à -34 : le socle fait maintenant 29 mètres de base, et planté plus
+  // près il aurait mangé la porte du géant, qui se tient à -13.
+  const x = -34;
   const paliers: [number, number][] = [
     [0, 3.0],
     [3.0, 6.05],
     [6.05, 9.1],
   ];
-  let largeur = 7.5;
+  let largeur = 14.5;
   for (const [y0, y1] of paliers) {
     out.push(box([x - largeur, -0.5, -largeur], [x + largeur, y1, largeur], 2));
     // Chaque gradin se rétrécit ET dépasse un peu du précédent : sans ce
     // décalage, les faces verticales de trois gradins tomberaient dans le même
     // plan.
-    largeur -= 1.9;
+    largeur -= 2.4;
     void y0;
   }
-  // Le sommet, où se pose le logement. Légèrement en creux, pour qu'on voie de
-  // loin qu'il attend quelque chose.
-  out.push(box([x - 3.4, 9.1, -3.4], [x + 3.4, 9.45, 3.4], 1));
+  // LE SOMMET FAIT DIX-NEUF MÈTRES DE CÔTÉ, et ce n'est pas de la générosité.
+  //
+  // Un joueur à ×4 repose ce qu'il porte à HUIT MÈTRES devant lui — la distance
+  // de dépôt suit sa taille, comme tout le reste. Sur un sommet étroit, la
+  // pierre tombait immanquablement par-dessus bord, quel que soit l'endroit où
+  // il se tenait. Le niveau était infaisable, et rien ne le laissait voir : on
+  // aurait pu le jouer vingt fois en croyant mal viser.
+  //
+  // C'est une leçon générale pour ce jeu : à grande échelle, **toute surface où
+  // l'on doit poser quelque chose doit être plus large que la portée du bras**.
+  out.push(box([x - 9.5, 9.1, -9.5], [x + 9.5, 9.45, 9.5], 1));
   return out;
 };
 
@@ -140,7 +150,7 @@ export const CARRYABLES_DUO: CarryableDef[] = [
   // La pierre du géant. À 2,4 d'arête, elle est très au-dessus de ce qu'un
   // joueur de 45 centimètres peut soulever : il déclenchera `tooHeavy`, et
   // comprendra en une seconde que ce n'est pas pour lui.
-  { id: 'pierre-lourde', position: [-34, 0, 9], size: 2.4, ink: 2 },
+  { id: 'pierre-lourde', position: [-56, 0, 12], size: 2.4, ink: 2 },
   // Le galet du minuscule. Posé bien en vue sur le parvis, à l'entrée de la
   // fente : le géant le voit aussi, et c'est important — il doit savoir que
   // l'autre a de quoi travailler.
@@ -149,7 +159,7 @@ export const CARRYABLES_DUO: CarryableDef[] = [
 
 export const SOCKETS_DUO: SocketDef[] = [
   // Au sommet de la colonne. Garni, il descelle la porte DU MINUSCULE.
-  { id: 'socle-colonne', position: [-26, 9.45, 0], size: 2.4, ink: 3 },
+  { id: 'socle-colonne', position: [-34, 9.45, 0], size: 2.4, ink: 3 },
   // Au fond de la fente. Garni, il descelle la porte DU GÉANT.
   { id: 'socle-fissure', position: [28.5, 0, 0], size: 0.28, ink: 3 },
 ];

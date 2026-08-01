@@ -22,7 +22,7 @@ l'énigme. Ce n'est pas un système d'indices, c'est le jeu.
 
 ## État au 2 août 2026
 
-Jouable de bout en bout, dans les trois modes. `npm run check` passe (83
+Jouable de bout en bout, dans les trois modes. `npm run check` passe (86
 vérifications), `npm run build` passe, tout est poussé et en ligne.
 
 - **https://hugohismans.github.io/sumi-portals/** — le hall, et ses trois arches

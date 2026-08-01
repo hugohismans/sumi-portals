@@ -84,6 +84,9 @@ const walkTo = (
     if (e.traversed) collected.traversed = e.traversed;
     if (e.refused) collected.refused = e.refused;
     if (e.reachedGoal) collected.reachedGoal = e.reachedGoal;
+    if (e.carry) collected.carry = e.carry;
+    if (e.tooHeavy) collected.tooHeavy = e.tooHeavy;
+    if (e.socketFilled) collected.socketFilled = e.socketFilled;
     if (opts.stopOnEvent && (e.traversed || e.refused || e.reachedGoal)) break;
   }
   return collected;
@@ -717,8 +720,8 @@ console.log('\n— La clairière : ce qu’une personne seule ne peut pas faire 
   // C'est le cœur du niveau : on ne l'obtient par aucun script, seulement par
   // des dimensions. Si ces quatre vérifications passent, la coopération est
   // garantie par la géométrie et non par une règle qu'on aurait pu oublier.
-  const geantColonne = joueur(1, -34, 0.5, 0);
-  walkTo(geantColonne, [-26, 9.45, 0], 60 * 30, { jump: true });
+  const geantColonne = joueur(1, -56, 0.5, 0);
+  walkTo(geantColonne, [-34, 9.45, 0], 60 * 30, { jump: true });
   settle(geantColonne, 60);
   check(
     'à ×4, le géant gravit la colonne',
@@ -726,8 +729,8 @@ console.log('\n— La clairière : ce qu’une personne seule ne peut pas faire 
     pos(geantColonne),
   );
 
-  const petitColonne = joueur(-1, -34, 0.5, 0);
-  walkTo(petitColonne, [-26, 9.45, 0], 60 * 60, { jump: true, sprint: true });
+  const petitColonne = joueur(-1, -56, 0.5, 0);
+  walkTo(petitColonne, [-34, 9.45, 0], 60 * 60, { jump: true, sprint: true });
   settle(petitColonne, 60);
   check(
     'à ×1/4, la même colonne est un mur — marches de 3, enjambée de 0,22',
@@ -758,7 +761,7 @@ console.log('\n— La clairière : ce qu’une personne seule ne peut pas faire 
   );
 
   // --- Les portes scellées ---------------------------------------------------
-  const ferme = joueur(1, -20, 0.5, 0);
+  const ferme = joueur(1, -18, 0.5, 0);
   const refus = walkTo(ferme, [-2, 0.35, 0], 60 * 20, { stopOnEvent: true });
   check(
     'la porte du géant reste close tant que la fente est vide',
@@ -768,7 +771,7 @@ console.log('\n— La clairière : ce qu’une personne seule ne peut pas faire 
 
   // Et la même, une fois que l'AUTRE joueur a fait son travail à l'autre bout
   // du monde. C'est la seule chose qui change entre les deux essais.
-  const ouvert = joueur(1, -20, 0.5, 0);
+  const ouvert = joueur(1, -18, 0.5, 0);
   ouvert.sockets.items.find((s) => s.id === 'socle-fissure')!.filledBy = 'galet';
   const passe = walkTo(ouvert, [-2, 0.35, 0], 60 * 20, { stopOnEvent: true });
   check(
@@ -784,6 +787,50 @@ console.log('\n— La clairière : ce qu’une personne seule ne peut pas faire 
     'symétriquement, la porte du minuscule s’ouvre grâce au géant',
     passe2.traversed?.pairId === 'porte-du-minuscule' && ouvert2.player.scaleLevel === 0,
     `échelle ${ouvert2.player.scaleLevel}`,
+  );
+
+  // --- LE PARCOURS ENTIER, PIERRE EN MAIN ------------------------------------
+  //
+  // Les vérifications ci-dessus garnissaient les logements à la main. Elles
+  // prouvaient que les portes s'ouvrent, pas que le niveau se TERMINE. Ici on
+  // fait le trajet complet : trouver la pierre, la soulever, la porter en haut
+  // de la colonne, l'y déposer, et constater que la porte d'en face s'est
+  // desscellée. C'est le seul test qui puisse dire « ce niveau est jouable ».
+  const geant = joueur(1, -56, 0.5, 6);
+
+  // Aller jusqu'à la pierre et la saisir. La saisie se déclenche au front
+  // montant, donc la maintenir enfoncée pendant la marche ne la ramasse qu'une
+  // fois — c'est justement ce qu'on veut.
+  walkTo(geant, [-56, 0, 12], 60 * 12);
+  const prise = walkTo(geant, [-56, 0, 12], 60 * 3, { interact: true });
+  check(
+    'le géant soulève la pierre — elle n’est pas trop lourde pour lui',
+    prise.carry?.taken === true && geant.carryables.held !== null,
+    `${prise.carry?.taken ? 'en main' : (prise.tooHeavy ? 'trop lourde' : 'rien')}`,
+  );
+
+  // La porter au sommet. On se poste à huit mètres EN DEÇÀ du logement et l'on
+  // regarde vers lui : c'est exactement la portée du bras à cette taille, donc
+  // la pierre atterrit dessus. C'est aussi ce que fera un joueur, à tâtons.
+  walkTo(geant, [-42, 9.45, 0], 60 * 40, { jump: true });
+  settle(geant, 30);
+  walkTo(geant, [-41.9, 9.45, 0], 60 * 4);
+  const depot = walkTo(geant, [-26, 9.45, 0], 60 * 4, { interact: true });
+  settle(geant, 120);
+  void depot;
+
+  const colonneGarnie = geant.sockets.items.find((s) => s.id === 'socle-colonne')!;
+  check(
+    'il la loge au sommet de la colonne',
+    colonneGarnie.filledBy === 'pierre-lourde',
+    `${colonneGarnie.filledBy ?? 'vide'}, joueur ${pos(geant)}`,
+  );
+
+  // Et le minuscule, à l'autre bout du monde, trouve sa porte ouverte.
+  check(
+    'et la porte du minuscule s’en trouve desscellée, à l’autre bout du monde',
+    geant.sockets.pourvus.has('socle-colonne'),
+    'le niveau est terminable',
   );
 
   // --- La retrouvaille -------------------------------------------------------
