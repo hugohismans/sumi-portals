@@ -7,6 +7,7 @@ import { LEVEL_02 } from './levels/level02.js';
 import { DALLE_GEANT, DALLE_MINUSCULE, RAYON_DALLE, construireDuo, roleDansSalon, type RoleDuo } from './levels/duo.js';
 import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
+import { reve } from './levels/reve.js';
 import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Talisman } from './render/talisman.js';
@@ -45,6 +46,7 @@ const NIVEAUX: Record<string, typeof LEVEL_01> = {
   cour: LEVEL_01,
   caisse: LEVEL_02,
   duo: construireDuo(ROLE),
+  reve: reve(Number(PARAMS.get('graine')) || 1),
 };
 const EN_AVENTURE = MODE !== null && MODE in NIVEAUX;
 const EN_DUO = MODE === 'duo' && SALON !== '';
@@ -305,9 +307,15 @@ function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
   }
 
   if (mode === 'reve') {
-    // Pas encore rêvé. Mieux vaut le dire que d'ouvrir une porte sur du vide.
-    flash('Ce rêve-là n’est pas encore rêvé. Reviens bientôt.', 4);
-    sim.seuilFranchi = false;
+    // Une graine tirée au sort à chaque passage : personne ne rêve deux fois
+    // la même chose, mais l'adresse garde la graine — on peut donc revenir sur
+    // un rêve qu'on a aimé, ou l'envoyer à quelqu'un.
+    const graine = 1 + Math.floor(Math.random() * 99_999);
+    transitionEnCours = true;
+    flash('Tu t’endors…', 4);
+    void presence.leave().finally(() => {
+      location.search = `?niveau=reve&graine=${graine}`;
+    });
     return;
   }
 

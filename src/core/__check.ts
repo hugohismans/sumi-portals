@@ -25,6 +25,7 @@ import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
 import { MONDE } from '../levels/monde.js';
+import { reve } from '../levels/reve.js';
 import { verifierParcelle } from '../levels/regions/contrat.js';
 import { BELVEDERE } from '../levels/regions/belvedere.js';
 import { JARDIN } from '../levels/regions/jardin.js';
@@ -871,6 +872,65 @@ console.log('\n— Les caisses partagées —');
     'une caisse déjà logée ne bouge plus, quoi qu’annonce le réseau',
     logee.position.x === 5,
     `${logee.position.x}`,
+  );
+}
+
+// =============================================================================
+console.log('\n— Le rêve : cent graines, aucune impasse —');
+{
+  // Un générateur ne se relit pas, il s'éprouve. On en fabrique cent et l'on
+  // vérifie sur chacun ce qui rendrait le rêve injouable — pas ce qui le
+  // rendrait joli.
+  let boitesFolles = 0;
+  let anneauxRompus = 0;
+  let horsBornes = 0;
+
+  for (let g = 1; g <= 100; g++) {
+    const r = reve(g);
+
+    for (const b of r.boxes) {
+      if (b.min[0] >= b.max[0] || b.min[1] >= b.max[1] || b.min[2] >= b.max[2]) boitesFolles++;
+    }
+
+    // Chaque salle doit avoir une porte pour entrer et une pour sortir, sinon
+    // l'anneau est rompu et l'on se retrouve enfermé quelque part.
+    if (r.portals.length !== 11) anneauxRompus++;
+
+    // Et l'échelle doit rester dans les bornes du moteur tout au long du tour.
+    // Si elle en sortait, une porte refuserait le passage au beau milieu du
+    // rêve et l'on serait bloqué sans comprendre pourquoi.
+    let niveau = 0;
+    for (let i = 0; i < r.portals.length; i++) {
+      niveau += i % 2 === 0 ? -1 : +1;
+      if (niveau < -2 || niveau > 2) horsBornes++;
+    }
+  }
+
+  check('cent rêves, aucune boîte dégénérée', boitesFolles === 0, `${boitesFolles} fautives`);
+  check('cent rêves, aucun anneau rompu', anneauxRompus === 0, `${anneauxRompus} rompus`);
+  check(
+    'et l’échelle ne sort jamais des bornes en faisant le tour',
+    horsBornes === 0,
+    `${horsBornes} débordements`,
+  );
+
+  // La même graine doit rendre exactement le même rêve : c'est ce qui permet
+  // d'envoyer une adresse à quelqu'un.
+  check(
+    'la même graine rend le même rêve',
+    JSON.stringify(reve(4242).boxes) === JSON.stringify(reve(4242).boxes) &&
+      JSON.stringify(reve(4242).boxes) !== JSON.stringify(reve(4243).boxes),
+    'deux tirages identiques, un troisième différent',
+  );
+
+  // Et enfin, dans le monde pour de vrai : on marche droit devant depuis le
+  // point de départ, et l'on doit changer de salle ET de taille.
+  const songe = new Simulation(reve(7));
+  const passage = walkTo(songe, [0, 0, 60], 60 * 20, { stopOnEvent: true });
+  check(
+    'on marche droit devant, et l’on change de salle et de taille',
+    passage.traversed !== undefined && songe.player.scaleLevel !== 0,
+    `${passage.traversed?.pairId ?? 'rien'}, échelle ${songe.player.scaleLevel}`,
   );
 }
 
