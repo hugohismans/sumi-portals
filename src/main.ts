@@ -143,7 +143,11 @@ input.onTouchMode = () => {
   input.bindTouchButton(el('btn-throw'), 'Mouse0');
   input.bindTouchButton(el('btn-jump'), 'Space');
 };
-if (input.touchOnly) input.onTouchMode();
+
+// Filet de sécurité : un doigt posé sur le panneau d'accueil bascule aussi. Sur
+// iPhone, le « clic » n'arrive parfois jamais, et l'on restait devant un écran
+// muet — tandis qu'un contact tactile, lui, est toujours signalé.
+overlay.addEventListener('touchstart', () => input.enableTouchMode(), { passive: true });
 
 input.onLockChange = (locked) => {
   overlay.classList.toggle('hidden', locked);
@@ -169,6 +173,9 @@ input.onCapture = () => {
     () => flash('Point de vue affiché dans la console (F12).'),
   );
 };
+
+// Tous les rappels sont branchés : on peut réveiller les commandes.
+input.start();
 
 input.onReset = () => {
   sim.reset();

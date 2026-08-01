@@ -102,16 +102,33 @@ export class InputManager {
       { passive: true, once: true },
     );
 
+  }
+
+  /**
+   * À appeler UNE fois, après avoir branché les rappels.
+   *
+   * Le mode tactile ne s'active surtout pas depuis le constructeur : sur iPhone
+   * il s'y déclenchait aussitôt, alors que l'interface n'était pas encore
+   * abonnée. Les boutons apparaissaient bien, mais l'ordre de masquer le
+   * panneau d'accueil partait dans le vide — et l'on restait bloqué devant un
+   * écran qui ne répondait pas.
+   */
+  start(): void {
     if (this.touchOnly) this.enableTouchMode();
   }
 
-  /** Bascule en commandes tactiles. Sans effet si c'est déjà fait. */
+  /**
+   * Bascule en commandes tactiles. Peut être appelée autant de fois qu'on veut :
+   * le câblage ne se fait qu'une fois, mais l'entrée dans le jeu est retentée à
+   * chaque appel — c'est ce qui rattrape un rappel branché entre-temps.
+   */
   enableTouchMode(): void {
-    if (this.touchWired) return;
-    this.touchWired = true;
     this.touchOnly = true;
-    this.setupTouch();
-    this.onTouchMode?.();
+    if (!this.touchWired) {
+      this.touchWired = true;
+      this.setupTouch();
+      this.onTouchMode?.();
+    }
     // Le panneau d'accueil attend une capture de souris qui ne viendra jamais :
     // on entre directement, sinon le joueur reste bloqué devant.
     if (!this.locked) {
