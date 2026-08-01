@@ -135,6 +135,9 @@ scene.add(carryableViews.group);
 const socketViews = new SocketViews();
 socketViews.build(sim.sockets.items);
 scene.add(socketViews.group);
+// Les socles suivent le monde : gris tant qu'il l'est, et ils reprennent leur
+// vermillon en même temps que lui. Un socle vide ne porte aucune couleur.
+if (pigmentDe.size > 0) socketViews.setCouleur(pigments.nombre / 2);
 
 // Quelques feuilles portées par le vent, qui laissent une traînée d'encre. Une
 // douzaine, pas davantage : une planche encrée tire sa force de ses vides.
@@ -643,6 +646,8 @@ function frame(now: number): void {
       // LA FIN : le monde a retrouvé toutes ses couleurs. C'est la seule chose
       // qu'on lui demandait, et c'est le seul moment où l'on retire au joueur
       // la maîtrise de sa caméra — pour lui montrer ce qu'il vient de repeindre.
+      // Le monde reprend ses couleurs ; les socles avec lui.
+      socketViews.setCouleur(pigments.nombre / Math.max(1, pigmentDe.size ? 2 : 1));
       if (reste === 0) {
         // LA MAQUETTE CESSE DE MENTIR. Depuis la première minute, elle montre
         // un encrier sur la pointe de l'Aiguille ; il s'y pose enfin, monté par

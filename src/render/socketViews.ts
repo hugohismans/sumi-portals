@@ -29,6 +29,21 @@ export class SocketViews {
   private readonly views = new Map<string, View>();
   private readonly materials: THREE.ShaderMaterial[] = [];
 
+  /**
+   * LES SOCLES SONT GRIS COMME LE MONDE, tant qu'il n'a pas retrouvé ses
+   * couleurs. Ils ont leurs propres matériaux, hors du système de régions — ils
+   * restaient donc vermillon au milieu d'un village en lavis, quatre taches
+   * rouges qu'on voyait à cent mètres et qui ne voulaient rien dire.
+   *
+   * La règle du jeu est simple : **tout est gris, sauf ce qui porte une
+   * couleur.** Un socle vide n'en porte aucune. Il la prendra en se remplissant.
+   */
+  setCouleur(v: number): void {
+    for (const m of this.materials) {
+      if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = v;
+    }
+  }
+
   build(sockets: Socket[]): void {
     for (const s of sockets) {
       const cel = createCelMaterial(PALETTE[s.ink] ?? PALETTE[3]);

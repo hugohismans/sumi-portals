@@ -426,7 +426,20 @@ export const MONDE: LevelDef = {
 
   boxes: [
     // --- Étage 1 : le village -------------------------------------------------
-    box([-230, -6, -300], [230, VILLAGE_Y, 16], 0, { outline: false }),
+    // LE SOL VA JUSQU'AU BOUT DU MONDE, et c'est une correction, pas un décor.
+    //
+    // Il s'arrêtait à z = 16, c'est-à-dire au bord nord du village. Or la
+    // terrasse est trente mètres plus haut et cent mètres plus au nord : en
+    // sautant par-dessus son garde-corps depuis un bloc du jardin sec, on
+    // passait à côté du sol et l'on tombait INDÉFINIMENT. Pas de mort, pas de
+    // renvoi — une chute sans fin, qui est la pire chose qu'un jeu puisse
+    // faire à quelqu'un.
+    //
+    // Le sol court maintenant sous les trois étages. On tombe, on atterrit, on
+    // remonte par l'escalier. Et il y a un bénéfice qu'on n'avait pas cherché :
+    // depuis le belvédère on voit désormais le fond du monde cent vingt mètres
+    // plus bas, ce qui donne enfin le vertige qu'on attendait de la hauteur.
+    box([-260, -6, -300], [260, VILLAGE_Y, 400], 0, { outline: false }),
 
     // L'Aiguille. Colosse ici, mât depuis la terrasse, piquet depuis le
     // belvédère : c'est le même objet, et c'est tout le propos du voyage.
@@ -710,11 +723,29 @@ export const MONDE: LevelDef = {
     //    le village à taille d'homme pour que le retour ait un poids.
     [-24, 3.4, -20],
 
-    // 9. Devant la seconde porte, côté sud. Le pinceau s'y pose et derrière lui
+    // 9-11. LE DÉTOUR VERT, et il n'était pas là.
+    //
+    // Le pinceau menait la spirale — village, terrasse, belvédère — et les
+    // couleurs étaient deux allers-retours dont il ne parlait jamais. Un joueur
+    // qui le suivait sagement arrivait en haut sans avoir ramassé une seule
+    // couleur, et les socles de la place restaient vides. Deux jeux parallèles
+    // qui ne se croisaient nulle part.
+    //
+    // Il vous emmène donc devant la porte verte — à ×4, c'est-à-dire à la
+    // taille qu'il faut avoir pour que le jardin soit à votre mesure —, puis il
+    // passe devant vous et va se poser près de l'encrier. Il ne dit pas
+    // « rapporte-le » : il se met à côté, et ça suffit.
+    [-30, VILLAGE_Y, -24],
+    [514, 0, 0],
+    // Puis sur le socle qui l'attend. C'est la seule station du jeu posée sur un
+    // objectif : là, il montre où ça va.
+    [-16, 1.5, -6],
+
+    // 12. Devant la seconde porte, côté sud. Le pinceau s'y pose et derrière lui
     //    se dresse le grand torii : rien à expliquer.
     [0, TERRASSE_Y, 58],
 
-    // 10-12. Le belvédère, d'où l'on voit tout ce qu'on vient de parcourir.
+    // 13-15. Le belvédère, d'où l'on voit tout ce qu'on vient de parcourir.
     //      Ses deux dernières stations sont au NORD du grand torii, mais très à
     //      l'écart de son axe (x=150 puis x=-192, pour une porte large de 30) :
     //      aucune route naturelle ne repasse dedans. Et si quelqu'un s'entête à
@@ -731,7 +762,8 @@ export const MONDE: LevelDef = {
    * c'est à cette taille qu'on y revient, et le belvédère à ×16. Vu d'en haut,
    * le pinceau du village doit rester minuscule — comme le village.
    */
-  guideEchelle: [1, 1, 1, 1, 4, 4, 4, 4, 4, 16, 16, 16],
+  //                place───────┐  terrasse──┐ toit  vert──────┐ porte  belvédère
+  guideEchelle: [1, 1, 1, 1, 4, 4, 4, 4, 4, 1, 4, 4, 16, 16, 16],
 
   hints: [
     // Devant la maquette. C'est le seul endroit du jeu où l'on énonce le but,
