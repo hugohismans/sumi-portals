@@ -146,15 +146,6 @@ const carryableViews = new CarryableViews();
 carryableViews.build(sim.carryables.items);
 scene.add(carryableViews.group);
 
-// Les deux objets de la quête ne se dessinent pas comme des caisses : ce sont
-// des pinceaux de couleur, et c'est PinceauPeintre qui les représente. Le cube
-// reste — il porte la physique, la taille qui change aux portes, l'emboîtement
-// dans le socle — mais on ne le montre jamais.
-if (MODE === 'monde') {
-  carryableViews.masquer('encrier');
-  carryableViews.masquer('braise');
-}
-
 const socketViews = new SocketViews();
 socketViews.build(sim.sockets.items);
 scene.add(socketViews.group);
@@ -176,10 +167,10 @@ if (pigmentDe.size > 0) socketViews.setCouleur(pigments.nombre / 2);
 // faite de personnages plutôt que de chiffres.
 const tmpOeil = new THREE.Vector3();
 const peintres = new Map<string, PinceauPeintre>();
-/** Quel objet réveille quel pinceau. */
-const REVEIL_PAR_OBJET = new Map<string, { socle: string }>([
-  ['encrier', { socle: 'socle-vert' }],
-  ['braise', { socle: 'socle-rouge' }],
+/** Quel veilleur correspond à quel pinceau. */
+const PINCEAU_DE_VEILLEUR = new Map<string, string>([
+  ['pinceau-vert', 'socle-vert'],
+  ['pinceau-rouge', 'socle-rouge'],
 ]);
 /**
  * LE MONDE OÙ L'ON RENTRE. C'est là que les pinceaux se mettent au travail,
@@ -200,12 +191,30 @@ if (MODE === 'monde') {
   // Chaque pinceau : son socle de repos, sa couleur, ET l'endroit de son monde
   // où il dort, planté, en attendant qu'on vienne le prendre. La taille dont il
   // y est planté est celle du joueur qui l'y trouvera.
-  const AUX_SOCLES: [string, string, [number, number, number], string, [number, number, number], number][] = [
-    ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f', [516.5, 0.1, 0], 0.5],
-    ['socle-rouge', 'rouge', [-3.5, 0.9, -17.5], '#c8492e', [-500, 0.2, 0], 2],
+  // ─── LES TAILLES RACONTENT LE VOYAGE ──────────────────────────────────────
+  //
+  // Chaque pinceau dort à la taille de SON monde, et revient à la taille que la
+  // porte lui donne. C'est la même loi que pour tout le reste ici : ce qui
+  // traverse une porte est multiplié ou divisé par quatre.
+  //
+  //   Le VERT dort à 0,55 dans un jardin qu'on parcourt à ×1. On en ressort par
+  //   la petite face, donc quatre fois plus grand : il arrive à 2,20 et occupe
+  //   le grand socle.
+  //
+  //   Le ROUGE dort à 2,20 sur une côte qu'on parcourt à ×4. On en ressort par
+  //   la grande face, donc quatre fois plus petit : il arrive à 0,55 et occupe
+  //   le petit socle.
+  //
+  // Les deux socles, plantés vides sur la place dès la première minute,
+  // annonçaient cet écart avant qu'on ait fait un seul voyage. Ils étaient
+  // faux jusqu'ici — les deux pinceaux s'y posaient à la même taille, et l'on
+  // perdait toute l'histoire que leur écart racontait.
+  const AUX_SOCLES: [string, string, [number, number, number], string, [number, number, number], number, number][] = [
+    ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f', [516.5, 0.1, 0], 0.55, 2.2],
+    ['socle-rouge', 'rouge', [-3.5, 0.9, -17.5], '#c8492e', [-500, 0.2, 0], 2.2, 0.55],
   ];
-  for (const [socle, pigment, ou, teinte, dort, tailleDort] of AUX_SOCLES) {
-    const p = new PinceauPeintre(ou, teinte, 1.2);
+  for (const [socle, pigment, ou, teinte, dort, tailleDort, tailleRepos] of AUX_SOCLES) {
+    const p = new PinceauPeintre(ou, teinte, tailleRepos);
     // Il dort dans son monde, bien visible, à la taille de qui viendra le
     // chercher. Le cube qui porte la physique, lui, est masqué : on ramassait
     // un cube rouge POUR OBTENIR un pinceau rouge, deux objets pour une idée.
@@ -215,6 +224,25 @@ if (MODE === 'monde') {
       socketViews.setCouleur(pigments.nombre / 2);
       portals.setCouleurCadres(pigments.nombre / 2);
       ambiance.progression(pigments.nombre, 3);
+
+      const reste = AUX_SOCLES.length - pigments.nombre;
+      flash(
+        reste > 0
+          ? `Le ${pigment} revient au monde. Regarde-le peindre. Il en manque ${reste}.`
+          : 'La dernière couleur est rendue. Le monde est entier.',
+        7,
+      );
+
+      // LA FIN. Le monde a retrouvé toutes ses couleurs — la seule chose qu'on
+      // lui demandait — et l'encre remonte à la pointe de l'Aiguille, qui est
+      // la plume de ce monde. C'est le seul moment où l'on retire au joueur la
+      // maîtrise de sa caméra, pour lui montrer ce qu'il vient de repeindre.
+      if (reste === 0) {
+        sceau.declencher();
+        sacre.jouer([0, 74, 0], camera.position);
+        ambiance.retrouvaille();
+        document.exitPointerLock();
+      }
     };
     // Déjà rapporté dans une partie précédente : il flotte, sans refaire la fête.
     if (pigments.a(pigment)) p.poserDejaAcquis();
@@ -579,6 +607,7 @@ applyScale(true);
  * travers la porte, avant même de la franchir.
  */
 const fogRef = scene.fog as THREE.Fog;
+const finPanel = document.getElementById('fin')!;
 const papierParDefaut = PAPER.clone();
 
 /**
@@ -717,17 +746,6 @@ function frame(now: number): void {
       // Ramasser, c'est s'approprier : à partir de maintenant, c'est moi qui
       // publie cette caisse, et l'autre joueur suit ce que j'en fais.
       if (events.carry.taken) caisses.reclamer(events.carry.id);
-      // ON PREND LE PINCEAU EN MÊME TEMPS QUE L'OBJET. Il dormait au fond de
-      // son monde ; il s'éveille, se met à tourner autour de vous, et ne vous
-      // quitte plus jusqu'au retour. C'est cette compagnie sur tout le trajet
-      // qui donne envie de le ramener — bien plus qu'un objectif affiché.
-      const reveil = events.carry.taken ? REVEIL_PAR_OBJET.get(events.carry.id) : undefined;
-      if (reveil) {
-        const e = sim.eyePosition();
-        peintres.get(reveil.socle)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
-        ambiance.pinceau();
-        flash('Un pinceau s’éveille et te suit. Ramène-le au monde gris.', 6);
-      }
 
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
@@ -735,57 +753,42 @@ function frame(now: number): void {
     // répond. C'est la seule fin du jeu, et la seule fois où l'on retire au
     // joueur la maîtrise de sa caméra — quatorze secondes, pour lui montrer
     // d'où il vient.
-    // POSER UNE COULEUR SUR SON SOCLE LA REND AU MONDE. Le geste et son effet
-    // sont au même endroit : on lâche l'objet, et la moitié du monde qui
-    // l'attendait se repeint sous nos yeux. On avait d'abord donné la couleur
-    // au RAMASSAGE, et c'était moins bien — le joueur voyait le monde changer
-    // en tournant le dos à ce qu'il venait de faire.
-    const PIGMENT_DE_SOCLE: Record<string, string> = {
-      'socle-vert': 'vert',
-      'socle-rouge': 'rouge',
-    };
-    const pigment = events.socketFilled
-      ? PIGMENT_DE_SOCLE[events.socketFilled.socketId]
-      : undefined;
-
-    if (pigment && pigments.rendre(pigment, worldView.parRegion, pigmentDe)) {
-      ambiance.progression(pigments.nombre, 3);
-      const reste = Object.keys(PIGMENT_DE_SOCLE).length - pigments.nombre;
-      flash(
-        reste > 0
-          ? `Le ${pigment} revient au monde. Regarde autour de toi. Il en manque ${reste}.`
-          : 'La dernière couleur est rendue. Le monde est entier.',
-        7,
-      );
-      // LA FIN : le monde a retrouvé toutes ses couleurs. C'est la seule chose
-      // qu'on lui demandait, et c'est le seul moment où l'on retire au joueur
-      // la maîtrise de sa caméra — pour lui montrer ce qu'il vient de repeindre.
-      // Le monde reprend ses couleurs ; les socles avec lui.
-      socketViews.setCouleur(pigments.nombre / 2);
-      portals.setCouleurCadres(pigments.nombre / 2);
-      if (reste === 0) {
-        // LA MAQUETTE CESSE DE MENTIR. Depuis la première minute, elle montre
-        // un encrier sur la pointe de l'Aiguille ; il s'y pose enfin, monté par
-        // le Pinceau pendant que la caméra prend du recul. C'est lui qu'on a
-        // suivi tout le jeu — c'est à lui de finir le geste.
-        sceau.declencher();
-        sacre.jouer([0, 74, 0], camera.position);
-        ambiance.retrouvaille();
-        document.exitPointerLock();
-      }
-    } else if (events.socketFilled) {
-      flash(
-        sim.sockets.allFilled
-          ? 'Tous les logements sont pourvus.'
-          : `Emboîté. ${sim.sockets.filled} sur ${sim.sockets.total}.`,
-        2.4,
-      );
+    // La couleur ne se rend plus en posant un objet : c'est le PINCEAU qui la
+    // rend, en vol, quand on rentre au village avec lui. Voir la boucle des
+    // peintres plus bas — ce bloc n'a plus à décider de rien.
+    if (events.socketFilled) {
+      flash(`Emboîté. ${sim.sockets.filled} sur ${sim.sockets.total}.`, 2.4);
     }
     if (events.tooHeavy) {
       flash('Bien trop grosse à cette taille. Il faudrait grandir.', 2.6);
     }
     if (events.seuil) {
       franchirSeuil(events.seuil.mode);
+    }
+
+    // ─── ON RÉVEILLE UN PINCEAU ────────────────────────────────────────────
+    //
+    // Pas un ramassage : une rencontre. Il s'éveille, se met à tourner autour
+    // de nous et ne nous quitte plus jusqu'au retour au village. C'est cette
+    // compagnie sur tout le trajet qui donne envie de le ramener, bien plus
+    // qu'un objectif affiché.
+    if (events.eveil) {
+      const socle = PINCEAU_DE_VEILLEUR.get(events.eveil.id);
+      const e = sim.eyePosition();
+      if (socle) peintres.get(socle)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
+      ambiance.pinceau();
+      flash('Il s’éveille, et il te suit. Ramène-le au monde gris.', 6);
+    }
+    // Et le refus, qui est une leçon et non une panne : il faut ÊTRE de la
+    // taille du monde où il dort. On le dit, parce qu'un pinceau qui frémit
+    // sans se lever ressemblerait sinon à un bogue.
+    if (events.eveilRefuse) {
+      flash(
+        events.eveilRefuse.trop === 'grand'
+          ? 'Il est minuscule entre tes doigts. Il faudrait rapetisser pour le prendre.'
+          : 'Il est bien trop grand pour toi. Il faudrait grandir pour le prendre.',
+        4,
+      );
     }
     if (events.reachedGoal) {
       suiteEl.setAttribute('href', NIVEAU_SUIVANT[MODE!] ?? './');
@@ -830,6 +833,11 @@ function frame(now: number): void {
     fogRef.far = BROUILLARD_LOIN;
     applyScale(true);
   }
+
+  // LE TITRE ARRIVE APRÈS CE QU'IL NOMME. On laisse le plan montrer le monde
+  // pendant les deux tiers de sa durée, et le mot ne vient qu'ensuite — quand
+  // on a déjà vu, et qu'on n'a plus qu'à lire.
+  if (sacre.actif && sacre.avancement > 0.62) finPanel.classList.add('show');
 
   if (!sacre.update(dt, camera)) {
     const eye = sim.eyePosition();

@@ -37,6 +37,13 @@ const CATCH = 9;
 /** Durée d'une fuite, en secondes. */
 const FLIGHT = 3.6;
 
+/**
+ * Épaisseur du trait d'encre du personnage, avant correction d'échelle.
+ * Un peu plus fine que celle du décor (0,0052) : il est petit, et un contour
+ * trop gras le transformerait en tache.
+ */
+const TRAIT_PINCEAU = 0.004;
+
 /** Longueur de la traînée, en échantillons. */
 const TRAIL = 56;
 
@@ -60,7 +67,10 @@ interface Sample {
  *
  * Il pointe vers le BAS au repos, comme un pinceau qu'on tient prêt à écrire.
  */
-const buildBody = (materials: THREE.ShaderMaterial[]): THREE.Group => {
+const buildBody = (
+  materials: THREE.ShaderMaterial[],
+  contours: THREE.ShaderMaterial[],
+): THREE.Group => {
   const g = new THREE.Group();
 
   const piece = (
@@ -72,6 +82,7 @@ const buildBody = (materials: THREE.ShaderMaterial[]): THREE.Group => {
     const outline = createOutlineMaterial();
     outline.uniforms.uThickness.value = trait;
     materials.push(cel, outline);
+    contours.push(outline);
     const geo = buildWorldGeometry(boxes.map(([min, max]) => ({ min, max, ink: 0 })));
     const edge = new THREE.Mesh(geo, outline);
     const fill = new THREE.Mesh(geo, cel);
@@ -117,6 +128,8 @@ export class Brush {
   private readonly haloMat: THREE.ShaderMaterial;
   private readonly body: THREE.Group;
   private readonly bodyMaterials: THREE.ShaderMaterial[] = [];
+  /** Les seuls matériaux de contour, pour corriger leur épaisseur. Voir update. */
+  private readonly contours: THREE.ShaderMaterial[] = [];
   private readonly ribbonGeo = new THREE.BufferGeometry();
   private readonly positions: Float32Array;
   private readonly ages: Float32Array;
@@ -174,7 +187,7 @@ export class Brush {
     this.echelle = this.echelles[0] ?? 1;
 
     this.head = new THREE.Group();
-    this.body = buildBody(this.bodyMaterials);
+    this.body = buildBody(this.bodyMaterials, this.contours);
     this.head.add(this.body);
 
     // ─── LE SIGNAL ──────────────────────────────────────────────────────────
@@ -436,6 +449,22 @@ export class Brush {
     const voulue = this.echelles[this.station] ?? 1;
     this.echelle += (voulue - this.echelle) * Math.min(1, dt * 1.6);
     this.head.scale.setScalar(this.echelle);
+
+    // ─── LE TRAIT NE GROSSIT PAS AVEC L'OBJET ────────────────────────────────
+    //
+    // Le contour est une coque gonflée en coordonnées LOCALES : on décale
+    // chaque sommet, puis la matrice du modèle met le tout à l'échelle — le
+    // décalage compris. Un pinceau à ×16 se retrouvait donc cerné d'un trait
+    // seize fois trop épais, énorme et sale à côté d'une architecture dessinée
+    // au même endroit avec le trait normal.
+    //
+    // Le décor n'a jamais eu le problème parce que sa matrice est l'identité.
+    // Ici on divise l'épaisseur par l'échelle, ce qui l'annule exactement : le
+    // trait retrouve la même finesse à l'écran que partout ailleurs, et c'est
+    // tout ce qu'on lui demande.
+    for (const m of this.contours) {
+      m.uniforms.uThickness.value = TRAIT_PINCEAU / this.echelle;
+    }
     this.orient(dt);
     for (const m of this.bodyMaterials) syncInkUniforms(m);
   }

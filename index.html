@@ -144,6 +144,30 @@
       #overlay.resumed .go .enter { display: none; }
       #overlay.resumed .go .resume { display: inline; }
 
+      /* LE CARTON DE FIN — voir le commentaire du bloc, plus bas. */
+      #fin {
+        position: fixed; inset: 0; z-index: 8;
+        display: flex; align-items: center; justify-content: center;
+        pointer-events: none;
+        opacity: 0; transition: opacity 2.6s ease;
+        /* Un voile de papier très léger : le monde reste visible dessous, il
+           s'apaise seulement. Un fondu au noir aurait effacé ce qu'on montre. */
+        background: radial-gradient(ellipse at center, rgba(239,231,214,0) 30%, rgba(239,231,214,.55) 100%);
+      }
+      #fin.show { opacity: 1; }
+      #fin .mot { text-align: center; }
+      #fin h2 {
+        font-size: clamp(44px, 12vw, 82px);
+        font-weight: 400; letter-spacing: .3em;
+        margin: 0 0 .4em -.3em; line-height: 1;
+        color: var(--ink);
+      }
+      #fin p { font-size: 15px; letter-spacing: .05em; opacity: .7; }
+
+      @media (prefers-reduced-motion: reduce) {
+        #fin { transition: none; }
+      }
+
       #win {
         position: fixed; inset: 0; z-index: 9;
         display: none; align-items: center; justify-content: center;
@@ -185,6 +209,16 @@
       <div class="card">
         <h2>Résolu</h2>
         <p><kbd>R</kbd> pour recommencer · <a href="./" id="suite">niveau suivant</a></p>
+      </div>
+    </div>
+
+    <!-- LE CARTON DE FIN. Il n'apparaît qu'une fois, à la toute fin du plan de
+         recul, quand le monde repeint est entier sous les yeux du joueur. Le
+         titre arrive APRÈS ce qu'il nomme : on a d'abord vu, ensuite on lit. -->
+    <div id="fin">
+      <div class="mot">
+        <h2>Lavis</h2>
+        <p>Le monde a retrouvé ses couleurs.</p>
       </div>
     </div>
 

@@ -71,6 +71,8 @@ export class Simulation {
    * étroite : le joueur n'a pas à connaître la différence.
    */
   readonly portesFermees = new Set<string>();
+  /** Pinceaux déjà réveillés : on ne les réveille pas deux fois. */
+  readonly eveilles = new Set<string>();
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
@@ -301,6 +303,33 @@ export class Simulation {
     const justPressed = pressed && !this.interactHeld;
     this.interactHeld = pressed;
     if (!justPressed) return;
+
+    // ─── RÉVEILLER UN PINCEAU ────────────────────────────────────────────────
+    //
+    // Avant les caisses, parce qu'un pinceau endormi n'est pas un objet à
+    // ramasser : c'est quelqu'un qu'on rencontre. S'il est là, il a la priorité
+    // sur tout le reste — on ne veut pas qu'un caillou traînant à côté vole le
+    // geste.
+    for (const v of this.world.level.veilleurs ?? []) {
+      if (this.eveilles.has(v.id)) continue;
+      const dx = this.player.position.x - v.position[0];
+      const dy = this.player.position.y - v.position[1];
+      const dz = this.player.position.z - v.position[2];
+      if (dx * dx + dy * dy + dz * dz > v.radius * v.radius) continue;
+
+      // L'ÉCHELLE EXIGÉE : c'est elle qui relie le verbe du jeu à son but. Une
+      // couleur ne vit pas au bout d'un monde, elle vit à une TAILLE.
+      if (this.player.scaleLevel !== v.echelle) {
+        events.eveilRefuse = {
+          id: v.id,
+          trop: this.player.scaleLevel > v.echelle ? 'grand' : 'petit',
+        };
+        return;
+      }
+      this.eveilles.add(v.id);
+      events.eveil = { id: v.id };
+      return;
+    }
 
     const held = this.carryables.held;
     if (held) {

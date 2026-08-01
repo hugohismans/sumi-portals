@@ -202,6 +202,29 @@ export interface SeuilDef {
   label: string;
 }
 
+/**
+ * UN PINCEAU QUI DORT, et qu'on réveille en appuyant sur E.
+ *
+ * Ce n'est pas un objet qu'on ramasse. Il y avait avant une caisse invisible
+ * par-dessus laquelle on dessinait un pinceau : on « prenait » quelque chose
+ * qu'on tenait dans les mains, alors qu'on devrait réveiller quelqu'un. Le
+ * geste comptait autant que la chose, et il était faux.
+ *
+ * L'ÉCHELLE EXIGÉE est ce qui relie le verbe du jeu à son but. Une couleur ne
+ * vit pas au bout d'un monde : elle vit à une TAILLE. Trop grand, on ne peut
+ * pas le saisir — il est minuscule entre des doigts de sept mètres. Trop petit,
+ * on ne peut pas le soulever. Il reste planté, il frémit, et l'on comprend
+ * qu'il faut devenir ce que le lieu demande.
+ */
+export interface VeilleurDef {
+  id: string;
+  position: [number, number, number];
+  /** Distance à laquelle on peut le réveiller. */
+  radius: number;
+  /** Palier d'échelle exigé du joueur. 0 = taille normale. */
+  echelle: number;
+}
+
 export interface LevelDef {
   name: string;
   spawn: [number, number, number];
@@ -223,6 +246,8 @@ export interface LevelDef {
   goal: { position: [number, number, number]; radius: number };
   /** Les sorties du hall. Absent partout ailleurs. */
   seuils?: SeuilDef[];
+  /** Les pinceaux endormis qu'on réveille. Voir VeilleurDef. */
+  veilleurs?: VeilleurDef[];
   /** Indices contextuels déclenchés par proximité. */
   hints?: { position: [number, number, number]; radius: number; text: string }[];
   /**
@@ -312,6 +337,13 @@ export interface TickEvents {
   reachedGoal?: boolean;
   /** On vient de franchir un seuil du hall. */
   seuil?: { mode: 'solo' | 'duo' | 'reve'; label: string };
+  /** Un pinceau endormi vient d'être réveillé. */
+  eveil?: { id: string };
+  /**
+   * On a essayé d'en réveiller un, à la mauvaise taille.
+   * `trop` dit dans quel sens, pour pouvoir le dire au joueur.
+   */
+  eveilRefuse?: { id: string; trop: 'grand' | 'petit' };
   /** Une caisse vient d'être saisie ou reposée. */
   carry?: { id: string; taken: boolean };
   /** On a tenté de soulever une caisse trop grosse pour soi. */

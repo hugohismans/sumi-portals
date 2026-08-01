@@ -300,6 +300,57 @@ const bourrelet = (
   ];
 };
 
+/**
+ * LES MONTAGNES DU FOND — invisibles pendant toute la partie, et c'est l'idée.
+ *
+ * Elles sont plantées à six cents mètres et au-delà, très loin derrière tout ce
+ * qu'on parcourt. Or le brouillard du jeu porte à trois cents : **on ne les voit
+ * jamais.** Elles ne coûtent rien à regarder, puisqu'on ne les regarde pas.
+ *
+ * Et puis vient le sacre. Le plan de fin ouvre le brouillard à quinze cents et
+ * recule à quatre cents mètres — et elles apparaissent, d'un coup, alors qu'on
+ * croyait avoir fait le tour du monde. On découvre que le monde continue.
+ *
+ * C'est le seul endroit du jeu où l'on ajoute du décor pour être vu une fois,
+ * quinze secondes. Ça vaut le coup : la dernière image d'un jeu est celle qu'on
+ * garde, et un horizon vide dirait « c'était tout ».
+ *
+ * Purement décoratives (`ghost`) : rien n'y monte, rien n'y bute.
+ */
+const montagnes = (): BoxDef[] => {
+  const out: BoxDef[] = [];
+  const r = rng(90210);
+  // Deux rangs : les proches, franches et sombres ; les lointaines, hautes et
+  // pâles. C'est cet étagement, et lui seul, qui donne la profondeur — une
+  // seule rangée aurait fait un mur.
+  for (const [rayon, hMin, hMax, teinte] of [
+    [620, 90, 210, 2],
+    [980, 200, 420, 1],
+  ] as const) {
+    const n = rayon < 800 ? 26 : 20;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + r() * 0.16;
+      const d = rayon * (0.82 + r() * 0.36);
+      const cx = Math.sin(a) * d;
+      const cz = Math.cos(a) * d + 60;
+      const h = hMin + r() * (hMax - hMin);
+      const w = h * (0.55 + r() * 0.5);
+      // Trois blocs décalés par sommet : une seule boîte ferait un pilier, et
+      // l'on veut une CRÊTE. Le décalage suffit à donner une silhouette.
+      out.push(box([cx - w, -20, cz - w], [cx + w, h, cz + w], teinte, { ghost: true }));
+      out.push(
+        box(
+          [cx - w * 0.62 + w * 0.5, -20, cz - w * 0.62 - w * 0.35],
+          [cx + w * 0.62 + w * 0.5, h * (0.6 + r() * 0.3), cz + w * 0.62 - w * 0.35],
+          teinte,
+          { ghost: true },
+        ),
+      );
+    }
+  }
+  return out;
+};
+
 /** Maison : un corps et une toiture débordante, qui pose la ligne d'encre. */
 const maison = (
   cx: number,
@@ -583,6 +634,10 @@ export const MONDE: LevelDef = {
     // Le versant des fours, loin à l'ouest. Région autonome : voir regions/rouge.ts.
     ...ROUGE.boxes,
 
+    // Les montagnes du fond : jamais vues pendant la partie, révélées au sacre
+    // quand le brouillard s'ouvre. Voir `montagnes`.
+    ...montagnes().map(haut),
+
     // Les deux horizons fermés. Sans eux, on voit le monde central depuis les
     // poches — et une poche dont on voit le dehors n'est plus un ailleurs.
     ...bourrelet(300, 520, -120, 100, 2.2, 2, 'jardin'),
@@ -675,50 +730,28 @@ export const MONDE: LevelDef = {
   // le voyage a la bonne dimension. La preuve du parcours est l'objet lui-même.
   // ═══════════════════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════════════════
-  // LES DEUX COULEURS DU MONDE, ET POURQUOI LEURS TAILLES S'OPPOSENT.
+  // LES DEUX PINCEAUX ENDORMIS, ET POURQUOI LEUR TAILLE COMPTE.
   //
-  // Le monde central naît en lavis gris. Deux voyages lui rendent ses couleurs,
-  // et **la taille de ce qu'on rapporte raconte le voyage** :
+  // On ne ramasse rien : on RENCONTRE quelqu'un. Chaque pinceau dort au bout de
+  // son monde, planté, et l'on appuie sur E pour le réveiller. Il se met alors à
+  // tourner autour de nous et nous suit jusqu'au retour au village, où il nous
+  // quitte pour repeindre sa part du monde.
   //
-  //   L'ENCRIER se prend dans le jardin, où l'on mesure 1,80 dans un monde fait
-  //   pour des géants. On y est petit, donc on en revient avec du GROS : 36 cm
-  //   là-bas, 1,44 une fois ressorti. Il va sur le grand socle.
+  // L'ÉCHELLE EXIGÉE relie le verbe du jeu à son but. Une couleur ne vit pas au
+  // bout d'un monde : elle vit à une TAILLE.
   //
-  //   LA BRAISE se prend sur la côte rouge, où l'on mesure 7,20. On y est
-  //   grand, donc on en revient avec du MENU : 2,80 là-bas, 70 cm une fois
-  //   ressorti. Elle va sur le petit socle.
+  //   Le pinceau VERT dort dans le jardin et n'accepte que ×1. On y arrive à ×1
+  //   en étant entré géant ; on y arrive à ×1/4 en étant entré normal — et
+  //   alors il est trop grand pour nous, il frémit et reste planté. Venir mal
+  //   grandi ne mène nulle part, et rien n'a eu besoin de le dire.
   //
-  // Les deux socles étaient déjà plantés sur la place, vides, dès la première
-  // minute de jeu. Leur écart de taille annonçait la nature des deux voyages
-  // avant qu'on en ait fait un seul.
+  //   Le pinceau ROUGE dort sur la côte et n'accepte que ×4. C'est la taille où
+  //   la porte de l'ouest dépose, donc il s'offre à qui a simplement suivi le
+  //   chemin — c'est le premier des deux, il doit être le plus doux.
   // ═══════════════════════════════════════════════════════════════════════════
-  carryables: [
-    // 505, PUIS 512, PUIS 516,5 — ET DEUX FOIS J'AVAIS TORT.
-    //
-    // À 505 il tombait DANS une dalle de l'escalier de sortie, qui existait
-    // avant que j'écrive cette quête : la seule chose à rapporter du jeu était
-    // enterrée dans la pierre, et rien ne le disait. Une vérification interdit
-    // désormais qu'un objet ou un logement naisse dans un solide, où que ce soit.
-    //
-    // À 512 il était dégagé, mais de 4,20 m seulement — alors que j'avais
-    // exigé 6 m de tout le monde. Mon balayage ne mesurait qu'un rayon de
-    // manœuvre de 1,60, donc il ne pouvait pas voir que je me contredisais.
-    //
-    // À 516,5 : 8,70 m de dégagement, sol plat, rien au-dessus, et 3,5 m de
-    // marge sur le bord de la parcelle.
-    { id: 'encrier', position: [516.5, -0.17, 0], size: 0.36, ink: 3 },
-    { id: 'braise', position: [-500, 0, 0], size: 2.8, ink: 3 },
-  ],
-
-  sockets: [
-    // Le grand socle attend l'encrier. 1,44 : la taille qu'il aura, et lui seul.
-    // Portée de 4,5 : on vient l'emplir à ×4, donc en lâchant l'encrier à huit
-    // mètres devant soi. Exiger le mètre près ferait de la dernière étape du
-    // voyage un exercice d'adresse, et ce jeu n'en est pas un.
-    { id: 'socle-vert', position: [-16, 1.2, -6], size: 1.44, portee: 4.5, ink: 3 },
-    // Le petit socle attend la braise, à 70 cm.
-    // Elle, on la rapporte à ×1 : deux mètres de portée suffisent largement.
-    { id: 'socle-rouge', position: [-3.5, 0.645, -17.5], size: 0.7, portee: 2, ink: 3 },
+  veilleurs: [
+    { id: 'pinceau-vert', position: [516.5, 0, 0], radius: 3, echelle: 0 },
+    { id: 'pinceau-rouge', position: [-500, 0, 0], radius: 9, echelle: 1 },
   ],
 
   goal: { position: [0, BELVEDERE_Y + 2, 240], radius: 16 },

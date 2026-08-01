@@ -423,7 +423,7 @@ const decor = (): BoxDef[] => {
   // ─── LA FALAISE, en bandes verticales ──────────────────────────────────────
   //
   // Pas un mur : une paroi de carrière, taillée en tranches inégales. Chaque
-  // bande a sa hauteur (de 24 à 48,2) et son propre retrait, et le retrait est
+  // bande a sa hauteur (de 44 à 65,8) et son propre retrait, et le retrait est
   // CALCULÉ pour creuser une alcôve au milieu : la bande la plus profonde est
   // celle qui fait face à la sortie. On sort donc dans un renfoncement, pas
   // contre une planche.
@@ -441,7 +441,16 @@ const decor = (): BoxDef[] => {
     // grésillants, quatre fois de suite.
     const dos = -519.7 + (i % 4) * 0.35;
     const face = -515.4 - creux - (i % 3) * 0.27;
-    const haut = 24 + ((i * 7) % 5) * 5.4 + (i % 3) * 1.3;
+    // LA PAROI A ÉTÉ REMONTÉE DE VINGT MÈTRES, et c'est l'échafaudage qui
+    // l'exige. À 24-48, quatre sommets de bandes (26,6 / 29,4 / 36,1 / 41,5)
+    // tombaient à moins de cinq mètres au-dessus d'un échelon : un joueur qui
+    // sprinte sautait de l'échafaudage sur la falaise, marchait dessus et
+    // redescendait sur la plate-forme sans avoir rien gravi. Toute la paroi
+    // passant au-dessus de 44, l'écart au plus haut échelon (36,80) est de
+    // 7,20 — une taille de joueur entière, et le saut n'en franchit que 4,80.
+    // La falaise redevient ce qu'elle doit être : le bord du monde, pas une
+    // rampe. Elle y gagne d'ailleurs la hauteur qui lui manquait.
+    const haut = 44 + ((i * 7) % 5) * 4.6 + (i % 3) * 1.7;
     out.push(pose(dos, face, z0, z0 + 11.2, haut, i % 2 ? 2 : 1));
   }
 
@@ -491,10 +500,14 @@ const decor = (): BoxDef[] => {
 
   // ─── LE BOL ────────────────────────────────────────────────────────────────
 
-  // La cheminée abattue. 4,60 : au-dessus de l'enjambée, sous le saut. Elle ne
-  // mène nulle part et c'est très bien ainsi — c'est une image, pas une énigme.
-  out.push(pose(-502.0, -481.0, -44.0, -37.6, 4.6, 2));
-  out.push(sur(-503.0, -480.0, -42.6, -39.0, SOL + 4.6, 0.6, 1));
+  // La cheminée abattue, déplacée au nord-est du bol : l'échafaudage occupe
+  // désormais l'angle sud-ouest où elle gisait. 4,60 : au-dessus de l'enjambée,
+  // sous le saut. Elle ne mène nulle part et c'est très bien ainsi — c'est une
+  // image, pas une énigme, et une région n'a pas à être une épreuve de bout en
+  // bout. On vérifie tout de même qu'elle ne donne prise sur rien : les bornes
+  // de sortie sont 5,80 plus haut, la première vire du four 6,80.
+  out.push(pose(-498.0, -477.0, 6.0, 12.4, 4.6, 2));
+  out.push(sur(-499.0, -476.0, 7.4, 11.0, SOL + 4.6, 0.6, 1));
 
   // Les bornes de sortie. Elles répondent à celles de l'entrée, deux cents
   // mètres plus loin et deux mètres plus hautes : on entre dans la côte par une

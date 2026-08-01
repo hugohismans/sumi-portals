@@ -46,7 +46,11 @@ const ORBITE = 1.5;
  * pinceaux du jeu — ils sont de la même famille, ils ne diffèrent que par
  * l'encre qu'ils portent.
  */
-const buildCorps = (teinte: string, materiaux: THREE.ShaderMaterial[]): THREE.Group => {
+const buildCorps = (
+  teinte: string,
+  materiaux: THREE.ShaderMaterial[],
+  contours: THREE.ShaderMaterial[],
+): THREE.Group => {
   const g = new THREE.Group();
   const piece = (
     boxes: [[number, number, number], [number, number, number]][],
@@ -54,8 +58,9 @@ const buildCorps = (teinte: string, materiaux: THREE.ShaderMaterial[]): THREE.Gr
   ): void => {
     const cel = createCelMaterial(new THREE.Color(couleur));
     const outline = createOutlineMaterial();
-    outline.uniforms.uThickness.value = 0.004;
+    outline.uniforms.uThickness.value = TRAIT;
     materiaux.push(cel, outline);
+    contours.push(outline);
     const geo = buildWorldGeometry(boxes.map(([min, max]) => ({ min, max, ink: 0 })));
     const edge = new THREE.Mesh(geo, outline);
     const fill = new THREE.Mesh(geo, cel);
@@ -83,12 +88,22 @@ const buildCorps = (teinte: string, materiaux: THREE.ShaderMaterial[]): THREE.Gr
   return g;
 };
 
+/**
+ * Épaisseur du trait, avant correction d'échelle. Le contour est gonflé en
+ * coordonnées locales puis mis à l'échelle par la matrice du modèle : sans
+ * diviser, un pinceau à ×4 aurait un trait quatre fois trop gras. On corrige à
+ * chaque image, dans `update`.
+ */
+const TRAIT = 0.004;
+
 /** Amorti aux deux bouts, pour qu'aucun mouvement ne démarre ni ne s'arrête sec. */
 const doux = (t: number): number => t * t * (3 - 2 * t);
 
 export class PinceauPeintre {
   readonly group = new THREE.Group();
   private readonly materiaux: THREE.ShaderMaterial[] = [];
+  private readonly contours: THREE.ShaderMaterial[] = [];
+  private readonly tailleRepos: number;
   private readonly socle: THREE.Vector3;
   private readonly corps: THREE.Group;
   /**
@@ -115,9 +130,11 @@ export class PinceauPeintre {
   /** Appelé quand il commence réellement à peindre. C'est lui qui rend la couleur. */
   onPeint: (() => void) | null = null;
 
+  /** `echelle` : sa taille UNE FOIS POSÉ sur son socle, au bout du voyage. */
   constructor(socle: [number, number, number], teinte: string, echelle = 1) {
     this.socle = new THREE.Vector3(...socle);
-    this.corps = buildCorps(teinte, this.materiaux);
+    this.tailleRepos = echelle;
+    this.corps = buildCorps(teinte, this.materiaux, this.contours);
     this.corps.scale.setScalar(echelle);
     this.group.add(this.corps);
     this.group.position.copy(this.socle);
@@ -190,6 +207,9 @@ export class PinceauPeintre {
     if (this.etat === 'dormant') {
       if (!this.plante) return;
       this.temps += dt;
+    // Le trait garde la même finesse à l'écran quelle que soit sa taille.
+    const e = this.corps.scale.x || 1;
+    for (const m of this.contours) m.uniforms.uThickness.value = TRAIT / e;
       this.corps.rotation.z = 0.22 + Math.sin(this.temps * 1.1) * 0.05;
       for (const m of this.materiaux) syncInkUniforms(m);
       return;
@@ -212,6 +232,8 @@ export class PinceauPeintre {
         oeil.z + Math.cos(a) * r,
       );
       this.group.position.lerp(this.cible, Math.min(1, dt * 3.2));
+      // En compagnon il suit VOTRE taille : il est à votre côté, donc il doit
+      // rester à votre mesure quand vous changez d'échelle en chemin.
       this.corps.scale.setScalar(0.42 * echelleJoueur);
       this.corps.rotation.y += dt * 1.4;
       // Il se redresse en une demi-seconde après l'éveil, sans à-coup.
@@ -273,6 +295,9 @@ export class PinceauPeintre {
       this.socle.y + (1 - d) * 5.5 + d * (2.4 + flotte),
       this.socle.z,
     );
+    // Il retrouve sa taille de repos en se posant : celle que son voyage lui a
+    // donnée, et que son socle attendait.
+    this.corps.scale.setScalar(0.42 * echelleJoueur * (1 - d) + this.tailleRepos * d);
     // Il se redresse, et tourne très lentement sur lui-même — assez pour rester
     // vivant, trop peu pour attirer l'œil de quelqu'un qui joue.
     this.corps.rotation.z = (1 - d) * 0.5;

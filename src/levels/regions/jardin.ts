@@ -496,6 +496,162 @@ const pommeDePin = (): BoxDef[] => {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LE TAS DE FEUILLES — c'est-à-dire une montagne, et l'épreuve du pinceau vert
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// LE PROBLÈME, dit par le joueur : « les mondes sont jolis mais vides de sens ;
+// il n'y a pas de parcours à faire ». Il avait raison. On traversait le jardin,
+// on ramassait le pinceau vert posé par terre au bout d'une promenade, on
+// repartait. La seule chose qui rende sa couleur au monde ne se méritait pas.
+//
+// LA RÉPONSE : le pinceau dort à vingt et un mètres, sur le dernier tas de
+// feuilles du jardin, et l'on n'y monte qu'en sautant vingt fois.
+//
+// ─── L'ÉCHELLE A CHANGÉ, ET C'EST TOUT LE SUJET ─────────────────────────────
+//
+// La pomme de pin, plus haut dans ce fichier, fut calibrée pour un joueur de
+// 0,45 qui enjambe 0,225 et saute 0,32. On traverse aujourd'hui ce jardin à ×1 :
+// 1,80 de haut, 0,90 d'enjambée, 1,293 de saut, 0,68 de large. Ses bonds de
+// 0,26 sont désormais SOUS l'enjambée — on monte la pomme de pin en marchant.
+// Elle reste belle, elle reste une promenade, elle n'est plus une épreuve. On
+// n'y touche pas : c'est un joueur à ×1/4 qu'elle attend, et il existe encore.
+//
+// Ce tas-ci est bâti sur les nombres de ×1, et sur eux seuls :
+//
+//   BOND = 1,05. La montée d'un appui au suivant. AU-DESSUS de l'enjambée de
+//     0,90 : on ne gravit donc jamais ce tas en marchant, il faut sauter, et
+//     c'est ce qui rend la chute possible. SOUS le saut de 1,293 : il reste
+//     0,24 de marge — assez pour que ce ne soit pas un supplice, trop peu pour
+//     qu'on y arrive sans regarder.
+//   PAS = 4,00 d'un appui au suivant, pour des feuilles larges de 2,40 : il y a
+//     donc 1,60 de VIDE entre deux. Un joueur qui s'élance franchit 3,44 en
+//     s'élevant de 1,05 — on n'use que 47 % de sa portée. C'est confortable, et
+//     ça ne pardonne pas l'inattention.
+//   Les feuilles saillent de 2,20 : le joueur, épais de 0,68, y tient avec de la
+//     place devant et derrière.
+//   Chaque assise est en retrait de 4,00 sur celle du dessous. Ce retrait n'est
+//     pas un ornement : c'est LA VIRE, et c'est elle qui rattrape les chutes.
+//
+// À ×1/4 — celui qui est entré mal grandi — le saut maximum est de 0,323 contre
+// 1,05 à franchir. Le tas est alors une falaise, et c'est très bien : cette
+// personne-là ne pourrait de toute façon pas soulever le pinceau.
+//
+// ─── CE QUI SE PASSE QUAND ON TOMBE, ET C'EST LE CŒUR DU MORCEAU ────────────
+//
+// La volée k mène de la vire k-1 à la vire k, et ses appuis SURPLOMBENT la
+// vire k-1. Donc une chute vous repose exactement à l'endroit d'où vous étiez
+// parti : vous rejouez la volée que vous venez de rater, immédiatement, sans
+// faire un pas. Pas de mort, pas de renvoi, pas de message, et surtout pas de
+// marche de pénitence. Perte maximale : quatre bonds.
+// La première volée part du sol : la rater vous rend l'herbe, à deux mètres du
+// premier appui.
+//
+// ─── LA REDESCENTE, CHARGÉ ──────────────────────────────────────────────────
+//
+// Refaire l'épreuve à l'envers avec le pinceau en main serait une punition
+// infligée à qui vient de réussir. Le dos du tas porte donc LA COULÉE : sept
+// grandes feuilles en cascade, chacune 2,60 plus bas que la précédente. On s'y
+// laisse tomber de l'une à l'autre sans rien risquer.
+// Et 2,60 est choisi AU-DESSUS du saut de 1,293 : la coulée descend, elle ne
+// remonte pas. On ne peut donc pas s'en servir pour escamoter l'épreuve.
+
+/** L'axe du tas. Emplacement choisi par balayage de gabarit, jamais à l'œil. */
+const TAS_X = 510;
+/** Largeur de chaque assise. Elle décroît : sans quoi deux flancs seraient coplanaires. */
+const TAS_W = [13.0, 12.5, 12.0, 11.5, 11.0];
+/** Face sud de chaque assise — celle qu'on grimpe. Le retrait de 4,00 est la vire. */
+const TAS_ZF = [-18.0, -22.0, -26.0, -30.0, -34.0];
+/** Dos de chaque assise. Décalé de 25 cm par assise, pour la même raison de plans. */
+const TAS_ZB = [-39.0, -38.75, -38.5, -38.25, -38.0];
+/** Sommet de chaque assise, c'est-à-dire hauteur de chaque vire. */
+const TAS_Y = [0, 1, 2, 3, 4].map((k) => SOL_E + (k + 1) * 4.2);
+/** La montée d'un appui : entre l'enjambée (0,90) et le saut (1,293). */
+const TAS_BOND = 1.05;
+/** Le pas de côté d'un appui au suivant. */
+const TAS_PAS = 4.0;
+
+/** Le sommet du tas, et donc l'endroit exact où dort le pinceau vert. */
+export const SOMMET_DU_TAS: [number, number, number] = [TAS_X, TAS_Y[4], -36.0];
+
+const tasDeFeuilles = (): BoxDef[] => {
+  const out: BoxDef[] = [];
+  /** D'où part la volée k : le sol pour la première, la vire d'en dessous ensuite. */
+  const depart = (k: number): number => (k === 0 ? SOL_E : TAS_Y[k - 1]);
+
+  for (let k = 0; k < 5; k++) {
+    const x0 = TAS_X - TAS_W[k] / 2;
+    const x1 = TAS_X + TAS_W[k] / 2;
+
+    // ─── Le corps de l'assise ────────────────────────────────────────────────
+    // Il plonge de 50 cm dans l'assise du dessous : sa face basse est donc
+    // enterrée, et ne peut être coplanaire avec la face haute qui la porte.
+    const bas = k === 0 ? -1.4 : TAS_Y[k - 1] - 0.5;
+    out.push(box([x0, bas, TAS_ZB[k]], [x1, TAS_Y[k] - 0.28, TAS_ZF[k]], 2));
+
+    // ─── La grande feuille qui la coiffe ─────────────────────────────────────
+    // C'est elle qu'on foule, et elle est ROUSSE : dans ce jardin, le roux dit
+    // toujours « c'est par là qu'on monte ». Elle déborde de 15 cm sur trois
+    // côtés — donc aucune face commune avec le corps — mais elle est RENTRÉE de
+    // 12 cm au sud, et ce retrait n'est pas cosmétique : débordante de ce
+    // côté-là, sa tranche venait raser la tête du joueur posté sur le dernier
+    // appui d'en dessous.
+    out.push(box(
+      [x0 - 0.15, TAS_Y[k] - 0.48, TAS_ZB[k] - 0.15],
+      [x1 + 0.15, TAS_Y[k], TAS_ZF[k] - 0.12],
+      3,
+    ));
+
+    // ─── Les appuis : trois feuilles en travers, puis la vire ────────────────
+    // Elles vont d'un bord à l'autre et la volée suivante repart EN SENS
+    // INVERSE : c'est un lacet, et le demi-tour est gratuit — le dernier appui
+    // d'une volée et le premier de la suivante sont à la même abscisse. On
+    // monte sur la vire, on se retourne, la feuille est là.
+    const sens = k % 2 === 0 ? 1 : -1;
+    for (let i = 1; i <= 3; i++) {
+      const px = TAS_X + sens * (i - 2) * TAS_PAS;
+      const y = depart(k) + i * TAS_BOND;
+      out.push(box([px - 1.2, y - 0.5, TAS_ZF[k] - 0.4], [px + 1.2, y, TAS_ZF[k] + 2.2], 3));
+    }
+  }
+
+  // ─── LA COURONNE DU SOMMET ─────────────────────────────────────────────────
+  // Contrat, règle 6 : le vide se protège par des barreaux, jamais par un mur —
+  // on est monté pour regarder en bas. Des tiges sèches de 0,35, espacées de
+  // 0,60 : plus serré que le joueur n'est large (0,68), il ne passe pas ; hautes
+  // de 1,50, au-dessus de son saut (1,293), il ne monte pas dessus.
+  // On ne ferme que l'est et l'ouest. Au sud, tomber vous rend la vire d'où vous
+  // venez ; au nord, la coulée vous rattrape. Ce sont les deux seuls côtés d'où
+  // une chute coûterait vingt mètres, et ce sont les deux qu'on barre.
+  const sx0 = TAS_X - TAS_W[4] / 2;
+  const sx1 = TAS_X + TAS_W[4] / 2;
+  for (const cote of [-1, 1] as const) {
+    for (let i = 0; i < 5; i++) {
+      const pz = TAS_ZB[4] + 0.45 + i * 0.95;
+      const px = cote < 0 ? sx0 + 0.12 : sx1 - 0.47;
+      out.push(box([px, TAS_Y[4] - 0.3, pz], [px + 0.35, TAS_Y[4] + 1.5, pz + 0.35], 1));
+    }
+  }
+
+  // ─── LE LIT DU PINCEAU ─────────────────────────────────────────────────────
+  // Une feuille pâle au centre du sommet — la seule de cette couleur dans tout
+  // le tas. C'est là qu'il dort, et cela se voit d'en bas.
+  out.push(box([TAS_X - 1.7, TAS_Y[4] - 0.1, -37.1], [TAS_X + 1.7, TAS_Y[4] + 0.22, -34.9], 0));
+
+  // ─── LA COULÉE : la descente, et elle ne remonte pas ───────────────────────
+  // Sept feuilles en cascade sur le dos du tas, chacune 2,60 sous la précédente.
+  // Elles se recouvrent de 2 m en x : on se laisse tomber de l'une à l'autre
+  // sans viser. 2,60 dépasse le saut de 1,293, donc on ne les remonte pas — la
+  // coulée est une sortie, jamais un raccourci.
+  for (let i = 1; i <= 7; i++) {
+    const y = TAS_Y[4] - i * 2.6;
+    const cx = TAS_X + (i % 2 === 0 ? 2.0 : -2.0);
+    out.push(box([cx - 3.0, y - 0.45, -42.6 - i * 0.05], [cx + 3.0, y, -37.6 + i * 0.04], 3));
+  }
+
+  return out;
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LE DÉCOR
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -758,6 +914,11 @@ const decor = (): BoxDef[] => {
   // qui existait déjà. La clairière où elle est plantée n'a pas été dégagée,
   // elle a été TROUVÉE — le semis d'herbe l'avait laissée vide tout seul.
   out.push(...pommeDePin());
+
+  // ─── L'ÉPREUVE, au bout du voyage ──────────────────────────────────────────
+  // Comme la pomme de pin, le tas ne tire aucun nombre au hasard : il ne décale
+  // donc pas d'un pouce le semis d'herbe ni les galets épars.
+  out.push(...tasDeFeuilles());
 
   return out;
 };

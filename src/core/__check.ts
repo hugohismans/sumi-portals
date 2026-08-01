@@ -8,7 +8,7 @@
  *
  *   npm run check
  */
-import { PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './constants.js';
+import { TICK_DT, scaleOfLevel } from './constants.js';
 import { buildFaces, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
@@ -89,6 +89,8 @@ const walkTo = (
     if (e.carry) collected.carry = e.carry;
     if (e.tooHeavy) collected.tooHeavy = e.tooHeavy;
     if (e.socketFilled) collected.socketFilled = e.socketFilled;
+    if (e.eveil) collected.eveil = e.eveil;
+    if (e.eveilRefuse) collected.eveilRefuse = e.eveilRefuse;
     if (opts.stopOnEvent && (e.traversed || e.refused || e.reachedGoal)) break;
   }
   return collected;
@@ -1336,141 +1338,98 @@ console.log('\n— Aucune face confondue et exposée —');
 }
 
 // =============================================================================
-console.log('\n— L’encrier : la quête du monde —');
+console.log('\n— Les pinceaux endormis : une couleur vit à une TAILLE —');
 {
-  const PORTEE = (echelle: number) => PLAYER_HEIGHT * echelle * 0.55;
-  const encrier = MONDE.carryables!.find((c) => c.id === 'encrier')!;
-  const braise = MONDE.carryables!.find((c) => c.id === 'braise')!;
-  const socle = MONDE.sockets!.find((s) => s.id === 'socle-vert')!;
-  const socleRouge = MONDE.sockets!.find((s) => s.id === 'socle-rouge')!;
-
-  // LE COEUR DE L’ENIGME. Entrer dans le jardin sans avoir grandi d’abord vous
-  // y depose a un quart de taille : on traverse ce monde immense, on trouve
-  // l’encrier, et on ne peut pas le soulever. Rien ne l’explique, tout se voit.
-  check(
-    'a ×1/4, l’encrier est trop lourd — venir petit ne mène nulle part',
-    encrier.size > PORTEE(0.25),
-    `${encrier.size} > ${PORTEE(0.25).toFixed(3)}`,
-  );
-  check(
-    'a ×1, il se souleve — il fallait passer une porte avant',
-    encrier.size <= PORTEE(1),
-    `${encrier.size} <= ${PORTEE(1).toFixed(2)}`,
-  );
-
-  // Le retour doit rester possible a chaque porte. Un centimetre de plus et
-  // l’encrier restait coince, la quete morte sans un message.
-  const sim = new Simulation(MONDE);
-  const petite = (id: string) => sim.faces.find((f) => f.pairId === id && f.kind === 'small')!;
-  for (const [id, taille, etape] of [
-    ['descente-jardin', encrier.size, 'sort du jardin'],
-    ['ascension-1', encrier.size * 4, 'peut passer par la porte du village'],
-    ['ascension-2', encrier.size * 4, 'peut passer par celle de la terrasse'],
-  ] as const) {
-    const f = petite(id);
-    check(
-      `l’encrier ${etape} — ${taille.toFixed(2)} dans une porte de ${f.width.toFixed(2)}`,
-      taille <= f.width * 0.9 && taille <= f.height * 0.96,
-      `${taille.toFixed(2)} / ${(f.width * 0.9).toFixed(2)}`,
-    );
-  }
-
-  // LA PROPRIETE QUI SAUVE LA QUETE, et elle n’etait pas voulue au depart :
-  // l’encrier suit toujours son porteur, donc sa taille finale ne depend que de
-  // la taille du joueur en haut — jamais du chemin suivi. Or on peut monter du
-  // village au belvedere de deux facons (porte puis escalier, ou l’inverse).
-  // Les deux donnent exactement le meme encrier, et le socle du sommet accepte
-  // donc l’un comme l’autre. Sans cela, un joueur ayant pris le bon chemin dans
-  // le mauvais ordre se serait retrouve avec un objet inutilisable.
-  // L'encrier suit son porteur : parti du jardin à ×1, il arrive au village à
-  // ×4, donc quatre fois plus gros.
-  const arrivee = encrier.size * 4;
-  check(
-    'au sommet, le socle attend exactement la taille du voyage entier',
-    Math.abs(arrivee - socle.size) <= socle.size * 0.12,
-    `arrive a ${arrivee.toFixed(2)}, attendu ${socle.size}`,
-  );
-  check(
-    'un objet qui n’aurait pas fait le trajet n’y entre pas',
-    Math.abs(arrivee / 4 - socle.size) > socle.size * 0.12,
-    `${(arrivee / 4).toFixed(2)} refuse`,
-  );
-  // Et il reste soulevable la-haut : un objet qu’on lache et qu’on ne peut plus
-  // reprendre, au bout de tout le voyage, serait la pire fin possible.
-  // On ressort du jardin à ×4 — c'est la traversée qui nous a regrandis en même
-  // temps qu'elle a grossi l'encrier. Une première version comparait sa taille
-  // à la portée d'un joueur de 1,80 et criait au piège : elle avait oublié que
-  // le porteur avait grandi avec ce qu'il porte.
-  check(
-    'et il reste soulevable au village, où l’on est redevenu géant',
-    arrivee <= PORTEE(4),
-    `${arrivee.toFixed(2)} <= ${PORTEE(4).toFixed(2)}`,
-  );
-
-  // LA BRAISE, ET L'OPPOSITION QUI FAIT TOUT LE PROPOS.
+  // LE CŒUR DU JEU, ET IL TIENT EN UNE RÈGLE.
   //
-  // Sur la côte rouge on est GRAND, donc on en revient avec du MENU ; dans le
-  // jardin on est PETIT, donc on en revient avec du GROS. Les deux socles
-  // plantés sur la place depuis la première minute annonçaient cet écart avant
-  // qu'on ait fait un seul voyage.
+  // On ne ramasse pas un objet : on réveille quelqu'un. Et il ne s'éveille que
+  // pour un joueur de la taille du monde où il dort — trop grand, il est
+  // minuscule entre nos doigts ; trop petit, on ne peut pas le lever.
+  //
+  // C'est ce qui relie le VERBE du jeu (changer de taille) à son BUT (rendre
+  // les couleurs). Sans cette règle, la couleur serait simplement au bout d'un
+  // monde, et l'on pourrait la remplacer par une clé sans que rien change.
+  const veilleurs = MONDE.veilleurs!;
+  const vert = veilleurs.find((v) => v.id === 'pinceau-vert')!;
+  const rouge = veilleurs.find((v) => v.id === 'pinceau-rouge')!;
+
+  /** Va au pinceau et appuie sur E. */
+  const reveiller = (niveau: number, v: typeof vert): TickEvents => {
+    const sim = new Simulation(MONDE);
+    sim.player.scaleLevel = niveau;
+    sim.player.position = { x: v.position[0], y: v.position[1] + 0.4, z: v.position[2] };
+    settle(sim, 30);
+    return walkTo(sim, [v.position[0], v.position[1], v.position[2]], 10, { interact: true });
+  };
+
   check(
-    'la braise se soulève à ×4, là où on la trouve',
-    braise.size <= PORTEE(4),
-    `${braise.size} <= ${PORTEE(4).toFixed(2)}`,
+    'le pinceau vert s’éveille pour un joueur à sa taille',
+    reveiller(vert.echelle, vert).eveil?.id === 'pinceau-vert',
+    `échelle exigée ${vert.echelle}`,
   );
-  const braiseAuVillage = braise.size / 4;
   check(
-    'et elle arrive menue au village, exactement à la taille du petit socle',
-    Math.abs(braiseAuVillage - socleRouge.size) <= socleRouge.size * 0.12,
-    `${braiseAuVillage} pour un socle de ${socleRouge.size}`,
+    'et refuse un joueur venu trop petit — il est trop grand pour lui',
+    reveiller(vert.echelle - 1, vert).eveilRefuse?.trop === 'petit',
+    'venu un cran trop bas',
   );
   check(
-    'les deux couleurs ne peuvent pas se tromper de socle',
-    Math.abs(arrivee - socleRouge.size) > socleRouge.size * 0.12 &&
-      Math.abs(braiseAuVillage - socle.size) > socle.size * 0.12,
-    `${arrivee} vs ${socleRouge.size}, ${braiseAuVillage} vs ${socle.size}`,
+    'et refuse aussi un géant — il est minuscule entre ses doigts',
+    reveiller(vert.echelle + 1, vert).eveilRefuse?.trop === 'grand',
+    'venu un cran trop haut',
+  );
+  check(
+    'le pinceau rouge s’éveille pour un joueur à ×4, la taille où sa porte dépose',
+    reveiller(rouge.echelle, rouge).eveil?.id === 'pinceau-rouge',
+    `échelle exigée ${rouge.echelle}`,
   );
 
-  // La porte vierge fait mur tant que le pinceau ne l’a pas dessinee. C’est le
-  // meme refus qu’une porte trop etroite : le joueur n’a pas a connaitre la
-  // difference, il voit seulement qu’il ne passe pas.
+  // Et l'on ne réveille personne de loin : il faut être allé jusqu'à lui.
+  const loin = new Simulation(MONDE);
+  loin.player.scaleLevel = vert.echelle;
+  loin.player.position = { x: vert.position[0] - 40, y: 0.4, z: vert.position[2] };
+  const rien = walkTo(loin, [vert.position[0] - 40, 0, vert.position[2]], 10, { interact: true });
+  check(
+    'on ne le réveille pas de loin : il faut être allé jusqu’à lui',
+    rien.eveil === undefined && rien.eveilRefuse === undefined,
+    `à 40 unités pour un rayon de ${vert.radius}`,
+  );
+
+  // Une porte non dessinée fait mur, et s'ouvre une fois tracée. C'est la
+  // mécanique dont vivra toute la suite de niveaux.
   const vierge = new Simulation(MONDE);
   vierge.portesFermees.add('ascension-2');
   vierge.player.scaleLevel = 1;
   vierge.player.position = { x: 0, y: 30.3, z: 62 };
   const barre = walkTo(vierge, [0, 30, 80], 60 * 20, { stopOnEvent: true });
   check(
-    'une porte non dessinee ne se traverse pas',
+    'une porte non dessinée ne se traverse pas',
     barre.refused?.reason === 'scelle' && vierge.player.scaleLevel === 1,
     `${barre.refused?.reason ?? 'aucun refus'}`,
   );
-
-  // Et une fois tracee, elle s’ouvre — sans quoi le jeu serait sans issue.
   vierge.portesFermees.delete('ascension-2');
   const ouverte = walkTo(vierge, [0, 30, 80], 60 * 20, { stopOnEvent: true });
   check(
-    'une fois dessinee, elle laisse passer',
+    'une fois dessinée, elle laisse passer',
     ouverte.traversed?.pairId === 'ascension-2',
     `${ouverte.traversed?.pairId ?? 'rien'}`,
   );
 
-  // L’eperon : du sommet du monde jusqu’a la pointe de l’Aiguille, et retour.
+  // L'éperon : du sommet du monde jusqu'à la pointe de l'Aiguille, et retour.
   const geant = new Simulation(MONDE);
   geant.player.scaleLevel = 2;
   geant.player.position = { x: 0, y: 121, z: 210 };
   walkTo(geant, [0, 114.2, 0], 60 * 60);
   settle(geant, 60);
   check(
-    'a ×16, l’eperon mene du belvedere a la pointe de l’Aiguille',
+    'à ×16, l’éperon mène du belvédère à la pointe de l’Aiguille',
     Math.hypot(geant.player.position.x, geant.player.position.z) < 20 &&
       geant.player.position.y > 112,
     pos(geant),
   );
-
   walkTo(geant, [0, 120, 220], 60 * 60);
   settle(geant, 60);
   check(
-    'et l’on en revient — on ne reste pas perche la-haut',
+    'et l’on en revient — on ne reste pas perché là-haut',
     geant.player.position.z > 190 && geant.player.position.y > 118,
     pos(geant),
   );
@@ -1499,16 +1458,11 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // DEUX couleurs sont rendues.
   const j = new Simulation(MONDE);
 
-  /**
-   * Ramasse l'objet visé. On lui donne la CIBLE et non la position courante :
-   * viser sa propre position donne un cap de zéro — atan2(0, 0) — et le joueur
-   * se retrouve à regarder le nord au lieu de l'objet à ses pieds. La saisie
-   * ne trouve alors rien devant elle.
-   */
-  const prendre = (sim: Simulation, cible: [number, number, number]): boolean => {
-    walkTo(sim, cible, 8);
-    const e = walkTo(sim, cible, 8, { interact: true });
-    return e.carry?.taken === true;
+  /** Va jusqu'au pinceau endormi et appuie sur E. */
+  const reveiller = (sim: Simulation, cible: [number, number, number]): boolean => {
+    walkTo(sim, cible, 12);
+    settle(sim, 20);
+    return walkTo(sim, cible, 10, { interact: true }).eveil !== undefined;
   };
 
   // ── Le village, à taille d'homme ────────────────────────────────────────
@@ -1550,7 +1504,11 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     walkTo(j, p, 60 * 40);
   }
   settle(j, 40);
-  check('on atteint la braise, au fond du chantier', prendre(j, [-500, 0, 0]), pos(j));
+  check(
+    'on réveille le pinceau rouge, au fond du chantier',
+    reveiller(j, [-500, 0, 0]),
+    pos(j),
+  );
 
   // Retour par le même chemin, à l'envers.
   for (const p of [
@@ -1563,12 +1521,15 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   }
   walkTo(j, [-300, 0, 0], 60 * 60, { stopOnEvent: true });
   check(
-    'et l’on revient au village, redevenu normal, la braise en main',
-    j.player.scaleLevel === 0 && j.carryables.held?.id === 'braise',
-    `échelle ${j.player.scaleLevel}, ${j.carryables.held?.id ?? 'les mains vides'}`,
+    'et l’on revient au village, redevenu normal, le pinceau à nos côtés',
+    j.player.scaleLevel === 0 && j.eveilles.has('pinceau-rouge'),
+    `échelle ${j.player.scaleLevel}, ${j.eveilles.size} pinceau(x) éveillé(s)`,
   );
 
-  // ── Le petit socle. Sa taille annonçait ce voyage depuis la place. ──────
+  // Le pinceau repeint le monde de lui-même en rentrant : c'est du rendu, pas
+  // de la simulation, donc ce fichier n'a rien à y vérifier. Ce qui compte ici
+  // est qu'on soit revenu, à la bonne taille, avec lui.
+
   for (const p of [
     [-48, 0, -40],
     [-30, 0, -40],
@@ -1576,20 +1537,12 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     [-6, 0, -50],
     [22, 0, -50],
     [22, 0, -32],
-    [-3.5, 0, -17.5],
+    [0, 0, -18],
   ] as [number, number, number][]) {
     walkTo(j, p, 60 * 30);
   }
-  walkTo(j, [-3.5, 0, -17.5], 60 * 6, { interact: true });
-  settle(j, 90);
-  check(
-    'la braise entre dans le petit socle, et lui seul',
-    j.sockets.items.find((s) => s.id === 'socle-rouge')?.filledBy === 'braise',
-    `${j.sockets.filled} socle(s) sur ${j.sockets.total}`,
-  );
 
   // ── La terrasse : on grandit pour de bon ────────────────────────────────
-  walkTo(j, [0, 0, -18], 60 * 30);
   walkTo(j, [0, 0, -50], 60 * 30, { stopOnEvent: true });
   check(
     'la petite porte du village fait grandir, et dépose sur la terrasse',
@@ -1638,7 +1591,11 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     walkTo(j, p, 60 * 60);
   }
   settle(j, 40);
-  check('on atteint l’encrier, au fond du jardin', prendre(j, [516.5, -0.17, 0]), pos(j));
+  check(
+    'on réveille le pinceau vert, au fond du jardin',
+    reveiller(j, [516.5, 0, 0]),
+    pos(j),
+  );
 
   // Le retour par le même chemin, à l'envers. Le jardin non plus ne se traverse
   // pas en ligne droite : c'est une forêt d'herbe, et son auteur a cherché le
@@ -1654,32 +1611,16 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   }
   walkTo(j, [300, 0, 0], 60 * 40, { stopOnEvent: true });
   check(
-    'et l’on revient au village, géant, l’encrier devenu gros',
-    j.player.scaleLevel === 1 && j.carryables.held?.id === 'encrier',
-    `échelle ${j.player.scaleLevel}, ${j.carryables.held?.id ?? 'les mains vides'}`,
+    'et l’on revient au village, géant, le second pinceau à nos côtés',
+    j.player.scaleLevel === 1 && j.eveilles.has('pinceau-vert'),
+    `échelle ${j.player.scaleLevel}, ${j.eveilles.size} pinceau(x) éveillé(s)`,
   );
 
-  for (const p of [
-    [-22, 0, -32],
-    [-22, 0, -22],
-    [-16, 0, -22],
-    [-16, 0, -6],
-  ] as [number, number, number][]) {
-    walkTo(j, p, 60 * 30);
-  }
-  walkTo(j, [-16, 0, -6], 60 * 6, { interact: true });
-  settle(j, 90);
+  // ── ET LA CONCLUSION ────────────────────────────────────────────────────
   check(
-    'l’encrier entre dans le grand socle',
-    j.sockets.items.find((s) => s.id === 'socle-vert')?.filledBy === 'encrier',
-    `${j.sockets.filled} socle(s) sur ${j.sockets.total}`,
-  );
-
-  // ── ET LA CONCLUSION : les deux couleurs sont rendues ───────────────────
-  check(
-    'LE MONDE A RETROUVÉ SES DEUX COULEURS — le voyage entier tient debout',
-    j.sockets.allFilled,
-    `${j.sockets.filled} sur ${j.sockets.total}`,
+    'LE VOYAGE ENTIER TIENT DEBOUT — les deux pinceaux ont été réveillés',
+    j.eveilles.size === (MONDE.veilleurs?.length ?? 0),
+    `${j.eveilles.size} sur ${MONDE.veilleurs?.length ?? 0}`,
   );
 }
 
