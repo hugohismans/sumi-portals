@@ -1,4 +1,6 @@
 import type { BoxDef, LevelDef } from '../core/types.js';
+import { BELVEDERE } from './regions/belvedere.js';
+import { TERRASSE } from './regions/terrasse.js';
 
 /**
  * LE MONDE — un voyage en spirale.
@@ -256,6 +258,11 @@ export const MONDE: LevelDef = {
   // Et l'on voit ces couleurs À TRAVERS le portail avant d'y entrer : c'est là
   // que la promesse se fait.
   regions: [
+    // Le jardin d'abord : sa parcelle est incluse dans celle des hauteurs, et
+    // c'est la première trouvée qui gagne. Même papier de part et d'autre, donc
+    // le passage de l'une à l'autre ne se voit pas — seuls les aplats changent.
+    TERRASSE.region,
+    BELVEDERE.region,
     {
       name: 'hauteurs',
       min: [-300, 20, 40],
@@ -295,6 +302,9 @@ export const MONDE: LevelDef = {
     ...balustrade(-88.7, -87.3, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
     ...balustrade(87.3, 88.7, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
 
+    // Le jardin sec, posé sur la dalle. Région autonome : voir regions/terrasse.ts.
+    ...TERRASSE.boxes,
+
     // --- Escalier B : ×4 le regarde, ×16 le gravit ----------------------------
     // Marches de 12 : mur pour un joueur de 7,2, marche pour un joueur de 28,8.
     ...escalier(40, 90, 126, TERRASSE_Y, BELVEDERE_Y, 12, 9, 2).map(haut),
@@ -307,6 +317,9 @@ export const MONDE: LevelDef = {
     ...balustrade(-256, -253, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
     ...balustrade(253, 256, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
     ...balustrade(-255, 255, 374, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+
+    // Le sommet du voyage. Région autonome : voir regions/belvedere.ts.
+    ...BELVEDERE.boxes,
   ],
 
   portals: [
@@ -351,14 +364,38 @@ export const MONDE: LevelDef = {
     // 1. Sur la place, à hauteur d'homme. On le rejoint en marchant : c'est la
     //    leçon gratuite, celle qui installe la règle.
     [6, VILLAGE_Y, -14],
-    // 2. Sur le toit de la maison basse. Hors d'atteinte. Il faut franchir la
-    //    porte, devenir géant, et redescendre l'escalier — et alors ce toit
-    //    n'est plus qu'une marche. C'est la première vraie énigme du jeu.
+
+    // 2-4. Le jardin sec de la terrasse. Le pinceau passe la petite porte sous
+    //      vos yeux : c'est l'invitation, et la seule route possible. On le
+    //      suit à ×4, on tourne dans son jardin.
+    //
+    //      L'ORDRE COMPTE, et pas pour la narration : ces trois stations sont
+    //      AU NORD de la seconde porte, qui ne se déclenche qu'en montant vers
+    //      le nord. Visitées maintenant — donc en arrivant par le nord et en
+    //      redescendant vers le sud — on la longe sans jamais l'ouvrir. Placées
+    //      après le toit, il fallait remonter du sud vers elles et l'on
+    //      franchissait la porte par accident, expédié au belvédère en plein
+    //      milieu du jardin.
+    ...TERRASSE.stations,
+
+    // 5. Retour au village, sur le toit de la maison basse — celui qu'on
+    //    regardait tout à l'heure sans pouvoir y monter. On redescend
+    //    l'escalier et le toit n'est plus qu'une marche : le monde n'a pas
+    //    changé, c'est vous. C'est le cœur du jeu, et il fallait avoir habité
+    //    le village à taille d'homme pour que le retour ait un poids.
     [-24, 3.4, -20],
-    // 3. Sur la terrasse, à l'arrivée de l'escalier.
+
+    // 6. Devant la seconde porte, côté sud. Le pinceau s'y pose et derrière lui
+    //    se dresse le grand torii : rien à expliquer.
     [0, TERRASSE_Y, 58],
-    // 4. Le belvédère, par la seconde porte.
-    [0, BELVEDERE_Y, 250],
+
+    // 7-9. Le belvédère, d'où l'on voit tout ce qu'on vient de parcourir.
+    //      Ses deux dernières stations sont au NORD du grand torii, mais très à
+    //      l'écart de son axe (x=150 puis x=-192, pour une porte large de 30) :
+    //      aucune route naturelle ne repasse dedans. Et si quelqu'un s'entête à
+    //      remonter par le milieu, il redescend d'un étage — l'escalier le
+    //      ramène. Contrariant, jamais bloquant.
+    ...BELVEDERE.stations,
   ],
 
   hints: [

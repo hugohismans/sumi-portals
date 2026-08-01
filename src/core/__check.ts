@@ -15,6 +15,10 @@ import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
 import { MONDE } from '../levels/monde.js';
+import { verifierParcelle } from '../levels/regions/contrat.js';
+import { BELVEDERE } from '../levels/regions/belvedere.js';
+import { JARDIN } from '../levels/regions/jardin.js';
+import { TERRASSE } from '../levels/regions/terrasse.js';
 
 // Ce fichier est le seul du projet à tourner sous Node ; on déclare le strict
 // minimum plutôt que de tirer @types/node dans une base de code navigateur.
@@ -560,6 +564,20 @@ console.log('\n— Le monde : la première énigme, le toit de la maison basse �
 
   check('à ×1, le toit est hors d’atteinte', monter(0) < 1.5, `${monter(0).toFixed(2)}`);
   check('à ×4, ce même toit n’est plus qu’une marche', monter(1) > 3.0, `${monter(1).toFixed(2)}`);
+}
+
+// ─── Les régions restent dans leur parcelle ──────────────────────────────────
+//
+// C'est la garantie qui rend la fabrication en parallèle possible : tant que
+// chaque région tient dans la boîte qu'on lui a réservée, deux régions écrites
+// séparément ne peuvent pas s'interpénétrer, quoi qu'elles contiennent. Sans
+// cette vérification, la règle n'est qu'un vœu dans un commentaire.
+{
+  console.log('\n— Les régions tiennent dans leur parcelle —');
+  for (const m of [TERRASSE, BELVEDERE, JARDIN]) {
+    const fautes = verifierParcelle(m);
+    check(`${m.region.name} ne déborde pas`, fautes.length === 0, fautes[0] ?? '');
+  }
 }
 
 console.log(failures === 0 ? '\nTout passe.\n' : `\n${failures} vérification(s) en échec.\n`);
