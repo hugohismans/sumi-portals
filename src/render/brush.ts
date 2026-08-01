@@ -146,6 +146,20 @@ export class Brush {
   private readonly faces: { pairId: string; kind: 'big' | 'small'; position: THREE.Vector3 }[];
   /** Face par laquelle il ressortira, s'il est en train de passer une porte. */
   private sortie: THREE.Vector3 | null = null;
+  /**
+   * Temps restant DANS la porte, en secondes.
+   *
+   * Il ressortait instantanément de l'autre côté, et l'on voyait donc le saut :
+   * il entrait, et dans la même image il était à l'autre bout du monde. Le
+   * halo, qui traverse le décor, rendait la chose encore plus visible. Un
+   * portail ne se lit pas comme un passage si l'on voit les deux bouts en même
+   * temps.
+   *
+   * Il disparaît donc pendant la traversée — corps ET halo. On le voit entrer,
+   * il n'est plus là, il ressort ailleurs. C'est court, un tiers de seconde :
+   * assez pour couper le lien visuel, trop peu pour qu'on le cherche.
+   */
+  private dansLaPorte = 0;
 
   constructor(
     points: [number, number, number][] = [],
@@ -307,6 +321,32 @@ export class Brush {
   update(player: PlayerState, playerScale: number, dt: number, camera: THREE.Camera): void {
     if (this.waypoints.length === 0) return;
 
+    // Dans la porte : invisible, immobile, et rien ne le relie aux deux mondes.
+    if (this.dansLaPorte > 0) {
+      this.dansLaPorte -= dt;
+      this.head.visible = false;
+      this.halo.visible = false;
+      if (this.dansLaPorte <= 0 && this.sortie) {
+        // Il ressort de l'autre côté et reprend sa route vers le jalon. La
+        // traînée est coupée net : aucun trait d'encre ne doit relier deux
+        // mondes en ligne droite, ce serait redire ce qu'on vient d'éviter.
+        const cible = this.waypoints[Math.min(this.station + 1, this.waypoints.length - 1)];
+        this.head.position.copy(this.sortie);
+        this.from.copy(this.sortie);
+        this.to.copy(cible);
+        this.arc.set(0, Math.max(4, this.from.distanceTo(this.to) * 0.25), 0);
+        this.sortie = null;
+        this.fleeing = FLIGHT * 0.75;
+        this.samples.length = 0;
+        this.prev.copy(this.head.position);
+        this.prevOriented.copy(this.head.position);
+        this.head.visible = true;
+        this.halo.visible = true;
+      }
+      for (const m of this.bodyMaterials) syncInkUniforms(m);
+      return;
+    }
+
     if (this.fleeing > 0) {
       this.fleeing -= dt;
       const t = 1 - Math.max(0, this.fleeing) / FLIGHT;
@@ -318,23 +358,13 @@ export class Brush {
         .lerp(this.to, eased)
         .addScaledVector(this.arc, Math.sin(Math.PI * t));
       if (this.fleeing <= 0) {
-        if (this.sortie) {
-          // Il vient d'entrer dans la porte. Il ressort de l'autre côté et
-          // reprend sa route vers le jalon — et sa traînée est coupée net, pour
-          // qu'aucun trait d'encre ne relie les deux mondes en ligne droite.
-          const cible = this.waypoints[Math.min(this.station + 1, this.waypoints.length - 1)];
-          this.head.position.copy(this.sortie);
-          this.from.copy(this.sortie);
-          this.to.copy(cible);
-          this.arc.set(0, Math.max(4, this.from.distanceTo(this.to) * 0.25), 0);
-          this.sortie = null;
-          this.fleeing = FLIGHT * 0.75;
+        if (this.sortie && this.dansLaPorte <= 0) {
+          // Il vient d'atteindre la face : il entre, et disparaît.
+          this.dansLaPorte = 0.34;
           this.samples.length = 0;
-          this.prev.copy(this.head.position);
-          this.prevOriented.copy(this.head.position);
-        } else {
-          this.station = Math.min(this.station + 1, this.waypoints.length - 1);
+          return;
         }
+        this.station = Math.min(this.station + 1, this.waypoints.length - 1);
       }
     } else {
       // À l'arrêt il RESPIRE, il ne tourne plus. Le mouvement circulaire

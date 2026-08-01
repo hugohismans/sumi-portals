@@ -108,6 +108,8 @@ export class PinceauPeintre {
   private etat: 'dormant' | 'compagnon' | 'peintre' | 'pose' = 'dormant';
   private temps = -1;
   private aPeint = false;
+  /** Planté et visible, avant qu'on l'ait pris. */
+  private plante = false;
   private readonly cible = new THREE.Vector3();
 
   /** Appelé quand il commence réellement à peindre. C'est lui qui rend la couleur. */
@@ -123,6 +125,25 @@ export class PinceauPeintre {
   }
 
   /**
+   * IL DORT DANS SON MONDE, planté et bien visible.
+   *
+   * On ramassait un cube rouge POUR OBTENIR un pinceau rouge : deux objets pour
+   * une seule idée, et rien à l'arrivée qui donne envie d'aller voir. Le cube
+   * existe toujours — c'est lui qui porte la physique, la taille qui change en
+   * traversant les portes, et l'emboîtement final — mais on ne le dessine plus.
+   * C'est le pinceau qu'on voit, planté dans le sol, la touffe en l'air.
+   */
+  planter(ou: [number, number, number], echelle: number): void {
+    if (this.etat !== 'dormant') return;
+    this.group.position.set(ou[0], ou[1], ou[2]);
+    this.corps.scale.setScalar(echelle);
+    // Planté : légèrement de biais, comme un pinceau qu'on a laissé là.
+    this.corps.rotation.set(0, 0.6, 0.22);
+    this.group.visible = true;
+    this.plante = true;
+  }
+
+  /**
    * ON VIENT DE LE PRENDRE, au fond de son monde. Il s'éveille et se met à
    * tourner autour de nous. À partir de là il ne nous quitte plus — jusqu'à ce
    * qu'on rentre, et qu'il ait du travail.
@@ -131,6 +152,7 @@ export class PinceauPeintre {
     if (this.etat !== 'dormant') return;
     this.etat = 'compagnon';
     this.temps = 0;
+    this.plante = false;
     this.group.position.copy(ou);
     this.group.visible = true;
   }
@@ -159,11 +181,19 @@ export class PinceauPeintre {
   }
 
   get enCours(): boolean {
-    return this.etat !== 'dormant';
+    return this.etat !== 'dormant' || this.plante;
   }
 
   update(dt: number, echelleJoueur: number, oeil: THREE.Vector3): void {
-    if (this.etat === 'dormant') return;
+    // Planté : il respire sur place, et c'est tout. Assez pour qu'on le
+    // remarque de loin, trop peu pour qu'il ait l'air de bouger.
+    if (this.etat === 'dormant') {
+      if (!this.plante) return;
+      this.temps += dt;
+      this.corps.rotation.z = 0.22 + Math.sin(this.temps * 1.1) * 0.05;
+      for (const m of this.materiaux) syncInkUniforms(m);
+      return;
+    }
     this.temps += dt;
 
     // ─── COMPAGNON ────────────────────────────────────────────────────────

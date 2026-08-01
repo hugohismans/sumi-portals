@@ -146,6 +146,15 @@ const carryableViews = new CarryableViews();
 carryableViews.build(sim.carryables.items);
 scene.add(carryableViews.group);
 
+// Les deux objets de la quête ne se dessinent pas comme des caisses : ce sont
+// des pinceaux de couleur, et c'est PinceauPeintre qui les représente. Le cube
+// reste — il porte la physique, la taille qui change aux portes, l'emboîtement
+// dans le socle — mais on ne le montre jamais.
+if (MODE === 'monde') {
+  carryableViews.masquer('encrier');
+  carryableViews.masquer('braise');
+}
+
 const socketViews = new SocketViews();
 socketViews.build(sim.sockets.items);
 scene.add(socketViews.group);
@@ -178,12 +187,19 @@ const REGION_DE_SOCLE = new Map<string, string>([
   ['socle-rouge', 'hauteurs'],
 ]);
 if (MODE === 'monde') {
-  const AUX_SOCLES: [string, string, [number, number, number], string][] = [
-    ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f'],
-    ['socle-rouge', 'rouge', [-3.5, 0.9, -17.5], '#c8492e'],
+  // Chaque pinceau : son socle de repos, sa couleur, ET l'endroit de son monde
+  // où il dort, planté, en attendant qu'on vienne le prendre. La taille dont il
+  // y est planté est celle du joueur qui l'y trouvera.
+  const AUX_SOCLES: [string, string, [number, number, number], string, [number, number, number], number][] = [
+    ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f', [516.5, 0.1, 0], 0.5],
+    ['socle-rouge', 'rouge', [-3.5, 0.9, -17.5], '#c8492e', [-500, 0.2, 0], 2],
   ];
-  for (const [socle, pigment, ou, teinte] of AUX_SOCLES) {
+  for (const [socle, pigment, ou, teinte, dort, tailleDort] of AUX_SOCLES) {
     const p = new PinceauPeintre(ou, teinte, 1.2);
+    // Il dort dans son monde, bien visible, à la taille de qui viendra le
+    // chercher. Le cube qui porte la physique, lui, est masqué : on ramassait
+    // un cube rouge POUR OBTENIR un pinceau rouge, deux objets pour une idée.
+    if (!pigments.a(pigment)) p.planter(dort, tailleDort);
     p.onPeint = () => {
       pigments.rendre(pigment, worldView.parRegion, pigmentDe);
       socketViews.setCouleur(pigments.nombre / 2);

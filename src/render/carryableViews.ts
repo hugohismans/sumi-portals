@@ -40,11 +40,35 @@ interface View {
 
   size: number;
   ghostSize: number;
+  /** Masquée : elle existe et se comporte, mais on ne la dessine jamais. */
+  masque?: boolean;
 }
 
 export class CarryableViews {
   readonly group = new THREE.Group();
   private readonly views = new Map<string, View>();
+
+  /**
+   * REND UNE CAISSE INVISIBLE, en la laissant exister.
+   *
+   * Deux objets du jeu ne sont pas des caisses : ce sont des pinceaux de
+   * couleur, et on les dessine comme tels (voir render/pinceauPeintre.ts).
+   * Ramasser un cube rouge POUR OBTENIR un pinceau rouge, c'était deux objets
+   * pour une seule idée.
+   *
+   * Mais le cube reste : c'est lui qui porte la physique, la taille qui change
+   * en traversant les portes, et l'emboîtement dans le socle. On lui retire son
+   * apparence, pas son existence — l'alternative aurait été de refaire tout le
+   * découpage de géométrie aux portails pour une forme non cubique, ce qui est
+   * un vrai chantier et pas un réglage.
+   */
+  masquer(id: string): void {
+    const v = this.views.get(id);
+    if (!v) return;
+    v.group.visible = false;
+    v.ghost.visible = false;
+    v.masque = true;
+  }
   private readonly planeHere = new THREE.Plane();
   private readonly planeThere = new THREE.Plane();
   private readonly tmpNormal = new THREE.Vector3();
@@ -106,6 +130,9 @@ export class CarryableViews {
     for (const item of items) {
       const view = this.views.get(item.id);
       if (!view) continue;
+      // Masquée : elle continue d'exister et de se comporter, on ne la dessine
+      // simplement jamais. C'est un pinceau de couleur qui la représente.
+      if (view.masque) continue;
 
       if (view.size !== item.size) {
         const geo = cubeGeometry(item.size);
