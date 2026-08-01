@@ -219,6 +219,20 @@ export interface LevelDef {
    * fonctionner partout sans rien savoir du contenu.
    */
   guide?: [number, number, number][];
+  /**
+   * Taille du Pinceau à chaque jalon, dans le même ordre. 1 par défaut.
+   *
+   * ELLE EST DÉCLARÉE, PAS DEVINÉE, et c'est le fond de l'affaire. Le Pinceau
+   * est un habitant du monde : sa taille est celle de l'ÉTAGE où il se tient,
+   * jamais celle du joueur qui le regarde. Un jalon posé sur le belvédère est
+   * seize fois plus gros qu'un jalon posé au village — et vu du belvédère, le
+   * village reste minuscule, comme il doit l'être.
+   *
+   * On a d'abord fait suivre la taille du joueur, puis sa taille seulement
+   * quand il était proche. Les deux étaient faux, et pour la même raison : ils
+   * faisaient dépendre un objet du monde de qui le regarde.
+   */
+  guideEchelle?: number[];
 }
 
 /** État complet du joueur — c'est ce qui transiterait sur le réseau. */

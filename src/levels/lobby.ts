@@ -185,6 +185,12 @@ export const LOBBY: LevelDef = {
     [0, 0.4, -18],
   ],
 
+  // Il se met à la taille de l'endroit où il se pose : normal sur la place,
+  // grand sur le plot qu'on ne rejoint qu'en géant, minuscule sous la dalle où
+  // seul un joueur rapetissé se glisse. Sa taille est donc, à elle seule, la
+  // consigne — on voit ce qu'il faut devenir pour aller le chercher.
+  guideEchelle: [1, 4, 0.25, 1],
+
   portals: [
     {
       id: 'hall',

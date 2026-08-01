@@ -150,7 +150,7 @@ const talisman = new Talisman([
 if (EN_DUO) scene.add(talisman.group);
 
 // Le Pinceau. Il vit dans le monde, se laisse rejoindre, puis file plus loin.
-const brush = new Brush(LEVEL.guide);
+const brush = new Brush(LEVEL.guide, LEVEL.guideEchelle);
 // Le seul retour du jeu qui dise « tu avances ». Le son du pinceau existait
 // depuis longtemps mais n'était branché nulle part : on le rattrapait, il
 // repartait, et il ne se passait rien. L'arpège, lui, monte d'un jalon à

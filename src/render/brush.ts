@@ -34,14 +34,6 @@ import { buildWorldGeometry } from './worldMesh.js';
 /** Distance d'approche qui le fait décoller, en hauteurs de joueur. */
 const CATCH = 9;
 
-/**
- * Rayon, en tailles de pinceau, à l'intérieur duquel il se met à votre échelle.
- * Choisi plus court que la hauteur qui sépare deux étages du monde (30 puis 90)
- * : c'est ce qui garantit qu'on ne redimensionne jamais un pinceau qu'on
- * regarde d'en haut.
- */
-const VOISINAGE = 20;
-
 /** Durée d'une fuite, en secondes. */
 const FLIGHT = 3.6;
 
@@ -144,8 +136,13 @@ export class Brush {
   private readonly aim = new THREE.Quaternion();
   private readonly prevOriented = new THREE.Vector3();
 
-  constructor(points: [number, number, number][] = []) {
+  /** Taille propre à chaque jalon. Voir LevelDef.guideEchelle. */
+  private readonly echelles: number[];
+
+  constructor(points: [number, number, number][] = [], echelles: number[] = []) {
     for (const p of points) this.waypoints.push(new THREE.Vector3(p[0], p[1], p[2]));
+    this.echelles = points.map((_, i) => echelles[i] ?? 1);
+    this.echelle = this.echelles[0] ?? 1;
 
     this.head = new THREE.Group();
     this.body = buildBody(this.bodyMaterials);
@@ -261,25 +258,24 @@ export class Brush {
 
     // LE PINCEAU N'EST PAS UN ACCESSOIRE DU JOUEUR, C'EST UN HABITANT DU LIEU.
     //
-    // Il adoptait la taille du joueur à chaque image, où qu'il se trouve. En
-    // montant d'un étage on faisait donc grossir un objet posé deux étages plus
-    // bas : depuis le belvédère, on voyait sur la terrasse un pinceau seize
-    // fois trop gros. C'est la même faute de logique que les portails qui
-    // grandissaient avec nous, et elle se corrige de la même façon — ce qui est
-    // dans le monde garde la taille du monde.
+    // Sa taille est celle de l'ÉTAGE OÙ IL SE TIENT, déclarée jalon par jalon
+    // dans le niveau. Elle ne dépend jamais de qui le regarde.
     //
-    // Il ne se met donc à votre échelle que lorsque vous êtes AUPRÈS DE LUI,
-    // et le fait progressivement. De loin, il garde la taille de l'étage où il
-    // se tient. Le seuil est proportionnel à sa propre taille : à ×1 vingt
-    // mètres, à ×16 trois cents — soit, dans les deux cas, « la pièce où l'on
-    // est » et pas l'étage d'en dessous.
-    const dx = player.position.x - this.head.position.x;
-    const dy = player.position.y - this.head.position.y;
-    const dz = player.position.z - this.head.position.z;
-    const loin = Math.hypot(dx, dy, dz) > VOISINAGE * this.echelle;
-    if (!loin) {
-      this.echelle += (playerScale - this.echelle) * Math.min(1, dt * 2.5);
-    }
+    // Deux versions fausses avant celle-ci, et elles se trompaient de la même
+    // façon. La première lui donnait la taille du joueur à chaque image : en
+    // montant d'un étage on faisait grossir un objet posé deux étages plus bas.
+    // La seconde ne le faisait que si le joueur était proche — mais on ressort
+    // d'un portail juste à côté de lui, donc il se remettait à grossir au pire
+    // moment, celui où l'on vient précisément de changer de taille.
+    //
+    // La règle juste tenait en une phrase : ce qui est dans le monde garde la
+    // taille du monde. La même que pour les portails, et il aura fallu se
+    // tromper deux fois pour la retrouver.
+    //
+    // La transition reste douce, mais elle n'a lieu qu'en vol : quand il change
+    // d'étage, il change de taille en même temps qu'il s'y rend.
+    const voulue = this.echelles[this.station] ?? 1;
+    this.echelle += (voulue - this.echelle) * Math.min(1, dt * 1.6);
     this.head.scale.setScalar(this.echelle);
     this.orient(dt);
     for (const m of this.bodyMaterials) syncInkUniforms(m);

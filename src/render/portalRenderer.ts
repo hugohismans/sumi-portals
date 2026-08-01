@@ -84,10 +84,17 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
           // Les taches naissent plutôt du bas, comme un pinceau qui remonte.
           seuil = seuil * 0.72 + (1.0 - uv.y) * 0.28;
           float bord = 0.5 - length(f) * (0.75 + hash12(id + 7.3) * 0.5);
-          float encrée = step(seuil, uTrace) * step(-0.16, bord);
-          col = mix(uPaper, col, encrée);
+          // PAS D'ACCENT DANS UN NOM DE VARIABLE GLSL. Ce fichier est écrit en
+          // français comme tout le projet, et cette variable s'appelait
+          // « encrée » : le shader ne compilait plus, donc les surfaces de
+          // portail ne se dessinaient plus du tout. Le jeu tournait, sans
+          // aucun portail visible, et rien ne le disait hors de la console.
+          // Le français s'arrête au bord des chaînes GLSL — les commentaires
+          // le gardent, les identifiants non.
+          float encree = step(seuil, uTrace) * step(-0.16, bord);
+          col = mix(uPaper, col, encree);
           // La tache la plus fraîche est encore sombre : l'encre sèche ensuite.
-          float fraiche = smoothstep(0.09, 0.0, uTrace - seuil) * encrée;
+          float fraiche = smoothstep(0.09, 0.0, uTrace - seuil) * encree;
           col = mix(col, uInk, fraiche * 0.55);
         }
 

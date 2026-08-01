@@ -681,6 +681,16 @@ export const MONDE: LevelDef = {
     ...BELVEDERE.stations,
   ],
 
+  /**
+   * LA TAILLE DU PINCEAU À CHAQUE JALON, dans le même ordre que `guide`.
+   *
+   * C'est celle de l'ÉTAGE, jamais celle du joueur. Quatre jalons au village à
+   * ×1, trois sur la terrasse à ×4, le retour au toit du village à ×4 puisque
+   * c'est à cette taille qu'on y revient, et le belvédère à ×16. Vu d'en haut,
+   * le pinceau du village doit rester minuscule — comme le village.
+   */
+  guideEchelle: [1, 1, 1, 1, 4, 4, 4, 4, 4, 16, 16, 16],
+
   hints: [
     // Devant la maquette. C'est le seul endroit du jeu où l'on énonce le but,
     // et encore : la maquette l'a déjà dit toute seule. La phrase ne fait que
