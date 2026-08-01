@@ -65,6 +65,13 @@ export interface Carryable {
   held: boolean;
   grounded: boolean;
   /**
+   * Logée dans son réceptacle, donc figée pour de bon.
+   *
+   * On ne la reprend plus : un progrès qu'on peut défaire par accident en
+   * frôlant la touche de saisie n'est pas un progrès.
+   */
+  locked: boolean;
+  /**
    * Œil du porteur au moment du lâcher, ou null.
    *
    * Portée, une caisse est tendue devant soi : elle franchit donc le plan du
@@ -156,6 +163,7 @@ export class Carryables {
         ink: d.ink ?? 3,
         held: false,
         grounded: false,
+        locked: false,
         releasedAt: null,
       });
     }
@@ -191,7 +199,7 @@ export class Carryables {
     let best: Carryable | null = null;
     let bestDist = Infinity;
     for (const c of this.items) {
-      if (c.held) continue;
+      if (c.held || c.locked) continue;
       const cx = c.position.x - playerPos.x;
       const cy = c.position.y + c.size * 0.5 - eyeY;
       const cz = c.position.z - playerPos.z;
@@ -296,7 +304,7 @@ export class Carryables {
    */
   step(world: World, dt: number): void {
     for (const c of this.items) {
-      if (c.held) continue;
+      if (c.held || c.locked) continue;
 
       c.velocity.y -= GRAVITY * dt;
       c.grounded = false;

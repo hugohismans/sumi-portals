@@ -64,12 +64,31 @@ export interface CarryableDef {
   ink?: number;
 }
 
+/**
+ * Un logement qui n'accepte qu'une caisse de LA bonne taille.
+ *
+ * Or la taille d'une caisse ne se règle que d'une façon : en la faisant
+ * traverser un portail. Le réceptacle fait donc du changement d'échelle un
+ * objectif, et non plus seulement un moyen d'atteindre une plateforme.
+ */
+export interface SocketDef {
+  id: string;
+  /** Centre du bas du logement. */
+  position: [number, number, number];
+  /** Arête attendue. */
+  size: number;
+  /** Écart toléré, en proportion. Par défaut 12 %. */
+  tolerance?: number;
+  ink?: number;
+}
+
 export interface LevelDef {
   name: string;
   spawn: [number, number, number];
   spawnYaw: number;
   boxes: BoxDef[];
   carryables?: CarryableDef[];
+  sockets?: SocketDef[];
   portals: PortalPairDef[];
   goal: { position: [number, number, number]; radius: number };
   /** Indices contextuels déclenchés par proximité. */
@@ -125,4 +144,8 @@ export interface TickEvents {
   noRoom?: boolean;
   /** Une caisse vient d'être lancée. */
   thrown?: { id: string };
+  /** Une caisse vient de s'emboîter dans son logement. */
+  socketFilled?: { socketId: string; carryableId: string };
+  /** Tous les logements sont pourvus. */
+  allSocketsFilled?: boolean;
 }

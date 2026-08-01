@@ -12,6 +12,7 @@ import {
   scaleOfLevel,
 } from './constants.js';
 import { Carryables } from './carryables.js';
+import { Sockets } from './sockets.js';
 import { clamp, rotateY, vec3, wrapAngle, yawToForward, type Vec3 } from './math.js';
 import { moveAndCollide } from './physics.js';
 import {
@@ -38,6 +39,7 @@ export class Simulation {
   readonly world: World;
   readonly faces: PortalFace[];
   readonly carryables: Carryables;
+  readonly sockets: Sockets;
   player: PlayerState;
   goalReached = false;
 
@@ -49,6 +51,7 @@ export class Simulation {
     this.world = new World(level);
     this.faces = buildFaces(level.portals);
     this.carryables = new Carryables(level.carryables);
+    this.sockets = new Sockets(level.sockets);
     this.player = this.spawnState();
   }
 
@@ -67,6 +70,7 @@ export class Simulation {
   reset(): void {
     this.player = this.spawnState();
     this.carryables.reset();
+    this.sockets.reset();
     this.goalReached = false;
   }
 
@@ -210,6 +214,15 @@ export class Simulation {
     });
     this.carryables.step(this.world, dt);
     this.carryTraversal(before);
+
+    // Les caisses reposées cherchent leur logement. Après la chute, donc : une
+    // caisse doit avoir atterri avant de pouvoir s'emboîter.
+    const wasAllFilled = this.sockets.allFilled;
+    const logees = this.sockets.settle(this.carryables.items);
+    if (logees.length > 0) {
+      events.socketFilled = logees[0];
+      if (!wasAllFilled && this.sockets.allFilled) events.allSocketsFilled = true;
+    }
 
     // --- Objectif --------------------------------------------------------------
     if (!this.goalReached) {

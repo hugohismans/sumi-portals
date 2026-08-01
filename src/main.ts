@@ -11,6 +11,7 @@ import { PaperPass } from './render/paperPass.js';
 import { PortalRenderer } from './render/portalRenderer.js';
 import { Avatar } from './render/avatar.js';
 import { CarryableViews } from './render/carryableViews.js';
+import { SocketViews } from './render/socketViews.js';
 import { RemotePlayers } from './render/remotePlayers.js';
 import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
 
@@ -72,6 +73,10 @@ scene.add(remotePlayers.group);
 const carryableViews = new CarryableViews();
 carryableViews.build(sim.carryables.items);
 scene.add(carryableViews.group);
+
+const socketViews = new SocketViews();
+socketViews.build(sim.sockets.items);
+scene.add(socketViews.group);
 
 // Le bonhomme du joueur local. Il vit dans la scène comme n'importe quel objet,
 // donc il apparaît tout seul dans les vues de portail : on se voit soi-même, de
@@ -311,6 +316,14 @@ function frame(now: number): void {
     if (events.carry) {
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
+    if (events.socketFilled) {
+      flash(
+        sim.sockets.allFilled
+          ? 'Tous les logements sont pourvus.'
+          : `Emboîté. ${sim.sockets.filled} sur ${sim.sockets.total}.`,
+        2.4,
+      );
+    }
     if (events.tooHeavy) {
       flash('Bien trop grosse à cette taille. Il faudrait grandir.', 2.6);
     }
@@ -346,6 +359,8 @@ function frame(now: number): void {
   avatar.syncInk();
   carryableViews.update(sim.carryables.items, sim.faces);
   carryableViews.syncInk();
+  socketViews.update(sim.sockets.items, dt, inkUniforms.uTime.value);
+  socketViews.syncInk();
 
   // --- Les autres joueurs -----------------------------------------------------
   if (presenceActive) {
