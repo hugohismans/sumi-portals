@@ -307,6 +307,24 @@ export const MONDE: LevelDef = {
   // Et l'on voit ces couleurs À TRAVERS le portail avant d'y entrer : c'est là
   // que la promesse se fait.
   regions: [
+    // LE VILLAGE, ET SON LAVIS.
+    //
+    // Une région au nom vide : c'est la clef des boîtes qui n'en déclarent
+    // aucune, donc tout le rez-de-chaussée du monde. Ses teintes sont celles
+    // qui servaient déjà par défaut — rien n'a changé de couleur, on lui a
+    // seulement donné un nom pour pouvoir la lui retirer.
+    //
+    // Elle attend le vert. Au début du jeu, le village où l'on naît est un
+    // lavis d'encre sans couleur, et l'on ne s'en rend compte qu'en franchissant
+    // la porte verte : de l'autre côté, le jardin, lui, a gardé la sienne.
+    {
+      name: '',
+      min: [-300, -20, -320],
+      max: [300, 30, 40],
+      paper: '#efe7d6',
+      colors: ['#e7ddc7', '#dccbaa', '#ab9f88', '#c05a3c'],
+      pigment: 'vert',
+    },
     // Le jardin d'abord : sa parcelle est incluse dans celle des hauteurs, et
     // c'est la première trouvée qui gagne. Même papier de part et d'autre, donc
     // le passage de l'une à l'autre ne se voit pas — seuls les aplats changent.
@@ -315,6 +333,9 @@ export const MONDE: LevelDef = {
     JARDIN.region,
     {
       name: 'hauteurs',
+      // Les hauteurs attendent le vert. C'est arbitraire aujourd'hui, et ça ne
+      // le restera pas : chaque monde rendra la couleur qui lui ressemble.
+      pigment: 'vert',
       min: [-300, 20, 40],
       max: [300, 320, 420],
       paper: '#dde3e6',

@@ -12,6 +12,7 @@ import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
+import { Pigments } from './render/pigments.js';
 import { Tracage } from './render/tracage.js';
 import { AttenteDuo } from './net/attente.js';
 import { CaissesPartagees } from './net/caisses.js';
@@ -107,6 +108,16 @@ camera.rotation.order = 'YXZ';
 
 const worldView = buildWorldView(LEVEL);
 scene.add(worldView.group);
+
+// ─── LE LAVIS, ET LES COULEURS QU'ON LUI REND ───────────────────────────────
+//
+// Le monde commence en gris. Chaque pigment rapporté d'ailleurs repeint la part
+// du monde qui l'attendait. On garde la trace d'une partie à l'autre : rendre
+// une couleur est un acquis, pas un état de session.
+const pigments = new Pigments();
+const pigmentDe = new Map<string, string>();
+for (const r of LEVEL.regions ?? []) if (r.pigment) pigmentDe.set(r.name, r.pigment);
+pigments.appliquer(worldView.parRegion, pigmentDe);
 
 const goalMarker = buildGoalMarker(LEVEL);
 scene.add(goalMarker);
@@ -460,8 +471,25 @@ applyScale(true);
 const fogRef = scene.fog as THREE.Fog;
 const papierParDefaut = PAPER.clone();
 
+/**
+ * LE CIEL SE GRISE COMME LE RESTE, et ça règle un défaut qu'on voyait sans
+ * savoir le nommer.
+ *
+ * Le papier — donc le ciel et le brouillard — changeait franchement d'une
+ * région à l'autre : on descendait l'escalier et l'on passait d'un bleu froid à
+ * une crème chaude en trois pas. C'était brutal, et surtout ça n'avait aucun
+ * sens à ce moment du jeu.
+ *
+ * Désaturé avec le décor, le problème s'évanouit tout seul : au départ, le
+ * village et l'étage sont le MÊME lavis gris, et l'escalier ne fait plus
+ * basculer quoi que ce soit. Les deux papiers ne se distinguent qu'une fois
+ * leurs couleurs rapportées — c'est-à-dire quand le joueur a compris pourquoi.
+ */
+const teinteSansCouleur = new THREE.Color();
+
 function applyAmbience(p: THREE.Vector3): void {
   let paper = papierParDefaut;
+  let couleur = 1;
   for (const r of LEVEL.regions ?? []) {
     if (
       p.x >= r.min[0] && p.x <= r.max[0] &&
@@ -469,8 +497,19 @@ function applyAmbience(p: THREE.Vector3): void {
       p.z >= r.min[2] && p.z <= r.max[2]
     ) {
       paper = new THREE.Color(r.paper);
+      // On suit le pigment de la région AU MÊME RYTHME que ses aplats : c'est
+      // le premier matériau de la région qui fait foi, ce qui garantit que le
+      // ciel et le sol se repeignent ensemble, jamais l'un après l'autre.
+      const mats = worldView.parRegion.get(r.name);
+      const u = mats?.[0]?.uniforms.uCouleur;
+      if (u) couleur = u.value as number;
       break;
     }
+  }
+  if (couleur < 0.999) {
+    const gris = paper.r * 0.299 + paper.g * 0.587 + paper.b * 0.114;
+    teinteSansCouleur.setRGB(gris, gris, gris);
+    paper.lerp(teinteSansCouleur, 1 - couleur);
   }
   (scene.background as THREE.Color).copy(paper);
   fogRef.color.copy(paper);
@@ -538,6 +577,15 @@ function frame(now: number): void {
       // Ramasser, c'est s'approprier : à partir de maintenant, c'est moi qui
       // publie cette caisse, et l'autre joueur suit ce que j'en fais.
       if (events.carry.taken) caisses.reclamer(events.carry.id);
+      // PRENDRE L'ENCRIER, C'EST PRENDRE LA COULEUR. On n'attend pas qu'il
+      // soit posé au sommet : le monde se repeint pendant qu'on le rapporte,
+      // et l'on voit donc le résultat de son voyage en le faisant, pas après.
+      if (events.carry.taken && events.carry.id === 'encrier') {
+        if (pigments.rendre('vert', worldView.parRegion, pigmentDe)) {
+          ambiance.progression(1, 2);
+          flash('Le vert revient au monde. Regarde autour de toi.', 6);
+        }
+      }
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
     // LE SACRE. L'encrier se pose sur la pointe de l'Aiguille, et le monde
@@ -643,6 +691,7 @@ function frame(now: number): void {
   );
   if (trace !== null) portals.tracer(tracage.pairEnCours ?? PORTE_A_DESSINER, trace);
   feuilles.update(dt, camera, scale);
+  pigments.update(dt);
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
 

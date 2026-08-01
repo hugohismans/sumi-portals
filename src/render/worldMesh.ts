@@ -75,6 +75,14 @@ export interface WorldView {
   group: THREE.Group;
   /** Tous les matériaux du décor, pour leur propager le grain d'encre. */
   materials: THREE.ShaderMaterial[];
+  /**
+   * Les matériaux RANGÉS PAR RÉGION.
+   *
+   * C'est ce qui permet de rendre sa couleur à un endroit du monde et pas à un
+   * autre — et l'on n'a rien eu à inventer pour ça : le décor était déjà
+   * découpé par région pour que chacune ait sa palette.
+   */
+  parRegion: Map<string, THREE.ShaderMaterial[]>;
 }
 
 /**
@@ -91,16 +99,17 @@ export interface WorldView {
 export const buildWorldView = (level: LevelDef): WorldView => {
   const group = new THREE.Group();
   const materials: THREE.ShaderMaterial[] = [];
+  const parRegion = new Map<string, THREE.ShaderMaterial[]>();
 
-  const parRegion = new Map<string, typeof level.boxes>();
+  const boitesParRegion = new Map<string, typeof level.boxes>();
   for (const b of level.boxes) {
     const clef = b.region ?? '';
-    const lot = parRegion.get(clef);
+    const lot = boitesParRegion.get(clef);
     if (lot) lot.push(b);
-    else parRegion.set(clef, [b]);
+    else boitesParRegion.set(clef, [b]);
   }
 
-  for (const [clef, boxes] of parRegion) {
+  for (const [clef, boxes] of boitesParRegion) {
     const region = level.regions?.find((r) => r.name === clef);
     const palette = region
       ? (region.colors.map((c) => new THREE.Color(c)) as THREE.Color[])
@@ -110,6 +119,7 @@ export const buildWorldView = (level: LevelDef): WorldView => {
     const cel = createCelMaterial(undefined, palette, encre);
     const outline = createOutlineMaterial(encre);
     materials.push(cel, outline);
+    parRegion.set(clef, [cel, outline]);
 
     // Deux géométries distinctes : les aplats couvrent tout, mais les contours
     // sautent les boîtes marquées `outline: false` — sinon les coutures entre
@@ -124,7 +134,7 @@ export const buildWorldView = (level: LevelDef): WorldView => {
     group.add(edge, fill);
   }
 
-  return { group, materials };
+  return { group, materials, parRegion };
 };
 
 /** Marqueur d'objectif : un sceau vermillon qui pulse doucement. */

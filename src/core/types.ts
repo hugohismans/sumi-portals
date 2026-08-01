@@ -149,6 +149,15 @@ export interface RegionDef {
   colors: [string, string, string, string];
   /** Le trait. Rarement autre chose qu'un noir teinté. */
   ink?: string;
+  /**
+   * Pigment qui manque à cette région.
+   *
+   * Tant qu'on ne l'a pas rapporté, la région est en lavis gris : les valeurs
+   * y sont, la couleur non. Une région sans `pigment` est peinte d'emblée —
+   * ce sont les mondes où l'on VA chercher les couleurs, et ils les ont
+   * forcément, sinon il n'y aurait rien à y prendre.
+   */
+  pigment?: string;
 }
 
 /**

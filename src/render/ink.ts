@@ -70,6 +70,17 @@ export const createCelMaterial = (
         // Palette propre à la région, sinon celle du monde par défaut.
         uPalette: { value: palette ?? PALETTE },
         uInk: { value: ink ?? INK },
+        /**
+         * LE PIGMENT DE LA RÉGION. 0 : tout est gris. 1 : tout est peint.
+         *
+         * Le monde commence en lavis noir et blanc, et l'on va chercher ses
+         * couleurs ailleurs pour les lui rendre. Ça ne coûte presque rien, et
+         * c'est pour une raison d'architecture : la palette de chaque région
+         * est DÉJÀ un uniforme de shader. Griser, c'est mélanger chaque teinte
+         * vers sa propre luminance ; rendre la couleur, c'est défaire ce
+         * mélange. Aucun décor à refaire, aucune texture à doubler.
+         */
+        uCouleur: { value: 1 },
       },
     ]),
     fog: true,
@@ -105,6 +116,7 @@ export const createCelMaterial = (
       uniform vec3 uInk;
       uniform vec3 uLightDir;
       uniform float uSeed;
+      uniform float uCouleur;
 
       varying vec3 vNormalW;
       varying float vInk;
@@ -118,6 +130,13 @@ export const createCelMaterial = (
         else if (idx == 2) base = uPalette[2];
         else if (idx == 3) base = uPalette[3];
         base = mix(base, uSolid, uUseSolid);
+
+        // Désaturation vers la LUMINANCE, pas vers la moyenne des canaux : un
+        // gris moyen aplatit tout au même ton, alors que la luminance conserve
+        // la hiérarchie claire/sombre du dessin. Le lavis reste lisible, il n'a
+        // simplement plus de couleur — ce qui est exactement le sujet.
+        float gris = dot(base, vec3(0.299, 0.587, 0.114));
+        base = mix(vec3(gris), base, uCouleur);
 
         vec3 n = normalize(vNormalW);
 
