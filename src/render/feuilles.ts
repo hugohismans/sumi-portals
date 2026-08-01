@@ -350,6 +350,28 @@ export class Feuilles {
    * Elle réapparaît haut et en arrière, jamais devant : ce qui doit se voir,
    * c'est une feuille qui TRAVERSE le champ, pas une qui s'y matérialise.
    */
+  /**
+   * ON A FRANCHI UNE PORTE : tout le feuillage repart d'ici.
+   *
+   * Une feuille n'est remise en amont que lorsqu'elle sort du voisinage — vingt-
+   * six unités, mises à l'échelle du joueur. Ça suffit tant qu'on marche.
+   *
+   * Mais dans le hall, les deux faces d'un portail sont à seize unités l'une de
+   * l'autre : en le franchissant, on reste DANS le voisinage. Aucune feuille
+   * n'était donc recyclée. Elles continuaient de tomber et d'écrire leurs
+   * traînées d'encre là-bas, autour de la porte qu'on venait de quitter — à la
+   * taille de l'ancienne échelle, puisqu'on venait aussi de changer de taille.
+   * On voyait un petit tas de traits abandonnés derrière soi, sans cause
+   * visible.
+   *
+   * Franchir une porte, ce n'est pas se déplacer : c'est arriver ailleurs. Le
+   * feuillage repart donc de zéro, traînées comprises — `replacer` sait déjà
+   * effacer proprement le trait d'une feuille qu'il déménage.
+   */
+  traverser(oeil: THREE.Vector3, playerScale: number): void {
+    for (let i = 0; i < FEUILLES; i++) this.replacer(i, oeil, playerScale);
+  }
+
   private replacer(i: number, oeil: THREE.Vector3, playerScale: number): void {
     const f = this.feuilles[i];
     const recul = alea(9, 20) * playerScale;

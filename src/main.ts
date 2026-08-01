@@ -909,6 +909,11 @@ function frame(now: number): void {
       // sinon le prochain mouvement annulerait la rotation.
       input.setYaw(sim.player.yaw);
       applyScale();
+      // Le feuillage repart d'ici. Sans ça, dans le hall où les deux faces sont
+      // à seize unitès l'une de l'autre, aucune feuille ne sortait du voisinage
+      // et l'on abandonnait derrière soi un petit tas de traînées d'encre à
+      // l'ancienne échelle, autour de la porte qu'on venait de quitter.
+      feuilles.traverser(camera.position, scaleOfLevel(sim.player.scaleLevel));
     }
     if (events.refused) {
       flash(
