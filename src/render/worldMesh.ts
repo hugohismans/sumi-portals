@@ -73,29 +73,58 @@ export const buildWorldGeometry = (boxes: BoxDef[]): THREE.BufferGeometry => {
 
 export interface WorldView {
   group: THREE.Group;
-  cel: THREE.ShaderMaterial;
-  outline: THREE.ShaderMaterial;
+  /** Tous les matériaux du décor, pour leur propager le grain d'encre. */
+  materials: THREE.ShaderMaterial[];
 }
 
+/**
+ * Construit le décor, UNE PASSE PAR RÉGION.
+ *
+ * Chaque région a ses propres encres, donc ses propres matériaux — c'est ce qui
+ * permet à un portail d'ouvrir sur un univers de couleurs entièrement
+ * différentes, visibles avant même d'y entrer.
+ *
+ * On regroupe malgré tout par région plutôt que par boîte : une région entière
+ * tient en deux appels de dessin, et le nombre de régions se compte sur les
+ * doigts d'une main.
+ */
 export const buildWorldView = (level: LevelDef): WorldView => {
-  const cel = createCelMaterial();
-  const outline = createOutlineMaterial();
-
-  // Deux géométries distinctes : les aplats couvrent tout, mais les contours
-  // sautent les boîtes marquées `outline: false` — sinon les coutures entre
-  // dalles de sol se retrouveraient encrées en plein terrain.
-  const celGeo = buildWorldGeometry(level.boxes);
-  const outlineGeo = buildWorldGeometry(level.boxes.filter((b) => b.outline !== false));
-
   const group = new THREE.Group();
-  // Le contour d'abord : coque inversée, il doit se faire recouvrir par l'aplat.
-  const outlineMesh = new THREE.Mesh(outlineGeo, outline);
-  outlineMesh.frustumCulled = false;
-  const celMesh = new THREE.Mesh(celGeo, cel);
-  celMesh.frustumCulled = false;
-  group.add(outlineMesh, celMesh);
+  const materials: THREE.ShaderMaterial[] = [];
 
-  return { group, cel, outline };
+  const parRegion = new Map<string, typeof level.boxes>();
+  for (const b of level.boxes) {
+    const clef = b.region ?? '';
+    const lot = parRegion.get(clef);
+    if (lot) lot.push(b);
+    else parRegion.set(clef, [b]);
+  }
+
+  for (const [clef, boxes] of parRegion) {
+    const region = level.regions?.find((r) => r.name === clef);
+    const palette = region
+      ? (region.colors.map((c) => new THREE.Color(c)) as THREE.Color[])
+      : undefined;
+    const encre = region?.ink ? new THREE.Color(region.ink) : undefined;
+
+    const cel = createCelMaterial(undefined, palette, encre);
+    const outline = createOutlineMaterial(encre);
+    materials.push(cel, outline);
+
+    // Deux géométries distinctes : les aplats couvrent tout, mais les contours
+    // sautent les boîtes marquées `outline: false` — sinon les coutures entre
+    // dalles de sol se retrouveraient encrées en plein terrain.
+    const celGeo = buildWorldGeometry(boxes);
+    const outlineGeo = buildWorldGeometry(boxes.filter((b) => b.outline !== false));
+
+    const edge = new THREE.Mesh(outlineGeo, outline);
+    const fill = new THREE.Mesh(celGeo, cel);
+    edge.frustumCulled = false;
+    fill.frustumCulled = false;
+    group.add(edge, fill);
+  }
+
+  return { group, materials };
 };
 
 /** Marqueur d'objectif : un sceau vermillon qui pulse doucement. */

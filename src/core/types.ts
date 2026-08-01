@@ -10,6 +10,8 @@ export interface BoxDef {
   ink?: number;
   /** Purement décoratif : pas de collision. */
   ghost?: boolean;
+  /** Région dont cette boîte emprunte les couleurs. Voir RegionDef. */
+  region?: string;
   /**
    * Mettre à `false` pour ne pas encrer les arêtes de cette boîte.
    *
@@ -93,11 +95,40 @@ export interface SocketDef {
   ink?: number;
 }
 
+/**
+ * Une RÉGION du monde, avec ses propres couleurs.
+ *
+ * Franchir un portail doit donner l'impression d'entrer dans un autre univers.
+ * Chaque région déclare donc son papier et ses encres — et l'on voit ces
+ * couleurs-là À TRAVERS le portail avant même d'y entrer, ce qui est tout
+ * l'effet recherché.
+ *
+ * LE PRINCIPE À TENIR : **la cohérence vient de la technique, la variété vient
+ * de la palette.** Partout le même trait d'encre, les mêmes aplats francs, le
+ * même grain de papier. Ce qui change, ce sont les teintes. C'est ainsi qu'un
+ * livre illustré tient debout : un seul dessinateur, dix ambiances. Changer la
+ * technique d'une région à l'autre ferait dix jeux collés bout à bout.
+ */
+export interface RegionDef {
+  name: string;
+  /** Boîte englobante : sert à savoir dans quelle région on se trouve. */
+  min: [number, number, number];
+  max: [number, number, number];
+  /** Le papier : fond du ciel et couleur du brouillard. */
+  paper: string;
+  /** Quatre aplats, du plus clair au plus soutenu, plus l'accent. */
+  colors: [string, string, string, string];
+  /** Le trait. Rarement autre chose qu'un noir teinté. */
+  ink?: string;
+}
+
 export interface LevelDef {
   name: string;
   spawn: [number, number, number];
   spawnYaw: number;
   boxes: BoxDef[];
+  /** Régions colorées. La première contenant le joueur donne l'ambiance. */
+  regions?: RegionDef[];
   carryables?: CarryableDef[];
   sockets?: SocketDef[];
   portals: PortalPairDef[];

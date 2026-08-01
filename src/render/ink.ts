@@ -53,7 +53,11 @@ const HASH = /* glsl */ `
  * Matériau d'aplat : éclairage quantifié en trois valeurs, plus une trame de
  * points façon manga dans les ombres. Aucune transition douce nulle part.
  */
-export const createCelMaterial = (solidColor?: THREE.Color): THREE.ShaderMaterial =>
+export const createCelMaterial = (
+  solidColor?: THREE.Color,
+  palette?: THREE.Color[],
+  ink?: THREE.Color,
+): THREE.ShaderMaterial =>
   new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
@@ -63,6 +67,9 @@ export const createCelMaterial = (solidColor?: THREE.Color): THREE.ShaderMateria
         // C'est ce qui donne sa couleur à chaque joueur.
         uSolid: { value: solidColor ?? new THREE.Color() },
         uUseSolid: { value: solidColor ? 1 : 0 },
+        // Palette propre à la région, sinon celle du monde par défaut.
+        uPalette: { value: palette ?? PALETTE },
+        uInk: { value: ink ?? INK },
       },
     ]),
     fog: true,
@@ -157,11 +164,16 @@ export const createCelMaterial = (solidColor?: THREE.Color): THREE.ShaderMateria
  * donc constante à l'écran — indispensable ici, sinon un joueur minuscule se
  * retrouverait avec des traits gros comme des immeubles.
  */
-export const createOutlineMaterial = (): THREE.ShaderMaterial =>
+export const createOutlineMaterial = (ink?: THREE.Color): THREE.ShaderMaterial =>
   new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
-      { ...inkUniforms, uThickness: { value: 0.0052 }, uWobble: { value: 0.8 } },
+      {
+        ...inkUniforms,
+        uInk: { value: ink ?? INK },
+        uThickness: { value: 0.0052 },
+        uWobble: { value: 0.8 },
+      },
     ]),
     fog: true,
     clipping: true,

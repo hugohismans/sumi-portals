@@ -43,8 +43,11 @@ const box = (
   min: [number, number, number],
   max: [number, number, number],
   ink = 0,
-  opts: { ghost?: boolean; outline?: boolean } = {},
+  opts: { ghost?: boolean; outline?: boolean; region?: string } = {},
 ): BoxDef => ({ min, max, ink, ...opts });
+
+/** Tout ce qui appartient aux hauteurs porte ses couleurs. */
+const haut = <T extends BoxDef>(b: T): T => ({ ...b, region: 'hauteurs' });
 
 // --- Altitudes des trois étages ---------------------------------------------
 const VILLAGE_Y = 0;
@@ -243,6 +246,26 @@ export const MONDE: LevelDef = {
   // pieds, et il faut l'avoir regardé d'en bas pour que ça compte.
   spawnYaw: 0,
 
+  // DEUX MONDES, UNE MAIN.
+  //
+  // Le village est chaud, ocre, terrien. Les hauteurs sont froides, pâles,
+  // minérales. Même trait d'encre, mêmes aplats, même grain de papier — seules
+  // les teintes changent. C'est ce qui permet de traverser sans avoir
+  // l'impression de changer de jeu, tout en changeant d'univers.
+  //
+  // Et l'on voit ces couleurs À TRAVERS le portail avant d'y entrer : c'est là
+  // que la promesse se fait.
+  regions: [
+    {
+      name: 'hauteurs',
+      min: [-300, 20, 40],
+      max: [300, 320, 420],
+      paper: '#dde3e6',
+      colors: ['#d6dee2', '#b6c2c9', '#7c8b95', '#c05a3c'],
+      ink: '#1a2126',
+    },
+  ],
+
   boxes: [
     // --- Étage 1 : le village -------------------------------------------------
     box([-230, -6, -300], [230, VILLAGE_Y, 16], 0, { outline: false }),
@@ -263,27 +286,27 @@ export const MONDE: LevelDef = {
     // Son bord sud est une falaise : c'est de là qu'on découvre le village.
     // Écartée du village : plaquée juste au-dessus, elle l'écrasait au lieu de
     // le dominer. De loin elle devient une promesse — on voit où l'on va.
-    box([-90, TERRASSE_Y - 8, 46], [90, TERRASSE_Y, 130], 0, { outline: false }),
+    box([-90, TERRASSE_Y - 8, 46], [90, TERRASSE_Y, 130], 0, { outline: false, region: 'hauteurs' }),
     // Balustrade : on ne passe pas, on voit entre les montants. Brèches aux
     // arrivées d'escalier.
-    ...balustrade(-88.4, 44, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(86, 88.4, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(-88.4, 38, 127.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(-88.7, -87.3, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7),
-    ...balustrade(87.3, 88.7, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(-88.4, 44, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
+    ...balustrade(86, 88.4, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
+    ...balustrade(-88.4, 38, 127.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
+    ...balustrade(-88.7, -87.3, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
+    ...balustrade(87.3, 88.7, 47.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
 
     // --- Escalier B : ×4 le regarde, ×16 le gravit ----------------------------
     // Marches de 12 : mur pour un joueur de 7,2, marche pour un joueur de 28,8.
-    ...escalier(40, 90, 126, TERRASSE_Y, BELVEDERE_Y, 12, 9, 2),
+    ...escalier(40, 90, 126, TERRASSE_Y, BELVEDERE_Y, 12, 9, 2).map(haut),
 
     // --- Étage 3 : le belvédère -----------------------------------------------
-    box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false }),
+    box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false, region: 'hauteurs' }),
     // Même principe à ×16, à l'échelle de l'étage.
-    ...balustrade(-255, 36, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(94, 255, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(-256, -253, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(253, 256, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6),
-    ...balustrade(-255, 255, 374, 377, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(-255, 36, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+    ...balustrade(94, 255, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+    ...balustrade(-256, -253, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+    ...balustrade(253, 256, 193, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+    ...balustrade(-255, 255, 374, 377, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
   ],
 
   portals: [

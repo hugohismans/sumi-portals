@@ -273,6 +273,33 @@ function applyScale(force = false): void {
 
 applyScale(true);
 
+// --- Ambiance par région --------------------------------------------------------
+/**
+ * Le ciel et le brouillard de la région où se trouve un point donné.
+ *
+ * Appelé pour la caméra du joueur, mais AUSSI pour chaque caméra virtuelle de
+ * portail : c'est ce qui fait qu'on aperçoit les couleurs de l'autre monde à
+ * travers la porte, avant même de la franchir.
+ */
+const fogRef = scene.fog as THREE.Fog;
+const papierParDefaut = PAPER.clone();
+
+function applyAmbience(p: THREE.Vector3): void {
+  let paper = papierParDefaut;
+  for (const r of LEVEL.regions ?? []) {
+    if (
+      p.x >= r.min[0] && p.x <= r.max[0] &&
+      p.y >= r.min[1] && p.y <= r.max[1] &&
+      p.z >= r.min[2] && p.z <= r.max[2]
+    ) {
+      paper = new THREE.Color(r.paper);
+      break;
+    }
+  }
+  (scene.background as THREE.Color).copy(paper);
+  fogRef.color.copy(paper);
+}
+
 // --- Redimensionnement ---------------------------------------------------------
 function resize(): void {
   const w = window.innerWidth;
@@ -367,8 +394,7 @@ function frame(now: number): void {
     inkUniforms.uSeed.value = Math.random() * 512;
   }
   inkUniforms.uTime.value += dt;
-  syncInkUniforms(worldView.cel);
-  syncInkUniforms(worldView.outline);
+  for (const m of worldView.materials) syncInkUniforms(m);
   const scale = scaleOfLevel(sim.player.scaleLevel);
   avatar.update(sim.player, scale, dt);
   avatar.syncInk();
@@ -422,14 +448,17 @@ function frame(now: number): void {
   // À faire AVANT le rendu des vues : la surface doit déjà être écartée quand
   // les caméras virtuelles travaillent.
   portals.updateSurfaceOffsets(camera);
+  applyAmbience(camera.position);
 
   // Bonhomme entier dans les vues de portail — sinon on s'y verrait décapité.
   avatar.setHeadVisible(true);
-  portals.renderViews(renderer, scene, camera);
+  portals.renderViews(renderer, scene, camera, applyAmbience);
 
   // Mais pas de tête dans la vue principale : elle est pile dans la caméra.
   // Le buste et les jambes, eux, restent visibles quand on baisse les yeux.
   avatar.setHeadVisible(false);
+  // Retour à l'ambiance de là où l'on se tient réellement.
+  applyAmbience(camera.position);
   renderer.setRenderTarget(paper.target);
   renderer.clear();
   renderer.render(scene, camera);

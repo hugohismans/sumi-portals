@@ -172,6 +172,7 @@ export class PortalRenderer {
   private readonly tmpVec = new THREE.Vector3();
   private readonly tmpQuat = new THREE.Quaternion();
   private readonly tmpNormal = new THREE.Vector3();
+  private ambience?: (position: THREE.Vector3) => void;
 
   constructor(faces: PortalFace[], pairs: PortalPairDef[], width: number, height: number) {
     const colorOf = (face: PortalFace): number => {
@@ -225,8 +226,10 @@ export class PortalRenderer {
     renderer: THREE.WebGLRenderer,
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
+    ambience?: (position: THREE.Vector3) => void,
   ): void {
     const previousTarget = renderer.getRenderTarget();
+    this.ambience = ambience;
 
     // Passe profonde : les portails vus dans les portails sont des aplats.
     this.renderPass(renderer, scene, camera, 'deep');
@@ -278,6 +281,11 @@ export class PortalRenderer {
 
       this.setupClipPlane(view);
       renderer.clippingPlanes = [this.clipPlane];
+
+      // L'ambiance de la région d'ARRIVÉE, pas celle où l'on se tient : c'est
+      // ce qui fait qu'un portail donne à voir un autre ciel avant qu'on y
+      // entre, et c'est là tout l'effet.
+      this.ambience?.(renderCamera.position);
 
       renderer.setRenderTarget(level === 'deep' ? view.rtDeep : view.rt);
       renderer.clear();

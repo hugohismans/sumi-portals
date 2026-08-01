@@ -199,6 +199,28 @@ pris — mais comme apparition : une grue de papier qui traverse le champ, une
 fois, sans explication. Les plus belles choses d'un monde sont celles qui n'ont
 pas de fonction.
 
+## Une direction artistique par région — FAIT, et c'est un contrat
+
+*(idée d'Hugo — en place)*
+
+Franchir un portail doit donner l'impression d'entrer dans un autre univers.
+Chaque région déclare donc ses propres couleurs, et **on les voit à travers le
+portail avant même d'y entrer** : c'est là que la promesse se fait.
+
+**LE PRINCIPE À TENIR, et il vaut pour tous les agents à venir :**
+
+> La cohérence vient de la TECHNIQUE, la variété vient de la PALETTE.
+
+Partout le même trait d'encre, les mêmes aplats francs, le même grain de
+papier, le même tremblement à 10 Hz. Ce qui change d'une région à l'autre, ce
+sont les teintes — et elles peuvent changer beaucoup.
+
+C'est ainsi qu'un livre illustré tient debout : un seul dessinateur, dix
+ambiances. Changer la technique d'une région à l'autre donnerait dix jeux
+collés bout à bout, et le voyage se briserait à chaque porte.
+
+Donc : **soyez très libres sur les couleurs, très stricts sur la main.**
+
 ## Le mode Rêve — un monde qui se fabrique tout seul
 
 *(idée d'Hugo)*
