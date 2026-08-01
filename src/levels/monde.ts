@@ -85,41 +85,135 @@ const escalier = (
 };
 
 /**
- * Parapet : assez haut pour qu'on ne l'enjambe ni ne le saute, assez bas pour
- * qu'on voie par-dessus.
+ * BALUSTRADE — on ne passe pas, mais on voit.
  *
- * Le second point est le plus important : c'est du bord de la terrasse qu'on
- * découvre le village. Un garde-corps à hauteur d'homme protégerait la chute
- * en supprimant la seule chose qui justifie d'être monté.
+ * Un parapet plein résolvait la chute et créait pire : depuis le bord de la
+ * terrasse, il masquait le village. Or c'est LA seule chose qui justifie d'être
+ * monté. Protéger en aveuglant, c'est perdre le sujet.
  *
- * `h` doit dépasser le saut du joueur de cet étage — 5,2 à ×4, 20,7 à ×16 —
- * tout en restant sous sa hauteur d'yeux.
+ * Des montants serrés règlent les deux : l'écart est plus étroit que le joueur,
+ * donc il ne passe pas ; et l'on voit entre eux. La hauteur dépasse son saut,
+ * pour qu'il ne puisse pas non plus monter dessus.
+ *
+ * `gap` doit rester sous le DIAMÈTRE du joueur de l'étage — 2,7 à ×4, 10,9 à
+ * ×16 — et `h` au-dessus de son saut : 5,2 et 20,7.
  */
-const parapet = (
+const balustrade = (
   x0: number,
   x1: number,
   z0: number,
   z1: number,
   y: number,
   h: number,
-): BoxDef => box([x0, y - 3, z0], [x1, y + h, z1], 3);
+  gap: number,
+  post: number,
+): BoxDef[] => {
+  const out: BoxDef[] = [];
+  const long = x1 - x0 > z1 - z0;
+  const from = long ? x0 : z0;
+  const to = long ? x1 : z1;
+  for (let t = from; t < to; t += gap + post) {
+    const a = t;
+    const b = Math.min(t + post, to);
+    out.push(long ? box([a, y - 3, z0], [b, y + h, z1], 3) : box([x0, y - 3, a], [x1, y + h, b], 3));
+  }
+  // Lisse haute : elle relie les montants et donne la ligne d'encre du bord.
+  out.push(box([x0, y + h - post * 0.6, z0], [x1, y + h, z1], 3));
+  return out;
+};
 
-/** Le village : quelques maisons autour de l'Aiguille. */
+/**
+ * LE VILLAGE.
+ *
+ * Il ne suffit pas de semer des boîtes : il faut que ça fasse un LIEU, qu'on
+ * s'y repère, et qu'on le reconnaisse plus tard vu d'en haut. Trois choses y
+ * suffisent, et ce sont celles de n'importe quel village réel.
+ *
+ * **Une rue.** Un axe qu'on suit sans y penser. Elle part de la place, sous
+ * l'Aiguille, et descend droit vers la porte étroite : le chemin est lisible
+ * sans qu'on l'explique.
+ *
+ * **Une place.** Un vide au milieu du plein. C'est le vide qui se reconnaît
+ * d'en haut, pas les maisons — vu de la terrasse, c'est cette trouée claire
+ * autour de l'Aiguille qui dira « c'est là que j'étais ».
+ *
+ * **Des repères qu'on nomme.** Le puits, l'étang, les étals. On ne dit pas
+ * « la maison numéro sept », on dit « près du puits ».
+ */
+
+/** Maison : un corps et une toiture débordante, qui pose la ligne d'encre. */
+const maison = (cx: number, cz: number, w: number, d: number, h: number, ink: number): BoxDef[] => [
+  box([cx - w, -0.6, cz - d], [cx + w, h, cz + d], ink),
+  box([cx - w - 0.7, h - 0.15, cz - d - 0.7], [cx + w + 0.7, h + 0.55, cz + d + 0.7], 2),
+];
+
+/** Lanterne : un mât et sa boîte de lumière. Elles donnent son rythme à la rue. */
+const lanterne = (cx: number, cz: number): BoxDef[] => [
+  box([cx - 0.16, 0, cz - 0.16], [cx + 0.16, 2.6, cz + 0.16], 2),
+  box([cx - 0.42, 2.6, cz - 0.42], [cx + 0.42, 3.3, cz + 0.42], 3),
+];
+
 const village = (): BoxDef[] => {
   const r = rng(31415);
   const out: BoxDef[] = [];
-  const spots: [number, number][] = [
-    [-26, -18], [-14, -36], [-30, -52], [-8, -62], [10, -48], [22, -30],
-    [30, -58], [-42, -30], [-46, -66], [6, -84], [-22, -88], [26, -78],
-    [-56, -12], [40, -14], [16, -14], [-16, -8],
-  ];
-  for (const [cx, cz] of spots) {
-    const w = 3 + r() * 4;
-    const d = 3 + r() * 4;
-    const h = 3.5 + r() * 5;
-    out.push(box([cx - w, -0.6, cz - d], [cx + w, h, cz + d], 1 + ((r() * 2) | 0)));
-    out.push(box([cx - w - 0.6, h - 0.12, cz - d - 0.6], [cx + w + 0.6, h + 0.5, cz + d + 0.6], 2));
+
+  // --- La place, au pied de l'Aiguille -------------------------------------
+  // Un dallage à peine surélevé. C'est la trouée qu'on reconnaîtra d'en haut.
+  out.push(box([-19, -0.5, -27], [19, 0.25, 9], 1));
+  out.push(box([-19, -0.5, -27], [-17.6, 0.7, 9], 3));
+  out.push(box([17.6, -0.5, -27], [19, 0.7, 9], 3));
+
+  // --- La rue, de la place à la porte ---------------------------------------
+  out.push(box([-6, -0.5, -74], [6, 0.2, -27], 1));
+  for (let z = -32; z >= -68; z -= 11) {
+    out.push(...lanterne(-7.4, z), ...lanterne(7.4, z));
   }
+
+  // --- Les maisons qui la bordent -------------------------------------------
+  // Alignées mais jamais identiques : c'est l'irrégularité qui fait une rue.
+  for (let z = -31; z >= -70; z -= 12) {
+    for (const cote of [-1, 1]) {
+      const w = 4 + r() * 2.4;
+      const d = 3.6 + r() * 2.2;
+      const h = 4 + r() * 4.5;
+      out.push(...maison(cote * (9 + w), z + (r() - 0.5) * 3, w, d, h, 1 + ((r() * 2) | 0)));
+    }
+  }
+
+  // --- Le puits, sur la place -----------------------------------------------
+  const px = 12;
+  const pz = -18;
+  out.push(box([px - 2, 0, pz - 2], [px + 2, 1.5, pz + 2], 2));
+  out.push(box([px - 1.2, 1.5, pz - 1.2], [px + 1.2, 1.8, pz + 1.2], 0));
+  out.push(box([px - 1.9, 0, pz - 0.3], [px - 1.5, 4.4, pz + 0.3], 2));
+  out.push(box([px + 1.5, 0, pz - 0.3], [px + 1.9, 4.4, pz + 0.3], 2));
+  out.push(box([px - 2.7, 4.2, pz - 1.6], [px + 2.7, 5.1, pz + 1.6], 3));
+
+  // --- Le marché : des étals bas, serrés ------------------------------------
+  for (let i = 0; i < 5; i++) {
+    const ex = -44 + (i % 3) * 8;
+    const ez = -10 - ((i / 3) | 0) * 9;
+    out.push(box([ex - 2.6, 0, ez - 2], [ex + 2.6, 1.1, ez + 2], 1));
+    out.push(box([ex - 3.2, 2.3, ez - 2.6], [ex + 3.2, 2.8, ez + 2.6], 3));
+    out.push(box([ex - 3.1, 0, ez - 2.5], [ex - 2.7, 2.4, ez - 2.1], 2));
+    out.push(box([ex + 2.7, 0, ez - 2.5], [ex + 3.1, 2.4, ez - 2.1], 2));
+  }
+
+  // --- L'étang : un creux d'eau claire ---------------------------------------
+  // La seule surface pâle du village : c'est elle qui brillera d'en haut.
+  out.push(box([28, -3, -58], [50, -1.1, -36], 0));
+  out.push(box([27, -3, -59], [28, 0.6, -35], 2));
+  out.push(box([50, -3, -59], [51, 0.6, -35], 2));
+  out.push(box([27, -3, -59], [51, 0.6, -58], 2));
+  out.push(box([27, -3, -36], [51, 0.6, -35], 2));
+
+  // --- Quelques maisons à l'écart, pour que le village ait des bords ---------
+  for (const [cx, cz] of [[-38, -46], [-30, -62], [-48, -70], [34, -18], [44, -26], [24, -74]]) {
+    const w = 3.4 + r() * 2;
+    const d = 3.4 + r() * 2;
+    out.push(...maison(cx, cz, w, d, 4 + r() * 4, 1 + ((r() * 2) | 0)));
+  }
+
   return out;
 };
 
@@ -152,15 +246,13 @@ export const MONDE: LevelDef = {
     // Écartée du village : plaquée juste au-dessus, elle l'écrasait au lieu de
     // le dominer. De loin elle devient une promesse — on voit où l'on va.
     box([-90, TERRASSE_Y - 8, 46], [90, TERRASSE_Y, 130], 0, { outline: false }),
-    // Parapets : 6 de haut, soit au-dessus du saut d'un joueur à ×4 (5,2) mais
-    // bien sous ses yeux (6,6). On ne tombe plus, et l'on voit toujours.
-    // Deux brèches, aux arrivées d'escalier.
-    parapet(-90, 44, 46, 48, TERRASSE_Y, 6),
-    parapet(86, 90, 46, 48, TERRASSE_Y, 6),
-    parapet(-90, 38, 128, 130, TERRASSE_Y, 6),
-    parapet(92, 90.001, 128, 130, TERRASSE_Y, 6),
-    parapet(-90, -88, 46, 130, TERRASSE_Y, 6),
-    parapet(88, 90, 46, 130, TERRASSE_Y, 6),
+    // Balustrade : on ne passe pas, on voit entre les montants. Brèches aux
+    // arrivées d'escalier.
+    ...balustrade(-90, 44, 46, 48, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(86, 90, 46, 48, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(-90, 38, 128, 130, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(-90, -88, 46, 130, TERRASSE_Y, 6, 1.7, 0.7),
+    ...balustrade(88, 90, 46, 130, TERRASSE_Y, 6, 1.7, 0.7),
 
     // --- Escalier B : ×4 le regarde, ×16 le gravit ----------------------------
     // Marches de 12 : mur pour un joueur de 7,2, marche pour un joueur de 28,8.
@@ -168,13 +260,12 @@ export const MONDE: LevelDef = {
 
     // --- Étage 3 : le belvédère -----------------------------------------------
     box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false }),
-    // Même principe à ×16 : 22 de haut, au-dessus du saut (20,7) et sous les
-    // yeux (26,5). Une brèche à l'arrivée de l'escalier.
-    parapet(-260, 36, 190, 196, BELVEDERE_Y, 22),
-    parapet(94, 260, 190, 196, BELVEDERE_Y, 22),
-    parapet(-260, -254, 190, 380, BELVEDERE_Y, 22),
-    parapet(254, 260, 190, 380, BELVEDERE_Y, 22),
-    parapet(-260, 260, 374, 380, BELVEDERE_Y, 22),
+    // Même principe à ×16, à l'échelle de l'étage.
+    ...balustrade(-260, 36, 190, 196, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(94, 260, 190, 196, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(-260, -254, 190, 380, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(254, 260, 190, 380, BELVEDERE_Y, 22, 6.5, 2.6),
+    ...balustrade(-260, 260, 374, 380, BELVEDERE_Y, 22, 6.5, 2.6),
   ],
 
   portals: [
@@ -209,10 +300,17 @@ export const MONDE: LevelDef = {
 
   goal: { position: [0, BELVEDERE_Y + 2, 240], radius: 16 },
 
-  // Jalons du Pinceau : la direction du voyage, étage par étage. Il ne s'en
-  // sert que si le joueur tourne en rond.
+  // LES STATIONS DU PINCEAU — c'est le fil du jeu.
+  //
+  // Il se tient à chacune, vous laisse approcher, puis file vers la suivante
+  // EN VOLANT. À vous de trouver votre propre route : la première étape se
+  // rejoint en marchant, la deuxième exige de franchir la porte du village.
+  // L'écart entre son vol et vos jambes, c'est l'énigme.
   guide: [
+    [6, VILLAGE_Y, -14],
+    [-14, VILLAGE_Y, -44],
     [0, VILLAGE_Y, -40],
+    [0, TERRASSE_Y, 96],
     [0, TERRASSE_Y, 70],
     [0, BELVEDERE_Y, 250],
   ],

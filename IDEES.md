@@ -132,9 +132,31 @@ l'attente.
 
 ---
 
-## Le Pinceau — guider sans un mot
+## LE PINCEAU — c'est le jeu, pas un guide
 
-*(idée d'Hugo — adoptée, en cours de réalisation)*
+*(idée d'Hugo — adoptée ; c'est devenu la boucle centrale)*
+
+**La poursuite.** Le pinceau se tient quelque part, trace ses boucles, vous
+laisse approcher. Vous le rejoignez, il file ailleurs. Vous le suivez.
+
+**Et voilà d'où viennent les énigmes : il vole, vous non.** Il franchit en
+droite ligne ce qu'il vous faudra contourner, escalader, ou changer de taille
+pour atteindre. Vous ne prenez jamais son chemin — vous devez seulement
+arriver là où il s'est posé.
+
+C'est ce qui fait tenir tout le reste : plus besoin de texte, plus besoin
+d'objectif affiché, plus besoin d'expliquer une énigme. On voit où il est allé.
+Le problème s'énonce tout seul, et la solution est toujours la même question :
+*comment est-ce que j'arrive là, moi qui ne vole pas ?*
+
+L'ouverture du jeu devrait être un petit jeu de poursuite facile — il se
+faufile, on lui court après, on le rattrape — pour que la règle s'installe
+avant que le premier vrai obstacle n'apparaisse. Puis il s'échappe plus loin,
+et plus haut.
+
+---
+
+*Note de conception antérieure, conservée pour la trace :*
 
 Pas de texte. Un **pinceau** qu'on aperçoit au loin, qui file en laissant une
 traînée d'encre qui s'efface. C'est lui qui montre le chemin.

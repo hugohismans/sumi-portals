@@ -3,33 +3,35 @@ import type { PlayerState } from '../core/types.js';
 import { INK } from './ink.js';
 
 /**
- * LE PINCEAU — le guide du monde.
+ * LE PINCEAU — et, à travers lui, le jeu tout entier.
  *
- * Il ne parle pas, ne montre rien du doigt, n'attend jamais. Il file au loin en
- * laissant une traînée d'encre qui s'efface, et disparaît. Au joueur d'en tirer
- * quelque chose.
+ * Ce n'est pas un système d'indices : c'est un PERSONNAGE, présent dans le
+ * monde en permanence. Il se tient quelque part, trace de petites boucles
+ * d'encre, et vous laisse approcher. Puis il file vers l'endroit suivant.
  *
- * C'est le seul guide que ce jeu s'autorise, et il explique le monde au lieu
- * de le commenter : si tout est tracé à l'encre ici, c'est que quelque chose
- * le dessine — et de temps en temps, on l'aperçoit.
+ * D'où vient le jeu : **il vole, vous non.** Il franchit en droite ligne ce
+ * qu'il vous faudra contourner, escalader, ou changer de taille pour atteindre.
+ * L'écart entre son chemin et le vôtre, c'est l'énigme — et elle n'a jamais
+ * besoin d'être énoncée, puisqu'on voit très bien où il est allé.
  *
- * LA RÈGLE QUI COMPTE LE PLUS : **il ne vient que si l'on est perdu.** Pas sur
- * minuterie. Le jeu mesure si le joueur se rapproche du prochain jalon ; tant
- * qu'il progresse, le pinceau reste invisible. Un joueur qui trouve seul ne le
- * verra jamais de la partie, et c'est un respect qu'on lui doit.
+ * Une première version le faisait surgir après un délai d'attente, quand le
+ * joueur semblait perdu. C'était un élément d'interface déguisé en créature.
+ * Il vit désormais dans le monde, sans minuterie : on peut le suivre des yeux,
+ * le perdre, le retrouver. C'est un compagnon, pas une notification.
+ *
+ * Sa taille suit celle du joueur, et c'est délibéré : il garde la même présence
+ * apparente à toutes les échelles. Il n'appartient pas au système de tailles —
+ * il est ce qui dessine le monde, pas ce qui l'habite.
  */
 
-/** Sans progrès pendant ce temps, le joueur est considéré comme perdu. */
-const PATIENCE = 17;
+/** Distance d'approche qui le fait décoller, en hauteurs de joueur. */
+const CATCH = 9;
 
-/** Durée d'un passage, en secondes. */
-const FLIGHT = 3.4;
-
-/** Un progrès plus petit que ça ne compte pas : on tourne en rond. */
-const PROGRESS_EPSILON = 2;
+/** Durée d'une fuite, en secondes. */
+const FLIGHT = 3.6;
 
 /** Longueur de la traînée, en échantillons. */
-const TRAIL = 48;
+const TRAIL = 56;
 
 interface Sample {
   x: number;
@@ -43,16 +45,14 @@ export class Brush {
 
   private readonly waypoints: THREE.Vector3[] = [];
   private readonly head: THREE.Mesh;
-  private readonly ribbon: THREE.Mesh;
   private readonly ribbonGeo = new THREE.BufferGeometry();
   private readonly positions: Float32Array;
   private readonly ages: Float32Array;
 
   private samples: Sample[] = [];
-  private flying = 0;
-  private idle = 0;
-  private bestDistance = Infinity;
-  private target = 0;
+  private fleeing = 0;
+  private station = 0;
+  private wander = 0;
 
   private readonly from = new THREE.Vector3();
   private readonly to = new THREE.Vector3();
@@ -60,20 +60,19 @@ export class Brush {
   private readonly prev = new THREE.Vector3();
   private readonly side = new THREE.Vector3();
   private readonly dir = new THREE.Vector3();
+  private readonly up = new THREE.Vector3(0, 1, 0);
 
   constructor(points: [number, number, number][] = []) {
     for (const p of points) this.waypoints.push(new THREE.Vector3(p[0], p[1], p[2]));
 
-    // La tête : une pointe effilée, sombre. Volontairement minuscule — on doit
-    // l'apercevoir, pas la contempler.
+    // La touffe : une goutte d'encre effilée. Assez grosse pour se repérer de
+    // loin — c'est une cible qu'on poursuit, pas un détail à dénicher.
     this.head = new THREE.Mesh(
-      new THREE.ConeGeometry(0.16, 0.9, 5),
+      new THREE.ConeGeometry(0.42, 1.9, 6),
       new THREE.MeshBasicMaterial({ color: INK }),
     );
     this.head.frustumCulled = false;
 
-    // La traînée : un ruban tourné vers la caméra, qui s'affine et s'efface en
-    // vieillissant. C'est un coup de pinceau, donc il doit mourir par la queue.
     this.positions = new Float32Array(TRAIL * 2 * 3);
     this.ages = new Float32Array(TRAIL * 2);
     this.ribbonGeo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
@@ -85,7 +84,7 @@ export class Brush {
     }
     this.ribbonGeo.setIndex(index);
 
-    this.ribbon = new THREE.Mesh(
+    const ribbon = new THREE.Mesh(
       this.ribbonGeo,
       new THREE.ShaderMaterial({
         uniforms: { uInk: { value: INK } },
@@ -104,121 +103,83 @@ export class Brush {
           uniform vec3 uInk;
           varying float vAge;
           void main() {
-            // L'encre sèche vite : elle pâlit puis disparaît.
+            // L'encre sèche vite : elle pâlit, puis disparaît.
             float a = 1.0 - clamp(vAge, 0.0, 1.0);
-            gl_FragColor = vec4(uInk, a * a * 0.85);
+            gl_FragColor = vec4(uInk, a * a * 0.9);
           }
         `,
       }),
     );
-    this.ribbon.frustumCulled = false;
+    ribbon.frustumCulled = false;
 
-    this.group.add(this.head, this.ribbon);
-    this.group.visible = false;
+    this.group.add(this.head, ribbon);
+    if (this.waypoints.length > 0) this.head.position.copy(this.waypoints[0]);
+    this.prev.copy(this.head.position);
   }
 
-  /**
-   * Le fait venir sur-le-champ.
-   *
-   * Uniquement pour la mise au point : attendre dix-sept secondes à chaque
-   * essai rend toute retouche du guide insupportable à régler.
-   */
+  /** Le fait filer tout de suite, pour la mise au point. */
   summon(): void {
-    this.idle = PATIENCE;
+    if (this.station < this.waypoints.length - 1) this.takeOff();
   }
 
-  /** Recale le jalon visé sur la progression réelle du joueur. */
-  private updateTarget(player: PlayerState): void {
-    if (this.waypoints.length === 0) return;
-    const p = player.position;
-    const t = this.waypoints[this.target];
-    const d = Math.hypot(p.x - t.x, p.y - t.y, p.z - t.z);
-
-    // Jalon atteint : on passe au suivant et l'on oublie l'attente.
-    if (d < 14 && this.target < this.waypoints.length - 1) {
-      this.target++;
-      this.bestDistance = Infinity;
-      this.idle = 0;
-      return;
-    }
-
-    // Sinon : est-ce qu'on se rapproche ? C'est ça, « progresser ».
-    if (d < this.bestDistance - PROGRESS_EPSILON) {
-      this.bestDistance = d;
-      this.idle = 0;
-    }
+  /** Là où il se tient. C'est, à tout instant, l'objectif du joueur. */
+  get destination(): THREE.Vector3 | null {
+    return this.waypoints[this.station] ?? null;
   }
 
   update(player: PlayerState, playerScale: number, dt: number, camera: THREE.Camera): void {
     if (this.waypoints.length === 0) return;
 
-    this.updateTarget(player);
+    if (this.fleeing > 0) {
+      this.fleeing -= dt;
+      const t = 1 - Math.max(0, this.fleeing) / FLIGHT;
+      // Trajectoire haute et courbe : il passe visiblement PAR-DESSUS ce que le
+      // joueur devra contourner. C'est ce survol qui pose l'énigme sans un mot.
+      const eased = t * t * (3 - 2 * t);
+      this.head.position
+        .copy(this.from)
+        .lerp(this.to, eased)
+        .addScaledVector(this.arc, Math.sin(Math.PI * t));
+      if (this.fleeing <= 0) {
+        this.station = Math.min(this.station + 1, this.waypoints.length - 1);
+      }
+    } else {
+      // À l'arrêt il flotte et tourne. Un point immobile se confond avec le
+      // décor ; un point qui bouge accroche l'œil à travers tout un village.
+      this.wander += dt;
+      const st = this.waypoints[this.station];
+      const r = 1.1 * playerScale;
+      this.head.position.set(
+        st.x + Math.cos(this.wander * 1.6) * r,
+        st.y + 2.4 * playerScale + Math.sin(this.wander * 2.2) * 0.4 * playerScale,
+        st.z + Math.sin(this.wander * 1.2) * r,
+      );
 
-    if (this.flying <= 0) {
-      this.idle += dt;
-      if (this.idle >= PATIENCE) {
-        this.flying = FLIGHT;
-        this.idle = 0;
-        this.samples = [];
-        this.beginFlight(player, playerScale);
-      } else {
-        this.group.visible = false;
-        return;
+      // Rejoint : il repart. Le voyage avance parce qu'on l'a rattrapé.
+      const p = player.position;
+      const d = Math.hypot(p.x - st.x, p.y - st.y, p.z - st.z);
+      if (d < CATCH * playerScale && this.station < this.waypoints.length - 1) {
+        this.takeOff();
       }
     }
 
-    this.flying -= dt;
-    this.group.visible = true;
-
-    const t = 1 - Math.max(0, this.flying) / FLIGHT;
-    // Trajectoire courbe : une ligne droite ferait mécanique, un arc fait vivant.
-    const eased = t * t * (3 - 2 * t);
-    this.head.position
-      .copy(this.from)
-      .lerp(this.to, eased)
-      .addScaledVector(this.arc, Math.sin(Math.PI * t));
-
     this.pushSample(dt);
     this.rebuildRibbon(camera, playerScale);
-
-    if (this.flying <= 0 && this.samples.every((s) => s.age > 1)) {
-      this.group.visible = false;
-    }
+    this.head.scale.setScalar(playerScale);
   }
 
-  /** Prépare un passage : il vient de côté et repart vers le jalon. */
-  private beginFlight(player: PlayerState, playerScale: number): void {
-    const p = player.position;
-    const t = this.waypoints[this.target];
-
-    // Il surgit à la périphérie, jamais devant le nez : on doit l'apercevoir
-    // du coin de l'œil, pas le recevoir en pleine face.
-    const away = new THREE.Vector3(t.x - p.x, 0, t.z - p.z).normalize();
-    const lateral = new THREE.Vector3(-away.z, 0, away.x);
-    const reach = 9 * playerScale;
-
-    this.from
-      .set(p.x, p.y + 1.5 * playerScale, p.z)
-      .addScaledVector(lateral, reach)
-      .addScaledVector(away, -reach * 0.5);
-
-    // Il ne va pas jusqu'au jalon : il file dans sa direction et s'évanouit.
-    // Montrer la direction suffit ; conduire par la main serait le trahir.
-    this.to
-      .set(p.x, p.y + 2.2 * playerScale, p.z)
-      .addScaledVector(away, Math.min(38 * playerScale, this.distanceTo(p, t) * 0.55));
-
-    this.arc.set(0, 3.5 * playerScale, 0);
-    this.head.position.copy(this.from);
-    this.prev.copy(this.from);
-  }
-
-  private distanceTo(p: { x: number; y: number; z: number }, t: THREE.Vector3): number {
-    return Math.hypot(p.x - t.x, p.y - t.y, p.z - t.z);
+  /** Départ vers l'endroit suivant. */
+  private takeOff(): void {
+    const next = this.waypoints[Math.min(this.station + 1, this.waypoints.length - 1)];
+    this.from.copy(this.head.position);
+    this.to.copy(next);
+    this.arc.set(0, Math.max(8, this.from.distanceTo(this.to) * 0.25), 0);
+    this.fleeing = FLIGHT;
+    this.prev.copy(this.head.position);
   }
 
   private pushSample(dt: number): void {
-    for (const s of this.samples) s.age += dt * 1.6;
+    for (const s of this.samples) s.age += dt * 1.5;
     this.samples.unshift({
       x: this.head.position.x,
       y: this.head.position.y,
@@ -227,13 +188,9 @@ export class Brush {
     });
     if (this.samples.length > TRAIL) this.samples.length = TRAIL;
 
-    // La pointe regarde où elle va.
     this.dir.copy(this.head.position).sub(this.prev);
     if (this.dir.lengthSq() > 1e-8) {
-      this.head.quaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        this.dir.clone().normalize(),
-      );
+      this.head.quaternion.setFromUnitVectors(this.up, this.dir.normalize());
     }
     this.prev.copy(this.head.position);
   }
@@ -243,11 +200,11 @@ export class Brush {
     const pos = this.positions;
     const ages = this.ages;
     const n = this.samples.length;
+    if (n === 0) return;
 
     for (let i = 0; i < TRAIL; i++) {
-      const s = this.samples[Math.min(i, n - 1)] ?? this.samples[0];
-      if (!s) break;
-      const next = this.samples[Math.min(i + 1, n - 1)] ?? s;
+      const s = this.samples[Math.min(i, n - 1)];
+      const next = this.samples[Math.min(i + 1, n - 1)];
 
       this.dir.set(next.x - s.x, next.y - s.y, next.z - s.z);
       if (this.dir.lengthSq() < 1e-10) this.dir.set(0, 0, 1);
@@ -256,10 +213,9 @@ export class Brush {
         .cross(this.dir)
         .normalize();
 
-      // Le trait s'affine en vieillissant : c'est ce qui le fait lire comme un
+      // Le trait s'affine vers la queue : c'est ce qui le fait lire comme un
       // coup de pinceau et non comme un tube.
-      const taper = Math.max(0, 1 - i / TRAIL);
-      const w = 0.12 * playerScale * taper;
+      const w = 0.2 * playerScale * Math.max(0, 1 - i / TRAIL);
 
       const a = i * 2;
       pos[a * 3] = s.x + this.side.x * w;
@@ -274,6 +230,5 @@ export class Brush {
 
     this.ribbonGeo.attributes.position.needsUpdate = true;
     this.ribbonGeo.attributes.aAge.needsUpdate = true;
-    this.head.scale.setScalar(playerScale);
   }
 }
