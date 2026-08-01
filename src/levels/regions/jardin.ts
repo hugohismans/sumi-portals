@@ -301,6 +301,45 @@ const ecaille = (
   return box([PIN_X - T - saillie, bas, z - demi], [PIN_X - T + MORD, yHaut, z + demi], ink);
 };
 
+/** Le point où l'on POSE LE PIED sur une écaille : le milieu de sa saillie. */
+const pied = (T: number, f: number): [number, number] => {
+  const R = T + 0.26;
+  const s = (((f % 1) + 1) % 1) * 8 * T;
+  if (s < 2 * T) return [PIN_X - T + s, PIN_Z + R];
+  if (s < 4 * T) return [PIN_X + R, PIN_Z + T - (s - 2 * T)];
+  if (s < 6 * T) return [PIN_X + T - (s - 4 * T), PIN_Z - R];
+  return [PIN_X - R, PIN_Z - T + (s - 6 * T)];
+};
+
+/**
+ * DE COMBIEN TOURNER pour que l'appui suivant soit EXACTEMENT à `d` du
+ * précédent — mesuré entre les deux endroits où l'on pose le pied, et non le
+ * long de l'arête.
+ *
+ * C'est la correction la plus importante de tout ce morceau, et elle vient
+ * d'une partie jouée, pas d'un calcul. Avancer de 0,55 le long de l'arête
+ * marche partout SAUF aux coins : là, les deux écailles saillent de 0,26 sur
+ * des faces perpendiculaires, et l'écart réel monte à 0,79. Or un joueur
+ * lancé franchit 0,86 en s'élevant de 0,26. Le bond du coin devenait un pari
+ * à quatre-vingt-dix pour cent — et le pilote automatique s'y cassait la
+ * figure à tous les coups, ce qui est la meilleure preuve qu'un humain s'y
+ * casserait la figure aussi.
+ *
+ * On résout donc pour la VRAIE distance. Le tour se resserre au passage des
+ * coins, et tous les bonds du parcours font 0,55, sans exception.
+ */
+const avancer = (T: number, f: number, d: number): number => {
+  let df = d / (8 * T);
+  for (let n = 0; n < 10; n++) {
+    const [x0, z0] = pied(T, f);
+    const [x1, z1] = pied(T, f + df);
+    const l = Math.hypot(x1 - x0, z1 - z0);
+    if (l < 1e-9) break;
+    df *= d / l;
+  }
+  return f + df;
+};
+
 /**
  * UN MONTANT de la couronne du sommet.
  *
@@ -361,17 +400,20 @@ const pommeDePin = (): BoxDef[] => {
   // plus haut. C'est le genre de chose qu'on ne remarque pas et qu'on sent.
   const helice: { k: number; f: number }[] = [];
   let f = 0.05;
+  let fDerniere = f;
   for (let k = 1; k <= 5; k++) {
     const T = PIN_T[k];
-    const pas = ECART / (8 * T);
     for (let i = 1; i <= 5; i++) {
       out.push(ecaille(T, f, PIN_Y[k - 1] + i * BOND, 3));
       helice.push({ k, f });
-      f += pas;
+      fDerniere = f;
+      f = avancer(T, f, ECART);
     }
-    f += pas; // le sixième bond : celui qui ne se pose pas sur une écaille
+    // Le sixième bond ne se pose pas sur une écaille : il vous met sur la vire,
+    // et la vire est un anneau continu — il n'y a rien à viser.
+    f = avancer(T, f, ECART);
   }
-  const F_BRECHE = f - ECART * 0.5 / (8 * PIN_T[5]);
+  const F_BRECHE = (fDerniere + f) / 2;
 
   // ─── Les écailles mortes : du relief, jamais une prise ─────────────────────
   //

@@ -1003,17 +1003,51 @@ console.log('\n— La côte rouge : le versant des fours —');
     pos(aller),
   );
 
-  // LA TRAVERSÉE COMPLÈTE N'EST PAS ENCORE VÉRIFIÉE ICI, et je préfère l'écrire
-  // que de faire semblant. L'assistant de marche de ce fichier vise un point et
-  // fonce dessus : il ne sait pas longer un mur ni contourner. Or la côte rouge
-  // est bâtie sur des détours — son dernier four barre volontairement la voie.
-  // Un test qui irait tout droit ne mesurerait que sa propre naïveté, et le
-  // faire passer en baissant l'exigence serait pire que ne rien tester.
-  // La suite de points de passage est demandée à qui a construit le lieu.
+  // LA TRAVERSÉE, PAR L'ITINÉRAIRE DU LIEU ET NON EN LIGNE DROITE.
+  //
+  // Un premier essai allait tout droit et butait sur la tablette d'un séchoir,
+  // haute de 4,80 : au-dessus de l'enjambée (3,60), sous le saut (5,18). Ce
+  // n'était pas un défaut de la région, c'était son seul vrai obstacle — et un
+  // pilote qui ne saute jamais et pousse perpendiculairement à un mur plat n'a
+  // aucune composante tangentielle : il s'arrête au lieu de glisser.
+  //
+  // Mais en cherchant la route, on a trouvé PIRE et invisible : le couloir sud
+  // ne faisait que 4,50 pour un joueur de 2,72 de diamètre. Une porte que
+  // personne n'aurait trouvée, qu'aucune vérification de faces ni de parcelle
+  // ne peut voir, et qui marchait pour celui qui connaissait son plan. Élargie
+  // à 11,50.
+  //
+  // On suit donc les six points du lieu : nord du premier séchoir, sud des deux
+  // autres, puis le bol. Si un jour quelqu'un remet une ligne droite ici, elle
+  // se rebloquera au même endroit — et ce sera le bon comportement.
+  for (const point of [
+    [-410, 0, 7],
+    [-424, 0, -11],
+    [-452, 0, -11],
+    [-490, 0, -6],
+    [-510, 0, 0],
+  ] as [number, number, number][]) {
+    walkTo(aller, point, 60 * 40);
+  }
+  settle(aller, 60);
+  check(
+    'on la traverse de la porte au fond, par le chemin du lieu',
+    aller.player.position.x < -495 && aller.player.grounded,
+    pos(aller),
+  );
 
-  // Et l'on en revient : le seul chemin de retour est la porte, elle doit
-  // tenir dans les deux sens.
-  walkTo(aller, [-300, 0, 0], 60 * 160, { stopOnEvent: true });
+  // Et l'on en revient — par le même chemin, à l'envers. C'est le seul retour
+  // possible et il doit tenir : une région dont on ne sort pas est pire qu'une
+  // région qui n'existe pas.
+  for (const point of [
+    [-490, 0, -6],
+    [-452, 0, -11],
+    [-424, 0, -11],
+    [-410, 0, 7],
+  ] as [number, number, number][]) {
+    walkTo(aller, point, 60 * 40);
+  }
+  walkTo(aller, [-300, 0, 0], 60 * 80, { stopOnEvent: true });
   check(
     'et l’on en revient au village, redevenu normal',
     aller.player.scaleLevel === 0 && aller.player.position.x > -100,
