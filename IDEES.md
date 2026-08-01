@@ -94,6 +94,35 @@ l'attente.
 
 ---
 
+## Le portail qui retourne la gravité
+
+*(idée d'Hugo)*
+
+On entre dans un portail au sol, on ressort **au plafond**, et le haut et le bas
+ont changé de camp. Le passage se fait en douceur, et pendant qu'on approche on
+se voit déjà, à l'envers, de l'autre côté.
+
+Ce qui est fort dans cette idée, c'est qu'elle ne demande **aucune explication**.
+On voit un personnage marcher au plafond à travers le portail : on a compris.
+
+Trois remarques avant de s'y mettre :
+
+**Ça ne se marie pas avec le changement d'échelle.** Retourner le monde ET
+changer de taille dans le même passage, c'est deux bouleversements d'un coup —
+le joueur ne sait plus lequel a causé quoi. Il faut en faire une **paire
+distincte, d'une autre couleur**, avec sa propre grammaire.
+
+**Le basculement doit être progressif.** Un demi-tour instantané donne la
+nausée ; il faut faire pivoter le regard pendant la traversée. C'est aussi ce
+qui rend le moment beau.
+
+**Ce n'est pas gratuit techniquement, mais c'est propre.** Nos portails sont
+aujourd'hui des plans verticaux qui ne pivotent qu'autour de l'axe vertical, et
+toute la physique suppose que le bas est le bas. Il faudra donc lever ces deux
+hypothèses. C'est un vrai chantier, mais bien délimité : rien à réécrire, juste
+à généraliser. Et le fait de se voir à l'envers à travers le portail, lui,
+viendra tout seul — le personnage est déjà dans la scène.
+
 ## Deux arches dans le hall : seul, ou à deux
 
 *(idée d'Hugo)*
