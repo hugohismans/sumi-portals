@@ -43,16 +43,29 @@ const MODE = PARAMS.get('niveau');
  */
 const SALON = PARAMS.get('salon') ?? '';
 const ROLE: RoleDuo = PARAMS.get('role') === 'minuscule' ? 'minuscule' : 'geant';
-const NIVEAUX: Record<string, typeof LEVEL_01> = {
-  monde: MONDE,
-  cour: LEVEL_01,
-  caisse: LEVEL_02,
-  duo: construireDuo(ROLE),
-  reve: reve(Number(PARAMS.get('graine')) || 1),
+/**
+ * LES NIVEAUX SONT DES FONCTIONS, PAS DES OBJETS.
+ *
+ * Ils étaient construits tous les cinq au chargement du module — y compris
+ * quand on ne faisait qu'entrer dans le hall. Le monde, ses quinze cents
+ * boîtes, la clairière et un rêve entier étaient fabriqués pour rien, à chaque
+ * ouverture de la page.
+ *
+ * Ici on n'en construit qu'UN : celui qu'on va jouer. Le jour où il y aura
+ * cent niveaux, il s'en construira toujours un seul. C'est la propriété qui
+ * rend la suite possible — un niveau n'est que de la donnée, et de la donnée
+ * qu'on ne demande pas ne coûte rien.
+ */
+const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
+  monde: () => MONDE,
+  cour: () => LEVEL_01,
+  caisse: () => LEVEL_02,
+  duo: () => construireDuo(ROLE),
+  reve: () => reve(Number(PARAMS.get('graine')) || 1),
 };
 const EN_AVENTURE = MODE !== null && MODE in NIVEAUX;
 const EN_DUO = MODE === 'duo' && SALON !== '';
-const LEVEL = EN_AVENTURE ? NIVEAUX[MODE!] : LOBBY;
+const LEVEL = EN_AVENTURE ? NIVEAUX[MODE!]() : LOBBY;
 /** Enchaînement des énigmes. Le hall suit la fin de la dernière. */
 const NIVEAU_SUIVANT: Record<string, string> = {
   monde: './',

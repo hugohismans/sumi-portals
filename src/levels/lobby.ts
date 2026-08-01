@@ -119,6 +119,24 @@ const arches = (): BoxDef[] => {
   return out;
 };
 
+/**
+ * LA FENTE BASSE — la leçon « rapetisse », et elle n'a pas un mot.
+ *
+ * Une dalle posée sur deux murets, 75 centimètres de jour. Un joueur à taille
+ * normale mesure 1,80 : il n'a même pas à essayer. Rapetissé une fois, il en
+ * mesure 45 et passe à l'aise. Le pinceau attend au fond, bien en vue depuis
+ * l'extérieur — c'est ça qui donne envie, pas une consigne.
+ *
+ * Ouverte du seul côté du torii vermillon, celui qui fait rapetisser. On
+ * regarde la fente, on regarde la porte qui est juste à côté, et l'on a compris.
+ */
+const fenteBasse = (): BoxDef[] => [
+  box([-31, 0.75, 5.6], [-18, 1.7, 12.4], 2),
+  box([-31.2, -0.4, 5.2], [-17.6, 0.75, 5.9], 1),
+  box([-31.2, -0.4, 12.1], [-17.6, 0.75, 12.8], 1),
+  box([-31.6, -0.4, 5.2], [-31, 0.9, 12.8], 1),
+];
+
 export const LOBBY: LevelDef = {
   name: 'Le hall',
   spawn: [0, 0.2, 6],
@@ -134,6 +152,37 @@ export const LOBBY: LevelDef = {
 
     ...arches(),
     ...markers(),
+    ...fenteBasse(),
+  ],
+
+  /**
+   * LE HALL EST UN APPRENTISSAGE, et le pinceau en est le maître.
+   *
+   * Il n'y était pas du tout : on arrivait, on voyait deux portails, on
+   * comprenait vaguement qu'on pouvait changer de taille, et l'on partait. Rien
+   * ne présentait le personnage qu'on allait suivre pendant tout le jeu.
+   *
+   * Quatre jalons, et chacun enseigne exactement une chose :
+   *
+   *   1. Il est là, à trois pas, à hauteur d'homme. On marche, on l'atteint.
+   *      C'est la règle du jeu en une seconde : on le rejoint, il repart.
+   *   2. Il se pose sur un plot de 2,70. On enjambe 0,90 et l'on saute 1,30 :
+   *      c'est hors d'atteinte. Mais la porte indigo rend quatre fois plus
+   *      grand, et un géant enjambe 3,60. Leçon « grandis ».
+   *   3. Il se glisse sous une dalle qui laisse 75 centimètres. Un géant n'y
+   *      pense même pas, un joueur normal non plus. Le torii vermillon rend
+   *      quatre fois plus petit. Leçon « rapetisse ».
+   *   4. Il se pose devant les trois arches, et l'on n'a plus qu'à choisir.
+   *
+   * À la fin de ce parcours, le joueur a appris les deux sens du changement de
+   * taille, il sait que le pinceau se rejoint, et il sait qu'il le retrouvera
+   * ailleurs. Aucune de ces trois choses n'a été écrite.
+   */
+  guide: [
+    [4, 0.4, 3],
+    [-8, 2.72, 20],
+    [-26, 0.1, 9],
+    [0, 0.4, -18],
   ],
 
   portals: [

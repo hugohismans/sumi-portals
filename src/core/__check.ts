@@ -925,6 +925,58 @@ console.log('\n— Les caisses partagées —');
 }
 
 // =============================================================================
+console.log('\n— Le hall : les trois leçons —');
+{
+  // Chaque jalon du hall enseigne UNE chose, et le prouve par un refus. Ce
+  // qu'on vérifie ici n'est pas que la leçon marche — c'est qu'elle ne s'apprend
+  // pas autrement. Un plot qu'on pourrait escalader à taille normale
+  // n'enseignerait rien du tout.
+  const au = (niveau: number, x: number, y: number, z: number): Simulation => {
+    const s = new Simulation(LOBBY);
+    s.player.scaleLevel = niveau;
+    s.player.position = { x, y, z };
+    return s;
+  };
+
+  const petitPlot = au(0, -3, 0.3, 20);
+  walkTo(petitPlot, [-8, 2.72, 20], 60 * 14, { jump: true, sprint: true });
+  settle(petitPlot, 40);
+  check(
+    'à ×1, le plot du hall est hors d’atteinte — même en sautant, même lancé',
+    petitPlot.player.position.y < 1.4,
+    pos(petitPlot),
+  );
+
+  const grandPlot = au(1, -3, 0.5, 20);
+  walkTo(grandPlot, [-8, 2.72, 20], 60 * 14);
+  settle(grandPlot, 40);
+  check(
+    'à ×4, on y monte d’une enjambée — la porte indigo était la réponse',
+    grandPlot.player.position.y > 2.5,
+    pos(grandPlot),
+  );
+
+  const grandFente = au(0, -14, 0.3, 9);
+  walkTo(grandFente, [-26, 0.1, 9], 60 * 20, { jump: true });
+  settle(grandFente, 30);
+  check(
+    'à ×1, la fente basse ne s’ouvre pas — 1,80 ne passe pas sous 0,75',
+    grandFente.player.position.x > -18,
+    pos(grandFente),
+  );
+
+  const petitFente = au(-1, -14, 0.1, 9);
+  walkTo(petitFente, [-26, 0.1, 9], 60 * 60);
+  settle(petitFente, 30);
+  check(
+    'à ×1/4, on s’y glisse — le torii vermillon était la réponse',
+    petitFente.player.position.x < -22 && petitFente.player.position.y < 0.6,
+    pos(petitFente),
+  );
+}
+
+// =============================================================================
+// =============================================================================
 console.log('\n— Le rêve : cent graines, aucune impasse —');
 {
   // Un générateur ne se relit pas, il s'éprouve. On en fabrique cent et l'on
