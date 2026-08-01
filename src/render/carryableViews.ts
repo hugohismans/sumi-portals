@@ -1,5 +1,12 @@
 import * as THREE from 'three';
 import type { Carryable } from '../core/carryables.js';
+import {
+  faceWorldSize,
+  transformPoint,
+  traversalScale,
+  yawDelta,
+  type PortalFace,
+} from '../core/portals.js';
 import { PALETTE, createCelMaterial, createOutlineMaterial, syncInkUniforms } from './ink.js';
 import { buildWorldGeometry } from './worldMesh.js';
 
@@ -12,42 +19,81 @@ import { buildWorldGeometry } from './worldMesh.js';
  * agrandie par matrice hériterait d'un trait quatre fois plus épais. Un
  * changement de taille n'arrive qu'à la traversée d'un portail — autant dire
  * jamais, à l'échelle d'une image.
+ *
+ * LE DOUBLE : une caisse à cheval sur le plan d'un portail est dessinée DEUX
+ * fois. La vraie, tranchée au ras du plan, garde la moitié qui n'a pas encore
+ * traversé ; un double, transporté de l'autre côté et tranché en sens inverse,
+ * montre la moitié qui a déjà franchi. Sans lui, la caisse paraissait coupée
+ * net — la moitié engagée dans le portail n'était dessinée nulle part.
  */
 interface View {
   group: THREE.Group;
   mesh: THREE.Mesh;
   outlineMesh: THREE.Mesh;
+  cel: THREE.ShaderMaterial;
+  outline: THREE.ShaderMaterial;
+
+  ghost: THREE.Group;
+  ghostCel: THREE.ShaderMaterial;
+  ghostOutline: THREE.ShaderMaterial;
+
   size: number;
 }
 
 export class CarryableViews {
   readonly group = new THREE.Group();
   private readonly views = new Map<string, View>();
-  private readonly materials: { cel: THREE.ShaderMaterial; outline: THREE.ShaderMaterial }[] = [];
+  private readonly planeHere = new THREE.Plane();
+  private readonly planeThere = new THREE.Plane();
+  private readonly tmpNormal = new THREE.Vector3();
+  private readonly tmpPoint = new THREE.Vector3();
 
   build(items: Carryable[]): void {
     for (const item of items) {
-      const cel = createCelMaterial(PALETTE[item.ink] ?? PALETTE[3]);
-      const outline = createOutlineMaterial();
-      // Une caisse est bien plus petite qu'un immeuble : sans trait plus fin,
-      // elle disparaîtrait sous son propre contour.
-      outline.uniforms.uThickness.value = 0.0038;
-      this.materials.push({ cel, outline });
+      const tint = PALETTE[item.ink] ?? PALETTE[3];
+      const make = () => {
+        const cel = createCelMaterial(tint);
+        const outline = createOutlineMaterial();
+        // Une caisse est bien plus petite qu'un immeuble : sans trait plus fin,
+        // elle disparaîtrait sous son propre contour.
+        outline.uniforms.uThickness.value = 0.0038;
+        return { cel, outline };
+      };
 
-      const group = new THREE.Group();
       const geo = cubeGeometry(item.size);
-      const outlineMesh = new THREE.Mesh(geo, outline);
-      const mesh = new THREE.Mesh(geo, cel);
+      const real = make();
+      const group = new THREE.Group();
+      const outlineMesh = new THREE.Mesh(geo, real.outline);
+      const mesh = new THREE.Mesh(geo, real.cel);
       outlineMesh.frustumCulled = false;
       mesh.frustumCulled = false;
       group.add(outlineMesh, mesh);
-      this.group.add(group);
 
-      this.views.set(item.id, { group, mesh, outlineMesh, size: item.size });
+      const spectre = make();
+      const ghost = new THREE.Group();
+      const ghostOutlineMesh = new THREE.Mesh(geo, spectre.outline);
+      const ghostMesh = new THREE.Mesh(geo, spectre.cel);
+      ghostOutlineMesh.frustumCulled = false;
+      ghostMesh.frustumCulled = false;
+      ghost.add(ghostOutlineMesh, ghostMesh);
+      ghost.visible = false;
+
+      this.group.add(group, ghost);
+      this.views.set(item.id, {
+        group,
+        mesh,
+        outlineMesh,
+        cel: real.cel,
+        outline: real.outline,
+        ghost,
+        ghostCel: spectre.cel,
+        ghostOutline: spectre.outline,
+        size: item.size,
+      });
     }
   }
 
-  update(items: Carryable[]): void {
+  update(items: Carryable[], faces: PortalFace[]): void {
     for (const item of items) {
       const view = this.views.get(item.id);
       if (!view) continue;
@@ -57,31 +103,95 @@ export class CarryableViews {
         view.mesh.geometry.dispose();
         view.mesh.geometry = geo;
         view.outlineMesh.geometry = geo;
+        view.ghost.children.forEach((m) => ((m as THREE.Mesh).geometry = geo));
         view.size = item.size;
       }
 
       // La simulation situe la caisse par le centre de son ASSISE ; l'affichage
       // la centre pour que la culbute tourne autour du milieu du cube et non
       // autour d'un coin du bas.
-      view.group.position.set(
-        item.position.x,
-        item.position.y + item.size * 0.5,
-        item.position.z,
-      );
+      const cx = item.position.x;
+      const cy = item.position.y + item.size * 0.5;
+      const cz = item.position.z;
+      view.group.position.set(cx, cy, cz);
       // La rotation est purement visuelle : la collision reste une boîte droite.
-      // C'est pour ça que la caisse se remet d'aplomb en se posant — sans quoi
-      // l'image mentirait sur l'endroit où l'on peut poser le pied.
       view.group.rotation.set(item.rotation.x, item.rotation.y, item.rotation.z);
+
+      this.updateGhost(view, item, faces, cx, cy, cz);
     }
   }
 
+  /** Cherche un portail que la caisse chevauche, et dresse son double. */
+  private updateGhost(
+    view: View,
+    item: Carryable,
+    faces: PortalFace[],
+    cx: number,
+    cy: number,
+    cz: number,
+  ): void {
+    const half = item.size * 0.72; // un peu large : mieux vaut doubler trop tôt
+
+    for (const face of faces) {
+      const n = face.normal;
+      const d = (cx - face.position.x) * n.x + (cy - face.position.y) * n.y + (cz - face.position.z) * n.z;
+      if (Math.abs(d) > half) continue;
+
+      // Grossièrement dans l'ouverture ? Sinon la caisse passe à côté du cadre
+      // et n'a aucune raison d'être dédoublée.
+      const { width, height } = faceWorldSize(face);
+      const lat = Math.hypot(cx - face.position.x, cz - face.position.z);
+      const up = cy - face.position.y;
+      if (lat > width * 0.5 + item.size || up < -item.size || up > height + item.size) continue;
+
+      const s = traversalScale(face);
+      const there = transformPoint(face, { x: cx, y: cy, z: cz });
+
+      view.ghost.position.set(there.x, there.y, there.z);
+      view.ghost.scale.setScalar(s);
+      view.ghost.rotation.set(
+        item.rotation.x,
+        item.rotation.y + yawDelta(face),
+        item.rotation.z,
+      );
+      view.ghost.visible = true;
+
+      // La vraie garde le côté d'où elle vient ; le double, celui où elle va.
+      this.tmpNormal.set(n.x, n.y, n.z);
+      this.tmpPoint.set(face.position.x, face.position.y, face.position.z);
+      this.planeHere.setFromNormalAndCoplanarPoint(this.tmpNormal, this.tmpPoint);
+      setPlanes(view.cel, view.outline, [this.planeHere]);
+
+      const twin = face.twin;
+      this.tmpNormal.set(twin.normal.x, twin.normal.y, twin.normal.z);
+      this.tmpPoint.set(twin.position.x, twin.position.y, twin.position.z);
+      this.planeThere.setFromNormalAndCoplanarPoint(this.tmpNormal, this.tmpPoint);
+      setPlanes(view.ghostCel, view.ghostOutline, [this.planeThere]);
+      return;
+    }
+
+    view.ghost.visible = false;
+    setPlanes(view.cel, view.outline, null);
+  }
+
   syncInk(): void {
-    for (const m of this.materials) {
-      syncInkUniforms(m.cel);
-      syncInkUniforms(m.outline);
+    for (const v of this.views.values()) {
+      syncInkUniforms(v.cel);
+      syncInkUniforms(v.outline);
+      syncInkUniforms(v.ghostCel);
+      syncInkUniforms(v.ghostOutline);
     }
   }
 }
+
+const setPlanes = (
+  a: THREE.ShaderMaterial,
+  b: THREE.ShaderMaterial,
+  planes: THREE.Plane[] | null,
+): void => {
+  a.clippingPlanes = planes;
+  b.clippingPlanes = planes;
+};
 
 /** Cube centré sur son origine, pour que la rotation se fasse autour du milieu. */
 const cubeGeometry = (size: number): THREE.BufferGeometry => {

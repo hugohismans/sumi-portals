@@ -36,6 +36,9 @@ const sim = new Simulation(LEVEL);
 // autrement, en faisant suivre le plan proche ET le plan lointain de l'échelle
 // du joueur (voir applyScale) : leur rapport reste alors constant.
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Les caisses à cheval sur un portail sont tranchées par des plans qui leur
+// sont propres — d'où le découpage local, en plus du plan global des portails.
+renderer.localClippingEnabled = true;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(PAPER, 1);
@@ -312,7 +315,7 @@ function frame(now: number): void {
   const scale = scaleOfLevel(sim.player.scaleLevel);
   avatar.update(sim.player, scale, dt);
   avatar.syncInk();
-  carryableViews.update(sim.carryables.items);
+  carryableViews.update(sim.carryables.items, sim.faces);
   carryableViews.syncInk();
 
   // --- Les autres joueurs -----------------------------------------------------
