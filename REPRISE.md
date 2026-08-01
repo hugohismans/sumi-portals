@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 2 août 2026
 
-`npm run check` : **137 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **129 vérifications, tout passe.** `npm run build` passe.
 
 - **https://hugohismans.github.io/sumi-portals/** — le hall, trois arches
 - `?niveau=monde` — le voyage. Ajouter `&neuf=1` pour oublier les couleurs déjà
@@ -41,10 +41,12 @@ hall : trois leçons sans un mot
 
 village (×1), tout est gris
   tour du propriétaire : puits, marché, étang
-  CÔTE ROUGE   ×1 → ×4 là-bas → retour à ×1, avec la braise (menue)
+  CÔTE ROUGE   ×1 → ×4 là-bas → on y RÉVEILLE le pinceau rouge (touche E)
+               il nous suit comme une fée → retour à ×1
   terrasse     ×1 → ×4
   le toit du village, revu en géant   ← le cœur du jeu
-  JARDIN       ×4 → ×1 là-bas → retour à ×4, avec l'encrier (gros)
+  JARDIN       ×4 → ×1 là-bas → on y réveille le pinceau vert
+               → retour à ×4
   la seconde porte, que le pinceau dessine tache par tache
   belvédère    ×4 → ×16
   l'éperon, la pointe de l'Aiguille, le sacre
@@ -56,9 +58,21 @@ il faut mesurer 1,80. On entre utilement dans le jardin par une GRANDE face, en
 Le rouge d'abord, avant même d'avoir appris à grandir ; le vert ensuite, parce
 qu'il l'exige.
 
-Et la taille de ce qu'on rapporte raconte le voyage : petit là-bas donc gros au
-retour, grand là-bas donc menu. Les deux socles, plantés vides sur la place dès
-la première minute, annoncent cet écart avant qu'on ait fait un seul voyage.
+**ON NE RAMASSE RIEN : ON RÉVEILLE QUELQU'UN.** Chaque pinceau dort au bout de
+son monde. On appuie sur E, il s'éveille, il tourne autour de nous et nous suit
+jusqu'au village — et là il nous quitte pour repeindre sa part du monde.
+
+**Et il n'accepte que la taille de son monde.** Trop grand, il est minuscule
+entre nos doigts ; trop petit, on ne peut pas le lever. Il frémit et reste
+planté. C'est cette règle, et elle seule, qui relie le VERBE du jeu (changer de
+taille) à son BUT (rendre les couleurs) — sans elle on pourrait remplacer les
+couleurs par des clés sans que rien change. Voir `veilleurs` dans
+`src/core/types.ts`.
+
+La taille raconte aussi le voyage : le vert dort à 0,55 dans un monde qu'on
+parcourt à ×1 et ressort quatre fois plus grand ; le rouge dort à 2,20 dans un
+monde qu'on parcourt à ×4 et ressort quatre fois plus petit. Grand socle, petit
+socle — et les deux étaient plantés vides sur la place dès la première minute.
 
 ## Les pièges appris à la dure
 
@@ -100,11 +114,22 @@ dans `IDEES.md`.
   retourné est déjà planté sur la place, en promesse.
 - **Essayer le duo à deux vraies machines.**
 
+## La fin
+
+Quand le second pinceau a repeint sa part du monde, l'encre remonte à la pointe
+de l'Aiguille — qui est la plume de ce monde — et la caméra prend du recul sur
+quatre cents mètres pendant quatorze secondes.
+
+Le brouillard s'ouvre alors de 300 à 1500, et **des montagnes apparaissent** :
+elles sont plantées à six cents mètres et au-delà, donc invisibles pendant toute
+la partie. On croyait avoir fait le tour du monde ; il continue. Le titre vient
+aux deux tiers du plan, APRÈS ce qu'il nomme.
+
 ## Une observation à trancher un jour
 
-Le jardin a été bâti pour un joueur à ×1/4, mais le parcours prévu le fait
-traverser à ×1 — c'est ce qui rend l'encrier soulevable. Entrer trop petit
-donne donc la version SPECTACULAIRE du lieu (une forêt d'herbe) mais un objet
-trop lourd ; entrer bien grandi donne un jardin plus sage et un objet qu'on peut
-prendre. C'est défendable — le spectaculaire est ce qu'on voit quand on se
+Le jardin a été bâti pour un joueur à ×1/4, mais le parcours le fait traverser à
+×1 — et c'est cette taille que le pinceau vert exige. Entrer trop petit donne
+donc la version SPECTACULAIRE du lieu, une forêt d'herbe, mais un pinceau
+inatteignable ; entrer bien grandi donne un jardin plus sage et un pinceau qu'on
+peut prendre. C'est défendable — le spectaculaire est ce qu'on voit quand on se
 trompe — mais ce n'était pas voulu, et ça mérite d'être décidé.
