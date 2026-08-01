@@ -43,6 +43,7 @@ export class Simulation {
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
+  private throwHeld = false;
 
   constructor(level: LevelDef) {
     this.world = new World(level);
@@ -101,6 +102,7 @@ export class Simulation {
     // joueur : c'est ce qui permet de monter sur celle qu'on vient de déposer.
     this.carryables.publishSolids(this.world);
     this.handleInteract(input.interact, scale, events);
+    this.handleThrow(input.throwIt, scale, events);
 
     // --- Direction souhaitée ---------------------------------------------------
     const forward = yawToForward(pl.yaw);
@@ -194,7 +196,7 @@ export class Simulation {
     // --- Caisses : suivi du porteur, puis chute des autres ----------------------
     const held = this.carryables.held;
     if (held) {
-      this.carryables.followCarrier(held, pl.position, pl.yaw, this.scale);
+      this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale);
     }
     this.carryables.step(this.world, dt);
 
@@ -227,9 +229,29 @@ export class Simulation {
 
     const held = this.carryables.held;
     if (held) {
+      const placed = this.carryables.placeForDrop(
+        held,
+        this.world,
+        this.player.position,
+        this.player.yaw,
+        this.player.pitch,
+        scale,
+      );
+      if (!placed) {
+        // On garde la caisse en main plutôt que de la faire surgir n'importe
+        // où : un refus clair vaut mieux qu'un objet qui pousse le joueur.
+        this.carryables.followCarrier(
+          held,
+          this.player.position,
+          this.player.yaw,
+          this.player.pitch,
+          scale,
+        );
+        events.noRoom = true;
+        return;
+      }
       held.held = false;
       held.velocity.y = 0;
-      this.carryables.placeForDrop(held, this.world, this.player.position, this.player.yaw, scale);
       events.carry = { id: held.id, taken: false };
       return;
     }
@@ -244,6 +266,18 @@ export class Simulation {
 
     target.held = true;
     events.carry = { id: target.id, taken: true };
+  }
+
+  /** Lancer au clic. Front montant, comme la saisie. */
+  private handleThrow(pressed: boolean, scale: number, events: TickEvents): void {
+    const justPressed = pressed && !this.throwHeld;
+    this.throwHeld = pressed;
+    if (!justPressed) return;
+
+    const held = this.carryables.held;
+    if (!held) return;
+    this.carryables.throwIt(held, this.player.yaw, this.player.pitch, scale);
+    events.thrown = { id: held.id };
   }
 
   /** Première face franchie par le segment [from → to], de l'avant vers l'arrière. */
@@ -285,7 +319,7 @@ export class Simulation {
     const held = this.carryables.held;
     if (held) {
       held.size *= traversalScale(face);
-      this.carryables.followCarrier(held, pl.position, pl.yaw, newScale);
+      this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale);
     }
   }
 }

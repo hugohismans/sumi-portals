@@ -10,6 +10,7 @@ const LOOK_SENSITIVITY = 0.0022;
  */
 export class InputManager {
   private readonly keys = new Set<string>();
+  private mouseDown = false;
   private yaw: number;
   private pitch = 0;
   locked = false;
@@ -42,6 +43,18 @@ export class InputManager {
     // Échap. On retente une fois plutôt que d'abandonner : sinon le joueur
     // clique, rien ne se passe, et il croit le jeu bloqué.
     document.addEventListener('pointerlockerror', () => this.retryLock());
+
+    // Clic gauche pour lancer — mais seulement souris capturée, sinon le clic
+    // qui sert à revenir dans le jeu enverrait la caisse au loin.
+    document.addEventListener('mousedown', (e) => {
+      if (this.locked && e.button === 0) this.mouseDown = true;
+    });
+    document.addEventListener('mouseup', (e) => {
+      if (e.button === 0) this.mouseDown = false;
+    });
+    window.addEventListener('blur', () => {
+      this.mouseDown = false;
+    });
 
     document.addEventListener('mousemove', (e) => {
       if (!this.locked) return;
@@ -105,6 +118,7 @@ export class InputManager {
       // Maintenue telle quelle : c'est la simulation qui détecte le front, pour
       // que le comportement soit identique en local et sur un futur serveur.
       interact: this.keys.has('KeyE'),
+      throwIt: this.mouseDown,
       yaw: this.yaw,
       pitch: this.pitch,
     };

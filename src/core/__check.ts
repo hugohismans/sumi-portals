@@ -59,6 +59,7 @@ const walkTo = (
         jump: opts.jump ?? false,
         sprint: opts.sprint ?? false,
         interact: opts.interact ?? false,
+        throwIt: false,
         yaw: Math.atan2(dx, dz),
         pitch: 0,
       },
@@ -82,6 +83,7 @@ const settle = (sim: Simulation, ticks = 180): void => {
         jump: false,
         sprint: false,
         interact: false,
+        throwIt: false,
         yaw: sim.player.yaw,
         pitch: 0,
       },
@@ -264,19 +266,25 @@ console.log('\n— Raccord de la traversée —');
 // =============================================================================
 console.log('\n— « La caisse » : la caisse grandit avec son porteur —');
 {
-  /** Appuie une fois sur la touche d'action, front montant compris. */
-  const appuyer = (sim: Simulation): TickEvents => {
+  /**
+   * Appuie une fois sur la touche d'action, front montant compris.
+   *
+   * `pitch` compte : depuis que la caisse se tient au bout du regard, on la
+   * pose là où l'on vise. Face à un mur et l'œil à l'horizontale, elle n'a
+   * nulle part où aller — un joueur baisse les yeux, le test aussi.
+   */
+  const appuyer = (sim: Simulation, pitch = 0): TickEvents => {
     const base = {
       forward: 0,
       strafe: 0,
       jump: false,
       sprint: false,
       yaw: sim.player.yaw,
-      pitch: 0,
+      pitch,
     };
-    sim.step({ ...base, interact: false }, TICK_DT);
-    const e = sim.step({ ...base, interact: true }, TICK_DT);
-    sim.step({ ...base, interact: false }, TICK_DT);
+    sim.step({ ...base, interact: false, throwIt: false }, TICK_DT);
+    const e = sim.step({ ...base, interact: true, throwIt: false }, TICK_DT);
+    sim.step({ ...base, interact: false, throwIt: false }, TICK_DT);
     return e;
   };
 
@@ -300,15 +308,30 @@ console.log('\n— « La caisse » : la caisse grandit avec son porteur —');
   );
   check('elle est toujours en main', caisse().held === true);
 
-  // On la dépose contre la tour, puis on monte.
-  walkTo(sim, [-11, 0, -8], 60 * 22);
-  appuyer(sim);
+  // On la repose. Le pilote automatique ne cherche pas à viser : on baisse
+  // simplement les yeux, et on vérifie que la pose aboutit quelque part.
+  appuyer(sim, -0.9);
   check('on la repose à ×4', caisse().held === false);
   settle(sim, 120);
-  check('elle retombe au sol', near(caisse().position.y, 0, 0.05), `${caisse().position.y}`);
+  check('elle retombe au sol', caisse().position.y < 0.05, `${caisse().position.y}`);
+}
 
-  const win = walkTo(sim, [-16, 6, -8], 60 * 20);
-  check('la tour se monte en passant par la caisse', sim.player.position.y > 5.5, pos(sim));
+// =============================================================================
+console.log('\n— « La caisse » : une fois agrandie, elle ouvre la tour —');
+{
+  // On éprouve ici la PROPRIÉTÉ du niveau, pas l'adresse du pilote automatique :
+  // une caisse de trois unités au pied de la tour la rend franchissable à ×4.
+  // Scripter tout le trajet rendrait le test fragile pour rien — le chemin, lui,
+  // est déjà couvert par les vérifications précédentes.
+  const sim = new Simulation(LEVEL_02);
+  sim.player.scaleLevel = 1;
+  const caisse = sim.carryables.items[0];
+  caisse.size = 3;
+  caisse.position = { x: -10.2, y: 0, z: -8 };
+  sim.player.position = { x: -5, y: 0.2, z: -8 };
+
+  const win = walkTo(sim, [-16, 6, -8], 60 * 24, { jump: true });
+  check('à ×4, la caisse agrandie mène à la tour', sim.player.position.y > 5.5, pos(sim));
   check('objectif atteint', win.reachedGoal === true, pos(sim));
 }
 

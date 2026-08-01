@@ -60,7 +60,18 @@ export class CarryableViews {
         view.size = item.size;
       }
 
-      view.group.position.set(item.position.x, item.position.y, item.position.z);
+      // La simulation situe la caisse par le centre de son ASSISE ; l'affichage
+      // la centre pour que la culbute tourne autour du milieu du cube et non
+      // autour d'un coin du bas.
+      view.group.position.set(
+        item.position.x,
+        item.position.y + item.size * 0.5,
+        item.position.z,
+      );
+      // La rotation est purement visuelle : la collision reste une boîte droite.
+      // C'est pour ça que la caisse se remet d'aplomb en se posant — sans quoi
+      // l'image mentirait sur l'endroit où l'on peut poser le pied.
+      view.group.rotation.set(item.rotation.x, item.rotation.y, item.rotation.z);
     }
   }
 
@@ -72,8 +83,8 @@ export class CarryableViews {
   }
 }
 
-/** Cube posé sur son assise : l'origine est au centre du bas, comme en simulation. */
+/** Cube centré sur son origine, pour que la rotation se fasse autour du milieu. */
 const cubeGeometry = (size: number): THREE.BufferGeometry => {
   const h = size * 0.5;
-  return buildWorldGeometry([{ min: [-h, 0, -h], max: [h, size, h], ink: 0 }]);
+  return buildWorldGeometry([{ min: [-h, -h, -h], max: [h, h, h], ink: 0 }]);
 };

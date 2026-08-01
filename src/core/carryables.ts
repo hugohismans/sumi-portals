@@ -1,5 +1,5 @@
-import { GRAVITY, PLAYER_HEIGHT, PLAYER_RADIUS } from './constants.js';
-import { vec3, yawToForward, type Vec3 } from './math.js';
+import { GRAVITY, PLAYER_HEIGHT, PLAYER_RADIUS, EYE_FRACTION } from './constants.js';
+import { vec3, type Vec3 } from './math.js';
 import type { CarryableDef } from './types.js';
 import type { Aabb, World } from './world.js';
 
@@ -25,11 +25,23 @@ const LIFT_RATIO = 0.55;
 /** Portée de saisie, en hauteurs de joueur. */
 const REACH = 1.6;
 
+/** Vitesse de lancer, en hauteurs de joueur par seconde. */
+const THROW_SPEED = 7;
+
+/** Ce qui reste de la vitesse horizontale après une seconde au sol. */
+const GROUND_DRAG = 0.02;
+
+/** Rebond à l'atterrissage. Discret : une caisse n'est pas une balle. */
+const BOUNCE = 0.18;
+
 export interface Carryable {
   id: string;
   /** Centre du bas. */
   position: Vec3;
   velocity: Vec3;
+  /** Orientation d'affichage. La collision, elle, reste une boîte droite. */
+  rotation: Vec3;
+  spin: Vec3;
   size: number;
   ink: number;
   held: boolean;
@@ -45,6 +57,42 @@ export const aabbOfCarryable = (c: Carryable, out: Aabb): Aabb => {
   out.minZ = c.position.z - h;
   out.maxZ = c.position.z + h;
   return out;
+};
+
+/** Direction du regard, inclinaison comprise. */
+const lookDirection = (yaw: number, pitch: number): Vec3 => {
+  const cp = Math.cos(pitch);
+  return vec3(Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp);
+};
+
+/**
+ * Où se tient la caisse : à distance HORIZONTALE fixe devant soi, à la hauteur
+ * que désigne le regard.
+ *
+ * On a d'abord essayé de la poser au bout du rayon du regard, tout simplement.
+ * Erreur : en baissant les yeux, ce rayon rapproche la caisse, jusqu'à ce
+ * qu'elle chevauche le joueur — et une caisse lâchée là redevient solide sous
+ * ses pieds et le soulève. En figeant l'écart horizontal, on garantit qu'elle
+ * ne peut jamais retomber sur son porteur, tout en laissant l'inclinaison
+ * commander la hauteur, ce qui est bien le geste attendu.
+ */
+const holdPoint = (
+  c: Carryable,
+  playerPos: Vec3,
+  yaw: number,
+  pitch: number,
+  playerScale: number,
+  closeness: number,
+): Vec3 => {
+  const flat = PLAYER_RADIUS * playerScale + c.size * 0.62 * closeness;
+  const eyeY = playerPos.y + PLAYER_HEIGHT * EYE_FRACTION * playerScale;
+  // Bornée : à la verticale, une tangente part à l'infini.
+  const slope = Math.tan(Math.max(-1.15, Math.min(1.15, pitch)));
+  return vec3(
+    playerPos.x + Math.sin(yaw) * flat,
+    eyeY + slope * flat - c.size * 0.5,
+    playerPos.z + Math.cos(yaw) * flat,
+  );
 };
 
 const scratch: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
@@ -66,6 +114,8 @@ export class Carryables {
         id: d.id,
         position: vec3(d.position[0], d.position[1], d.position[2]),
         velocity: vec3(0, 0, 0),
+        rotation: vec3(0, 0, 0),
+        spin: vec3(0, 0, 0),
         size: d.size,
         ink: d.ink ?? 3,
         held: false,
@@ -87,7 +137,6 @@ export class Carryables {
     }
   }
 
-  /** Ce joueur peut-il soulever cette caisse ? */
   canLift(c: Carryable, playerScale: number): boolean {
     return c.size <= PLAYER_HEIGHT * playerScale * LIFT_RATIO;
   }
@@ -100,7 +149,7 @@ export class Carryables {
   targeted(playerPos: Vec3, yaw: number, playerScale: number): Carryable | null {
     const reach = PLAYER_HEIGHT * playerScale * REACH;
     const eyeY = playerPos.y + PLAYER_HEIGHT * playerScale * 0.6;
-    const fwd = yawToForward(yaw);
+    const fwd = lookDirection(yaw, 0);
 
     let best: Carryable | null = null;
     let bestDist = Infinity;
@@ -111,7 +160,6 @@ export class Carryables {
       const cz = c.position.z - playerPos.z;
       const dist = Math.hypot(cx, cy, cz);
       if (dist > reach + c.size * 0.5) continue;
-      // Devant soi, pas dans le dos.
       const flat = Math.hypot(cx, cz) || 1;
       if ((cx / flat) * fwd.x + (cz / flat) * fwd.z < 0.25) continue;
       if (dist < bestDist) {
@@ -122,47 +170,85 @@ export class Carryables {
     return best;
   }
 
-  /** Colle la caisse portée devant son porteur, à hauteur de poitrine. */
-  followCarrier(c: Carryable, playerPos: Vec3, yaw: number, playerScale: number): void {
-    const fwd = yawToForward(yaw);
-    const reach = PLAYER_RADIUS * playerScale + c.size * 0.65;
-    c.position.x = playerPos.x + fwd.x * reach;
-    c.position.z = playerPos.z + fwd.z * reach;
-    c.position.y = playerPos.y + PLAYER_HEIGHT * playerScale * 0.42 - c.size * 0.5;
+  /**
+   * Position de portage : au bout du regard, inclinaison comprise.
+   *
+   * C'est ce qui rend le maniement agréable. Tenue à hauteur de poitrine et
+   * toujours à l'horizontale, la caisse était impossible à placer : on ne
+   * pouvait ni la lever ni la poser où l'on visait.
+   */
+  followCarrier(
+    c: Carryable,
+    playerPos: Vec3,
+    yaw: number,
+    pitch: number,
+    playerScale: number,
+  ): void {
+    const p = holdPoint(c, playerPos, yaw, pitch, playerScale, 1);
+    c.position.x = p.x;
+    c.position.y = p.y;
+    c.position.z = p.z;
     c.velocity.x = 0;
     c.velocity.y = 0;
     c.velocity.z = 0;
+    c.spin.x = 0;
+    c.spin.y = 0;
+    c.spin.z = 0;
   }
 
   /**
-   * Cherche où poser la caisse sans l'encastrer.
+   * Cherche où poser la caisse, en partant du point visé et en se rapprochant.
    *
-   * Sans ça, lâcher une caisse contre un mur la coince dedans, et la résolution
-   * de pénétration la fait jaillir par le haut — on la retrouvait sur le toit
-   * de la tour qu'elle était censée aider à gravir. On la ramène donc vers son
-   * porteur jusqu'à trouver de l'air.
+   * Deux obstacles à éviter, et le second est le plus vicieux : le décor, bien
+   * sûr, mais aussi LE JOUEUR LUI-MÊME. Sans ce test, une caisse lâchée faute
+   * de place atterrissait entre ses pieds, redevenait solide, et le soulevait —
+   * on se retrouvait perché dessus sans l'avoir voulu.
+   *
+   * Si rien n'est libre, on ne pose pas : mieux vaut un refus explicite qu'un
+   * objet qui surgit dans le dos ou sous les semelles.
    */
-  placeForDrop(c: Carryable, world: World, playerPos: Vec3, yaw: number, playerScale: number): void {
-    const fwd = yawToForward(yaw);
-    const far = PLAYER_RADIUS * playerScale + c.size * 0.65;
-    const y = playerPos.y + PLAYER_HEIGHT * playerScale * 0.42 - c.size * 0.5;
+  placeForDrop(
+    c: Carryable,
+    world: World,
+    playerPos: Vec3,
+    yaw: number,
+    pitch: number,
+    playerScale: number,
+  ): boolean {
+    // L'écart horizontal étant déjà garanti par holdPoint, il ne reste qu'à
+    // éviter le décor. On se rapproche progressivement pour pouvoir caler la
+    // caisse contre un mur sans l'y encastrer.
+    for (let step = 0; step <= 8; step++) {
+      const p = holdPoint(c, playerPos, yaw, pitch, playerScale, 1 - step * 0.04);
+      c.position.x = p.x;
+      c.position.y = p.y;
+      c.position.z = p.z;
 
-    for (let step = 0; step <= 10; step++) {
-      const reach = far * (1 - step / 10);
-      c.position.x = playerPos.x + fwd.x * reach;
-      c.position.z = playerPos.z + fwd.z * reach;
-      c.position.y = y;
       aabbOfCarryable(c, scratch);
-      if (world.queryStatic(scratch, hits).length === 0) return;
+      if (world.queryStatic(scratch, hits).length === 0) return true;
     }
-    // Dernier recours : aux pieds du porteur, quitte à ce que ce soit serré.
-    c.position.x = playerPos.x;
-    c.position.z = playerPos.z;
-    c.position.y = playerPos.y;
+    return false;
+  }
+
+  /** Lance la caisse dans la direction du regard, avec une culbute. */
+  throwIt(c: Carryable, yaw: number, pitch: number, playerScale: number): void {
+    const look = lookDirection(yaw, pitch);
+    const speed = THROW_SPEED * PLAYER_HEIGHT * playerScale;
+    c.held = false;
+    c.velocity.x = look.x * speed;
+    // Un peu de hauteur : sans ça, viser droit devant fait raser le sol.
+    c.velocity.y = look.y * speed + speed * 0.18;
+    c.velocity.z = look.z * speed;
+    // La culbute vient du lancer, pas d'un tirage au sort : elle tourne autour
+    // d'un axe perpendiculaire au jet, comme un objet qu'on a poussé.
+    const tumble = 6;
+    c.spin.x = -look.z * tumble;
+    c.spin.z = look.x * tumble;
+    c.spin.y = (look.x - look.z) * tumble * 0.2;
   }
 
   /**
-   * Chute libre des caisses posées.
+   * Vol et chute des caisses libres.
    *
    * La gravité est celle du MONDE, sans mise à l'échelle : une caisse n'a pas
    * de taille de joueur, elle tombe comme un objet du décor. Elles ne se
@@ -174,24 +260,81 @@ export class Carryables {
       if (c.held) continue;
 
       c.velocity.y -= GRAVITY * dt;
-      c.position.y += c.velocity.y * dt;
       c.grounded = false;
 
-      aabbOfCarryable(c, scratch);
-      const touching = world.queryStatic(scratch, hits);
-      if (touching.length > 0) {
-        if (c.velocity.y < 0) {
-          let top = -Infinity;
-          for (const h of touching) top = Math.max(top, h.maxY);
-          c.position.y = top;
+      moveCarryableAxis(c, world, 'x', c.velocity.x * dt);
+      moveCarryableAxis(c, world, 'z', c.velocity.z * dt);
+      const vertical = c.velocity.y;
+      if (moveCarryableAxis(c, world, 'y', vertical * dt)) {
+        if (vertical < 0) {
           c.grounded = true;
+          // Rebond bref, qui meurt vite : une caisse n'est pas une balle.
+          c.velocity.y = -vertical * BOUNCE;
+          if (Math.abs(c.velocity.y) < GRAVITY * dt * 3) c.velocity.y = 0;
         } else {
-          let bottom = Infinity;
-          for (const h of touching) bottom = Math.min(bottom, h.minY);
-          c.position.y = bottom - c.size;
+          c.velocity.y = 0;
         }
-        c.velocity.y = 0;
+      }
+
+      if (c.grounded) {
+        const keep = Math.pow(GROUND_DRAG, dt);
+        c.velocity.x *= keep;
+        c.velocity.z *= keep;
+        c.spin.x *= keep;
+        c.spin.y *= keep;
+        c.spin.z *= keep;
+      }
+
+      c.rotation.x += c.spin.x * dt;
+      c.rotation.y += c.spin.y * dt;
+      c.rotation.z += c.spin.z * dt;
+
+      // Une fois immobile, la caisse se remet d'aplomb. Indispensable : sa
+      // collision reste une boîte droite, donc la laisser reposer de travers
+      // ferait mentir l'image sur l'endroit où l'on peut poser le pied.
+      if (c.grounded && Math.hypot(c.spin.x, c.spin.y, c.spin.z) < 0.6) {
+        const settle = 1 - Math.exp(-dt / 0.12);
+        c.rotation.x += (nearestRightAngle(c.rotation.x) - c.rotation.x) * settle;
+        c.rotation.y += (nearestRightAngle(c.rotation.y) - c.rotation.y) * settle;
+        c.rotation.z += (nearestRightAngle(c.rotation.z) - c.rotation.z) * settle;
       }
     }
   }
 }
+
+const nearestRightAngle = (a: number): number =>
+  Math.round(a / (Math.PI / 2)) * (Math.PI / 2);
+
+/** Déplace la caisse sur un axe puis la ressort de tout décor pénétré. */
+const moveCarryableAxis = (
+  c: Carryable,
+  world: World,
+  axis: 'x' | 'y' | 'z',
+  amount: number,
+): boolean => {
+  if (amount === 0) return false;
+  c.position[axis] += amount;
+
+  const half = c.size * 0.5;
+  const posExtent = axis === 'y' ? c.size : half;
+  const negExtent = axis === 'y' ? 0 : half;
+
+  aabbOfCarryable(c, scratch);
+  const touching = world.queryStatic(scratch, hits);
+  if (touching.length === 0) return false;
+
+  const minKey = axis === 'x' ? 'minX' : axis === 'y' ? 'minY' : 'minZ';
+  const maxKey = axis === 'x' ? 'maxX' : axis === 'y' ? 'maxY' : 'maxZ';
+
+  let resolved = c.position[axis];
+  if (amount > 0) {
+    for (const h of touching) resolved = Math.min(resolved, h[minKey] - posExtent);
+  } else {
+    for (const h of touching) resolved = Math.max(resolved, h[maxKey] + negExtent);
+  }
+  c.position[axis] = resolved;
+
+  // Un choc latéral arrête net dans cette direction.
+  if (axis !== 'y') c.velocity[axis] = 0;
+  return true;
+};

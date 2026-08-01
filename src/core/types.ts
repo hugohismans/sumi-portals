@@ -98,6 +98,8 @@ export interface InputCommand {
   sprint: boolean;
   /** Maintenue, pas impulsion : la simulation détecte elle-même le front. */
   interact: boolean;
+  /** Clic gauche : lancer ce qu'on porte. */
+  throwIt: boolean;
   yaw: number;
   pitch: number;
 }
@@ -119,4 +121,8 @@ export interface TickEvents {
   carry?: { id: string; taken: boolean };
   /** On a tenté de soulever une caisse trop grosse pour soi. */
   tooHeavy?: { id: string };
+  /** Rien ne peut être posé ici : pas assez de place devant soi. */
+  noRoom?: boolean;
+  /** Une caisse vient d'être lancée. */
+  thrown?: { id: string };
 }
