@@ -31,11 +31,11 @@ import type { BoxDef, LevelDef } from '../core/types.js';
  * Chaque région occupe une boîte de coordonnées qui n'appartient qu'à elle.
  * Deux régions ne peuvent donc pas se percuter, même écrites séparément.
  *
- *   village     x [-90,  90]   y [ -6,  28]   z [-110,  12]   échelle ×1
- *   escalier A  x [ 40,  90]   y [ -6,  30]   z [ -20,  20]   ×1 → ×4
- *   terrasse    x [-90,  90]   y [ 24,  118]  z [  16,  96]   échelle ×4
- *   escalier B  x [ 96, 190]   y [ 24,  120]  z [  40, 120]   ×4 → ×16
- *   belvédère   x [-260, 260]  y [ 114, 300]  z [ 110, 300]   échelle ×16
+ *   village     x [-90,  90]   y [ -6,  28]   z [-110,  16]   échelle ×1
+ *   escalier A  x [ 44,  86]   y [ -6,  30]   z [  14,  52]   ×1 → ×4
+ *   terrasse    x [-90,  90]   y [ 24,  118]  z [  46, 130]   échelle ×4
+ *   escalier B  x [ 38,  92]   y [ 24, 120]   z [ 126, 200]   ×4 → ×16
+ *   belvédère   x [-260, 260]  y [ 114, 300]  z [ 190, 380]   échelle ×16
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -105,12 +105,15 @@ const village = (): BoxDef[] => {
 
 export const MONDE: LevelDef = {
   name: 'Le monde',
-  spawn: [0, 0.3, -22],
-  spawnYaw: Math.PI, // dos à l'Aiguille, face au village et à la porte
+  spawn: [0, 0.3, -26],
+  // Face à l'Aiguille : la toute première image du jeu doit être le colosse
+  // qu'on ne peut pas gravir. C'est lui qu'on retrouvera plus tard sous ses
+  // pieds, et il faut l'avoir regardé d'en bas pour que ça compte.
+  spawnYaw: 0,
 
   boxes: [
     // --- Étage 1 : le village -------------------------------------------------
-    box([-90, -6, -110], [90, VILLAGE_Y, 12], 0, { outline: false }),
+    box([-90, -6, -110], [90, VILLAGE_Y, 16], 0, { outline: false }),
 
     // L'Aiguille. Colosse ici, mât depuis la terrasse, piquet depuis le
     // belvédère : c'est le même objet, et c'est tout le propos du voyage.
@@ -122,21 +125,23 @@ export const MONDE: LevelDef = {
     // --- Escalier A : ×1 le regarde, ×4 le gravit -----------------------------
     // Marches de 3 : infranchissables à taille normale (enjambée 0,9),
     // triviales une fois quatre fois plus grand (enjambée 3,6).
-    ...escalier(46, 84, -14, VILLAGE_Y, TERRASSE_Y, 3, 3.4, 3),
+    ...escalier(46, 84, 14, VILLAGE_Y, TERRASSE_Y, 3, 3.6, 3),
 
     // --- Étage 2 : la terrasse ------------------------------------------------
     // Son bord sud est une falaise : c'est de là qu'on découvre le village.
-    box([-90, TERRASSE_Y - 8, 16], [90, TERRASSE_Y, 96], 0, { outline: false }),
+    // Écartée du village : plaquée juste au-dessus, elle l'écrasait au lieu de
+    // le dominer. De loin elle devient une promesse — on voit où l'on va.
+    box([-90, TERRASSE_Y - 8, 46], [90, TERRASSE_Y, 130], 0, { outline: false }),
     // Margelle du bord, pour qu'on sente le vide avant de l'atteindre.
-    box([-90, TERRASSE_Y - 0.6, 16], [90, TERRASSE_Y + 1.4, 18], 3),
+    box([-90, TERRASSE_Y - 0.6, 46], [90, TERRASSE_Y + 1.4, 48], 3),
 
     // --- Escalier B : ×4 le regarde, ×16 le gravit ----------------------------
     // Marches de 12 : mur pour un joueur de 7,2, marche pour un joueur de 28,8.
-    ...escalier(104, 182, 44, TERRASSE_Y, BELVEDERE_Y, 12, 9, 2),
+    ...escalier(40, 90, 126, TERRASSE_Y, BELVEDERE_Y, 12, 9, 2),
 
     // --- Étage 3 : le belvédère -----------------------------------------------
-    box([-260, BELVEDERE_Y - 20, 110], [260, BELVEDERE_Y, 300], 0, { outline: false }),
-    box([-260, BELVEDERE_Y - 2, 110], [260, BELVEDERE_Y + 5, 116], 3),
+    box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false }),
+    box([-260, BELVEDERE_Y - 2, 190], [260, BELVEDERE_Y + 5, 196], 3),
   ],
 
   portals: [
@@ -149,7 +154,7 @@ export const MONDE: LevelDef = {
       smallHeight: 2.8,
       smallWidth: 1.9,
       small: { position: [0, VILLAGE_Y, -40], yaw: 0 }, // normale +Z
-      big: { position: [0, TERRASSE_Y, 62], yaw: Math.PI }, // normale -Z, regarde le village
+      big: { position: [0, TERRASSE_Y, 110], yaw: Math.PI }, // normale -Z, regarde le village
     },
     {
       // Paire B — quatre fois plus grande, pour le joueur déjà quatre fois plus
@@ -164,19 +169,19 @@ export const MONDE: LevelDef = {
       // derrière lui, on le retraversait en allant la chercher — et l'on
       // rapetissait aussitôt, renvoyé au village. Un portail déjà franchi doit
       // toujours rester DERRIÈRE soi.
-      small: { position: [0, TERRASSE_Y, 34], yaw: 0 }, // normale +Z
-      big: { position: [0, BELVEDERE_Y, 210], yaw: Math.PI }, // normale -Z, regarde tout
+      small: { position: [0, TERRASSE_Y, 70], yaw: 0 }, // normale +Z
+      big: { position: [0, BELVEDERE_Y, 300], yaw: Math.PI }, // normale -Z, regarde tout
     },
   ],
 
-  goal: { position: [0, BELVEDERE_Y + 2, 150], radius: 14 },
+  goal: { position: [0, BELVEDERE_Y + 2, 240], radius: 16 },
 
   // Jalons du Pinceau : la direction du voyage, étage par étage. Il ne s'en
   // sert que si le joueur tourne en rond.
   guide: [
     [0, VILLAGE_Y, -40],
-    [0, TERRASSE_Y, 34],
-    [0, BELVEDERE_Y, 170],
+    [0, TERRASSE_Y, 70],
+    [0, BELVEDERE_Y, 250],
   ],
 
   hints: [
@@ -191,18 +196,18 @@ export const MONDE: LevelDef = {
       text: 'La porte indigo rend quatre fois plus grand.',
     },
     {
-      position: [0, TERRASSE_Y, 50],
-      radius: 26,
+      position: [0, TERRASSE_Y, 90],
+      radius: 30,
       text: 'Retourne-toi : le village est là, en bas. Tu y marchais il y a un instant.',
     },
     {
-      position: [0, TERRASSE_Y, 84],
+      position: [0, TERRASSE_Y, 70],
       radius: 20,
       text: 'Une autre porte, quatre fois plus grande. Le voyage continue.',
     },
     {
-      position: [0, BELVEDERE_Y, 170],
-      radius: 40,
+      position: [0, BELVEDERE_Y, 260],
+      radius: 50,
       text: 'D’ici, l’Aiguille n’est plus qu’un piquet. Et pourtant tu ne pouvais pas la gravir.',
     },
   ],

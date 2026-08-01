@@ -117,6 +117,16 @@ export class Brush {
     this.group.visible = false;
   }
 
+  /**
+   * Le fait venir sur-le-champ.
+   *
+   * Uniquement pour la mise au point : attendre dix-sept secondes à chaque
+   * essai rend toute retouche du guide insupportable à régler.
+   */
+  summon(): void {
+    this.idle = PATIENCE;
+  }
+
   /** Recale le jalon visé sur la progression réelle du joueur. */
   private updateTarget(player: PlayerState): void {
     if (this.waypoints.length === 0) return;

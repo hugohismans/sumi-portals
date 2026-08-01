@@ -496,7 +496,7 @@ console.log('\n— Le monde : on ne reste jamais piégé —');
   const sim = new Simulation(MONDE);
   sim.player.scaleLevel = 1;
   sim.player.position = { x: 65, y: 0.3, z: -26 };
-  walkTo(sim, [65, 30, 20], 60 * 30);
+  walkTo(sim, [65, 30, 58], 60 * 40);
   settle(sim, 60);
   check(
     'à ×4, l’escalier ramène du village à la terrasse',
@@ -508,7 +508,7 @@ console.log('\n— Le monde : on ne reste jamais piégé —');
   // ne servirait à rien.
   const petit = new Simulation(MONDE);
   petit.player.position = { x: 65, y: 0.3, z: -26 };
-  walkTo(petit, [65, 30, 20], 60 * 30, { jump: true, sprint: true });
+  walkTo(petit, [65, 30, 58], 60 * 40, { jump: true, sprint: true });
   settle(petit, 60);
   check(
     'à ×1, ce même escalier reste infranchissable',

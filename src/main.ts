@@ -448,6 +448,12 @@ function frame(now: number): void {
   camera,
   portals,
   avatar,
+  brush,
+  /** Fait venir le Pinceau tout de suite, sans attendre d'être perdu. */
+  pinceau() {
+    brush.summon();
+    return 'le pinceau arrive';
+  },
   presence,
   remotePlayers,
   get presenceActive() {
