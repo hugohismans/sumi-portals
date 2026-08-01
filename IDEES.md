@@ -107,12 +107,21 @@ l'ensemble : un manche virtuel pour marcher, le glissement du doigt pour
 regarder, des boutons pour sauter, prendre et lancer. Ce n'est pas un
 habillage, c'est une deuxième façon de jouer à concevoir entièrement.
 
-**Les performances, et c'est le risque caché.** On dessine la scène **cinq
-fois par image** : deux niveaux de profondeur pour chacun des deux portails,
-plus la vue principale. Un ordinateur encaisse sans broncher ; un téléphone,
-beaucoup moins. Les leviers existent et sont simples — retomber à un seul
-niveau de profondeur, réduire la définition des vues de portail, plafonner la
-densité de pixels — mais il faut les prévoir.
+**Les performances : mesuré, et bien meilleur que craint.** On dessine la scène
+**cinq fois par image** — deux niveaux de profondeur pour chacun des deux
+portails, plus la vue principale — et l'on redoutait que ça écroule un
+téléphone.
+
+Mesure réelle : **60 images par seconde sur iPhone 14 Pro Max**, dans Chrome.
+Le rendu tient donc tel quel, sans rien sacrifier. C'est important à noter :
+ça évite d'aller mutiler la récursion des portails « au cas où ».
+
+Réserve honnête : c'est un appareil haut de gamme. Rien ne dit encore ce que
+donne un Android d'entrée de gamme, et c'est là qu'il faudra remesurer. Les
+leviers restent en réserve si besoin — retomber à un seul niveau de
+profondeur, réduire la définition des vues de portail, plafonner la densité de
+pixels. Le compteur d'images est affiché en permanence, précisément pour
+pouvoir mesurer partout plutôt que de deviner.
 
 **Ce qui compte le plus : ça change le level design.** Poser une caisse
 exactement au pied d'une tour demande de viser au doigt près. Agréable à la
