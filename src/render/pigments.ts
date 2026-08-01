@@ -28,7 +28,23 @@ import type * as THREE from 'three';
  * puis s'étale — voir DUREE et sa courbe.
  */
 
-const CLE = 'sumi.pigments';
+/**
+ * OÙ L'ON RANGE LES COULEURS RAPPORTÉES.
+ *
+ * Deux clés, et la seconde n'est pas un luxe. Les repères de mise au point
+ * écrivent l'état des pigments avant de recharger — c'est ce qui leur permet de
+ * rebâtir le monde exactement comme une vraie partie l'aurait bâti. Tant qu'ils
+ * écrivaient dans la clé du jeu, ils ÉCRASAIENT la partie en cours : on faisait
+ * trois sauts de vérification, on rouvrait le jeu pour de bon, et le village
+ * était déjà rouge sans qu'on ait rien fait. Un outil de mise au point qui abîme
+ * ce qu'il sert à vérifier est pire qu'inutile.
+ */
+const CLE_JEU = 'sumi.pigments';
+const CLE_DEBUG = 'sumi.pigments.debug';
+const CLE = new URLSearchParams(location.search).get('debug') ? CLE_DEBUG : CLE_JEU;
+
+/** La clé en usage. Les repères en ont besoin pour écrire au bon endroit. */
+export const clePigments = (): string => CLE;
 /**
  * DURÉE DU RETOUR D'UNE COULEUR.
  *
@@ -42,11 +58,20 @@ const CLE = 'sumi.pigments';
  * de l'encre qui prend d'un coup et s'étale ensuite. C'est ce départ franc
  * qu'on lit comme un coup de pinceau, et non comme un réglage qui monte.
  */
-const DUREE = 1.1;
+const DUREE = 2.4;
 
 interface Chantier {
   materiaux: THREE.ShaderMaterial[];
   avancement: number;
+  /**
+   * Jusqu'où l'encre doit aller pour avoir tout couvert.
+   *
+   * Calculé depuis la boîte de la région et le point de départ : c'est la
+   * distance au coin le plus éloigné. En deçà, il resterait un morceau gris
+   * quand le chantier se termine, et l'on verrait la couleur y apparaître d'un
+   * coup à la dernière image — exactement le défaut qu'on cherche à supprimer.
+   */
+  portee: number;
 }
 
 export class Pigments {
@@ -92,6 +117,9 @@ export class Pigments {
       const peint = pigment === undefined || this.acquis.has(pigment);
       for (const m of materiaux) {
         if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = peint ? 1 : 0;
+        // Pas de front au chargement : une région est peinte ou elle ne l'est
+        // pas. Le front n'existe que pendant le geste qui la peint.
+        if (m.uniforms.uRayon) m.uniforms.uRayon.value = 0;
       }
     }
   }
@@ -104,6 +132,10 @@ export class Pigments {
     pigment: string,
     parRegion: Map<string, THREE.ShaderMaterial[]>,
     pigmentDe: Map<string, string>,
+    /** D'où part l'encre : la position du pinceau à l'instant du geste. */
+    depart?: THREE.Vector3,
+    /** Boîte de chaque région, pour savoir jusqu'où le front doit aller. */
+    bornes?: Map<string, { min: [number, number, number]; max: [number, number, number] }>,
   ): boolean {
     if (this.acquis.has(pigment)) return false;
     this.acquis.add(pigment);
@@ -115,7 +147,28 @@ export class Pigments {
 
     for (const [region, materiaux] of parRegion) {
       if (pigmentDe.get(region) !== pigment) continue;
-      this.chantiers.push({ materiaux, avancement: 0 });
+      const b = bornes?.get(region);
+      let portee = 900;
+      if (b && depart) {
+        // La distance au coin le plus éloigné de la boîte. On la prend sur les
+        // huit coins plutôt qu'au centre : une région longue et basse comme les
+        // hauteurs du monde a un centre tout proche et un bout à quatre cents
+        // mètres, et c'est ce bout-là qui décide de la durée du geste.
+        portee = 0;
+        for (let i = 0; i < 8; i++) {
+          const x = i & 1 ? b.max[0] : b.min[0];
+          const y = i & 2 ? b.max[1] : b.min[1];
+          const z = i & 4 ? b.max[2] : b.min[2];
+          portee = Math.max(portee, Math.hypot(x - depart.x, y - depart.y, z - depart.z));
+        }
+        portee *= 1.14; // de quoi absorber la frange bruitée du front
+      }
+      for (const m of materiaux) {
+        if (m.uniforms.uCentre && depart) m.uniforms.uCentre.value.copy(depart);
+        if (m.uniforms.uRayon) m.uniforms.uRayon.value = 0;
+        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = 0;
+      }
+      this.chantiers.push({ materiaux, avancement: 0, portee });
     }
     return true;
   }
@@ -130,15 +183,27 @@ export class Pigments {
     }
   }
 
-  update(dt: number): void {
+  /**
+   * `pinceau` : où il se trouve à cette image. Le front part de lui et le suit,
+   * ce qui est toute la différence entre voir une couleur apparaître et voir
+   * quelqu'un la poser.
+   */
+  update(dt: number, pinceau?: THREE.Vector3): void {
     if (this.chantiers.length === 0) return;
     for (const c of this.chantiers) {
       c.avancement = Math.min(1, c.avancement + dt / DUREE);
-      // Départ franc, fin douce : 1 − (1 − t)³. L'encre prend d'un coup, puis
-      // s'étale. L'inverse — hésiter puis remplir — se lisait comme une jauge.
+      // Départ franc, fin douce : 1 − (1 − t)³. L'encre prend d'un coup puis
+      // s'épuise, comme un lavis qui rencontre la fibre. L'inverse — hésiter
+      // puis remplir — se lisait comme une jauge qui se remplit.
       const t = 1 - Math.pow(1 - c.avancement, 3);
+      const fini = c.avancement >= 1;
       for (const m of c.materiaux) {
-        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = t;
+        if (pinceau && m.uniforms.uCentre) m.uniforms.uCentre.value.copy(pinceau);
+        if (m.uniforms.uRayon) m.uniforms.uRayon.value = fini ? 0 : c.portee * t;
+        // La teinte pleine n'est posée qu'à la toute fin, et d'un coup : tant
+        // que le front court, c'est LUI qui décide de ce qui est peint. Les
+        // faire monter ensemble redonnerait la jauge d'avant, par-dessous.
+        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = fini ? 1 : 0;
       }
     }
     this.chantiers = this.chantiers.filter((c) => c.avancement < 1);

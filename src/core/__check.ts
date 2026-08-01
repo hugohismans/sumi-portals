@@ -1780,6 +1780,20 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
     const p = niveau.guidePorte?.length ?? g;
     check(`dans ${nom}, autant d’échelles et de portes que de jalons`, e === g && p === g, `${g} jalons, ${e} échelles, ${p} portes`);
   }
+
+  // ET LE GUIDE PASSE PAR OÙ DORT CHAQUE PINCEAU.
+  //
+  // J'ai déplacé le veilleur vert au sommet du tas de feuilles sans déplacer le
+  // jalon qui l'y mène, et rien ne l'a dit : le jeu compilait, les tests
+  // passaient, et l'on marchait jusqu'à un pinceau qui n'écoutait plus rien.
+  // Un veilleur sans jalon à sa porte est un morceau du jeu qu'on ne trouvera
+  // jamais.
+  for (const v of MONDE.veilleurs ?? []) {
+    const proche = (MONDE.guide ?? []).some(
+      (j) => Math.hypot(j[0] - v.position[0], j[1] - v.position[1], j[2] - v.position[2]) < v.radius + 2,
+    );
+    check(`le guide mène jusqu’à ${v.id}`, proche, `dort en ${v.position.join(', ')}`);
+  }
 }
 
 

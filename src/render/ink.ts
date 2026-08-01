@@ -81,6 +81,21 @@ export const createCelMaterial = (
          * mélange. Aucun décor à refaire, aucune texture à doubler.
          */
         uCouleur: { value: 1 },
+        /**
+         * LE FRONT D'ENCRE. C'est le moment du jeu, pas un effet.
+         *
+         * `uCouleur` seul faisait monter la teinte PARTOUT EN MEME TEMPS : la
+         * couleur apparaissait, on ne la voyait pas etre posee. Un reglage qui
+         * monte, pas un sortilege.
+         *
+         * Ces deux-la disent d'ou l'encre part et jusqu'ou elle a gagne. Le
+         * fragment rend sa couleur a ce qui est dans le rayon, et laisse gris
+         * ce qui est au-dela. Le centre suit le pinceau image par image : on
+         * voit donc litteralement l'encre courir sous lui.
+         */
+        uCentre: { value: new THREE.Vector3() },
+        /** Rayon atteint. Zero = rien de peint par le front (voir uCouleur). */
+        uRayon: { value: 0 },
       },
     ]),
     fog: true,
@@ -93,11 +108,14 @@ export const createCelMaterial = (
       attribute float aInk;
       varying vec3 vNormalW;
       varying float vInk;
+      /** Position dans le monde : c'est elle qu'on compare au front d'encre. */
+      varying vec3 vMonde;
 
       void main() {
         vInk = aInk;
         vNormalW = normalize(mat3(modelMatrix) * normal);
         vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vMonde = worldPosition.xyz;
         vec4 mvPosition = viewMatrix * worldPosition;
         gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
@@ -117,9 +135,12 @@ export const createCelMaterial = (
       uniform vec3 uLightDir;
       uniform float uSeed;
       uniform float uCouleur;
+      uniform vec3 uCentre;
+      uniform float uRayon;
 
       varying vec3 vNormalW;
       varying float vInk;
+      varying vec3 vMonde;
 
       void main() {
         #include <clipping_planes_fragment>
@@ -131,12 +152,31 @@ export const createCelMaterial = (
         else if (idx == 3) base = uPalette[3];
         base = mix(base, uSolid, uUseSolid);
 
-        // Désaturation vers la LUMINANCE, pas vers la moyenne des canaux : un
-        // gris moyen aplatit tout au même ton, alors que la luminance conserve
-        // la hiérarchie claire/sombre du dessin. Le lavis reste lisible, il n'a
+        // ─── LE FRONT D'ENCRE ───────────────────────────────────────
+        //
+        // La couleur revient la ou l'on est a moins de uRayon du pinceau. Le
+        // front n'est PAS UN CERCLE NET : on le bruite en marches, avec le hash
+        // deja present, pour qu'il ait la frange irreguliere d'un lavis qui
+        // gagne la fibre du papier. Un cercle propre se lirait comme un halo
+        // d'interface ; une frange se lit comme de l'encre.
+        //
+        // Les marches sont grossieres a dessein (0,07 unite) : un bruit fin
+        // donnerait un bord sale, un bruit large donne des langues, et c'est
+        // ainsi qu'une couleur s'etale sur du papier.
+        float grain = hash13(floor(vMonde * 0.07) + 0.5) - 0.5;
+        float front = uRayon * (1.0 + grain * 0.16);
+        float distance = length(vMonde - uCentre);
+        // uCouleur reste le mot de la fin : a 1 la region est peinte pour de
+        // bon, et le front n'a plus rien a dire. C'est lui qui tient l'etat
+        // d'une partie rechargee, ou d'une region qui n'attendait rien.
+        float peint = max(uCouleur, step(distance, front));
+
+        // Desaturation vers la LUMINANCE, pas vers la moyenne des canaux : un
+        // gris moyen aplatit tout au meme ton, alors que la luminance conserve
+        // la hierarchie claire/sombre du dessin. Le lavis reste lisible, il n'a
         // simplement plus de couleur — ce qui est exactement le sujet.
         float gris = dot(base, vec3(0.299, 0.587, 0.114));
-        base = mix(vec3(gris), base, uCouleur);
+        base = mix(vec3(gris), base, peint);
 
         vec3 n = normalize(vNormalW);
 
@@ -169,6 +209,21 @@ export const createCelMaterial = (
           vec2 c = fract(rg) - 0.5;
           float dots = smoothstep(0.34, 0.22, length(c));
           col = mix(col, uInk, dots * 0.40);
+        }
+
+        // LE BOURRELET. Une couleur qui s'etale sur du papier laisse derriere
+        // son front une frange plus sombre, la ou le pigment s'accumule avant
+        // d'etre bu par la fibre. C'est le detail qui fait la difference entre
+        // un disque qui grandit et de l'encre qui gagne : sans lui, le front
+        // est une limite ; avec lui, c'est un mouvement.
+        //
+        // Il ne vit que pendant le trace — uRayon retombe a zero une fois la
+        // region peinte, et la scene retrouve son dessin ordinaire.
+        if (uRayon > 0.0 && uCouleur < 1.0) {
+          float epaisseur = max(1.2, uRayon * 0.05);
+          float bourrelet = smoothstep(front - epaisseur, front, distance)
+                          * step(distance, front);
+          col = mix(col, uInk, bourrelet * 0.5);
         }
 
         gl_FragColor = vec4(col, 1.0);

@@ -12,7 +12,7 @@ import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
-import { Pigments } from './render/pigments.js';
+import { Pigments, clePigments } from './render/pigments.js';
 import { REPERES_MONDE, changeDeMonde } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
@@ -133,6 +133,9 @@ const pigments = new Pigments();
 if (PARAMS.get('neuf')) pigments.effacer();
 const pigmentDe = new Map<string, string>();
 for (const r of LEVEL.regions ?? []) if (r.pigment) pigmentDe.set(r.name, r.pigment);
+/** Boîte de chaque région : dit au front d'encre jusqu'où il doit courir. */
+const bornesDeRegion = new Map<string, { min: [number, number, number]; max: [number, number, number] }>();
+for (const r of LEVEL.regions ?? []) bornesDeRegion.set(r.name, { min: r.min, max: r.max });
 pigments.appliquer(worldView.parRegion, pigmentDe);
 
 const goalMarker = buildGoalMarker(LEVEL);
@@ -168,6 +171,8 @@ if (pigmentDe.size > 0) socketViews.setCouleur(pigments.nombre / 2);
 // faite de personnages plutôt que de chiffres.
 const tmpOeil = new THREE.Vector3();
 const peintres = new Map<string, PinceauPeintre>();
+/** Celui qui est en train de peindre. Le front d'encre le suit. */
+let peintreEnCours: PinceauPeintre | null = null;
 /** Quel veilleur correspond à quel pinceau. */
 const PINCEAU_DE_VEILLEUR = new Map<string, string>([
   ['pinceau-vert', 'socle-vert'],
@@ -210,18 +215,40 @@ if (MODE === 'monde') {
   // annonçaient cet écart avant qu'on ait fait un seul voyage. Ils étaient
   // faux jusqu'ici — les deux pinceaux s'y posaient à la même taille, et l'on
   // perdait toute l'histoire que leur écart racontait.
-  const AUX_SOCLES: [string, string, [number, number, number], string, [number, number, number], number, number][] = [
-    ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f', [516.5, 0.1, 0], 0.55, 2.2],
-    ['socle-rouge', 'rouge', [-3.5, 0.9, -17.5], '#c8492e', [-500, 0.2, 0], 2.2, 0.55],
+  //
+  // OÙ IL DORT N'EST PAS ÉCRIT ICI. Ça l'a été, et ça a coûté une partie
+  // injouable : j'ai déplacé le veilleur vert au sommet du tas de feuilles sans
+  // déplacer le pinceau qu'on voit, resté planté vingt mètres plus bas. On
+  // marchait jusqu'à lui, on appuyait sur E, et il ne se passait RIEN — pas
+  // même un refus, puisqu'on était hors de portée de la seule chose qui écoute.
+  //
+  // La position vient donc du veilleur lui-même (`src/core/types.ts`), qui est
+  // ce que la simulation écoute. Deux tables parallèles finissent toujours par
+  // diverger ; une seule ne le peut pas.
+  const AUX_SOCLES: [string, string, [number, number, number], string, number, number][] = [
+    ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f', 0.55, 2.2],
+    ['socle-rouge', 'rouge', [-3.5, 0.9, -17.5], '#c8492e', 2.2, 0.55],
   ];
-  for (const [socle, pigment, ou, teinte, dort, tailleDort, tailleRepos] of AUX_SOCLES) {
+  /** Le veilleur qui correspond à un socle : l'inverse de PINCEAU_DE_VEILLEUR. */
+  const veilleurDuSocle = new Map<string, [number, number, number]>();
+  for (const v of LEVEL.veilleurs ?? []) {
+    const socle = PINCEAU_DE_VEILLEUR.get(v.id);
+    if (socle) veilleurDuSocle.set(socle, v.position);
+  }
+  for (const [socle, pigment, ou, teinte, tailleDort, tailleRepos] of AUX_SOCLES) {
+    const dort = veilleurDuSocle.get(socle);
+    if (!dort) continue;
     const p = new PinceauPeintre(ou, teinte, tailleRepos);
     // Il dort dans son monde, bien visible, à la taille de qui viendra le
     // chercher. Le cube qui porte la physique, lui, est masqué : on ramassait
     // un cube rouge POUR OBTENIR un pinceau rouge, deux objets pour une idée.
     if (!pigments.a(pigment)) p.planter(dort, tailleDort);
     p.onPeint = () => {
-      pigments.rendre(pigment, worldView.parRegion, pigmentDe);
+      // L'ENCRE PART DE LUI. C'est toute la différence entre voir une couleur
+      // apparaître et voir quelqu'un la poser : le front s'ouvre à l'endroit
+      // exact où le pinceau donne son coup, puis le suit image par image.
+      pigments.rendre(pigment, worldView.parRegion, pigmentDe, p.group.position, bornesDeRegion);
+      peintreEnCours = p;
       socketViews.setCouleur(pigments.nombre / 2);
       portals.setCouleurCadres(pigments.nombre / 2);
       ambiance.progression(pigments.nombre, 3);
@@ -625,7 +652,7 @@ if (PARAMS.get('debug') && MODE === 'monde') {
 
     if (changeDeMonde(r.pigments, Pigments.lire())) {
       try {
-        localStorage.setItem('sumi.pigments', JSON.stringify(r.pigments));
+        localStorage.setItem(clePigments(), JSON.stringify(r.pigments));
       } catch {
         /* sans mémoire, le repère arrive dans l'état courant : tant pis */
       }
@@ -1039,7 +1066,7 @@ function frame(now: number): void {
   );
   if (trace !== null) portals.tracer(tracage.pairEnCours ?? PORTE_A_DESSINER, trace);
   feuilles.update(dt, camera, scale);
-  pigments.update(dt);
+  pigments.update(dt, peintreEnCours?.group.position);
   if (sceau.enCours) sceau.update(dt);
   // Les pinceaux de couleur : ils tournent autour du joueur tant qu'ils
   // l'accompagnent, puis s'en détachent pour peindre.
@@ -1196,6 +1223,27 @@ function frame(now: number): void {
   },
   presence,
   remotePlayers,
+  pigments,
+  peintres,
+  worldView,
+  bornesDeRegion,
+  pigmentDe,
+  /**
+   * Rejoue le geste d'un pinceau depuis la console, sans avoir à aller le
+   * chercher au fond de son monde. C'est le seul moyen de REGARDER l'animation
+   * autant de fois qu'il faut pour la régler.
+   *
+   *   __game.peindre('rouge')
+   */
+  peindre(pigment: string) {
+    const p = peintres.get(`socle-${pigment}`);
+    if (!p) return `pas de pinceau ${pigment}`;
+    pigments.effacer();
+    pigments.appliquer(worldView.parRegion, pigmentDe);
+    p.reveiller(camera.position.clone());
+    p.declencher();
+    return `le ${pigment} peint`;
+  },
   get presenceActive() {
     return presenceActive;
   },
