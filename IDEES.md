@@ -94,6 +94,36 @@ l'attente.
 
 ---
 
+## Jouable sur téléphone
+
+*(idée d'Hugo)*
+
+À prendre au sérieux tôt, parce que ça ne se rattrape pas facilement après
+coup. Trois chantiers, d'inégale difficulté.
+
+**Les commandes, et c'est le vrai morceau.** Tout le jeu repose aujourd'hui sur
+la capture de la souris — qui n'existe pas sur téléphone. Il faut donc repenser
+l'ensemble : un manche virtuel pour marcher, le glissement du doigt pour
+regarder, des boutons pour sauter, prendre et lancer. Ce n'est pas un
+habillage, c'est une deuxième façon de jouer à concevoir entièrement.
+
+**Les performances, et c'est le risque caché.** On dessine la scène **cinq
+fois par image** : deux niveaux de profondeur pour chacun des deux portails,
+plus la vue principale. Un ordinateur encaisse sans broncher ; un téléphone,
+beaucoup moins. Les leviers existent et sont simples — retomber à un seul
+niveau de profondeur, réduire la définition des vues de portail, plafonner la
+densité de pixels — mais il faut les prévoir.
+
+**Ce qui compte le plus : ça change le level design.** Poser une caisse
+exactement au pied d'une tour demande de viser au doigt près. Agréable à la
+souris, pénible au doigt. Si le jeu doit tourner sur téléphone, il faut
+concevoir les énigmes **tolérantes au placement** dès le départ — sinon on
+fabrique dix niveaux qu'il faudra tous reprendre.
+
+**Premier pas, gratuit :** ouvrir le site sur un téléphone tel quel. On ne
+pourra pas bouger, mais on saura tout de suite si ça affiche, et à quelle
+vitesse. Cette seule information décide de la suite.
+
 ## Le portail qui retourne la gravité
 
 *(idée d'Hugo)*
