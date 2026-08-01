@@ -7,7 +7,8 @@ import type { RegionModule } from './contrat.js';
  * À l'ouest du village, la terre change de couleur. On y a creusé l'argile, on
  * l'a cuite, et l'on est parti. Il reste un chantier de potiers : une cour
  * jonchée de tessons, quatre fours en ruche, des bassins où la barbotine sèche
- * encore, et tout au fond une falaise d'ocre crue qui ferme le monde.
+ * encore, un cinquième four resté debout tout au fond, et derrière lui une
+ * falaise d'ocre crue qui ferme le monde.
  *
  * CE QUI FAIT LE LIEU, et ce n'est pas la couleur :
  *
@@ -144,10 +145,10 @@ const volee = (
  *
  * Quatre assises qui rétrécissent en se décalant — un four n'est pas un cube,
  * il s'arrondit vers le haut. Les proportions sont fixes : la première assise
- * culmine à 40 % de la hauteur totale, ce qui met la première vire à 8 mètres
- * au moins sur tous les fours de la région. Le saut plafonne à 5,18 : AUCUN
- * four ne se gravit, quelle que soit sa taille, et ce n'est pas un hasard mais
- * la définition même de la forme.
+ * culmine à 40 % de la hauteur totale, ce qui met la première vire à 8,16 au
+ * plus bas sur les trois fours intacts. Le saut plafonne à 5,18 : AUCUN four
+ * ne se gravit, quelle que soit sa taille, et ce n'est pas un hasard mais la
+ * définition même de la forme.
  *
  * Les coefficients de rétrécissement sont tous différents d'une face à l'autre
  * (0,86 / 0,82 / 0,84 / 0,88) : deux assises ne peuvent donc jamais aligner
@@ -340,7 +341,7 @@ const decor = (): BoxDef[] => {
   //
   // Le morceau de bravoure, et la vraie énigme de la région.
   //
-  // Vu de la voie, au sud, c'est un mur : 6,80 d'assise puis 5,40 de seconde
+  // Vu de la voie, au sud, c'est un mur : 6,80 d'assise puis 5,40 de deuxième
   // assise, aucune prise, et tout en haut, sur la lèvre brisée, le pinceau à
   // 16,80. On le voit très bien. On n'a aucun moyen d'y aller.
   //
@@ -366,10 +367,14 @@ const decor = (): BoxDef[] => {
   out.push(sur(-431.4, -426.4, 24.6, 39.4, SOL + 12.2, 1.2, 3)); // ouest, la brèche
 
   // L'éboulis. 3,30 → 6,50 → (vire du four à 6,80) → 10,10 → (brèche à 13,40).
-  // Quatre pas de 3,30, 3,20, 0,30, 3,30 et 3,30 : pas un seul ne dépasse
+  // Cinq pas de 3,30, 3,20, 0,30, 3,30 et 3,30 : pas un seul ne dépasse
   // l'enjambée de 3,60, et pas un seul ne s'en approche à moins de trente
   // centimètres. Une marche calibrée au ras du possible est une marche qui
   // finira par ne plus passer.
+  //
+  // De la brèche (13,40), on fait le tour de la lèvre — 14,60 puis 15,90 puis
+  // 16,80 — et l'on rejoint le pinceau sans un seul saut. Qui coupe par le
+  // cratère y arrive aussi, mais il lui faut sauter les 4,60 de la paroi sud.
   out.push(pose(-451.4, -441.6, 22.4, 34.6, 3.3, 3));
   out.push(pose(-445.2, -436.2, 24.6, 36.0, 6.5, 1));
   out.push(pose(-437.8, -429.6, 26.2, 33.4, 10.1, 3));
@@ -406,7 +411,7 @@ const decor = (): BoxDef[] => {
   // ─── LA FALAISE, en bandes verticales ──────────────────────────────────────
   //
   // Pas un mur : une paroi de carrière, taillée en tranches inégales. Chaque
-  // bande a sa hauteur (de 24 à 52) et son propre retrait, et le retrait est
+  // bande a sa hauteur (de 24 à 48,2) et son propre retrait, et le retrait est
   // CALCULÉ pour creuser une alcôve au milieu : la bande la plus profonde est
   // celle qui fait face à la sortie. On sort donc dans un renfoncement, pas
   // contre une planche.

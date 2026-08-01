@@ -204,6 +204,59 @@ const maquette = (cx: number, cz: number): BoxDef[] => [
   box([cx - 0.15, 2.72, cz - 0.15], [cx + 0.15, 3.02, cz + 0.15], 3),
 ];
 
+/**
+ * LA GALERIE DES PIÉDESTAUX — la carte du jeu, dite en volumes.
+ *
+ * Cinq socles alignés sur la place, tous vides au départ. Chacun attend la
+ * couleur d'un monde, et **c'est sa TAILLE qui dit lequel** :
+ *
+ *   — un grand creux pour le monde où l'on est petit, donc d'où l'on revient
+ *     avec quelque chose d'énorme ;
+ *   — un creux minuscule pour le monde dont la porte est étroite, où il faut
+ *     rapetisser pour entrer et d'où l'on ne rapporte qu'une miette ;
+ *   — un socle RETOURNÉ, suspendu sous un linteau, pour le monde du plafond.
+ *
+ * On les voit à la première minute, gris et vides, et l'on comprend deux choses
+ * sans un mot : qu'il y a cinq voyages à faire, et qu'ils ne se ressemblent pas.
+ * C'est la même intention que la maquette au pied de l'Aiguille — montrer la
+ * forme de ce qui manque plutôt que de l'annoncer.
+ *
+ * Ils sont dans le village, donc en lavis gris tant qu'on n'a rien rapporté.
+ * Chacun prendra sa couleur en se remplissant : la galerie EST la jauge de
+ * progression, et elle ne ressemble à aucune barre.
+ */
+const piedestal = (cx: number, cz: number, creux: number, retourne = false): BoxDef[] => {
+  // Le socle est proportionné à ce qu'il attend : un grand creux demande un
+  // grand socle, sinon la rangée ne se lit plus au premier coup d'œil.
+  const r = Math.max(0.55, creux * 0.85);
+  const h = Math.max(0.5, Math.min(1.15, creux * 0.75));
+  if (!retourne) {
+    return [
+      box([cx - r, -0.4, cz - r], [cx + r, h, cz + r], 1),
+      // Le rebord déborde et MORD sur le corps : affleurant, les deux faces se
+      // disputeraient la profondeur.
+      box([cx - r - 0.14, h - 0.1, cz - r - 0.14], [cx + r + 0.14, h + 0.12, cz + r + 0.14], 2),
+      // Le creux : quatre lèvres qui laissent un vide au milieu. C'est ce vide
+      // qu'on lit, et sa dimension est toute l'information.
+      box([cx - r - 0.14, h + 0.12, cz - r - 0.14], [cx - creux * 0.5, h + 0.3, cz + r + 0.14], 2),
+      box([cx + creux * 0.5, h + 0.12, cz - r - 0.14], [cx + r + 0.14, h + 0.3, cz + r + 0.14], 2),
+      box([cx - creux * 0.5, h + 0.12, cz - r - 0.14], [cx + creux * 0.5, h + 0.3, cz - creux * 0.5], 2),
+      box([cx - creux * 0.5, h + 0.12, cz + creux * 0.5], [cx + creux * 0.5, h + 0.3, cz + r + 0.14], 2),
+    ];
+  }
+  // LE SOCLE RETOURNÉ. Il pend sous un linteau porté par deux montants : le
+  // creux regarde le sol. On ne peut rien y poser tant qu'on n'a pas trouvé le
+  // moyen de marcher au plafond — et c'est précisément ce qu'il annonce.
+  const t = 2.9;
+  return [
+    box([cx - r - 0.5, -0.4, cz - 0.3], [cx - r, t, cz + 0.3], 1),
+    box([cx + r, -0.4, cz - 0.3], [cx + r + 0.5, t, cz + 0.3], 1),
+    box([cx - r - 0.8, t, cz - 0.45], [cx + r + 0.8, t + 0.4, cz + 0.45], 2),
+    box([cx - r, t - h, cz - r], [cx + r, t - 0.06, cz + r], 1),
+    box([cx - r - 0.14, t - h - 0.12, cz - r - 0.14], [cx + r + 0.14, t - h + 0.1, cz + r + 0.14], 2),
+  ];
+};
+
 /** Maison : un corps et une toiture débordante, qui pose la ligne d'encre. */
 const maison = (cx: number, cz: number, w: number, d: number, h: number, ink: number): BoxDef[] => [
   box([cx - w, -0.6, cz - d], [cx + w, h, cz + d], ink),
@@ -366,6 +419,14 @@ export const MONDE: LevelDef = {
     // Au pied de l'Aiguille, légèrement de côté pour ne pas la masquer : on
     // arrive en la regardant, et c'est la maquette qu'on rencontre d'abord.
     ...maquette(5.2, -11),
+
+    // La galerie, en arc autour de la place. On la longe en allant du puits au
+    // marché — donc on la voit forcément, sans avoir eu à s'en approcher exprès.
+    ...piedestal(-16, -6, 1.44),
+    ...piedestal(-10.5, -13.5, 0.36),
+    ...piedestal(-3.5, -17.5, 0.7),
+    ...piedestal(20.5, -8, 2.8),
+    ...piedestal(24, -1, 0.9, true),
 
     // --- Escalier A : ×1 le regarde, ×4 le gravit -----------------------------
     // Marches de 3 : infranchissables à taille normale (enjambée 0,9),
