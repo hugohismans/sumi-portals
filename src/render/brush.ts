@@ -199,6 +199,13 @@ export class Brush {
     this.prevOriented.copy(this.head.position);
   }
 
+  /**
+   * Appelé à l'instant où il s'envole, avec le numéro du jalon atteint et leur
+   * nombre total. C'est le seul moment du jeu où l'on peut dire au joueur
+   * « tu avances » — le rendu ne s'en charge pas, le son si.
+   */
+  onEnvol: ((etape: number, total: number) => void) | null = null;
+
   /** Le fait filer tout de suite, pour la mise au point. */
   summon(): void {
     if (this.station < this.waypoints.length - 1) this.takeOff();
@@ -245,6 +252,7 @@ export class Brush {
       const d = Math.hypot(p.x - st.x, p.y - st.y, p.z - st.z);
       if (d < CATCH * playerScale && this.station < this.waypoints.length - 1) {
         this.takeOff();
+        this.onEnvol?.(this.station, this.waypoints.length);
       }
     }
 

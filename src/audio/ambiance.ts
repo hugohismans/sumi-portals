@@ -314,6 +314,48 @@ export class Ambiance {
   }
 
   /**
+   * ON AVANCE — un arpège, une station du Pinceau de plus.
+   *
+   * Il manquait au jeu la chose la plus simple : un son qui dise « c'est
+   * gagné, continue ». Les pas, le vent et les portails disent où l'on est ;
+   * rien ne disait où l'on en est.
+   *
+   * **Il MONTE d'une station à l'autre**, et c'est tout son intérêt. Le même
+   * accord répété n'aurait rien raconté ; celui-ci gravit la gamme en même
+   * temps que vous gravissez le monde, si bien qu'on entend sa propre
+   * progression sans avoir jamais regardé un compteur. Au dernier jalon, il
+   * sonne une octave plus haut qu'au premier.
+   *
+   * La gamme est pentatonique — cinq degrés, aucun demi-ton. C'est ce qui la
+   * rend impossible à faire sonner faux, et c'est aussi la couleur de l'estampe
+   * qu'on cherche partout ailleurs dans ce jeu.
+   */
+  progression(etape: number, total: number): void {
+    const ctx = this.ctx;
+    const maitre = this.maitre;
+    if (!ctx || !maitre) return;
+    try {
+      const t = ctx.currentTime;
+      // Gamme yo : seconde, quarte, quinte, sixte. Pas de tierce, pas de
+      // sensible — rien qui appelle une résolution, donc rien qui sonne
+      // « inachevé » quand on s'arrête au milieu du voyage.
+      const degres = [1, 9 / 8, 4 / 3, 3 / 2, 27 / 16];
+      const avance = total > 1 ? etape / (total - 1) : 0;
+      // Une octave gagnée du premier au dernier jalon, répartie régulièrement.
+      const base = PINCEAU_NOTE * 0.5 * Math.pow(2, avance) * this.facteur();
+      for (let i = 0; i < 4; i++) {
+        this.cloche(base * degres[i], 1.1 - i * 0.12, 0.05 - i * 0.007, t + i * 0.085);
+      }
+      // Une dernière note une octave au-dessus de la première, à peine audible :
+      // c'est elle qui donne l'impression que l'arpège « s'envole » plutôt que
+      // de s'arrêter.
+      this.cloche(base * 2, 1.6, 0.014, t + 0.36);
+    } catch {
+      /* idem */
+    }
+  }
+
+  /**
    * LA RETROUVAILLE — les deux joueurs de la même taille, chacun sur sa dalle.
    *
    * C'est le seul son du jeu qui ne soit pas un événement mais une CONCLUSION,

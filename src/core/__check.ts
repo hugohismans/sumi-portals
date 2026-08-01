@@ -8,7 +8,7 @@
  *
  *   npm run check
  */
-import { TICK_DT, scaleOfLevel } from './constants.js';
+import { PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './constants.js';
 import { buildFaces, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
@@ -1060,7 +1060,93 @@ console.log('\n— Aucune face confondue et exposée —');
   }
 }
 
-// ─── Les régions restent dans leur parcelle ──────────────────────────────────
+// =============================================================================
+console.log('\n— L’encrier : la quête du monde —');
+{
+  const PORTEE = (echelle: number) => PLAYER_HEIGHT * echelle * 0.55;
+  const encrier = MONDE.carryables![0];
+  const socle = MONDE.sockets![0];
+
+  // LE COEUR DE L’ENIGME. Entrer dans le jardin sans avoir grandi d’abord vous
+  // y depose a un quart de taille : on traverse ce monde immense, on trouve
+  // l’encrier, et on ne peut pas le soulever. Rien ne l’explique, tout se voit.
+  check(
+    'a ×1/4, l’encrier est trop lourd — venir petit ne mène nulle part',
+    encrier.size > PORTEE(0.25),
+    `${encrier.size} > ${PORTEE(0.25).toFixed(3)}`,
+  );
+  check(
+    'a ×1, il se souleve — il fallait passer une porte avant',
+    encrier.size <= PORTEE(1),
+    `${encrier.size} <= ${PORTEE(1).toFixed(2)}`,
+  );
+
+  // Le retour doit rester possible a chaque porte. Un centimetre de plus et
+  // l’encrier restait coince, la quete morte sans un message.
+  const sim = new Simulation(MONDE);
+  const petite = (id: string) => sim.faces.find((f) => f.pairId === id && f.kind === 'small')!;
+  for (const [id, taille, etape] of [
+    ['descente-jardin', encrier.size, 'sort du jardin'],
+    ['ascension-1', encrier.size * 4, 'peut passer par la porte du village'],
+    ['ascension-2', encrier.size * 4, 'peut passer par celle de la terrasse'],
+  ] as const) {
+    const f = petite(id);
+    check(
+      `l’encrier ${etape} — ${taille.toFixed(2)} dans une porte de ${f.width.toFixed(2)}`,
+      taille <= f.width * 0.9 && taille <= f.height * 0.96,
+      `${taille.toFixed(2)} / ${(f.width * 0.9).toFixed(2)}`,
+    );
+  }
+
+  // LA PROPRIETE QUI SAUVE LA QUETE, et elle n’etait pas voulue au depart :
+  // l’encrier suit toujours son porteur, donc sa taille finale ne depend que de
+  // la taille du joueur en haut — jamais du chemin suivi. Or on peut monter du
+  // village au belvedere de deux facons (porte puis escalier, ou l’inverse).
+  // Les deux donnent exactement le meme encrier, et le socle du sommet accepte
+  // donc l’un comme l’autre. Sans cela, un joueur ayant pris le bon chemin dans
+  // le mauvais ordre se serait retrouve avec un objet inutilisable.
+  const arrivee = encrier.size * (scaleOfLevel(2) / scaleOfLevel(0));
+  check(
+    'au sommet, le socle attend exactement la taille du voyage entier',
+    Math.abs(arrivee - socle.size) <= socle.size * 0.12,
+    `arrive a ${arrivee.toFixed(2)}, attendu ${socle.size}`,
+  );
+  check(
+    'un objet qui n’aurait pas fait le trajet n’y entre pas',
+    Math.abs(arrivee / 4 - socle.size) > socle.size * 0.12,
+    `${(arrivee / 4).toFixed(2)} refuse`,
+  );
+  // Et il reste soulevable la-haut : un objet qu’on lache et qu’on ne peut plus
+  // reprendre, au bout de tout le voyage, serait la pire fin possible.
+  check(
+    'et il reste soulevable au sommet, si on le repose',
+    arrivee <= PORTEE(scaleOfLevel(2)),
+    `${arrivee.toFixed(2)} <= ${PORTEE(scaleOfLevel(2)).toFixed(2)}`,
+  );
+
+  // L’eperon : du sommet du monde jusqu’a la pointe de l’Aiguille, et retour.
+  const geant = new Simulation(MONDE);
+  geant.player.scaleLevel = 2;
+  geant.player.position = { x: 0, y: 121, z: 210 };
+  walkTo(geant, [0, 114.2, 0], 60 * 60);
+  settle(geant, 60);
+  check(
+    'a ×16, l’eperon mene du belvedere a la pointe de l’Aiguille',
+    Math.hypot(geant.player.position.x, geant.player.position.z) < 20 &&
+      geant.player.position.y > 112,
+    pos(geant),
+  );
+
+  walkTo(geant, [0, 120, 220], 60 * 60);
+  settle(geant, 60);
+  check(
+    'et l’on en revient — on ne reste pas perche la-haut',
+    geant.player.position.z > 190 && geant.player.position.y > 118,
+    pos(geant),
+  );
+}
+
+// ─── Les regions restent dans leur parcelle ──────────────────────────────────
 //
 // C'est la garantie qui rend la fabrication en parallèle possible : tant que
 // chaque région tient dans la boîte qu'on lui a réservée, deux régions écrites

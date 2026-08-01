@@ -125,6 +125,15 @@ if (EN_DUO) scene.add(talisman.group);
 
 // Le Pinceau. Il vit dans le monde, se laisse rejoindre, puis file plus loin.
 const brush = new Brush(LEVEL.guide);
+// Le seul retour du jeu qui dise « tu avances ». Le son du pinceau existait
+// depuis longtemps mais n'était branché nulle part : on le rattrapait, il
+// repartait, et il ne se passait rien. L'arpège, lui, monte d'un jalon à
+// l'autre — on entend sa propre progression sans jamais lire un compteur.
+brush.onEnvol = (etape, total) => {
+  ambiance.pinceau();
+  ambiance.progression(etape, total);
+  flash(`Le pinceau repart. ${etape} sur ${total - 1}.`, 2.2);
+};
 scene.add(brush.group);
 
 // Le bonhomme du joueur local. Il vit dans la scène comme n'importe quel objet,

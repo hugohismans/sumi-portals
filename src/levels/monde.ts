@@ -299,7 +299,15 @@ export const MONDE: LevelDef = {
     // L'Aiguille. Colosse ici, mât depuis la terrasse, piquet depuis le
     // belvédère : c'est le même objet, et c'est tout le propos du voyage.
     box([-3, -5.6, -3], [3, AIGUILLE_H, 3], 2),
-    box([-4.4, AIGUILLE_H - 1, -4.4], [4.4, AIGUILLE_H + 3, 4.4], 3),
+    // LE CHAPITEAU, ET LE SOCLE VIDE QU'IL PORTE.
+    //
+    // On le voit de la place, à la première minute de jeu : une plateforme
+    // minuscule tout là-haut, avec quelque chose dessus qui attend. On ne peut
+    // ni l'atteindre ni comprendre comment on l'atteindra — et c'est
+    // exactement le rôle qu'on lui demande. Toute la partie consiste à
+    // apprendre le chemin qui y mène.
+    box([-12, AIGUILLE_H - 1.4, -12], [12, AIGUILLE_H + 3.6, 12], 3),
+    box([-9.6, AIGUILLE_H + 3.6, -9.6], [9.6, AIGUILLE_H + 4.2, 9.6], 2),
 
     ...village(),
 
@@ -333,7 +341,10 @@ export const MONDE: LevelDef = {
     // --- Étage 3 : le belvédère -----------------------------------------------
     box([-260, BELVEDERE_Y - 20, 190], [260, BELVEDERE_Y, 380], 0, { outline: false, region: 'hauteurs' }),
     // Même principe à ×16, à l'échelle de l'étage.
-    ...balustrade(-255, 36, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+    // Trouée à l'aplomb de l'éperon : sans elle, le garde-corps barrait la seule
+    // route vers l'Aiguille.
+    ...balustrade(-255, -20, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
+    ...balustrade(20, 36, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
     ...balustrade(94, 255, 193, 196, BELVEDERE_Y, 22, 6.5, 2.6).map(haut),
     // Les garde-corps latéraux sont 40 cm plus hauts que les frontaux : aux
     // quatre angles, leurs lisses se recouvraient à l'altitude exacte.
@@ -343,6 +354,20 @@ export const MONDE: LevelDef = {
 
     // Le sommet du voyage. Région autonome : voir regions/belvedere.ts.
     ...BELVEDERE.boxes,
+
+    // --- L'ÉPERON --------------------------------------------------------------
+    //
+    // Une passerelle jetée du sommet du monde jusqu'à la pointe de l'Aiguille,
+    // cent quatorze mètres au-dessus de la place où l'on a commencé. C'est le
+    // dernier geste du voyage, et le seul endroit d'où l'on domine ce colosse
+    // qu'on ne pouvait pas gravir.
+    //
+    // Elle est 6 mètres SOUS la dalle du belvédère : à ×16 on enjambe 14,4,
+    // donc on y descend et l'on y remonte sans y penser. Et sa face supérieure
+    // n'est au niveau de rien d'autre — deux dalles au même niveau, on connaît.
+    box([-13.4, 111.5, 8], [13.4, 114.05, 196], 1, { region: 'hauteurs' }),
+    ...balustrade(-14.2, -13.0, 8, 196, 114.05, 26, 7.6, 2.6).map(haut),
+    ...balustrade(13.0, 14.2, 8, 196, 114.05, 26, 7.6, 2.6).map(haut),
 
     // Le détour minuscule, loin à l'est. Région autonome : voir regions/jardin.ts.
     ...JARDIN.boxes,
@@ -392,6 +417,31 @@ export const MONDE: LevelDef = {
       small: { position: [306, 0, 0], yaw: Math.PI / 2 }, // on ressort vers l'est, face au jardin
     },
   ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // L'ENCRIER — ce qu'on va chercher, et ce qu'on rapporte.
+  //
+  // Un pinceau vous guide d'un bout à l'autre du monde. Ce qu'on lui rapporte,
+  // c'est de l'encre. Il n'y avait rien d'autre à trouver.
+  //
+  // LES NOMBRES, et ils décident de tout. Il mesure 36 centimètres au fond du
+  // jardin, et c'est la SEULE fenêtre possible :
+  //
+  //   — au-dessus de 24,75 cm, un joueur à ×1/4 ne peut pas le soulever. Donc
+  //     entrer dans le jardin trop petit ne mène nulle part : on traverse tout
+  //     ce monde immense, on trouve l'encrier, et on ne peut pas le prendre.
+  //     Le jeu ne dit rien ; il laisse comprendre qu'on est venu mal grandi.
+  //   — au-dessous de 42,75 cm, il passe encore par la petite porte du village
+  //     une fois quadruplé. Un centimètre de plus et le retour était impossible.
+  //
+  // Il sort du jardin à 1,44, franchit la terrasse à 5,76, et c'est cette
+  // taille-là, et aucune autre, que le socle du sommet accepte. On ne peut donc
+  // pas tricher avec un caillou trouvé sur place : seul un objet ayant fait TOUT
+  // le voyage a la bonne dimension. La preuve du parcours est l'objet lui-même.
+  // ═══════════════════════════════════════════════════════════════════════════
+  carryables: [{ id: 'encrier', position: [505, -0.17, 0], size: 0.36, ink: 3 }],
+
+  sockets: [{ id: 'socle-aiguille', position: [0, AIGUILLE_H + 4.2, 0], size: 5.76, ink: 3 }],
 
   goal: { position: [0, BELVEDERE_Y + 2, 240], radius: 16 },
 
