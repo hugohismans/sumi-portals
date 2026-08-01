@@ -243,7 +243,26 @@ export const createOutlineMaterial = (ink?: THREE.Color): THREE.ShaderMaterial =
         float n2 = hash13(position * 1.41 + uSeed * 2.3 + 19.0);
 
         float t = uThickness * depth * (1.0 + (n1 - 0.5) * uWobble * (depthTrait / max(depth, 0.02)));
-        vec4 worldPosition = modelMatrix * vec4(position + dir * t, 1.0);
+
+        // ─── LE TRAIT SE MESURE DANS LE MONDE, PAS DANS LE MODELE ────────────
+        //
+        // Le gonflement est applique a la position LOCALE, donc AVANT la
+        // matrice du modele.
+        // Sur un objet mis a l'echelle, il se faisait donc multiplier par cette
+        // echelle : un pinceau seize fois plus grand recevait un trait seize
+        // fois plus epais, et il barbouillait un quart de l'ecran. Deux fichiers
+        // compensaient a la main en divisant leur epaisseur par leur echelle ;
+        // tout le reste du decor mis a l'echelle, lui, ne compensait rien.
+        //
+        // On divise donc par l'echelle portee par la matrice, axe par axe. Le
+        // manteau fait alors exactement t unites du monde, quoi qu'on lui
+        // fasse subir en amont, et les rustines n'ont plus lieu d'etre.
+        vec3 ech = vec3(
+          length(modelMatrix[0].xyz),
+          length(modelMatrix[1].xyz),
+          length(modelMatrix[2].xyz)
+        );
+        vec4 worldPosition = modelMatrix * vec4(position + dir * t / max(ech, vec3(1e-4)), 1.0);
         vec4 mvPosition = viewMatrix * worldPosition;
 
         // Tremblement latéral : c'est lui qu'on lit comme « tracé à la main ».

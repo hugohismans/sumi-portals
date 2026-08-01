@@ -13,6 +13,7 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments } from './render/pigments.js';
+import { REPERES_MONDE, changeDeMonde } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
@@ -597,6 +598,124 @@ function applyScale(force = false): void {
 }
 
 applyScale(true);
+
+// ─── LES REPÈRES DE MISE AU POINT ───────────────────────────────────
+//
+// `?debug=1` : une liste des moments qui méritent d'être regardés, et une
+// touche par ligne. Voir `src/debug/reperes.ts` pour ce qu'elle contient et
+// pourquoi certains sauts rechargent la page.
+//
+// Rien de tout ça ne s'active en partie normale : le panneau reste `hidden` et
+// aucune touche n'est écoutée.
+if (PARAMS.get('debug') && MODE === 'monde') {
+  const panneau = el('debug');
+  panneau.hidden = false;
+
+  /**
+   * Y va. Deux chemins, et le second n'est pas un pis-aller : voir l'en-tête de
+   * `reperes.ts`. Si l'état des couleurs demandé n'est pas celui qu'on a sous
+   * les yeux, on recharge — sinon on regarderait un monde bâtard qu'aucune
+   * partie honnête ne produit.
+   */
+  const allerA = (i: number): void => {
+    const r = REPERES_MONDE[i];
+    if (!r) return;
+
+    if (changeDeMonde(r.pigments, Pigments.lire())) {
+      try {
+        localStorage.setItem('sumi.pigments', JSON.stringify(r.pigments));
+      } catch {
+        /* sans mémoire, le repère arrive dans l'état courant : tant pis */
+      }
+      location.search = `?niveau=monde&debug=1&repere=${i}`;
+      return;
+    }
+
+    sim.player.position = { x: r.position[0], y: r.position[1], z: r.position[2] };
+    sim.player.velocity = { x: 0, y: 0, z: 0 };
+    sim.player.scaleLevel = r.echelle;
+    sim.player.yaw = r.lacet;
+    sim.player.pitch = 0;
+    input.setYaw(r.lacet);
+    input.setPitch(0);
+    applyScale(true);
+
+    // On laisse la physique poser le joueur. Les hauteurs de la liste sont
+    // écrites à la main, donc approximatives ; une demi-seconde de chute libre
+    // les corrige, et l'on n'arrive jamais les pieds dans le sol ni suspendu.
+    const immobile = {
+      forward: 0,
+      strafe: 0,
+      jump: false,
+      sprint: false,
+      interact: false,
+      throwIt: false,
+      yaw: r.lacet,
+      pitch: 0,
+    };
+    for (let k = 0; k < 30 && !sim.player.grounded; k++) sim.step(immobile, TICK_DT);
+
+    brush.poser(r.jalon);
+    flash(r.verifier, 9);
+    for (const b of panneau.querySelectorAll('button')) b.classList.remove('ici');
+    panneau.querySelectorAll('button')[i]?.classList.add('ici');
+
+    if (r.sacre) {
+      sceau.declencher();
+      sacre.jouer([0, 74, 0], camera.position);
+      ambiance.retrouvaille();
+      document.exitPointerLock();
+    }
+  };
+
+  // Les touches sont lues par `code`, donc par POSITION physique : la rangée du
+  // haut marche à l'identique en AZERTY, où ces touches produisent & é " ' (.
+  const TOUCHES = [
+    'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6',
+    'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal',
+  ];
+  const LEGENDES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+
+  panneau.innerHTML = '<h3>Repères — ?debug=1</h3>';
+  REPERES_MONDE.forEach((r, i) => {
+    const b = document.createElement('button');
+    const t = document.createElement('b');
+    const k = document.createElement('kbd');
+    k.textContent = LEGENDES[i] ?? '·';
+    t.append(k, r.titre);
+    const s = document.createElement('small');
+    s.textContent = r.verifier;
+    b.append(t, s);
+    b.addEventListener('click', () => allerA(i));
+    panneau.appendChild(b);
+  });
+
+  // On replie la liste avec H, ou en cliquant son titre. Sur un écran étroit
+  // elle couvre la moitié de ce qu'on est venu regarder.
+  const replier = (): void => {
+    panneau.classList.toggle('replie');
+  };
+  panneau.querySelector('h3')?.addEventListener('click', replier);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyH') replier();
+    const i = TOUCHES.indexOf(e.code);
+    if (i >= 0 && i < REPERES_MONDE.length) allerA(i);
+  });
+
+  // Arrivée par rechargement : le saut a été demandé dans la page précédente,
+  // et c'est ici qu'il s'achève, une fois le monde rebâti dans le bon état.
+  //
+  // On escamote aussi la carte de titre. Elle est belle et elle a sa place au
+  // début d'une partie ; entre deux repères, elle oblige à un clic de plus à
+  // chaque saut qui recharge, ce qui est exactement le genre de petite friction
+  // qui fait qu'on cesse de vérifier.
+  const demande = Number(PARAMS.get('repere'));
+  if (PARAMS.has('repere') && demande >= 0 && demande < REPERES_MONDE.length) {
+    overlay.classList.add('hidden', 'resumed');
+    allerA(demande);
+  }
+}
 
 // --- Ambiance par région --------------------------------------------------------
 /**

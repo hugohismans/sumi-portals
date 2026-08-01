@@ -67,6 +67,38 @@
       }
       #hint.show { opacity: 1; }
 
+      /* --- Les repères de mise au point (?debug=1) ------------------------ */
+      /* Volontairement laid et lisible : ce n'est pas le jeu, c'est l'établi. */
+      #debug {
+        position: fixed; left: 12px; top: 12px; z-index: 8;
+        max-width: 340px; max-height: calc(100vh - 24px); overflow-y: auto;
+        padding: 10px 12px;
+        background: rgba(239, 231, 214, .93);
+        border: 2px solid var(--ink); border-radius: 2px;
+        font-size: 11px; line-height: 1.45; pointer-events: auto;
+      }
+      #debug h3 {
+        margin: 0 0 6px; font-size: 11px; letter-spacing: .12em;
+        text-transform: uppercase; opacity: .55; cursor: pointer;
+      }
+      /* Replié : il ne reste que le titre. La liste mange la moitié d'un écran
+         étroit, et l'on veut pouvoir REGARDER ce qu'on vient de vérifier. */
+      #debug.replie button { display: none; }
+      #debug button {
+        display: block; width: 100%; margin: 0 0 3px; padding: 4px 6px;
+        text-align: left; font: inherit; color: inherit; cursor: pointer;
+        background: none; border: none; border-left: 3px solid transparent;
+      }
+      #debug button:hover, #debug button:focus { background: rgba(33, 28, 23, .09); }
+      #debug button.ici { border-left-color: var(--ink); background: rgba(33, 28, 23, .07); }
+      #debug b { display: block; font-weight: 600; }
+      #debug b kbd {
+        display: inline-block; min-width: 15px; margin-right: 5px;
+        padding: 0 3px; text-align: center;
+        border: 1px solid var(--ink); border-radius: 2px; font-size: 10px;
+      }
+      #debug small { display: block; opacity: .68; padding-left: 20px; }
+
       /* --- Commandes tactiles ------------------------------------------- */
       /* Rien de tout ça n'existe au clavier : c'est `body.touch` qui l'ouvre. */
       #touch-surface, #touch-buttons { display: none; }
@@ -203,6 +235,11 @@
         <div class="sub peers" id="fps"></div>
       </div>
       <div id="hint"></div>
+      <!--
+        La liste des repères de mise au point. Vide et masquée sauf en ?debug=1,
+        où src/main.ts la remplit depuis src/debug/reperes.ts.
+      -->
+      <div id="debug" hidden></div>
     </div>
 
     <div id="win">

@@ -207,9 +207,6 @@ export class PinceauPeintre {
     if (this.etat === 'dormant') {
       if (!this.plante) return;
       this.temps += dt;
-    // Le trait garde la même finesse à l'écran quelle que soit sa taille.
-    const e = this.corps.scale.x || 1;
-    for (const m of this.contours) m.uniforms.uThickness.value = TRAIT / e;
       this.corps.rotation.z = 0.22 + Math.sin(this.temps * 1.1) * 0.05;
       for (const m of this.materiaux) syncInkUniforms(m);
       return;

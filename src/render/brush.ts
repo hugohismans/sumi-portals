@@ -38,9 +38,10 @@ const CATCH = 9;
 const FLIGHT = 3.6;
 
 /**
- * Épaisseur du trait d'encre du personnage, avant correction d'échelle.
- * Un peu plus fine que celle du décor (0,0052) : il est petit, et un contour
- * trop gras le transformerait en tache.
+ * Épaisseur du trait d'encre du personnage. Un peu plus fine que celle du
+ * décor (0,0052) : il est petit, et un contour trop gras le transformerait en
+ * tache. Elle n'a plus à être corrigée de l'échelle — le shader mesure
+ * désormais le trait en unités du MONDE (`src/render/ink.ts`).
  */
 const TRAIT_PINCEAU = 0.004;
 
@@ -99,10 +100,10 @@ const buildBody = (
       [[-0.06, -0.7, -0.06], [0.06, -0.36, 0.06]],
     ],
     '#171310',
-    0.004,
+    TRAIT_PINCEAU,
   );
   // La virole, qui serre la touffe. Le seul éclat du personnage.
-  piece([[[-0.25, 0.32, -0.25], [0.25, 0.5, 0.25]]], '#b08a48', 0.004);
+  piece([[[-0.25, 0.32, -0.25], [0.25, 0.5, 0.25]]], '#b08a48', TRAIT_PINCEAU);
   // La hampe, claire, qui s'amincit vers le haut.
   piece(
     [
@@ -111,7 +112,7 @@ const buildBody = (
       [[-0.15, 2.08, -0.15], [0.15, 2.26, 0.15]],
     ],
     '#dccbaa',
-    0.004,
+    TRAIT_PINCEAU,
   );
 
   g.scale.setScalar(0.55);
@@ -215,7 +216,7 @@ export class Brush {
     //    aplat l'aurait masqué, et masquer ce qu'on cherche pour indiquer où il
     //    est serait une drôle d'idée.
     this.haloMat = new THREE.ShaderMaterial({
-      uniforms: { uInk: { value: INK }, uPhase: { value: 0 }, uVol: { value: 0 } },
+      uniforms: { uInk: { value: INK }, uPhase: { value: 0 }, uVol: { value: 0 }, uForce: { value: 1 } },
       transparent: true,
       depthWrite: false,
       // ON LE VOIT À TRAVERS LE DÉCOR, et c'est une concession assumée.
@@ -242,6 +243,7 @@ export class Brush {
         uniform vec3 uInk;
         uniform float uPhase;
         uniform float uVol;
+        uniform float uForce;
         varying vec2 vUv;
         void main() {
           float r = length(vUv - 0.5) * 2.0;
@@ -257,7 +259,7 @@ export class Brush {
           // EN VOL IL BAT PLUS FORT. C'est le moment ou l'on risque de le
           // perdre : il part, on regarde ailleurs, il est loin. Le battement
           // s'accentue pendant la fuite et redevient discret a l'arret.
-          float force = 0.46 + uVol * 0.42;
+          float force = (0.46 + uVol * 0.42) * uForce;
           gl_FragColor = vec4(uInk, anneau * souffle * force);
         }
       `,
@@ -324,6 +326,26 @@ export class Brush {
   /** Le fait filer tout de suite, pour la mise au point. */
   summon(): void {
     if (this.station < this.waypoints.length - 1) this.takeOff();
+  }
+
+  /**
+   * Le pose d'autorité à un jalon donné, sans lui faire faire le trajet.
+   *
+   * Réservé aux repères de mise au point (`src/debug/reperes.ts`) : on se
+   * téléporte au milieu du voyage, et un guide resté au premier jalon donnerait
+   * une scène que le joueur ne verra jamais — un pinceau minuscule au loin,
+   * pendant qu'on croit vérifier le belvédère.
+   */
+  poser(station: number): void {
+    const i = Math.max(0, Math.min(station, this.waypoints.length - 1));
+    this.station = i;
+    this.fleeing = 0;
+    this.dansLaPorte = 0;
+    this.sortie = null;
+    this.echelle = this.echelles[i] ?? 1;
+    this.samples = [];
+    const p = this.waypoints[i];
+    if (p) this.head.position.copy(p);
   }
 
   /** Là où il se tient. C'est, à tout instant, l'objectif du joueur. */
@@ -442,6 +464,22 @@ export class Brush {
     // Deux planchers : il ne doit ni disparaître de près, ni devenir plus petit
     // que le personnage qu'il entoure — à ×16 le pinceau fait vingt-six mètres,
     // et un anneau plus étroit que lui ne l'entoure plus, il le barre.
+    // ─── UN GRAND PINCEAU N'A PAS BESOIN QU'ON LE MONTRE ─────────────────────
+    //
+    // Le plancher `2,6 × échelle` existe pour qu'un anneau plus étroit que le
+    // pinceau ne vienne pas le BARRER au lieu de l'entourer. Mais à ×16 il
+    // donnait un cercle de quarante unités de large, tracé par-dessus le décor
+    // puisque le halo ignore la profondeur : un gros rond gris sale au milieu
+    // de l'écran, plus voyant que ce qu'il désignait.
+    //
+    // Le halo est un signal de RECHERCHE. Un pinceau de vingt mètres de haut
+    // n'a rien à chercher : on le voit. On l'efface donc à mesure qu'il grandit
+    // — plein à taille normale, éteint dès ×4. Le repère sert quand il est
+    // utile et s'en va quand il ne l'est plus, ce qui est tout ce qu'on
+    // demande à un repère.
+    const discretion = 1 - Math.min(1, Math.max(0, (this.echelle - 1) / 3));
+    this.haloMat.uniforms.uForce.value = discretion;
+    this.halo.visible = this.halo.visible && discretion > 0.02;
     this.halo.scale.setScalar(Math.max(2.6 * this.echelle, distance * 0.11));
     this.haloMat.uniforms.uPhase.value += dt * (this.fleeing > 0 ? 5.5 : 2.5);
     this.haloMat.uniforms.uVol.value = this.fleeing > 0 ? 1 : 0;
@@ -450,21 +488,10 @@ export class Brush {
     this.echelle += (voulue - this.echelle) * Math.min(1, dt * 1.6);
     this.head.scale.setScalar(this.echelle);
 
-    // ─── LE TRAIT NE GROSSIT PAS AVEC L'OBJET ────────────────────────────────
-    //
-    // Le contour est une coque gonflée en coordonnées LOCALES : on décale
-    // chaque sommet, puis la matrice du modèle met le tout à l'échelle — le
-    // décalage compris. Un pinceau à ×16 se retrouvait donc cerné d'un trait
-    // seize fois trop épais, énorme et sale à côté d'une architecture dessinée
-    // au même endroit avec le trait normal.
-    //
-    // Le décor n'a jamais eu le problème parce que sa matrice est l'identité.
-    // Ici on divise l'épaisseur par l'échelle, ce qui l'annule exactement : le
-    // trait retrouve la même finesse à l'écran que partout ailleurs, et c'est
-    // tout ce qu'on lui demande.
-    for (const m of this.contours) {
-      m.uniforms.uThickness.value = TRAIT_PINCEAU / this.echelle;
-    }
+    // L'épaisseur du trait était divisée ici par l'échelle du pinceau, pour
+    // annuler la multiplication que lui faisait subir la matrice du modèle.
+    // Le shader s'en charge désormais pour tout le monde (`src/render/ink.ts`),
+    // décor mis à l'échelle compris — qui, lui, n'a jamais eu de rustine.
     this.orient(dt);
     for (const m of this.bodyMaterials) syncInkUniforms(m);
   }
