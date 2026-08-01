@@ -171,6 +171,14 @@ export const MONDE: LevelDef = {
 
   goal: { position: [0, BELVEDERE_Y + 2, 150], radius: 14 },
 
+  // Jalons du Pinceau : la direction du voyage, étage par étage. Il ne s'en
+  // sert que si le joueur tourne en rond.
+  guide: [
+    [0, VILLAGE_Y, -40],
+    [0, TERRASSE_Y, 34],
+    [0, BELVEDERE_Y, 170],
+  ],
+
   hints: [
     {
       position: [0, VILLAGE_Y, -24],

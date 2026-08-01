@@ -104,6 +104,15 @@ export interface LevelDef {
   goal: { position: [number, number, number]; radius: number };
   /** Indices contextuels déclenchés par proximité. */
   hints?: { position: [number, number, number]; radius: number; text: string }[];
+  /**
+   * Jalons du Pinceau, dans l'ordre du voyage.
+   *
+   * Ce n'est pas un chemin à suivre : le guide ne s'en sert que pour savoir
+   * dans quelle direction filer quand le joueur tourne en rond. Toute région
+   * ajoutée au monde doit déclarer les siens — c'est ce qui permet au guide de
+   * fonctionner partout sans rien savoir du contenu.
+   */
+  guide?: [number, number, number][];
 }
 
 /** État complet du joueur — c'est ce qui transiterait sur le réseau. */

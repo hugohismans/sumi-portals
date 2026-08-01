@@ -132,6 +132,51 @@ l'attente.
 
 ---
 
+## Le Pinceau — guider sans un mot
+
+*(idée d'Hugo — adoptée, en cours de réalisation)*
+
+Pas de texte. Un **pinceau** qu'on aperçoit au loin, qui file en laissant une
+traînée d'encre qui s'efface. C'est lui qui montre le chemin.
+
+Pourquoi le pinceau plutôt qu'une fée ou une luciole : il **explique le monde**.
+Pourquoi tout est-il tracé à l'encre ici ? Parce que quelque chose le dessine.
+Et de temps en temps, on l'aperçoit.
+
+**Ses règles de comportement, qui comptent autant que son allure :**
+
+*Il n'attend jamais.* Un guide qui flotte en attendant qu'on le suive est un
+élément d'interface déguisé. Un guide qui file, disparaît et reparaît plus loin
+est un personnage.
+
+*On l'aperçoit, on ne le suit pas.* Au loin, en périphérie, jamais planté au
+centre de l'écran.
+
+*Il ne vient que si l'on est perdu.* Pas sur minuterie : quand le jeu constate
+qu'on tourne en rond. **Un joueur qui trouve seul ne le verra jamais** — et
+c'est un respect qu'on lui doit.
+
+*Il ne parle pas et ne montre pas du doigt.* Il passe. Au joueur d'en tirer
+quelque chose.
+
+Le seul endroit où le son sert vraiment : une note quand il passe.
+
+### La version ambitieuse, pour plus tard
+
+Là où il passe, **le monde apparaît**. Il ne montre pas le chemin : il le
+trace. Une porte s'esquisse, un pont se dessine sous ses traits.
+
+C'est la meilleure réponse à « de la cohérence dans la folie » — le monde n'est
+pas absurde, il est simplement *en train d'être dessiné*, et l'on avance à la
+vitesse où l'encre sèche.
+
+### La grue de papier
+
+À placer quelque part dans le voyage, en visite. Pas comme guide — ce rôle est
+pris — mais comme apparition : une grue de papier qui traverse le champ, une
+fois, sans explication. Les plus belles choses d'un monde sont celles qui n'ont
+pas de fonction.
+
 ## Le mode Rêve — un monde qui se fabrique tout seul
 
 *(idée d'Hugo)*
