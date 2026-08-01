@@ -491,7 +491,26 @@ export const MONDE: LevelDef = {
     //    leçon gratuite, celle qui installe la règle.
     [6, VILLAGE_Y, -14],
 
-    // 2-4. Le jardin sec de la terrasse. Le pinceau passe la petite porte sous
+    // 2-4. LE TOUR DU VILLAGE, avant toute chose.
+    //
+    // Le jeu poussait dehors trop vite : la deuxième station était déjà de
+    // l'autre côté d'une porte, si bien qu'on quittait le village sans l'avoir
+    // habité. Or c'est lui le carrefour — c'est ici que s'ouvriront toutes les
+    // portes, et l'on ne reconnaît pas d'en haut un endroit qu'on a traversé
+    // en ligne droite.
+    //
+    // Ces trois jalons font faire soixante-quinze mètres d'est en ouest, en
+    // passant par les trois repères qui se nomment : le puits, le marché,
+    // l'étang. Aucun n'est une énigme. C'est un tour du propriétaire, et ça
+    // n'a pas besoin d'être autre chose.
+    [15.5, VILLAGE_Y, -18],
+    // Sur un étal du marché, à 1,10 : au-dessus de l'enjambée (0,90), sous le
+    // saut (1,30). Le premier geste du jeu qui demande autre chose que marcher,
+    // et il est gratuit — mais on longe la porte verte pour y aller.
+    [-36, 1.1, -10],
+    [39, VILLAGE_Y, -33],
+
+    // 5-7. Le jardin sec de la terrasse. Le pinceau passe la petite porte sous
     //      vos yeux : c'est l'invitation, et la seule route possible. On le
     //      suit à ×4, on tourne dans son jardin.
     //
@@ -504,18 +523,18 @@ export const MONDE: LevelDef = {
     //      milieu du jardin.
     ...TERRASSE.stations,
 
-    // 5. Retour au village, sur le toit de la maison basse — celui qu'on
+    // 8. Retour au village, sur le toit de la maison basse — celui qu'on
     //    regardait tout à l'heure sans pouvoir y monter. On redescend
     //    l'escalier et le toit n'est plus qu'une marche : le monde n'a pas
     //    changé, c'est vous. C'est le cœur du jeu, et il fallait avoir habité
     //    le village à taille d'homme pour que le retour ait un poids.
     [-24, 3.4, -20],
 
-    // 6. Devant la seconde porte, côté sud. Le pinceau s'y pose et derrière lui
+    // 9. Devant la seconde porte, côté sud. Le pinceau s'y pose et derrière lui
     //    se dresse le grand torii : rien à expliquer.
     [0, TERRASSE_Y, 58],
 
-    // 7-9. Le belvédère, d'où l'on voit tout ce qu'on vient de parcourir.
+    // 10-12. Le belvédère, d'où l'on voit tout ce qu'on vient de parcourir.
     //      Ses deux dernières stations sont au NORD du grand torii, mais très à
     //      l'écart de son axe (x=150 puis x=-192, pour une porte large de 30) :
     //      aucune route naturelle ne repasse dedans. Et si quelqu'un s'entête à
