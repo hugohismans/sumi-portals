@@ -477,7 +477,8 @@ console.log('\n— Le monde : la spirale monte, et chaque étage voit le précé
   );
 
   // Étage 2 → 3. Une paire quatre fois plus grande prend le relais.
-  const t2 = walkTo(sim, [0, 30, 26], 60 * 14, { stopOnEvent: true });
+  walkTo(sim, [0, 30, 60], 60 * 16);
+  const t2 = walkTo(sim, [0, 30, 88], 60 * 14, { stopOnEvent: true });
   check('la seconde porte fait grandir encore', t2.traversed?.newLevel === 2, pos(sim));
   check('on ressort sur le belvédère', near(sim.player.position.y, 120, 3), pos(sim));
   check(
@@ -541,6 +542,24 @@ console.log('\n— Le monde : on ne tombe pas dans le vide —');
     bord(2, [-140, 120.3, 220], [-140, 120, 150]) > 110,
     'chute depuis le belvédère',
   );
+}
+
+// =============================================================================
+console.log('\n— Le monde : la première énigme, le toit de la maison basse —');
+{
+  // C'est le cœur de la boucle : le pinceau s'y pose, on le voit, et l'on ne
+  // peut pas l'atteindre. Il faut aller grandir ailleurs et revenir.
+  const monter = (level: number) => {
+    const sim = new Simulation(MONDE);
+    sim.player.scaleLevel = level;
+    sim.player.position = { x: -24, y: 0.3, z: -6 };
+    walkTo(sim, [-24, 3.4, -20], 60 * 20, { jump: true, sprint: true });
+    settle(sim, 90);
+    return sim.player.position.y;
+  };
+
+  check('à ×1, le toit est hors d’atteinte', monter(0) < 1.5, `${monter(0).toFixed(2)}`);
+  check('à ×4, ce même toit n’est plus qu’une marche', monter(1) > 3.0, `${monter(1).toFixed(2)}`);
 }
 
 console.log(failures === 0 ? '\nTout passe.\n' : `\n${failures} vérification(s) en échec.\n`);

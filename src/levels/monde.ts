@@ -189,6 +189,15 @@ const village = (): BoxDef[] => {
     }
   }
 
+  // --- La maison basse : le premier vrai obstacle ---------------------------
+  //
+  // Son toit culmine à 3,4. À taille normale c'est hors d'atteinte — on saute
+  // à 1,3. Une fois quatre fois plus grand, l'enjambée fait 3,6 : ce qui était
+  // un toit devient une marche. C'est là que le pinceau se pose, et c'est là
+  // que le joueur comprend la règle du jeu sans qu'on lui dise un mot.
+  out.push(box([-31, -0.6, -25], [-17, 3.0, -15], 1));
+  out.push(box([-31.8, 2.85, -25.8], [-16.2, 3.4, -14.2], 3));
+
   // --- Le puits, sur la place -----------------------------------------------
   const px = 12;
   const pz = -18;
@@ -302,7 +311,7 @@ export const MONDE: LevelDef = {
       // derrière lui, on le retraversait en allant la chercher — et l'on
       // rapetissait aussitôt, renvoyé au village. Un portail déjà franchi doit
       // toujours rester DERRIÈRE soi.
-      small: { position: [0, TERRASSE_Y, 70], yaw: 0 }, // normale +Z
+      small: { position: [0, TERRASSE_Y, 70], yaw: Math.PI }, // normale -Z, prise en montant
       big: { position: [0, BELVEDERE_Y, 300], yaw: Math.PI }, // normale -Z, regarde tout
     },
   ],
@@ -316,11 +325,16 @@ export const MONDE: LevelDef = {
   // rejoint en marchant, la deuxième exige de franchir la porte du village.
   // L'écart entre son vol et vos jambes, c'est l'énigme.
   guide: [
+    // 1. Sur la place, à hauteur d'homme. On le rejoint en marchant : c'est la
+    //    leçon gratuite, celle qui installe la règle.
     [6, VILLAGE_Y, -14],
-    [-14, VILLAGE_Y, -44],
-    [0, VILLAGE_Y, -40],
-    [0, TERRASSE_Y, 96],
-    [0, TERRASSE_Y, 70],
+    // 2. Sur le toit de la maison basse. Hors d'atteinte. Il faut franchir la
+    //    porte, devenir géant, et redescendre l'escalier — et alors ce toit
+    //    n'est plus qu'une marche. C'est la première vraie énigme du jeu.
+    [-24, 3.4, -20],
+    // 3. Sur la terrasse, à l'arrivée de l'escalier.
+    [0, TERRASSE_Y, 58],
+    // 4. Le belvédère, par la seconde porte.
     [0, BELVEDERE_Y, 250],
   ],
 
@@ -328,12 +342,12 @@ export const MONDE: LevelDef = {
     {
       position: [0, VILLAGE_Y, -24],
       radius: 16,
-      text: 'L’Aiguille est trop haute pour toi. Au sud, une porte étroite.',
+      text: 'Le pinceau. Rejoins-le.',
     },
     {
       position: [0, VILLAGE_Y, -40],
       radius: 14,
-      text: 'La porte indigo rend quatre fois plus grand.',
+      text: 'Il s’est posé trop haut. Mais il existe un moyen de grandir.',
     },
     {
       position: [0, TERRASSE_Y, 90],
