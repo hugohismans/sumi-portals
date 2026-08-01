@@ -213,18 +213,41 @@ export const createOutlineMaterial = (ink?: THREE.Color): THREE.ShaderMaterial =
         vec4 baseWorld = modelMatrix * vec4(position, 1.0);
         float depth = max(-(viewMatrix * baseWorld).z, 0.02);
 
+        // ─── LA PROFONDEUR EST BRIDÉE POUR LE TREMBLEMENT ────────────────────
+        //
+        // Défaut signalé en jouant : de longues striations qui grésillent sur
+        // les surfaces vues EN ENFILADE — un mur qu'on longe, une dalle qu'on
+        // rase. Ce n'était pas deux faces confondues (la vérification est à
+        // zéro) : c'était ce shader-ci.
+        //
+        // L'épaisseur et le tremblement sont proportionnels à la profondeur,
+        // pour que le trait garde la même taille À L'ÉCRAN quelle que soit la
+        // distance — c'est ce qui empêche un joueur minuscule de se retrouver
+        // avec des traits gros comme des immeubles. Mais sur une surface
+        // rasante, la profondeur varie d'un mètre à deux cents d'un bord à
+        // l'autre du même mur : le bout lointain recevait un décalage énorme,
+        // et sa coque gonflée traversait la face avant en longues traînées qui
+        // scintillaient à chaque rafraîchissement du grain.
+        //
+        // On plafonne donc la profondeur qui pilote le tremblement. En deçà de
+        // 45 mètres rien ne change — c'est là qu'on regarde les choses et que
+        // le tracé à la main doit vivre. Au-delà, le trait cesse de trembler
+        // davantage, ce qui ne se remarque pas : à cette distance, le
+        // tremblement d'un trait est déjà sous le pixel.
+        float depthTrait = min(depth, 45.0);
+
         // Expansion en coin : propre sur une boîte, y compris aux arêtes.
         vec3 dir = sign(position - aCenter);
 
         float n1 = hash13(position * 0.63 + uSeed * 1.7);
         float n2 = hash13(position * 1.41 + uSeed * 2.3 + 19.0);
 
-        float t = uThickness * depth * (1.0 + (n1 - 0.5) * uWobble);
+        float t = uThickness * depth * (1.0 + (n1 - 0.5) * uWobble * (depthTrait / max(depth, 0.02)));
         vec4 worldPosition = modelMatrix * vec4(position + dir * t, 1.0);
         vec4 mvPosition = viewMatrix * worldPosition;
 
         // Tremblement latéral : c'est lui qu'on lit comme « tracé à la main ».
-        mvPosition.xy += (vec2(n1, n2) - 0.5) * depth * 0.0016;
+        mvPosition.xy += (vec2(n1, n2) - 0.5) * depthTrait * 0.0016;
 
         gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
