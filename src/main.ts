@@ -116,6 +116,17 @@ scene.add(worldView.group);
 // du monde qui l'attendait. On garde la trace d'une partie à l'autre : rendre
 // une couleur est un acquis, pas un état de session.
 const pigments = new Pigments();
+// ─── REPARTIR DE ZÉRO ────────────────────────────────────────────────────────
+//
+// Les couleurs rapportées sont gardées d'une partie à l'autre, ce qui est le
+// bon comportement — rendre une couleur au monde est un acquis, pas un état de
+// session. Mais c'est un piège pour qui teste : on recharge, on s'étonne de
+// voir des couleurs dans un monde censé être en lavis, et l'on croit que le
+// correctif n'est pas passé.
+//
+// D'où `?neuf=1` : on oublie tout et l'on revoit le début du jeu tel qu'il est
+// vraiment. Ça ne coûte rien et ça évite de douter de ses yeux.
+if (PARAMS.get('neuf')) pigments.effacer();
 const pigmentDe = new Map<string, string>();
 for (const r of LEVEL.regions ?? []) if (r.pigment) pigmentDe.set(r.name, r.pigment);
 pigments.appliquer(worldView.parRegion, pigmentDe);
