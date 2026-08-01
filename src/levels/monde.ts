@@ -1,5 +1,6 @@
 import type { BoxDef, LevelDef } from '../core/types.js';
 import { BELVEDERE } from './regions/belvedere.js';
+import { JARDIN } from './regions/jardin.js';
 import { TERRASSE } from './regions/terrasse.js';
 
 /**
@@ -38,6 +39,12 @@ import { TERRASSE } from './regions/terrasse.js';
  *   terrasse    x [-90,  90]   y [ 24,  118]  z [  46, 130]   échelle ×4
  *   escalier B  x [ 38,  92]   y [ 24, 120]   z [ 126, 200]   ×4 → ×16
  *   belvédère   x [-260, 260]  y [ 114, 300]  z [ 190, 380]   échelle ×16
+ *   jardin      x [ 300, 520]  y [ -6,  60]   z [-120, 100]   échelle ×1/4
+ *
+ * Le jardin est à part : il n'est pas un étage de la spirale mais un DÉTOUR.
+ * On y descend d'un cran au lieu de monter, et l'on en revient par où l'on est
+ * entré. Il est donc volontairement absent du guide du Pinceau — c'est un lieu
+ * qu'on trouve, pas un lieu où l'on est mené.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -263,6 +270,7 @@ export const MONDE: LevelDef = {
     // le passage de l'une à l'autre ne se voit pas — seuls les aplats changent.
     TERRASSE.region,
     BELVEDERE.region,
+    JARDIN.region,
     {
       name: 'hauteurs',
       min: [-300, 20, 40],
@@ -320,6 +328,9 @@ export const MONDE: LevelDef = {
 
     // Le sommet du voyage. Région autonome : voir regions/belvedere.ts.
     ...BELVEDERE.boxes,
+
+    // Le détour minuscule, loin à l'est. Région autonome : voir regions/jardin.ts.
+    ...JARDIN.boxes,
   ],
 
   portals: [
@@ -349,6 +360,21 @@ export const MONDE: LevelDef = {
       // toujours rester DERRIÈRE soi.
       small: { position: [0, TERRASSE_Y, 70], yaw: Math.PI }, // normale -Z, prise en montant
       big: { position: [0, BELVEDERE_Y, 300], yaw: Math.PI }, // normale -Z, regarde tout
+    },
+    {
+      // Paire C — LA DESCENTE. Les deux autres font monter ; celle-ci fait
+      // l'inverse, et c'est tout son intérêt : le village qu'on connaît par
+      // cœur devient une forêt dès qu'on y mesure quarante-cinq centimètres.
+      //
+      // Elle est plantée à l'écart de la route du Pinceau : personne n'y mène,
+      // on tombe dessus. Un détour se mérite, il ne se signale pas.
+      id: 'descente-jardin',
+      colorBig: 0x4a7c59, // vert d'herbe : elle ne se confond pas avec les deux autres
+      colorSmall: 0x8a6b3a,
+      // Emplacement choisi par balayage du village, pas à l'œil : neuf mètres
+      // de vide devant ET derrière, sinon on plante une porte dans un mur.
+      big: { position: [-30, VILLAGE_Y, -32], yaw: Math.PI / 2 }, // normale +X : on la franchit vers l'ouest
+      small: { position: [306, 0, 0], yaw: Math.PI / 2 }, // on ressort vers l'est, face au jardin
     },
   ],
 

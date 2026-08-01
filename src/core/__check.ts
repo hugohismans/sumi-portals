@@ -566,6 +566,50 @@ console.log('\n— Le monde : la première énigme, le toit de la maison basse �
   check('à ×4, ce même toit n’est plus qu’une marche', monter(1) > 3.0, `${monter(1).toFixed(2)}`);
 }
 
+// =============================================================================
+console.log('\n— Le jardin : le détour minuscule —');
+{
+  // La porte verte est plantée à l'écart, dans le village. On la franchit vers
+  // l'ouest et l'on ressort à quarante-cinq centimètres, à l'autre bout du
+  // monde. Ce qu'on vérifie ici n'est pas qu'elle marche — c'est qu'elle ne
+  // piège pas : un détour dont on ne revient pas serait pire que pas de détour.
+  // `stopOnEvent` est indispensable ici : sans lui, l'assistant continue de
+  // viser la cible d'origine APRÈS la téléportation, repasse aussitôt la porte
+  // en sens inverse, et le test conclut que rien ne s'est passé. C'est le test
+  // qui mentait, pas le monde.
+  const aller = new Simulation(MONDE);
+  aller.player.position = { x: -18, y: 0.3, z: -32 };
+  walkTo(aller, [-40, 0, -32], 60 * 12, { stopOnEvent: true });
+  check(
+    'la porte verte dépose au jardin, quatre fois plus petit',
+    aller.player.scaleLevel === -1 && aller.player.position.x > 300,
+    `échelle ${aller.player.scaleLevel}, ${pos(aller)}`,
+  );
+
+  // On s'enfonce d'abord dans le jardin, puis on revient : le détour doit
+  // pouvoir se parcourir, pas seulement s'effleurer.
+  walkTo(aller, [360, 0, 0], 60 * 90, { stopOnEvent: true });
+  const auLoin = aller.player.position.x;
+  walkTo(aller, [280, 0, 0], 60 * 120, { stopOnEvent: true });
+  check(
+    'et l’on en revient au village, redevenu normal',
+    aller.player.scaleLevel === 0 && aller.player.position.x < 0,
+    `parti jusqu’à x=${auLoin.toFixed(0)}, revenu ${pos(aller)}`,
+  );
+
+  // Le jardin a son propre sol : celui du village s'arrête bien avant. Une
+  // région posée dans le vide laisserait tomber le joueur indéfiniment.
+  const debout = new Simulation(MONDE);
+  debout.player.scaleLevel = -1;
+  debout.player.position = { x: 340, y: 4, z: 0 };
+  settle(debout, 120);
+  check(
+    'on tient debout dans le jardin, il n’est pas posé sur le vide',
+    debout.player.grounded && debout.player.position.y > -1,
+    pos(debout),
+  );
+}
+
 // ─── Les régions restent dans leur parcelle ──────────────────────────────────
 //
 // C'est la garantie qui rend la fabrication en parallèle possible : tant que
