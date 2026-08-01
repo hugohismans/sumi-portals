@@ -513,6 +513,11 @@ export const MONDE: LevelDef = {
       paper: '#efe7d6',
       colors: ['#e7ddc7', '#dccbaa', '#ab9f88', '#c05a3c'],
       pigment: 'vert',
+      // Mais SES ÉCLATS attendent le rouge, et ils sont partout : les auvents du
+      // marché, la margelle du puits, la garde des torii. C'est ce qui donne au
+      // retour du monde rouge un effet sous les pieds du joueur, et non cent
+      // mètres au-dessus de sa tête.
+      pigmentAccent: 'rouge',
     },
     // Le jardin d'abord : sa parcelle est incluse dans celle des hauteurs, et
     // c'est la première trouvée qui gagne. Même papier de part et d'autre, donc

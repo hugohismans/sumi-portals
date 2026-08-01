@@ -169,6 +169,25 @@ export interface RegionDef {
    */
   pigment?: string;
   /**
+   * PIGMENT DE L'ACCENT, s'il n'est pas celui du reste.
+   *
+   * Une région entière valait une couleur, et ça ne pouvait pas marcher. Le
+   * rouge ne repeignait que les hauteurs : on revenait de son monde, on rendait
+   * sa couleur, on regardait autour de soi — et rien ne changeait, parce que
+   * tout se passait cent mètres plus haut et derrière. Le plus beau moment du
+   * jeu se jouait hors champ.
+   *
+   * Le quatrième aplat de chaque palette est son ACCENT : les auvents du
+   * marché, les rambardes, les lanternes, la garde d'un torii. Il court dans
+   * TOUT le monde, y compris sous les pieds du joueur. En le confiant au rouge,
+   * on obtient l'effet là où l'on se tient — sans déplacer un seul mur.
+   *
+   * Et ça se raconte tout seul : le vert rend au monde sa MATIÈRE, le rouge lui
+   * rend ses ÉCLATS. Deux pinceaux, deux rôles, et l'on voit d'un coup d'œil
+   * lequel manque encore.
+   */
+  pigmentAccent?: string;
+  /**
    * Portée du brouillard dans cette région, en unités de monde.
    *
    * Elle existe pour une raison précise : les mondes de couleur sont des poches

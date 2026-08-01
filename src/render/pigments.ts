@@ -76,6 +76,8 @@ const LISIBLE = 0.8;
 interface Chantier {
   materiaux: THREE.ShaderMaterial[];
   avancement: number;
+  /** Vrai si c'est l'ACCENT de la région qu'on repeint, et non son corps. */
+  accent: boolean;
   /**
    * Jusqu'où l'encre doit aller pour avoir tout couvert.
    *
@@ -124,15 +126,25 @@ export class Pigments {
    * mondes où l'on VA chercher les couleurs les ont, forcément, sinon il n'y
    * aurait rien à y prendre.
    */
-  appliquer(parRegion: Map<string, THREE.ShaderMaterial[]>, pigmentDe: Map<string, string>): void {
+  appliquer(
+    parRegion: Map<string, THREE.ShaderMaterial[]>,
+    pigmentDe: Map<string, string>,
+    pigmentAccentDe: Map<string, string> = new Map(),
+  ): void {
     for (const [region, materiaux] of parRegion) {
-      const pigment = pigmentDe.get(region);
-      const peint = pigment === undefined || this.acquis.has(pigment);
+      const corps = pigmentDe.get(region);
+      // Faute d'accent déclaré, l'accent suit le corps : une région ordinaire
+      // n'a qu'une couleur, et c'est bien ainsi qu'on veut pouvoir l'écrire.
+      const accent = pigmentAccentDe.get(region) ?? corps;
+      const corpsPeint = corps === undefined || this.acquis.has(corps);
+      const accentPeint = accent === undefined || this.acquis.has(accent);
       for (const m of materiaux) {
-        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = peint ? 1 : 0;
+        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = corpsPeint ? 1 : 0;
+        if (m.uniforms.uAccent) m.uniforms.uAccent.value = accentPeint ? 1 : 0;
         // Pas de front au chargement : une région est peinte ou elle ne l'est
         // pas. Le front n'existe que pendant le geste qui la peint.
         if (m.uniforms.uRayon) m.uniforms.uRayon.value = 0;
+        if (m.uniforms.uFront) m.uniforms.uFront.value.set(0, 0);
       }
     }
   }
@@ -145,6 +157,7 @@ export class Pigments {
     pigment: string,
     parRegion: Map<string, THREE.ShaderMaterial[]>,
     pigmentDe: Map<string, string>,
+    pigmentAccentDe: Map<string, string>,
     /** D'où part l'encre : la position du pinceau à l'instant du geste. */
     depart?: THREE.Vector3,
     /** Boîte de chaque région, pour savoir jusqu'où le front doit aller. */
@@ -159,7 +172,12 @@ export class Pigments {
     }
 
     for (const [region, materiaux] of parRegion) {
-      if (pigmentDe.get(region) !== pigment) continue;
+      // Le corps et l'accent d'une même région peuvent appartenir à deux
+      // pinceaux différents : on ouvre donc un chantier par cible concernée.
+      const cibles: boolean[] = [];
+      if (pigmentDe.get(region) === pigment) cibles.push(false);
+      if ((pigmentAccentDe.get(region) ?? pigmentDe.get(region)) === pigment) cibles.push(true);
+      if (cibles.length === 0) continue;
       const b = bornes?.get(region);
       let portee = 900;
       if (b && depart) {
@@ -176,12 +194,19 @@ export class Pigments {
         }
         portee *= 1.14; // de quoi absorber la frange bruitée du front
       }
-      for (const m of materiaux) {
-        if (m.uniforms.uCentre && depart) m.uniforms.uCentre.value.copy(depart);
-        if (m.uniforms.uRayon) m.uniforms.uRayon.value = 0;
-        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = 0;
+      for (const accent of cibles) {
+        for (const m of materiaux) {
+          if (m.uniforms.uCentre && depart) m.uniforms.uCentre.value.copy(depart);
+          if (m.uniforms.uRayon) m.uniforms.uRayon.value = 0;
+          const u = accent ? m.uniforms.uAccent : m.uniforms.uCouleur;
+          if (u) u.value = 0;
+          if (m.uniforms.uFront) {
+            if (accent) m.uniforms.uFront.value.y = 1;
+            else m.uniforms.uFront.value.x = 1;
+          }
+        }
+        this.chantiers.push({ materiaux, avancement: 0, portee, accent });
       }
-      this.chantiers.push({ materiaux, avancement: 0, portee });
     }
     return true;
   }
@@ -236,7 +261,12 @@ export class Pigments {
         // La teinte pleine n'est posée qu'à la toute fin, et d'un coup : tant
         // que le front court, c'est LUI qui décide de ce qui est peint. Les
         // faire monter ensemble redonnerait la jauge d'avant, par-dessous.
-        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = fini ? 1 : 0;
+        const u = c.accent ? m.uniforms.uAccent : m.uniforms.uCouleur;
+        if (u) u.value = fini ? 1 : 0;
+        if (fini && m.uniforms.uFront) {
+          if (c.accent) m.uniforms.uFront.value.y = 0;
+          else m.uniforms.uFront.value.x = 0;
+        }
       }
     }
     this.chantiers = this.chantiers.filter((c) => c.avancement < 1);

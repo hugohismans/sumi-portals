@@ -133,10 +133,19 @@ const pigments = new Pigments();
 if (PARAMS.get('neuf')) pigments.effacer();
 const pigmentDe = new Map<string, string>();
 for (const r of LEVEL.regions ?? []) if (r.pigment) pigmentDe.set(r.name, r.pigment);
+/**
+ * L'ACCENT D'UNE RÉGION peut appartenir à un autre pinceau que son corps.
+ * C'est ce qui donne au vert la MATIÈRE du monde et au rouge ses ÉCLATS —
+ * lesquels courent partout, y compris sous les pieds du joueur.
+ */
+const pigmentAccentDe = new Map<string, string>();
+for (const r of LEVEL.regions ?? []) {
+  if (r.pigmentAccent) pigmentAccentDe.set(r.name, r.pigmentAccent);
+}
 /** Boîte de chaque région : dit au front d'encre jusqu'où il doit courir. */
 const bornesDeRegion = new Map<string, { min: [number, number, number]; max: [number, number, number] }>();
 for (const r of LEVEL.regions ?? []) bornesDeRegion.set(r.name, { min: r.min, max: r.max });
-pigments.appliquer(worldView.parRegion, pigmentDe);
+pigments.appliquer(worldView.parRegion, pigmentDe, pigmentAccentDe);
 
 const goalMarker = buildGoalMarker(LEVEL);
 scene.add(goalMarker);
@@ -180,8 +189,8 @@ let peintreEnCours: PinceauPeintre | null = null;
  * tient, et sans un mot le geste se joue derrière la tête du joueur.
  */
 const OU_REGARDER: Record<string, string> = {
-  rouge: 'Lève les yeux : il repeint les hauteurs.',
-  vert: 'Regarde autour de toi : il repeint le village.',
+  rouge: 'Il rend au monde ses éclats.',
+  vert: 'Il rend au monde sa matière.',
 };
 
 const PINCEAU_DE_VEILLEUR = new Map<string, string>([
@@ -257,7 +266,7 @@ if (MODE === 'monde') {
       // L'ENCRE PART DE LUI. C'est toute la différence entre voir une couleur
       // apparaître et voir quelqu'un la poser : le front s'ouvre à l'endroit
       // exact où le pinceau donne son coup, puis le suit image par image.
-      pigments.rendre(pigment, worldView.parRegion, pigmentDe, p.group.position, bornesDeRegion);
+      pigments.rendre(pigment, worldView.parRegion, pigmentDe, pigmentAccentDe, p.group.position, bornesDeRegion);
       peintreEnCours = p;
       socketViews.setCouleur(pigments.nombre / 2);
       portals.setCouleurCadres(pigments.nombre / 2);
@@ -1250,6 +1259,7 @@ function frame(now: number): void {
   worldView,
   bornesDeRegion,
   pigmentDe,
+  pigmentAccentDe,
   /**
    * Rejoue le geste d'un pinceau depuis la console, sans avoir à aller le
    * chercher au fond de son monde. C'est le seul moyen de REGARDER l'animation
@@ -1261,7 +1271,7 @@ function frame(now: number): void {
     const p = peintres.get(`socle-${pigment}`);
     if (!p) return `pas de pinceau ${pigment}`;
     pigments.effacer();
-    pigments.appliquer(worldView.parRegion, pigmentDe);
+    pigments.appliquer(worldView.parRegion, pigmentDe, pigmentAccentDe);
     p.reveiller(camera.position.clone());
     p.declencher();
     return `le ${pigment} peint`;

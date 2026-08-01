@@ -82,6 +82,18 @@ export const createCelMaterial = (
          */
         uCouleur: { value: 1 },
         /**
+         * ETAT DE L'ACCENT, le quatrieme aplat, qui peut appartenir a un autre
+         * pigment que le corps de la region. Voir RegionDef.pigmentAccent :
+         * le vert rend au monde sa matiere, le rouge lui rend ses eclats.
+         */
+        uAccent: { value: 1 },
+        /**
+         * Qui est en train d'etre peint par le front : .x le corps, .y
+         * l'accent. Sans ce masque, rendre une couleur ferait courir le front
+         * sur les deux, et l'on peindrait en rouge ce qui attend le vert.
+         */
+        uFront: { value: new THREE.Vector2() },
+        /**
          * LE FRONT D'ENCRE. C'est le moment du jeu, pas un effet.
          *
          * `uCouleur` seul faisait monter la teinte PARTOUT EN MEME TEMPS : la
@@ -135,6 +147,8 @@ export const createCelMaterial = (
       uniform vec3 uLightDir;
       uniform float uSeed;
       uniform float uCouleur;
+      uniform float uAccent;
+      uniform vec2 uFront;
       uniform vec3 uCentre;
       uniform float uRayon;
 
@@ -164,12 +178,30 @@ export const createCelMaterial = (
         // donnerait un bord sale, un bruit large donne des langues, et c'est
         // ainsi qu'une couleur s'etale sur du papier.
         float grain = hash13(floor(vMonde * 0.07) + 0.5) - 0.5;
-        float front = uRayon * (1.0 + grain * 0.16);
+
+        // DES GOUTTES COURENT DEVANT. Un second bruit, beaucoup plus large,
+        // qui ne déborde que sur son quart supérieur : la plupart du monde suit
+        // le front, mais des pans entiers sont atteints en avance et se
+        // retrouvent colorés alors que leurs voisins ne le sont pas encore.
+        // C'est ce qu'une goutte fait sur du papier — elle part devant et le
+        // reste la rattrape. Sans ça, le front reste un cercle qui grandit,
+        // et un cercle qui grandit est une jauge déguisée.
+        float goutte = hash13(floor(vMonde * 0.021) + 11.0);
+        float avance = smoothstep(0.72, 1.0, goutte) * uRayon * 0.17;
+
+        float front = uRayon * (1.0 + grain * 0.16) + avance;
         float distance = length(vMonde - uCentre);
         // uCouleur reste le mot de la fin : a 1 la region est peinte pour de
         // bon, et le front n'a plus rien a dire. C'est lui qui tient l'etat
         // d'une partie rechargee, ou d'une region qui n'attendait rien.
-        float peint = max(uCouleur, step(distance, front));
+        // L'accent — le quatrième aplat — a son propre état et son propre
+        // pigment. C'est lui qui court dans TOUT le monde, sous les pieds du
+        // joueur comme au sommet de l'Aiguille, et c'est pour ça qu'on le
+        // sépare : une couleur qui ne se pose qu'au loin ne se voit jamais.
+        float estAccent = idx == 3 ? 1.0 : 0.0;
+        float etat = mix(uCouleur, uAccent, estAccent);
+        float actif = mix(uFront.x, uFront.y, estAccent);
+        float peint = max(etat, actif * step(distance, front));
 
         // Desaturation vers la LUMINANCE, pas vers la moyenne des canaux : un
         // gris moyen aplatit tout au meme ton, alors que la luminance conserve
@@ -177,6 +209,22 @@ export const createCelMaterial = (
         // simplement plus de couleur — ce qui est exactement le sujet.
         float gris = dot(base, vec3(0.299, 0.587, 0.114));
         base = mix(vec3(gris), base, peint);
+
+        // ─── L'ENCRE FRAÎCHE EST PLUS SOUTENUE QUE L'ENCRE SÈCHE ────────────
+        //
+        // Sans ceci, une surface passait du gris à sa teinte finale et n'en
+        // bougeait plus : le front avançait, mais rien n'avait l'air d'être
+        // POSÉ. On voyait un état changer, pas quelqu'un peindre.
+        //
+        // Une couleur qui vient d'être déposée est plus vive que la même une
+        // fois bue par la fibre. On sursature donc une bande derrière le front,
+        // et comme le front s'éloigne, chaque surface voit l'encre la frapper
+        // puis sécher — dans cet ordre, et sous les yeux du joueur.
+        float largeur = max(2.5, uRayon * 0.09);
+        float mouille = actif * step(distance, front)
+                      * smoothstep(front - largeur, front, distance);
+        vec3 fraiche = clamp(vec3(gris) + (base - vec3(gris)) * 2.1, 0.0, 1.0);
+        base = mix(base, fraiche, mouille);
 
         vec3 n = normalize(vNormalW);
 
@@ -219,7 +267,7 @@ export const createCelMaterial = (
         //
         // Il ne vit que pendant le trace — uRayon retombe a zero une fois la
         // region peinte, et la scene retrouve son dessin ordinaire.
-        if (uRayon > 0.0 && uCouleur < 1.0) {
+        if (uRayon > 0.0 && actif > 0.5 && etat < 1.0) {
           float epaisseur = max(1.2, uRayon * 0.05);
           float bourrelet = smoothstep(front - epaisseur, front, distance)
                           * step(distance, front);
