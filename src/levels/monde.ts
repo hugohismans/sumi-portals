@@ -173,6 +173,37 @@ const balustrade = (
  * « la maison numéro sept », on dit « près du puits ».
  */
 
+/**
+ * LA MAQUETTE — la seule chose du jeu qui explique quelque chose, et elle le
+ * fait sans un mot.
+ *
+ * Problème constaté en jouant : on arrive face à l'Aiguille, on la voit, elle
+ * est immense — et l'on n'a aucune raison de penser qu'elle a un rapport avec
+ * quoi que ce soit. Elle est du décor. On se retourne, on trouve les portes, on
+ * part, et le sommet ne sera jamais un objectif parce qu'il n'a jamais été
+ * présenté comme tel.
+ *
+ * D'où ceci : une réduction de l'Aiguille, à hauteur d'œil, sur un socle au
+ * pied de la vraie. Et sur sa pointe minuscule, un encrier. On regarde la
+ * maquette, on lève les yeux, on voit la même pointe, vide. La phrase
+ * « il faut porter quelque chose là-haut » n'a jamais été écrite nulle part, et
+ * pourtant elle a été dite.
+ *
+ * C'est aussi le sujet du jeu tout entier, posé dès la première minute : un
+ * monde qu'on regarde d'abord en modèle réduit, et qu'on finira par parcourir
+ * en vrai.
+ */
+const maquette = (cx: number, cz: number): BoxDef[] => [
+  // Le socle, à hauteur de table pour un joueur de 1,80.
+  box([cx - 1.35, -0.4, cz - 1.35], [cx + 1.35, 0.78, cz + 1.35], 1),
+  box([cx - 1.5, 0.62, cz - 1.5], [cx + 1.5, 0.74, cz + 1.5], 2),
+  // Le fût, à l'échelle 1/40 : la vraie Aiguille fait 114, celle-ci 2,85.
+  box([cx - 0.17, 0.65, cz - 0.17], [cx + 0.17, 2.62, cz + 0.17], 2),
+  // Le chapiteau, et l'encrier posé dessus. C'est LUI qu'on vient regarder.
+  box([cx - 0.52, 2.55, cz - 0.52], [cx + 0.52, 2.79, cz + 0.52], 3),
+  box([cx - 0.15, 2.72, cz - 0.15], [cx + 0.15, 3.02, cz + 0.15], 3),
+];
+
 /** Maison : un corps et une toiture débordante, qui pose la ligne d'encre. */
 const maison = (cx: number, cz: number, w: number, d: number, h: number, ink: number): BoxDef[] => [
   box([cx - w, -0.6, cz - d], [cx + w, h, cz + d], ink),
@@ -310,6 +341,10 @@ export const MONDE: LevelDef = {
     box([-9.6, AIGUILLE_H + 3.6, -9.6], [9.6, AIGUILLE_H + 4.2, 9.6], 2),
 
     ...village(),
+
+    // Au pied de l'Aiguille, légèrement de côté pour ne pas la masquer : on
+    // arrive en la regardant, et c'est la maquette qu'on rencontre d'abord.
+    ...maquette(5.2, -11),
 
     // --- Escalier A : ×1 le regarde, ×4 le gravit -----------------------------
     // Marches de 3 : infranchissables à taille normale (enjambée 0,9),
@@ -490,10 +525,26 @@ export const MONDE: LevelDef = {
   ],
 
   hints: [
+    // Devant la maquette. C'est le seul endroit du jeu où l'on énonce le but,
+    // et encore : la maquette l'a déjà dit toute seule. La phrase ne fait que
+    // confirmer ce qu'on vient de comprendre en levant les yeux.
+    {
+      position: [5.2, VILLAGE_Y, -11],
+      radius: 7,
+      text: 'Une aiguille en réduction, un encrier sur sa pointe. Lève les yeux : la vraie est vide.',
+    },
     {
       position: [0, VILLAGE_Y, -24],
       radius: 16,
       text: 'Le pinceau. Rejoins-le.',
+    },
+    // La porte verte. On la voit d'ici, et l'on voit surtout ce qu'il y a
+    // derrière : un monde démesuré. C'est l'image, pas le texte, qui dit qu'on
+    // s'y prendrait mal en entrant maintenant.
+    {
+      position: [-30, VILLAGE_Y, -26],
+      radius: 12,
+      text: 'La porte verte descend d’un cran. Regarde à travers : à cette taille-là, ce jardin est un continent.',
     },
     {
       position: [0, VILLAGE_Y, -40],
