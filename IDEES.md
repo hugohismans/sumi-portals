@@ -1,7 +1,45 @@
 # Idées à garder
 
 Carnet de pistes. **Rien ici n'est décidé ni planifié** — c'est un réservoir
-dans lequel piocher quand on fabriquera les niveaux.
+dans lequel piocher quand on fabriquera le monde.
+
+---
+
+## LA DIRECTION : un voyage, pas une succession de niveaux
+
+*(idée d'Hugo — celle-ci n'est pas une piste parmi d'autres, elle commande
+tout le reste)*
+
+Pas de « niveau 1 — bravo — niveau 2 ». **Un seul grand monde continu**, dans
+lequel on avance en franchissant des portails. On grandit, on rapetisse, et
+l'on retrouve les lieux d'avant sous un autre jour.
+
+Le cœur de l'idée, et ce qui la rend unique : **on revoit d'en haut le monde
+qu'on vient de traverser.** La place où l'on marchait devient une maquette à
+ses pieds. Le perron qu'on montait devient une marche. Ce n'est pas un décor
+qui change, c'est le même, relu.
+
+Ce que ça implique concrètement :
+
+**Le monde doit être bâti pour être lu à plusieurs échelles.** Un lieu ne
+sert pas une fois : il doit valoir le détour à ×1 comme à ×4. C'est une
+contrainte de tracé, pas de moteur.
+
+**Les portails deviennent des passages, pas des interrupteurs.** Après avoir
+grandi, on doit se retrouver EN SURPLOMB de là où l'on était — c'est ce
+surplomb qui produit le vertige. Un portail mal placé perd tout l'effet.
+
+**Plus d'écran de victoire.** L'objectif n'est plus un anneau à toucher mais
+un lieu à atteindre, qui en ouvre un autre. Les réceptacles font de très
+bonnes serrures : on cherche une caisse, on l'accorde à la bonne taille, et
+un passage s'ouvre.
+
+**Deux aventures, pas une.** Une pour le joueur seul, une conçue pour deux —
+et la seconde n'est pas la première avec un camarade en plus. Voir plus bas.
+
+Bonne nouvelle côté technique : **rien à changer au moteur.** Un monde n'est
+qu'un jeu de données plus grand. Ce qui change, c'est la manière de le
+dessiner sur le papier.
 
 ---
 
@@ -94,7 +132,38 @@ l'attente.
 
 ---
 
-## Jouable sur téléphone
+## Le mode Rêve — un monde qui se fabrique tout seul
+
+*(idée d'Hugo)*
+
+Un troisième mode, à côté de l'aventure seule et de l'aventure à deux. Des
+salles engendrées à la volée, reliées entre elles par des portails, où l'on
+divague sans jamais savoir où l'on est. L'esprit des *backrooms* : familier,
+vide, légèrement inquiétant, et sans fin.
+
+**Pourquoi les portails sont faits pour ça.** C'est le point technique qui
+rend l'idée réaliste plutôt que folle : à travers un portail, on ne voit
+jamais deux salles à la fois. Le générateur peut donc tricher autant qu'il
+veut — les salles peuvent se chevaucher dans l'espace, être recyclées,
+apparaître au dernier moment. Rien ne trahit la couture, parce qu'aucun regard
+ne l'embrasse. La plupart des jeux se battent pour cacher les raccords ; ici
+l'architecture les rend invisibles par construction.
+
+**Et l'échelle rend le rêve plus étrange.** Une salle peut contenir un portail
+qui mène à une version plus grande d'elle-même. On croit revenir sur ses pas,
+tout est identique, mais on est devenu minuscule. C'est exactement la logique
+d'un rêve, et c'est notre mécanique de base, sans rien ajouter.
+
+**Le conseil que je me donne d'avance : engendrer de l'ESPACE, pas des
+énigmes.** Fabriquer des énigmes au hasard donne des énigmes fades ou
+insolubles — c'est un écueil très connu. En revanche, engendrer un labyrinthe
+de salles à traverser est simple et robuste, et c'est précisément ce qu'on
+demande à des backrooms : l'égarement, pas la réflexion. Quelques énigmes
+écrites à la main peuvent être semées dedans comme des jalons.
+
+**Ce que ça coûte : presque rien de structurel.** Un niveau est déjà une
+donnée pure. Un générateur n'est donc qu'une fonction qui renvoie un niveau —
+le moteur n'a pas à savoir d'où il vient.
 
 *(idée d'Hugo)*
 
@@ -186,11 +255,13 @@ salle d'attente muette est insupportable au bout de vingt secondes. Il faut
 quelque chose à regarder ou à faire — idéalement les portails du hall restent
 accessibles pendant l'attente, pour continuer à jouer avec sa taille.
 
-**Les niveaux à deux sont un jeu à part**, pas les niveaux solo avec un second
+**L'aventure à deux est un monde à part**, pas l'aventure solo avec un second
 joueur en plus. Une énigme conçue pour une personne ne devient pas coopérative
 parce qu'on est deux : elle devient juste plus facile. Il faut des énigmes
 qu'**une seule personne ne peut pas résoudre**, où l'un est grand et l'autre
 petit, et où chacun voit ce que l'autre ne peut pas faire.
+
+Ce sont donc **deux voyages distincts** à tracer, avec la même grammaire.
 
 Côté technique, c'est peu de chose : une file d'attente dans la base, le premier
 arrivé crée un salon, le second le rejoint, et les deux basculent ensemble.
