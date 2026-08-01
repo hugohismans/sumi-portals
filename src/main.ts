@@ -577,26 +577,43 @@ function frame(now: number): void {
       // Ramasser, c'est s'approprier : à partir de maintenant, c'est moi qui
       // publie cette caisse, et l'autre joueur suit ce que j'en fais.
       if (events.carry.taken) caisses.reclamer(events.carry.id);
-      // PRENDRE L'ENCRIER, C'EST PRENDRE LA COULEUR. On n'attend pas qu'il
-      // soit posé au sommet : le monde se repeint pendant qu'on le rapporte,
-      // et l'on voit donc le résultat de son voyage en le faisant, pas après.
-      if (events.carry.taken && events.carry.id === 'encrier') {
-        if (pigments.rendre('vert', worldView.parRegion, pigmentDe)) {
-          ambiance.progression(1, 2);
-          flash('Le vert revient au monde. Regarde autour de toi.', 6);
-        }
-      }
+
       flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
     }
     // LE SACRE. L'encrier se pose sur la pointe de l'Aiguille, et le monde
     // répond. C'est la seule fin du jeu, et la seule fois où l'on retire au
     // joueur la maîtrise de sa caméra — quatorze secondes, pour lui montrer
     // d'où il vient.
-    if (events.socketFilled?.socketId === 'socle-aiguille') {
-      sacre.jouer([0, 114.2, 0], camera.position);
-      ambiance.retrouvaille();
-      document.exitPointerLock();
-      flash('L’encrier est posé. Regarde le chemin que tu as fait.', 13);
+    // POSER UNE COULEUR SUR SON SOCLE LA REND AU MONDE. Le geste et son effet
+    // sont au même endroit : on lâche l'objet, et la moitié du monde qui
+    // l'attendait se repeint sous nos yeux. On avait d'abord donné la couleur
+    // au RAMASSAGE, et c'était moins bien — le joueur voyait le monde changer
+    // en tournant le dos à ce qu'il venait de faire.
+    const PIGMENT_DE_SOCLE: Record<string, string> = {
+      'socle-vert': 'vert',
+      'socle-rouge': 'rouge',
+    };
+    const pigment = events.socketFilled
+      ? PIGMENT_DE_SOCLE[events.socketFilled.socketId]
+      : undefined;
+
+    if (pigment && pigments.rendre(pigment, worldView.parRegion, pigmentDe)) {
+      ambiance.progression(pigments.nombre, 3);
+      const reste = Object.keys(PIGMENT_DE_SOCLE).length - pigments.nombre;
+      flash(
+        reste > 0
+          ? `Le ${pigment} revient au monde. Regarde autour de toi. Il en manque ${reste}.`
+          : 'La dernière couleur est rendue. Le monde est entier.',
+        7,
+      );
+      // LA FIN : le monde a retrouvé toutes ses couleurs. C'est la seule chose
+      // qu'on lui demandait, et c'est le seul moment où l'on retire au joueur
+      // la maîtrise de sa caméra — pour lui montrer ce qu'il vient de repeindre.
+      if (reste === 0) {
+        sacre.jouer([0, 60, 0], camera.position);
+        ambiance.retrouvaille();
+        document.exitPointerLock();
+      }
     } else if (events.socketFilled) {
       flash(
         sim.sockets.allFilled

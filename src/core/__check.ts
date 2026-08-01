@@ -1162,8 +1162,10 @@ console.log('\n— Aucune face confondue et exposée —');
 console.log('\n— L’encrier : la quête du monde —');
 {
   const PORTEE = (echelle: number) => PLAYER_HEIGHT * echelle * 0.55;
-  const encrier = MONDE.carryables![0];
-  const socle = MONDE.sockets![0];
+  const encrier = MONDE.carryables!.find((c) => c.id === 'encrier')!;
+  const braise = MONDE.carryables!.find((c) => c.id === 'braise')!;
+  const socle = MONDE.sockets!.find((s) => s.id === 'socle-vert')!;
+  const socleRouge = MONDE.sockets!.find((s) => s.id === 'socle-rouge')!;
 
   // LE COEUR DE L’ENIGME. Entrer dans le jardin sans avoir grandi d’abord vous
   // y depose a un quart de taille : on traverse ce monde immense, on trouve
@@ -1203,7 +1205,9 @@ console.log('\n— L’encrier : la quête du monde —');
   // Les deux donnent exactement le meme encrier, et le socle du sommet accepte
   // donc l’un comme l’autre. Sans cela, un joueur ayant pris le bon chemin dans
   // le mauvais ordre se serait retrouve avec un objet inutilisable.
-  const arrivee = encrier.size * (scaleOfLevel(2) / scaleOfLevel(0));
+  // L'encrier suit son porteur : parti du jardin à ×1, il arrive au village à
+  // ×4, donc quatre fois plus gros.
+  const arrivee = encrier.size * 4;
   check(
     'au sommet, le socle attend exactement la taille du voyage entier',
     Math.abs(arrivee - socle.size) <= socle.size * 0.12,
@@ -1216,10 +1220,38 @@ console.log('\n— L’encrier : la quête du monde —');
   );
   // Et il reste soulevable la-haut : un objet qu’on lache et qu’on ne peut plus
   // reprendre, au bout de tout le voyage, serait la pire fin possible.
+  // On ressort du jardin à ×4 — c'est la traversée qui nous a regrandis en même
+  // temps qu'elle a grossi l'encrier. Une première version comparait sa taille
+  // à la portée d'un joueur de 1,80 et criait au piège : elle avait oublié que
+  // le porteur avait grandi avec ce qu'il porte.
   check(
-    'et il reste soulevable au sommet, si on le repose',
-    arrivee <= PORTEE(scaleOfLevel(2)),
-    `${arrivee.toFixed(2)} <= ${PORTEE(scaleOfLevel(2)).toFixed(2)}`,
+    'et il reste soulevable au village, où l’on est redevenu géant',
+    arrivee <= PORTEE(4),
+    `${arrivee.toFixed(2)} <= ${PORTEE(4).toFixed(2)}`,
+  );
+
+  // LA BRAISE, ET L'OPPOSITION QUI FAIT TOUT LE PROPOS.
+  //
+  // Sur la côte rouge on est GRAND, donc on en revient avec du MENU ; dans le
+  // jardin on est PETIT, donc on en revient avec du GROS. Les deux socles
+  // plantés sur la place depuis la première minute annonçaient cet écart avant
+  // qu'on ait fait un seul voyage.
+  check(
+    'la braise se soulève à ×4, là où on la trouve',
+    braise.size <= PORTEE(4),
+    `${braise.size} <= ${PORTEE(4).toFixed(2)}`,
+  );
+  const braiseAuVillage = braise.size / 4;
+  check(
+    'et elle arrive menue au village, exactement à la taille du petit socle',
+    Math.abs(braiseAuVillage - socleRouge.size) <= socleRouge.size * 0.12,
+    `${braiseAuVillage} pour un socle de ${socleRouge.size}`,
+  );
+  check(
+    'les deux couleurs ne peuvent pas se tromper de socle',
+    Math.abs(arrivee - socleRouge.size) > socleRouge.size * 0.12 &&
+      Math.abs(braiseAuVillage - socle.size) > socle.size * 0.12,
+    `${arrivee} vs ${socleRouge.size}, ${braiseAuVillage} vs ${socle.size}`,
   );
 
   // La porte vierge fait mur tant que le pinceau ne l’a pas dessinee. C’est le

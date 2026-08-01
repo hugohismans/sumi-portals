@@ -224,9 +224,10 @@ const galet = (cx: number, cz: number, rx: number, rz: number, h: number, ink: n
 //     confortable, mais elle ne pardonne pas l'inattention.
 //   Les écailles saillent de 0,50 hors de l'assise : le joueur, épais de 0,17,
 //     tient dessus avec de la place de chaque côté, jamais des deux.
-//   L'assise du dessus est en retrait de 0,75 sur celle du dessous. Ce retrait
+//   L'assise du dessus est en retrait de 0,85 sur celle du dessous. Ce retrait
 //     n'est pas décoratif : c'est LA VIRE, l'anneau plat qui fait le tour de la
-//     tour et qui rattrape les chutes.
+//     tour et qui rattrape les chutes. 0,85 parce que le joueur franchit 0,86
+//     à pleine course : une vire plus étroite le laissait passer par-dessus.
 //
 // CE QUI SE PASSE QUAND ON TOMBE. Rien. On retombe sur la vire d'en dessous,
 // six appuis plus bas au pire, et l'on recommence. Si l'on tombe de la
@@ -243,8 +244,16 @@ const galet = (cx: number, cz: number, rx: number, rz: number, h: number, ink: n
 /** Où la pomme de pin est plantée. Choisi par balayage, jamais à l'œil. */
 const PIN_X = 336.0;
 const PIN_Z = -22.0;
-/** Demi-largeur des six assises. Le retrait de 0,75 EST la vire. */
-const PIN_T = [4.95, 4.20, 3.45, 2.70, 1.95, 1.20];
+/**
+ * Demi-largeur des six assises. Le retrait de 0,85 d'une assise à l'autre EST
+ * la vire : c'est lui, et rien d'autre, qui fait le palier.
+ *
+ * 0,85 et non 0,75 : à 0,75, un joueur qui sautait franchement VERS LE VIDE
+ * (0,86 de portée à pleine course) passait par-dessus la vire et dégringolait
+ * de deux étages. Dix centimètres de plus et la vire le rattrape. On l'a mesuré
+ * en jouant, pas en regardant.
+ */
+const PIN_T = [5.45, 4.6, 3.75, 2.9, 2.05, 1.2];
 /** Sommet de chaque assise. 1,56 d'écart = six bonds de 0,26. */
 const PIN_Y = [0.72, 2.28, 3.84, 5.40, 6.96, 8.52];
 /** La hauteur d'un appui : entre l'enjambée (0,225) et le saut (0,32). */
@@ -413,18 +422,18 @@ const pommeDePin = (): BoxDef[] => {
   // C'est elle qu'on remonte après chaque chute. Cinq crans de 0,14, soit les
   // deux tiers de l'enjambée : on ne saute pas, on MARCHE. C'est voulu — le
   // retour au pied de la tour ne doit demander aucune adresse, seulement de la
-  // patience. Le talus part du bord même du chemin (z = -11,15, le couloir
+  // patience. Le talus part du bord même du chemin (z = -11,80, le couloir
   // s'arrête à -11) : depuis le sentier on voit la pente, et au bout de la
   // pente la tour. On n'a rien à chercher.
   //
   // Le dernier cran mord de 20 cm dans l'assise du bas et culmine 6 cm sous
   // elle : ni face commune, ni marche à monter.
   for (let i = 0; i < 5; i++) {
-    const zn = -17.25 + i * 1.2;
+    const zn = -16.75 + i * 0.95;
     out.push(
       box(
         [PIN_X - 1.6 - i * 0.02, -0.7 - i * 0.03, zn],
-        [PIN_X + 1.6 + i * 0.015, 0.66 - i * 0.14, zn + 1.3],
+        [PIN_X + 1.6 + i * 0.015, 0.66 - i * 0.14, zn + 1.15],
         3,
       ),
     );

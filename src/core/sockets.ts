@@ -32,6 +32,8 @@ export interface Socket {
   /** Main exigée, s'il y en a une. */
   main?: 'L' | 'D';
   tolerance: number;
+  /** Rayon d'accueil. Voir SocketDef.portee. */
+  portee: number;
   ink: number;
   /** Identifiant de la caisse logée, ou null. */
   filledBy: string | null;
@@ -55,6 +57,7 @@ export class Sockets {
         size: d.size,
         main: d.main,
         tolerance: d.tolerance ?? DEFAULT_TOLERANCE,
+        portee: d.portee ?? d.size * 0.75,
         ink: d.ink ?? 3,
         filledBy: null,
       });
@@ -116,7 +119,7 @@ export class Sockets {
         const dx = c.position.x - socket.position.x;
         const dz = c.position.z - socket.position.z;
         const dy = c.position.y - socket.position.y;
-        const reach = socket.size * 0.75;
+        const reach = socket.portee;
         if (Math.hypot(dx, dz) > reach || Math.abs(dy) > reach) continue;
 
         // Elle s'aligne d'elle-même : le joueur a visé juste, le jeu finit le

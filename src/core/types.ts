@@ -119,8 +119,18 @@ export interface SocketDef {
   position: [number, number, number];
   /** Arête attendue. */
   size: number;
-  /** Écart toléré, en proportion. Par défaut 12 %. */
+  /** Écart toléré sur la TAILLE, en proportion. Par défaut 12 %. */
   tolerance?: number;
+  /**
+   * Rayon d'accueil, en mètres. Par défaut trois quarts de l'arête attendue.
+   *
+   * Il existe parce qu'un joueur repose ce qu'il porte à DEUX FOIS SA TAILLE
+   * devant lui : à ×4, cela fait huit mètres. Viser un socle de deux mètres à
+   * huit mètres de distance est un exercice d'adresse, et ce jeu n'en est pas
+   * un — encore moins au doigt sur un téléphone. Un socle qui doit être garni
+   * par quelqu'un de grand se donne donc un rayon large.
+   */
+  portee?: number;
   ink?: number;
 }
 

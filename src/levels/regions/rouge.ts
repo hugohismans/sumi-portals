@@ -320,17 +320,29 @@ const decor = (): BoxDef[] => {
   out.push(pose(-455.4, -359.6, 3.5, 5.1, 0.75, 3));
 
   // Les trois séchoirs : des tables de plaques d'argile mises à sécher. Ils
-  // chevauchent la voie en alternance — sud, nord, sud — de sorte qu'on ne
-  // marche jamais droit plus de vingt mètres. Les deux premiers font 3,45 et
-  // 3,20, sous l'enjambée : on les traverse. Le troisième fait 4,80, au-dessus
-  // de l'enjambée et sous le saut : c'est le seul obstacle de la voie qui
-  // demande une décision, et l'on peut toujours le contourner.
+  // chevauchent la voie et l'obligent à serpenter. Les deux premiers font 3,45
+  // et 3,20, sous l'enjambée : on les traverse sans ralentir. Le troisième fait
+  // 4,80, au-dessus de l'enjambée et sous le saut : c'est le seul obstacle de
+  // la voie qui demande une décision — sauter, ou contourner.
+  //
+  // LE PREMIER PEND AU SUD, LES DEUX AUTRES AU NORD, et ce n'est pas un
+  // caprice : c'est ce qui donne au chemin sa seule vraie inflexion. On passe
+  // au nord du premier (couloir de 12 entre lui et le four éventré), on
+  // redescend, et l'on file au sud des deux autres (couloirs de 13,7 et 11,5).
+  //
+  // LE TROISIÈME A ÉTÉ REMONTÉ DE SEPT MÈTRES VERS LE NORD, et c'est une
+  // correction, pas un dessin. Posé quatre mètres plus bas, il ne laissait
+  // entre lui et le linteau de la gueule du four voisin qu'une fente de 4,50
+  // pour un joueur qui en fait 2,72 de large. Une porte de 4,50 qu'on n'a pas
+  // voulue est une porte que personne ne trouvera : ni un joueur qui longe le
+  // mur, ni le pilote automatique des vérifications. Le couloir fait maintenant
+  // 11,50, et le séchoir barre toujours l'axe.
   out.push(pose(-406.0, -401.6, -13.4, 2.2, 3.0, 2));
   out.push(sur(-407.0, -400.6, -14.2, 3.0, SOL + 3.0, 0.45, 0));
   out.push(pose(-436.0, -431.6, -1.8, 13.6, 2.7, 2));
   out.push(sur(-437.0, -430.6, -2.6, 14.4, SOL + 2.7, 0.5, 0));
-  out.push(pose(-446.8, -442.4, -11.0, 4.6, 4.3, 2));
-  out.push(sur(-447.8, -441.4, -11.8, 5.4, SOL + 4.3, 0.5, 0));
+  out.push(pose(-446.8, -442.4, -4.0, 11.6, 4.3, 2));
+  out.push(sur(-447.8, -441.4, -4.8, 12.4, SOL + 4.3, 0.5, 0));
 
   // Les trois fours intacts, et leurs gueules tournées vers la voie.
   out.push(...four(-392, -34, 13.5, 20.4), ...gueule(-392, -20.5, 1, 7.4));

@@ -582,9 +582,39 @@ export const MONDE: LevelDef = {
   // pas tricher avec un caillou trouvé sur place : seul un objet ayant fait TOUT
   // le voyage a la bonne dimension. La preuve du parcours est l'objet lui-même.
   // ═══════════════════════════════════════════════════════════════════════════
-  carryables: [{ id: 'encrier', position: [505, -0.17, 0], size: 0.36, ink: 3 }],
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LES DEUX COULEURS DU MONDE, ET POURQUOI LEURS TAILLES S'OPPOSENT.
+  //
+  // Le monde central naît en lavis gris. Deux voyages lui rendent ses couleurs,
+  // et **la taille de ce qu'on rapporte raconte le voyage** :
+  //
+  //   L'ENCRIER se prend dans le jardin, où l'on mesure 1,80 dans un monde fait
+  //   pour des géants. On y est petit, donc on en revient avec du GROS : 36 cm
+  //   là-bas, 1,44 une fois ressorti. Il va sur le grand socle.
+  //
+  //   LA BRAISE se prend sur la côte rouge, où l'on mesure 7,20. On y est
+  //   grand, donc on en revient avec du MENU : 2,80 là-bas, 70 cm une fois
+  //   ressorti. Elle va sur le petit socle.
+  //
+  // Les deux socles étaient déjà plantés sur la place, vides, dès la première
+  // minute de jeu. Leur écart de taille annonçait la nature des deux voyages
+  // avant qu'on en ait fait un seul.
+  // ═══════════════════════════════════════════════════════════════════════════
+  carryables: [
+    { id: 'encrier', position: [505, -0.17, 0], size: 0.36, ink: 3 },
+    { id: 'braise', position: [-500, 0, 0], size: 2.8, ink: 3 },
+  ],
 
-  sockets: [{ id: 'socle-aiguille', position: [0, AIGUILLE_H + 4.2, 0], size: 5.76, ink: 3 }],
+  sockets: [
+    // Le grand socle attend l'encrier. 1,44 : la taille qu'il aura, et lui seul.
+    // Portée de 4,5 : on vient l'emplir à ×4, donc en lâchant l'encrier à huit
+    // mètres devant soi. Exiger le mètre près ferait de la dernière étape du
+    // voyage un exercice d'adresse, et ce jeu n'en est pas un.
+    { id: 'socle-vert', position: [-16, 1.2, -6], size: 1.44, portee: 4.5, ink: 3 },
+    // Le petit socle attend la braise, à 70 cm.
+    // Elle, on la rapporte à ×1 : deux mètres de portée suffisent largement.
+    { id: 'socle-rouge', position: [-3.5, 0.645, -17.5], size: 0.7, portee: 2, ink: 3 },
+  ],
 
   goal: { position: [0, BELVEDERE_Y + 2, 240], radius: 16 },
 
