@@ -278,6 +278,8 @@ const brush = new Brush(
     pairId: f.pairId,
     kind: f.kind,
     position: new THREE.Vector3(f.position.x, f.position.y, f.position.z),
+    hauteur: f.height,
+    normale: new THREE.Vector3(f.normal.x, f.normal.y, f.normal.z),
   })),
 );
 // Le seul retour du jeu qui dise « tu avances ». Le son du pinceau existait
@@ -686,7 +688,15 @@ if (PARAMS.get('debug') && MODE === 'monde') {
     const s = document.createElement('small');
     s.textContent = r.verifier;
     b.append(t, s);
-    b.addEventListener('click', () => allerA(i));
+    b.addEventListener('click', () => {
+      allerA(i);
+      // Le bouton garde le clavier s'il garde le foyer : la barre d'espace le
+      // rejouerait au lieu de faire sauter. Et le clic ayant fait perdre la
+      // capture de la souris, on la reprend — un clic EST le geste qu'il faut
+      // pour ça, donc c'est le seul endroit où on a le droit de le demander.
+      b.blur();
+      input.requestLock();
+    });
     panneau.appendChild(b);
   });
 
@@ -706,13 +716,17 @@ if (PARAMS.get('debug') && MODE === 'monde') {
   // Arrivée par rechargement : le saut a été demandé dans la page précédente,
   // et c'est ici qu'il s'achève, une fois le monde rebâti dans le bon état.
   //
-  // On escamote aussi la carte de titre. Elle est belle et elle a sa place au
-  // début d'une partie ; entre deux repères, elle oblige à un clic de plus à
-  // chaque saut qui recharge, ce qui est exactement le genre de petite friction
-  // qui fait qu'on cesse de vérifier.
+  // ON NE MASQUE PAS LA CARTE DE TITRE. J'ai essayé : elle oblige à un clic de
+  // plus à chaque saut qui recharge, et l'escamoter paraît donc une politesse.
+  // C'en est une jusqu'à ce qu'on veuille bouger — car la capture de la souris
+  // ne s'obtient QUE sur un geste de l'utilisateur, et cette carte est le seul
+  // endroit où ce geste est attendu. Sans elle : on arrive au bon endroit et
+  // l'on ne peut plus faire un pas.
+  //
+  // Elle s'affiche donc dans sa forme courte, celle d'une reprise.
   const demande = Number(PARAMS.get('repere'));
   if (PARAMS.has('repere') && demande >= 0 && demande < REPERES_MONDE.length) {
-    overlay.classList.add('hidden', 'resumed');
+    overlay.classList.add('resumed');
     allerA(demande);
   }
 }

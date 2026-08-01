@@ -34,8 +34,20 @@ import { buildWorldGeometry } from './worldMesh.js';
 /** Distance d'approche qui le fait décoller, en hauteurs de joueur. */
 const CATCH = 9;
 
-/** Durée d'une fuite, en secondes. */
-const FLIGHT = 3.6;
+/**
+ * DURÉE D'UN VOL — et pourquoi elle n'est plus constante.
+ *
+ * Elle valait 3,6 secondes, quel que soit le trajet. Le pinceau mettait donc le
+ * même temps à franchir six mètres qu'à traverser quatre cent cinquante : d'un
+ * côté une reptation dans l'air, de l'autre un trait qui barre l'écran en une
+ * image. Et c'est ce second cas qu'on lisait comme une téléportation — non pas
+ * parce qu'il sautait, mais parce qu'il allait trop vite pour qu'on le suive.
+ *
+ * En racine de la distance : les petits sauts se resserrent, les grandes
+ * traversées s'allongent, sans jamais devenir un trajet qu'on attend.
+ */
+const duree = (distance: number): number =>
+  Math.min(4.6, 1.2 + Math.sqrt(Math.max(0, distance)) * 0.14);
 
 /**
  * Épaisseur du trait d'encre du personnage. Un peu plus fine que celle du
@@ -119,6 +131,25 @@ const buildBody = (
   return g;
 };
 
+/**
+ * Une face de portail, telle que le Pinceau en a besoin pour la franchir.
+ *
+ * LA HAUTEUR ET LA NORMALE NE SONT PAS DES ORNEMENTS. La `position` d'une face
+ * est sa BASE, au ras du sol — il volait donc vers le pied de la porte et
+ * disparaissait dans la terre du seuil. On voyait une tache s'enfoncer dans le
+ * sol, puis rejaillir à l'autre bout du monde : rien là-dedans ne disait
+ * « il est passé par là ».
+ */
+export interface FacePorte {
+  pairId: string;
+  kind: 'big' | 'small';
+  position: THREE.Vector3;
+  /** Hauteur de l'ouverture. On vise sa moitié, donc le milieu du passage. */
+  hauteur: number;
+  /** Vers où la face regarde. On en sort en s'en écartant, pas en surgissant. */
+  normale: THREE.Vector3;
+}
+
 export class Brush {
   readonly group = new THREE.Group();
 
@@ -137,6 +168,8 @@ export class Brush {
 
   private samples: Sample[] = [];
   private fleeing = 0;
+  /** Durée du vol en cours. Voir `duree`. */
+  private volee = 1.2;
   private station = 0;
   /** Sa taille à lui, qui n'est pas la vôtre. Voir `update`. */
   private echelle = 1;
@@ -157,7 +190,7 @@ export class Brush {
   private readonly echelles: number[];
   /** Porte à emprunter pour chaque jalon. Voir LevelDef.guidePorte. */
   private readonly portes: (string | null)[];
-  private readonly faces: { pairId: string; kind: 'big' | 'small'; position: THREE.Vector3 }[];
+  private readonly faces: FacePorte[];
   /** Face par laquelle il ressortira, s'il est en train de passer une porte. */
   private sortie: THREE.Vector3 | null = null;
   /**
@@ -179,7 +212,7 @@ export class Brush {
     points: [number, number, number][] = [],
     echelles: number[] = [],
     portes: (string | null)[] = [],
-    faces: { pairId: string; kind: 'big' | 'small'; position: THREE.Vector3 }[] = [],
+    faces: FacePorte[] = [],
   ) {
     for (const p of points) this.waypoints.push(new THREE.Vector3(p[0], p[1], p[2]));
     this.echelles = points.map((_, i) => echelles[i] ?? 1);
@@ -366,12 +399,19 @@ export class Brush {
         // traînée est coupée net : aucun trait d'encre ne doit relier deux
         // mondes en ligne droite, ce serait redire ce qu'on vient d'éviter.
         const cible = this.waypoints[Math.min(this.station + 1, this.waypoints.length - 1)];
+        // IL SORT DE LA PORTE, il n'apparaît pas devant. On le pose DANS le
+        // plan de la face jumelle, au milieu de son ouverture, et son vol
+        // commence là : les premières images le montrent donc s'extraire du
+        // passage, dans l'axe. Posé un mètre devant, il naissait à côté de la
+        // porte au lieu d'en venir — ce qui est le même défaut qu'à l'entrée,
+        // vu de l'autre bout.
         this.head.position.copy(this.sortie);
         this.from.copy(this.sortie);
         this.to.copy(cible);
         this.arc.set(0, Math.max(4, this.from.distanceTo(this.to) * 0.25), 0);
         this.sortie = null;
-        this.fleeing = FLIGHT * 0.75;
+        this.volee = duree(this.from.distanceTo(this.to));
+        this.fleeing = this.volee;
         this.samples.length = 0;
         this.prev.copy(this.head.position);
         this.prevOriented.copy(this.head.position);
@@ -384,7 +424,7 @@ export class Brush {
 
     if (this.fleeing > 0) {
       this.fleeing -= dt;
-      const t = 1 - Math.max(0, this.fleeing) / FLIGHT;
+      const t = 1 - Math.max(0, this.fleeing) / this.volee;
       // Trajectoire haute et courbe : il passe visiblement PAR-DESSUS ce que le
       // joueur devra contourner. C'est ce survol qui pose l'énigme sans un mot.
       const eased = t * t * (3 - 2 * t);
@@ -535,14 +575,26 @@ export class Brush {
     // l'on ressort par la face jumelle. Le joueur voit donc où entrer — c'est
     // une invitation, et c'était tout le rôle de ce personnage.
     const porte = this.portes[i];
+    /** Vrai s'il va vers une porte : le vol se règle alors autrement. */
+    let versLaPorte = false;
     if (porte) {
       const paire = this.faces.filter((f) => f.pairId === porte);
       if (paire.length === 2) {
         const [a, b] = paire;
         const entree = a.position.distanceTo(this.from) < b.position.distanceTo(this.from) ? a : b;
         const sortie = entree === a ? b : a;
+        // ─── ON VISE LE MILIEU DE L'OUVERTURE, PAS LE SEUIL ─────────────────
+        //
+        // `position` est la BASE de la face. Il volait donc au pied de la porte
+        // et s'éteignait au ras du sol : on voyait une tache s'enfoncer dans la
+        // terre, puis rejaillir à l'autre bout du monde. Rien là-dedans ne
+        // disait qu'il était PASSÉ PAR LÀ — et c'était pourtant la seule chose
+        // que ce vol avait à raconter.
         this.to.copy(entree.position);
+        this.to.y += entree.hauteur * 0.5;
         this.sortie = sortie.position.clone();
+        this.sortie.y += sortie.hauteur * 0.5;
+        versLaPorte = true;
       } else {
         this.to.copy(next);
       }
@@ -550,8 +602,18 @@ export class Brush {
       this.to.copy(next);
     }
 
-    this.arc.set(0, Math.max(8, this.from.distanceTo(this.to) * 0.25), 0);
-    this.fleeing = FLIGHT;
+    const distance = this.from.distanceTo(this.to);
+    // L'ARC EST CE QUI RACONTE LE SURVOL : il passe visiblement PAR-DESSUS ce
+    // qu'il faudra contourner. Mais on n'entre pas dans une porte en tombant
+    // dessus — la dernière ligne droite doit être dans l'axe du passage. Vers
+    // une porte, donc, il vole à plat.
+    //
+    // Le plancher de huit mètres, lui, était absurde sur les courts trajets :
+    // pour six mètres à parcourir il montait de huit, ce qui donnait une
+    // montgolfière plutôt qu'un oiseau.
+    this.arc.set(0, versLaPorte ? 0 : Math.max(Math.min(6, distance * 0.5), distance * 0.25), 0);
+    this.volee = duree(distance);
+    this.fleeing = this.volee;
     this.prev.copy(this.head.position);
   }
 
