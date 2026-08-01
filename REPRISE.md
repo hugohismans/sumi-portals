@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 2 août 2026
 
-`npm run check` : **129 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **131 vérifications, tout passe.** `npm run build` passe.
 
 - **https://hugohismans.github.io/sumi-portals/** — le hall, trois arches
 - `?niveau=monde` — le voyage. Ajouter `&neuf=1` pour oublier les couleurs déjà
@@ -29,6 +29,14 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 - `?niveau=reve&graine=7` — le rêve génératif
 - `?niveau=duo&salon=…&role=…` — l'aventure à deux (jamais essayée à deux vraies
   machines : c'est le premier essai à mener)
+
+**`?niveau=monde&debug=1` — LES REPÈRES.** Douze moments du voyage, une touche
+chacun, et chaque ligne dit ce qu'il faut regarder là. `=` déclenche le sacre
+tout de suite. `H` replie la liste. À lire avant de vérifier quoi que ce soit :
+vérifier la teinte du pinceau vert demandait sinon quatre minutes de trajet,
+deux portails et deux détours — donc on ne le vérifiait pas, donc on ne
+trouvait les défauts qu'en jouant par hasard. Voir `src/debug/reperes.ts`, et
+en particulier pourquoi certains sauts RECHARGENT la page.
 
 ## Le parcours de l'introduction, et pourquoi il est dans cet ordre
 
@@ -45,8 +53,8 @@ village (×1), tout est gris
                il nous suit comme une fée → retour à ×1
   terrasse     ×1 → ×4
   le toit du village, revu en géant   ← le cœur du jeu
-  JARDIN       ×4 → ×1 là-bas → on y réveille le pinceau vert
-               → retour à ×4
+  JARDIN       ×4 → ×1 là-bas → vingt bonds sur le tas de feuilles,
+               et le pinceau vert dort à son sommet → retour à ×4
   la seconde porte, que le pinceau dessine tache par tache
   belvédère    ×4 → ×16
   l'éperon, la pointe de l'Aiguille, le sacre
@@ -125,11 +133,30 @@ elles sont plantées à six cents mètres et au-delà, donc invisibles pendant t
 la partie. On croyait avoir fait le tour du monde ; il continue. Le titre vient
 aux deux tiers du plan, APRÈS ce qu'il nomme.
 
-## Une observation à trancher un jour
+## Le piège qui reste, et qu'on a choisi de garder
 
-Le jardin a été bâti pour un joueur à ×1/4, mais le parcours le fait traverser à
-×1 — et c'est cette taille que le pinceau vert exige. Entrer trop petit donne
-donc la version SPECTACULAIRE du lieu, une forêt d'herbe, mais un pinceau
-inatteignable ; entrer bien grandi donne un jardin plus sage et un pinceau qu'on
-peut prendre. C'est défendable — le spectaculaire est ce qu'on voit quand on se
-trompe — mais ce n'était pas voulu, et ça mérite d'être décidé.
+Sur le tas de feuilles, l'écart entre deux rangées fait 0,70 et le joueur 0,68.
+Un centimètre de battement : on peut se faufiler SOUS une rangée et s'y trouver
+à l'étroit. Vérifié depuis les cinq vires, on en ressort toujours en marchant
+plein sud — la règle « ne jamais piéger » tient. Mais c'est le point le plus
+juste de tout l'ouvrage, et il ne s'élargit pas sans concession : la mesure au
+banc donne `largeur/2 + écart ≤ 1,80` pour une montée de 1,00, et on y est
+exactement. Élargir l'écart oblige à rétrécir la feuille, donc à durcir la
+réception.
+
+## Deux leçons de méthode qui ont coûté cher
+
+**Un test qui échoue sur une durée ne mesure pas le monde.** Le marcheur du
+harnais montait 1 appui sur 21 et j'ai cru la géométrie fausse. `walkTo`
+maintient la touche de saut pendant TOUTE la durée qu'on lui donne : une fois
+l'appui atteint, le joueur continue de rebondir trente secondes, un rebond
+conserve l'élan horizontal, il dérive et tombe. Même géométrie, quatre secondes
+par point au lieu de quarante : 21 sur 21. D'où `bondirVers`, qui relâche le
+saut dès qu'il est posé.
+
+**Un décalage appliqué avant la matrice du modèle est mis à l'échelle avec
+lui.** Le contour est une coque gonflée en coordonnées locales : tout objet mis
+à l'échelle recevait un trait multiplié par son échelle, et deux fichiers
+compensaient à la main sans que personne ne remarque que le reste du décor ne
+compensait rien. Le shader divise maintenant par l'échelle portée par la
+matrice (`src/render/ink.ts`).
