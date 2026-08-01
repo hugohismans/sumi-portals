@@ -175,9 +175,19 @@ class PortalFaceView {
     this.surface = new THREE.Mesh(geo, this.material);
     this.surface.frustumCulled = false;
 
-    // Aplat de dernier recours, au troisième niveau d'imbrication seulement.
-    // Teinté d'encre et non de la couleur vive du portail : à cette profondeur
-    // il vaut mieux une tache sourde qu'un aplat criard qui saute aux yeux.
+    // ─── LE FOND DU PUITS ─────────────────────────────────────────
+    //
+    // Deux niveaux d'imbrication sont rendus pour de vrai. Au troisième, il faut
+    // bien mettre QUELQUE CHOSE dans le rectangle, et c'était la teinte du
+    // portail assombrie — un aplat rouge sombre. Signalé en jouant, et c'est
+    // juste : dans le hall, où deux portes se font face, on descend vite de
+    // trois crans et l'on tombe sur une porte pleine de peinture rouge au fond
+    // d'un couloir de portails. Ce n'est pas de la profondeur, c'est un mur.
+    //
+    // La couleur est donc reprise à chaque image sur le BROUILLARD de la région
+    // d'arrivée (voir `renderViews`). Le dernier niveau se dissout alors dans la
+    // brume comme tout ce qui est trop loin pour être lu — ce qu'il est
+    // exactement. On ne voit plus la limite : on voit de la distance.
     this.fallback = new THREE.MeshBasicMaterial({
       color: new THREE.Color(color).lerp(INK, 0.72),
     });
@@ -396,6 +406,12 @@ export class PortalRenderer {
       // entre, et c'est là tout l'effet.
       this.ambience?.(renderCamera.position);
 
+      // L'aplat de dernier recours prend la couleur du brouillard de LA RÉGION
+      // QU'ON REGARDE — donc juste après l'appel ci-dessus, jamais avant. Un
+      // portail qui donne sur un autre ciel doit s'éteindre dans CE ciel-là.
+      const brume = (scene.fog as THREE.Fog | null)?.color;
+      if (brume) for (const v of this.views) v.fallback.color.copy(brume);
+
       // LE PIÈGE DU MIROIR, et il n'a rien d'évident.
       //
       // Une porte miroir transporte la caméra par une RÉFLEXION, dont le
@@ -501,8 +517,26 @@ export class PortalRenderer {
     // les facteurs d'échelle se composent tout seuls d'un niveau à l'autre.
     out.fov = source.fov;
     out.aspect = source.aspect;
+    // ─── LE PLAN PROCHE SUIT L'ÉCHELLE, LE PLAN LOINTAIN NON ────────────────
+    //
+    // Les deux étaient multipliés par l'échelle de la traversée, ce qui paraît
+    // symétrique et ne l'est pas. Signalé en jouant : « quand je passe le
+    // portail, on voit des bâtiments en plus ». C'était exact, et voici
+    // pourquoi.
+    //
+    // En franchissant la grande face on rétrécit de quatre : le plan lointain
+    // de la vue tombait donc de 460 à 115 unités. Mais le BROUILLARD, lui, porte
+    // à 300 dans le même monde. Tout ce qui se tenait entre 115 et 300 était
+    // tranché net dans le portail et surgissait à l'instant de la traversée.
+    // On ne voyait pas la même chose des deux côtés d'une porte qui promet
+    // justement de montrer l'autre côté avant qu'on y entre.
+    //
+    // Le plan PROCHE doit suivre l'échelle — c'est ce qui permet à un joueur
+    // minuscule de coller son œil aux choses. Le plan LOINTAIN, lui, mesure une
+    // distance dans le monde, et le monde ne change pas de taille : il reste
+    // celui qu'aura la vraie caméra une fois qu'on aura traversé.
     out.near = source.near * s;
-    out.far = source.far * s;
+    out.far = source.far;
     out.updateProjectionMatrix();
     // Une matrice de réflexion posée à la main serait aussitôt recalculée à
     // partir de la position et du quaternion : on ne rafraîchit donc que le cas
