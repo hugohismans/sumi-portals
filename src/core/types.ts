@@ -63,6 +63,22 @@ export interface PortalPairDef {
    */
   condition?: string;
   /**
+   * CETTE PORTE SE DESSINE AVANT DE S'OUVRIR.
+   *
+   * Quand sa `condition` est remplie — une feuille posée sur un chevalet — la
+   * porte ne s'ouvre pas encore : le Pinceau vient et la trace, tache par
+   * tache, et l'on ne passe qu'une fois le dessin fini.
+   *
+   * Le tracé existait déjà (`src/render/tracage.ts`) mais il était câblé en dur
+   * sur une seule paire du monde. En le déclarant ici, un niveau peut en
+   * enchaîner autant qu'il veut — et c'est ce qui rend possible une suite de
+   * salles où le Pinceau ouvre lui-même le chemin.
+   *
+   * La fiction et la mécanique disent la même chose : il n'y a rien derrière
+   * tant que personne n'a tendu la page.
+   */
+  dessinee?: boolean;
+  /**
    * Cette paire échange la gauche et la droite.
    *
    * Ce qui la traverse en ressort en image miroir — et une forme asymétrique ne
@@ -132,6 +148,25 @@ export interface SocketDef {
    */
   portee?: number;
   ink?: number;
+  /**
+   * CE LOGEMENT REND CE QU'ON LUI DONNE.
+   *
+   * Partout ailleurs, une caisse logée se verrouille, et c'est la bonne règle :
+   * un progrès qu'on défait par accident en frôlant la touche de saisie n'est
+   * pas un progrès.
+   *
+   * L'exception existe pour LE CHEVALET. On y pose une feuille, le Pinceau
+   * dessine une porte dessus, et la taille de cette porte est celle de la
+   * feuille — laquelle vaut 0,30 ou 1,20 ou 4,80 selon le nombre de portes
+   * qu'on lui a fait franchir avant de la poser. Le contenu d'un chevalet n'est
+   * donc jamais un progrès : c'est une DÉCISION sur la dimension où l'on veut
+   * naître dans la salle d'après. Et une décision doit pouvoir se reprendre.
+   *
+   * Reprendre la feuille rescelle la porte, puisque `estScelle` se recalcule à
+   * chaque image sur les logements pourvus. Le joueur voit donc son choix se
+   * défaire, ce qui est exactement ce qu'il faut : rien à expliquer.
+   */
+  rend?: boolean;
 }
 
 /**
@@ -373,6 +408,8 @@ export interface TickEvents {
   thrown?: { id: string };
   /** Une caisse vient de s'emboîter dans son logement. */
   socketFilled?: { socketId: string; carryableId: string };
+  /** Un chevalet vient de rendre sa feuille. Voir SocketDef.rend. */
+  socketVide?: { socketId: string };
   /** Tous les logements sont pourvus. */
   allSocketsFilled?: boolean;
 }

@@ -49,6 +49,19 @@ export class Tracage {
     this.attente = 0.8; // un temps d'arrêt : il se met en place avant d'écrire
   }
 
+  /**
+   * Efface tout et rend la main. On reprend la feuille au chevalet : le dessin
+   * qu'elle portait n'a plus de support, donc il n'a plus lieu d'être.
+   *
+   * Rien à amortir : c'est une décision du joueur, pas un événement du monde, et
+   * ce qui répond à un geste doit répondre tout de suite.
+   */
+  annuler(): void {
+    this.paire = null;
+    this.coup = 0;
+    this.attente = 0;
+  }
+
   get enCours(): boolean {
     return this.paire !== null;
   }

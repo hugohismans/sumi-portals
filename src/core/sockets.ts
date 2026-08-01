@@ -34,6 +34,8 @@ export interface Socket {
   tolerance: number;
   /** Rayon d'accueil. Voir SocketDef.portee. */
   portee: number;
+  /** Ce logement rend ce qu'on lui donne. Voir SocketDef.rend. */
+  rend: boolean;
   ink: number;
   /** Identifiant de la caisse logée, ou null. */
   filledBy: string | null;
@@ -58,6 +60,7 @@ export class Sockets {
         main: d.main,
         tolerance: d.tolerance ?? DEFAULT_TOLERANCE,
         portee: d.portee ?? d.size * 0.75,
+        rend: d.rend ?? false,
         ink: d.ink ?? 3,
         filledBy: null,
       });
@@ -106,8 +109,35 @@ export class Sockets {
    * le geste pénible, surtout au doigt. Une caisse posée « à peu près dedans »
    * s'aligne d'elle-même.
    */
-  settle(carryables: Carryable[]): { socketId: string; carryableId: string }[] {
+  settle(carryables: Carryable[]): {
+    locked: { socketId: string; carryableId: string }[];
+    /** Chevalets dont on vient de reprendre la feuille. Voir SocketDef.rend. */
+    liberes: string[];
+  } {
     const locked: { socketId: string; carryableId: string }[] = [];
+    const liberes: string[] = [];
+
+    // ─── LES CHEVALETS RENDENT, ET SE VIDENT TOUT SEULS ───────────────────
+    //
+    // Une feuille posée sur un chevalet n'est pas verrouillée : on peut la
+    // reprendre. Le logement doit donc constater lui-même qu'elle n'y est plus,
+    // plutôt que d'attendre qu'on vienne le lui dire. À chaque image, il regarde
+    // si ce qu'il tient est toujours là et toujours posé ; sinon il se vide, et
+    // la porte que cette feuille avait ouverte se rescelle d'elle-même.
+    for (const socket of this.items) {
+      if (!socket.rend || socket.filledBy === null) continue;
+      const c = carryables.find((x) => x.id === socket.filledBy);
+      const parti =
+        !c ||
+        c.held ||
+        Math.hypot(c.position.x - socket.position.x, c.position.z - socket.position.z) >
+          socket.portee ||
+        Math.abs(c.position.y - socket.position.y) > socket.portee;
+      if (parti) {
+        socket.filledBy = null;
+        liberes.push(socket.id);
+      }
+    }
 
     for (const socket of this.items) {
       if (socket.filledBy !== null) continue;
@@ -136,13 +166,14 @@ export class Sockets {
         c.spin.x = 0;
         c.spin.y = 0;
         c.spin.z = 0;
-        c.locked = true;
+        // Un chevalet ne verrouille pas : voir SocketDef.rend.
+        c.locked = !socket.rend;
         socket.filledBy = c.id;
         locked.push({ socketId: socket.id, carryableId: c.id });
         break;
       }
     }
 
-    return locked;
+    return { locked, liberes };
   }
 }

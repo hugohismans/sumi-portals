@@ -993,6 +993,17 @@ function frame(now: number): void {
         4,
       );
     }
+    // ON A REPRIS LA FEUILLE : la porte qu'elle portait se rescelle, et son
+    // dessin s'efface. Le joueur voit son choix se défaire, ce qui est
+    // exactement ce qu'il faut — rien à expliquer, et rien d'irréversible.
+    if (events.socketVide) {
+      for (const paire of LEVEL.portals) {
+        if (!paire.dessinee || paire.condition !== events.socketVide.socketId) continue;
+        sim.portesFermees.add(paire.id);
+        tracage.annuler();
+        portals.tracer(paire.id, 0);
+      }
+    }
     if (events.reachedGoal) {
       // LE SACRE, et c'est ici qu'il appartient : en haut, après l'ascension.
       // L'encre remonte à la pointe de l'Aiguille, qui est la plume de ce monde,
@@ -1092,6 +1103,23 @@ function frame(now: number): void {
   socketViews.update(sim.sockets.items, dt, inkUniforms.uTime.value);
   socketViews.syncInk();
   brush.update(sim.player, scale, dt, camera);
+
+  // ─── LES PORTES QUI SE DESSINENT SUR UNE FEUILLE ───────────────────────
+  //
+  // Une paire marquée `dessinee` attend deux choses : que son chevalet soit
+  // pourvu, et que le Pinceau ait fini de tracer. La première est du ressort de
+  // la simulation, la seconde du nôtre — d'où ce guet, qui remplace le câblage
+  // en dur d'une seule porte du monde.
+  if (!tracage.enCours) {
+    for (const paire of LEVEL.portals) {
+      if (!paire.dessinee || !paire.condition) continue;
+      if (!sim.portesFermees.has(paire.id)) continue;
+      if (!sim.sockets.pourvus.has(paire.condition)) continue;
+      tracage.commencer(paire.id);
+      flash('Le pinceau se met à écrire. Regarde la porte.', 4);
+      break;
+    }
+  }
 
   // Le pinceau a-t-il atteint le jalon planté devant la porte vierge ?
   if (MODE === 'monde' && sim.portesFermees.has(PORTE_A_DESSINER) && !tracage.enCours) {

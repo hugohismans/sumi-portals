@@ -29,6 +29,8 @@ export interface PortalFace {
    * ne passe pas. Absent : la porte est toujours ouverte.
    */
   condition?: string;
+  /** Elle doit être dessinée avant de s'ouvrir. Voir PortalPairDef.dessinee. */
+  dessinee?: boolean;
   /** Cette paire échange la gauche et la droite. Voir `mainDe`. */
   miroir?: boolean;
 }
@@ -72,6 +74,8 @@ export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
     small.twin = big;
     big.condition = pair.condition;
     small.condition = pair.condition;
+    big.dessinee = pair.dessinee;
+    small.dessinee = pair.dessinee;
     big.miroir = pair.miroir;
     small.miroir = pair.miroir;
     faces.push(big, small);

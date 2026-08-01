@@ -104,6 +104,14 @@ export class Simulation {
     this.sockets.reset();
     this.goalReached = false;
     this.seuilFranchi = false;
+    // UNE PORTE QUI DOIT ÊTRE DESSINÉE NAÎT FERMÉE. C'était écrit à la main dans
+    // `main.ts` pour la seule porte du monde qui l'exigeait ; en le déduisant du
+    // niveau, un mouvement entier peut en enchaîner autant qu'il veut, et la
+    // vérification hors navigateur voit la même chose que le jeu.
+    this.portesFermees.clear();
+    for (const p of this.world.level.portals ?? []) {
+      if (p.dessinee) this.portesFermees.add(p.id);
+    }
   }
 
   get scale(): number {
@@ -256,7 +264,8 @@ export class Simulation {
     // Les caisses reposées cherchent leur logement. Après la chute, donc : une
     // caisse doit avoir atterri avant de pouvoir s'emboîter.
     const wasAllFilled = this.sockets.allFilled;
-    const logees = this.sockets.settle(this.carryables.items);
+    const { locked: logees, liberes } = this.sockets.settle(this.carryables.items);
+    if (liberes.length > 0) events.socketVide = { socketId: liberes[0] };
     if (logees.length > 0) {
       events.socketFilled = logees[0];
       if (!wasAllFilled && this.sockets.allFilled) events.allSocketsFilled = true;
