@@ -13,6 +13,7 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments } from './render/pigments.js';
+import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
 import { AttenteDuo } from './net/attente.js';
 import { CaissesPartagees } from './net/caisses.js';
@@ -178,6 +179,9 @@ const JALON_PORTE: [number, number, number] = [0, 30, 58];
 const tracage = new Tracage();
 /** Le plan de fin. Ne se déclenche qu'une fois, et seulement dans le monde. */
 const sacre = new Cinematique();
+/** L'encrier qui vient se poser sur la pointe, quand les couleurs sont rendues. */
+const sceau = new SceauFinal([0, 114.2, 0]);
+if (MODE === 'monde') scene.add(sceau.group);
 let coupsPoses = 0;
 
 if (MODE === 'monde') sim.portesFermees.add(PORTE_A_DESSINER);
@@ -212,6 +216,8 @@ const ambiance = new Ambiance();
 let stepPhase = 0;
 /** Retard vertical de l'œil sur le corps, après une marche. Toujours ≤ 0. */
 let lissageMarche = 0;
+/** Vrai pendant le plan de fin, où l'on voit beaucoup plus loin que d'habitude. */
+let sacreLarge = false;
 
 // --- Entrées ------------------------------------------------------------------
 const input = new InputManager(renderer.domElement, LEVEL.spawnYaw);
@@ -638,7 +644,12 @@ function frame(now: number): void {
       // qu'on lui demandait, et c'est le seul moment où l'on retire au joueur
       // la maîtrise de sa caméra — pour lui montrer ce qu'il vient de repeindre.
       if (reste === 0) {
-        sacre.jouer([0, 60, 0], camera.position);
+        // LA MAQUETTE CESSE DE MENTIR. Depuis la première minute, elle montre
+        // un encrier sur la pointe de l'Aiguille ; il s'y pose enfin, monté par
+        // le Pinceau pendant que la caméra prend du recul. C'est lui qu'on a
+        // suivi tout le jeu — c'est à lui de finir le geste.
+        sceau.declencher();
+        sacre.jouer([0, 74, 0], camera.position);
         ambiance.retrouvaille();
         document.exitPointerLock();
       }
@@ -674,6 +685,30 @@ function frame(now: number): void {
   // doit se sentir pareil à toutes les échelles.
   if (lissageMarche < 0) {
     lissageMarche = Math.min(0, lissageMarche + dt * 9 * sim.scale);
+  }
+
+  // ─── LE PLAN DE FIN VOIT PLUS LOIN QUE LE JEU ────────────────────────────
+  //
+  // Le brouillard s'arrête à 300 mètres et le plan lointain à 460 : parfait
+  // pour jouer, désastreux pour un plan qui recule à trois cents mètres et doit
+  // montrer le belvédère, qui est à quatre cents. Sans ça, la caméra s'éloigne
+  // et le monde qu'on vient de repeindre s'efface dans le papier — exactement
+  // ce qu'on voulait donner à voir.
+  //
+  // On ouvre donc les deux pendant le sacre, et on les referme après. Le
+  // brouillard reste présent, mais très au fond : il tient l'horizon sans
+  // manger le sujet.
+  if (sacre.actif && !sacreLarge) {
+    sacreLarge = true;
+    fogRef.near = 260;
+    fogRef.far = 1500;
+    camera.far = 1800;
+    camera.updateProjectionMatrix();
+  } else if (!sacre.actif && sacreLarge) {
+    sacreLarge = false;
+    fogRef.near = 34;
+    fogRef.far = 300;
+    applyScale(true);
   }
 
   if (!sacre.update(dt, camera)) {
@@ -744,6 +779,7 @@ function frame(now: number): void {
   if (trace !== null) portals.tracer(tracage.pairEnCours ?? PORTE_A_DESSINER, trace);
   feuilles.update(dt, camera, scale);
   pigments.update(dt);
+  if (sceau.enCours) sceau.update(dt);
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
 

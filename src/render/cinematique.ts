@@ -71,13 +71,16 @@ export class Cinematique {
     const t = Math.min(1, this.temps / DUREE);
 
     // Le recul : de tout près à très loin, mais amorti, donc jamais un zoom.
-    const rayon = 14 + doux(t) * 300;
+    // 420 mètres, c'est ce qu'il faut pour tenir le belvédère dans le cadre —
+    // il est à quatre cents au nord, et un plan de fin qui coupe le sommet du
+    // monde qu'on vient de repeindre serait une drôle de conclusion.
+    const rayon = 16 + doux(t) * 420;
     // Un peu plus d'un demi-tour. Un tour complet ramènerait au point de départ,
     // ce qui donnerait l'impression que rien n'a été montré.
     const angle = this.angleDepart + doux(t) * Math.PI * 1.15;
     // On monte d'abord, puis on redescend : la caméra passe au-dessus de la
     // pointe avant de plonger vers le village.
-    const hauteur = Math.sin(doux(t) * Math.PI) * 46 - doux(t) * 62;
+    const hauteur = Math.sin(doux(t) * Math.PI) * 70 - doux(t) * 46;
 
     camera.position.set(
       this.centre.x + Math.sin(angle) * rayon,
@@ -87,10 +90,15 @@ export class Cinematique {
 
     // Le regard glisse de la pointe vers le pied de l'Aiguille — donc vers le
     // village, qu'on finit par embrasser en entier.
+    // Le regard glisse du sommet vers le pied de l'Aiguille, et DÉRIVE VERS LE
+    // NORD en même temps : c'est là que sont la terrasse et le belvédère, donc
+    // c'est là qu'est le chemin qu'on vient de faire. On finit sur le voyage,
+    // pas sur l'objet.
+    const descente = doux(Math.max(0, (t - 0.25) / 0.75));
     this.cible.set(
       this.centre.x,
-      this.centre.y - doux(Math.max(0, (t - 0.25) / 0.75)) * 118,
-      this.centre.z,
+      this.centre.y - descente * 96,
+      this.centre.z + descente * 120,
     );
     camera.lookAt(this.cible);
     // La caméra a été orientée à la main : sans ça, le rendu des portails

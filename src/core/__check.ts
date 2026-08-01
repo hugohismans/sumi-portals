@@ -1316,8 +1316,12 @@ console.log('\n— Aucune face confondue et exposée —');
   // escalier — où deux dalles au même niveau donnaient une écharpe grésillante
   // en travers de la terrasse, que seul un joueur pouvait voir.
   //
-  // Le seuil est de 2 m². En dessous, un recouvrement ne se remarque pas, et
-  // exiger la perfection rendrait le décor pénible à écrire pour rien.
+  // LE SEUIL EST DESCENDU DE 2 m² À 0,25. À deux mètres carrés, il laissait
+  // passer les margelles d'un étang et les angles d'un garde-corps — des
+  // surfaces d'un mètre carré, mais qu'on longe de près et qui grésillaient
+  // sous les yeux du joueur. La taille d'une face confondue ne dit rien de sa
+  // visibilité : c'est la distance à laquelle on la regarde qui compte, et un
+  // rebord, on marche dessus.
   for (const [nom, niveau] of [
     ['le monde', MONDE],
     ['le hall', LOBBY],
@@ -1326,7 +1330,7 @@ console.log('\n— Aucune face confondue et exposée —');
     ['la caisse', LEVEL_02],
     ['un rêve', reve(7)],
   ] as const) {
-    const fautes = facesConfondues(niveau.boxes, 2);
+    const fautes = facesConfondues(niveau.boxes, 0.25);
     check(`${nom} n'a aucune face confondue`, fautes.length === 0, fautes[0] ?? '');
   }
 }

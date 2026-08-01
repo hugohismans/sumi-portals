@@ -260,9 +260,24 @@ const piedestal = (cx: number, cz: number, creux: number, retourne = false): Box
 };
 
 /** Maison : un corps et une toiture débordante, qui pose la ligne d'encre. */
-const maison = (cx: number, cz: number, w: number, d: number, h: number, ink: number): BoxDef[] => [
+const maison = (
+  cx: number,
+  cz: number,
+  w: number,
+  d: number,
+  h: number,
+  ink: number,
+  // DÉBORD DE TOITURE, VARIABLE D'UNE MAISON À L'AUTRE.
+  //
+  // Il valait 0,70 partout, et deux maisons voisines de la rue se retrouvaient
+  // avec la joue de leur toit dans le même plan : un demi-mètre carré qui
+  // grésillait entre deux façades, en pleine rue. Le faire varier de quelques
+  // centimètres suffit à les départager — et c'est de toute façon plus juste,
+  // puisque rien d'autre dans ce village n'est identique deux fois.
+  debord = 0.7,
+): BoxDef[] => [
   box([cx - w, -0.6, cz - d], [cx + w, h, cz + d], ink),
-  box([cx - w - 0.7, h - 0.15, cz - d - 0.7], [cx + w + 0.7, h + 0.55, cz + d + 0.7], 2),
+  box([cx - w - debord, h - 0.15, cz - d - debord], [cx + w + debord, h + 0.55, cz + d + debord], 2),
 ];
 
 /** Lanterne : un mât et sa boîte de lumière. Elles donnent son rythme à la rue. */
@@ -294,7 +309,9 @@ const village = (): BoxDef[] => {
       const w = 4 + r() * 2.4;
       const d = 3.6 + r() * 2.2;
       const h = 4 + r() * 4.5;
-      out.push(...maison(cote * (9 + w), z + (r() - 0.5) * 3, w, d, h, 1 + ((r() * 2) | 0)));
+      out.push(
+        ...maison(cote * (9 + w), z + (r() - 0.5) * 3, w, d, h, 1 + ((r() * 2) | 0), 0.58 + r() * 0.24),
+      );
     }
   }
 
@@ -329,16 +346,22 @@ const village = (): BoxDef[] => {
   // --- L'étang : un creux d'eau claire ---------------------------------------
   // La seule surface pâle du village : c'est elle qui brillera d'en haut.
   out.push(box([28, -3, -58], [50, -1.1, -36], 0));
+  // LES QUATRE MARGELLES N'ONT PAS TOUTES LA MÊME HAUTEUR, et ce n'est pas un
+  // caprice. À 0,60 tout rond, les margelles est et ouest partageaient leur
+  // face supérieure avec celles du nord et du sud, sur un carré d'un mètre à
+  // chaque angle — quatre coins qui grésillaient au bord de l'eau, visibles
+  // depuis toute la place. Six centimètres d'écart suffisent à les départager,
+  // et personne ne verra jamais qu'un rebord d'étang n'est pas d'aplomb.
   out.push(box([27, -3, -59], [28, 0.6, -35], 2));
   out.push(box([50, -3, -59], [51, 0.6, -35], 2));
-  out.push(box([27, -3, -59], [51, 0.6, -58], 2));
-  out.push(box([27, -3, -36], [51, 0.6, -35], 2));
+  out.push(box([27, -3, -59], [51, 0.66, -58], 2));
+  out.push(box([27, -3, -36], [51, 0.66, -35], 2));
 
   // --- Quelques maisons à l'écart, pour que le village ait des bords ---------
   for (const [cx, cz] of [[-38, -46], [-30, -62], [-48, -70], [34, -18], [44, -26], [24, -74]]) {
     const w = 3.4 + r() * 2;
     const d = 3.4 + r() * 2;
-    out.push(...maison(cx, cz, w, d, 4 + r() * 4, 1 + ((r() * 2) | 0)));
+    out.push(...maison(cx, cz, w, d, 4 + r() * 4, 1 + ((r() * 2) | 0), 0.58 + r() * 0.24));
   }
 
   return out;
@@ -447,8 +470,11 @@ export const MONDE: LevelDef = {
     ...balustrade(-88.4, 44, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
     ...balustrade(86, 88.4, 47.3, 48.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
     ...balustrade(-88.4, 38, 127.3, 128.7, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
-    ...balustrade(-88.7, -87.3, 47.65, 128.35, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
-    ...balustrade(87.3, 88.7, 47.65, 128.35, TERRASSE_Y, 6, 1.7, 0.7).map(haut),
+    // Les garde-corps latéraux sont 12 cm plus hauts que les frontaux : aux
+    // angles, leurs lisses se coiffaient à l'altitude exacte. Même remède
+    // qu'au belvédère, même cause.
+    ...balustrade(-88.7, -87.3, 47.65, 128.35, TERRASSE_Y, 6.12, 1.7, 0.7).map(haut),
+    ...balustrade(87.3, 88.7, 47.65, 128.35, TERRASSE_Y, 6.12, 1.7, 0.7).map(haut),
 
     // Le jardin sec, posé sur la dalle. Région autonome : voir regions/terrasse.ts.
     ...TERRASSE.boxes,
@@ -487,8 +513,11 @@ export const MONDE: LevelDef = {
     // donc on y descend et l'on y remonte sans y penser. Et sa face supérieure
     // n'est au niveau de rien d'autre — deux dalles au même niveau, on connaît.
     box([-13.4, 111.5, 8], [13.4, 114.05, 196], 1, { region: 'hauteurs' }),
-    ...balustrade(-14.2, -13.0, 8, 196, 114.05, 26, 7.6, 2.6).map(haut),
-    ...balustrade(13.0, 14.2, 8, 196, 114.05, 26, 7.6, 2.6).map(haut),
+    // Les garde-corps démarrent 40 cm APRÈS la passerelle : commencés au même
+    // z qu'elle, leur face sud tombait dans son plan. Mon propre éperon avait
+    // le défaut que je chasse partout ailleurs.
+    ...balustrade(-14.2, -13.0, 8.4, 196, 114.05, 26, 7.6, 2.6).map(haut),
+    ...balustrade(13.0, 14.2, 8.4, 196, 114.05, 26, 7.6, 2.6).map(haut),
 
     // Le détour minuscule, loin à l'est. Région autonome : voir regions/jardin.ts.
     ...JARDIN.boxes,
