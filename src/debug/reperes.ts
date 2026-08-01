@@ -49,6 +49,14 @@ export interface Repere {
   jalon: number;
   /** Déclenche la fin dès l'arrivée, sans rien avoir à faire. */
   sacre?: boolean;
+  /**
+   * Pinceau déjà réveillé et pendu à nos basques.
+   *
+   * C'est ce qui permet de se poser DEVANT la porte du retour, la fée en
+   * remorque, et de franchir pour voir le geste — au lieu de refaire le monde
+   * entier chaque fois qu'on veut juger deux secondes d'animation.
+   */
+  eveille?: string;
 }
 
 const VILLAGE_Y = 0;
@@ -108,6 +116,19 @@ export const REPERES_MONDE: Repere[] = [
     jalon: 5,
   },
   {
+    titre: 'AVANT LA PORTE — le rouge te suit',
+    verifier:
+      "Franchis, et regarde : les ÉCLATS du village doivent s'allumer là où tu " +
+      "poses les pieds — auvents, margelle, gardes de torii — et l'encre doit " +
+      'frapper chaque façade avant de sécher.',
+    position: [-330, 0.3, 0],
+    echelle: 1,
+    lacet: Math.PI * 0.5,
+    pigments: [],
+    jalon: 5,
+    eveille: 'pinceau-rouge',
+  },
+  {
     titre: 'Le rouge repeint le village',
     verifier:
       "LE MOMENT DU JEU. La couleur doit se répandre DEPUIS le pinceau, avec un front " +
@@ -161,6 +182,18 @@ export const REPERES_MONDE: Repere[] = [
     lacet: Math.PI,
     pigments: ['rouge'],
     jalon: 13,
+  },
+  {
+    titre: 'AVANT LA PORTE — le vert te suit',
+    verifier:
+      'Franchis, et regarde : le CORPS du village doit reprendre sa matière — ' +
+      'murs, toits, sol — pendant que ses éclats sont déjà rouges.',
+    position: [322, 0.4, 0],
+    echelle: 0,
+    lacet: -Math.PI * 0.5,
+    pigments: ['rouge'],
+    jalon: 13,
+    eveille: 'pinceau-vert',
   },
   {
     titre: 'La seconde porte, dessinée',

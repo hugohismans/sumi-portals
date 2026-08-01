@@ -711,6 +711,15 @@ if (PARAMS.get('debug') && MODE === 'monde') {
     for (let k = 0; k < 30 && !sim.player.grounded; k++) sim.step(immobile, TICK_DT);
 
     brush.poser(r.jalon);
+    // Le pinceau de couleur déjà réveillé, et pendu à nos basques : c'est ce
+    // qui permet de se poser devant la porte du retour et de juger le geste en
+    // franchissant, au lieu de refaire le monde entier à chaque essai.
+    if (r.eveille && !sim.eveilles.has(r.eveille)) {
+      sim.eveilles.add(r.eveille);
+      const socle = PINCEAU_DE_VEILLEUR.get(r.eveille);
+      const e = sim.eyePosition();
+      if (socle) peintres.get(socle)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
+    }
     flash(r.verifier, 9);
     for (const b of panneau.querySelectorAll('button')) b.classList.remove('ici');
     panneau.querySelectorAll('button')[i]?.classList.add('ici');
@@ -726,10 +735,10 @@ if (PARAMS.get('debug') && MODE === 'monde') {
   // Les touches sont lues par `code`, donc par POSITION physique : la rangée du
   // haut marche à l'identique en AZERTY, où ces touches produisent & é " ' (.
   const TOUCHES = [
-    'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6',
-    'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal',
+    'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
+    'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal', 'BracketLeft', 'BracketRight',
   ];
-  const LEGENDES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+  const LEGENDES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '[', ']'];
 
   panneau.innerHTML = '<h3>Repères — ?debug=1</h3>';
   REPERES_MONDE.forEach((r, i) => {
