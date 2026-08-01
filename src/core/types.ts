@@ -46,11 +46,30 @@ export interface PortalPairDef {
   small: PortalFaceDef;
 }
 
+/**
+ * Une caisse qu'on peut soulever.
+ *
+ * Sa taille est celle du MONDE, pas celle du joueur : posée au sol, elle ne
+ * bouge plus. C'est en la portant à travers un portail qu'elle change de
+ * dimension, exactement dans la même proportion que son porteur — et c'est de
+ * là que viennent les énigmes. Une caisse d'un mètre rapportée par la petite
+ * porte en fait quatre, et devient la marche qui manquait.
+ */
+export interface CarryableDef {
+  id: string;
+  /** Centre du bas de la caisse. */
+  position: [number, number, number];
+  /** Arête du cube, en unités du monde. */
+  size: number;
+  ink?: number;
+}
+
 export interface LevelDef {
   name: string;
   spawn: [number, number, number];
   spawnYaw: number;
   boxes: BoxDef[];
+  carryables?: CarryableDef[];
   portals: PortalPairDef[];
   goal: { position: [number, number, number]; radius: number };
   /** Indices contextuels déclenchés par proximité. */
@@ -77,6 +96,8 @@ export interface InputCommand {
   strafe: number;
   jump: boolean;
   sprint: boolean;
+  /** Maintenue, pas impulsion : la simulation détecte elle-même le front. */
+  interact: boolean;
   yaw: number;
   pitch: number;
 }
@@ -94,4 +115,8 @@ export interface TickEvents {
   };
   /** L'objectif vient d'être atteint. */
   reachedGoal?: boolean;
+  /** Une caisse vient d'être saisie ou reposée. */
+  carry?: { id: string; taken: boolean };
+  /** On a tenté de soulever une caisse trop grosse pour soi. */
+  tooHeavy?: { id: string };
 }

@@ -13,6 +13,7 @@ import { transformPoint } from './portals.js';
 import { Simulation } from './simulation.js';
 import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
+import { LEVEL_02 } from '../levels/level02.js';
 
 // Ce fichier est le seul du projet à tourner sous Node ; on déclare le strict
 // minimum plutôt que de tirer @types/node dans une base de code navigateur.
@@ -43,7 +44,7 @@ const walkTo = (
   sim: Simulation,
   target: [number, number, number],
   ticks: number,
-  opts: { jump?: boolean; sprint?: boolean; stopOnEvent?: boolean } = {},
+  opts: { jump?: boolean; sprint?: boolean; interact?: boolean; stopOnEvent?: boolean } = {},
 ): TickEvents => {
   const collected: TickEvents = {};
   for (let i = 0; i < ticks; i++) {
@@ -57,6 +58,7 @@ const walkTo = (
         strafe: 0,
         jump: opts.jump ?? false,
         sprint: opts.sprint ?? false,
+        interact: opts.interact ?? false,
         yaw: Math.atan2(dx, dz),
         pitch: 0,
       },
@@ -74,7 +76,15 @@ const walkTo = (
 const settle = (sim: Simulation, ticks = 180): void => {
   for (let i = 0; i < ticks; i++) {
     sim.step(
-      { forward: 0, strafe: 0, jump: false, sprint: false, yaw: sim.player.yaw, pitch: 0 },
+      {
+        forward: 0,
+        strafe: 0,
+        jump: false,
+        sprint: false,
+        interact: false,
+        yaw: sim.player.yaw,
+        pitch: 0,
+      },
       TICK_DT,
     );
   }
@@ -248,6 +258,98 @@ console.log('\n— Raccord de la traversée —');
     'on ressort les pieds au sol, sans flotter ni s’enfoncer',
     near(sim.player.position.y, 0, 0.05),
     `avant ${before.toFixed(2)} → après ${sim.player.position.y.toFixed(3)}`,
+  );
+}
+
+// =============================================================================
+console.log('\n— « La caisse » : la caisse grandit avec son porteur —');
+{
+  /** Appuie une fois sur la touche d'action, front montant compris. */
+  const appuyer = (sim: Simulation): TickEvents => {
+    const base = {
+      forward: 0,
+      strafe: 0,
+      jump: false,
+      sprint: false,
+      yaw: sim.player.yaw,
+      pitch: 0,
+    };
+    sim.step({ ...base, interact: false }, TICK_DT);
+    const e = sim.step({ ...base, interact: true }, TICK_DT);
+    sim.step({ ...base, interact: false }, TICK_DT);
+    return e;
+  };
+
+  const sim = new Simulation(LEVEL_02);
+  const caisse = () => sim.carryables.items[0];
+
+  check('la caisse démarre à 0,75', near(caisse().size, 0.75, 1e-6), `${caisse().size}`);
+
+  walkTo(sim, [4, 0, 6.8], 60 * 5);
+  const prise = appuyer(sim);
+  check('on la soulève à taille normale', prise.carry?.taken === true, JSON.stringify(prise));
+
+  // Le trajet vers la porte indigo, caisse en main.
+  walkTo(sim, [13, 0, 0], 60 * 8);
+  const t = walkTo(sim, [22, 0, 0], 60 * 6, { stopOnEvent: true });
+  check('on traverse la porte indigo en la portant', t.traversed?.newLevel === 1, pos(sim));
+  check(
+    'la caisse a grandi dans les mêmes proportions',
+    near(caisse().size, 3.0, 1e-6),
+    `${caisse().size}`,
+  );
+  check('elle est toujours en main', caisse().held === true);
+
+  // On la dépose contre la tour, puis on monte.
+  walkTo(sim, [-11, 0, -8], 60 * 22);
+  appuyer(sim);
+  check('on la repose à ×4', caisse().held === false);
+  settle(sim, 120);
+  check('elle retombe au sol', near(caisse().position.y, 0, 0.05), `${caisse().position.y}`);
+
+  const win = walkTo(sim, [-16, 6, -8], 60 * 20);
+  check('la tour se monte en passant par la caisse', sim.player.position.y > 5.5, pos(sim));
+  check('objectif atteint', win.reachedGoal === true, pos(sim));
+}
+
+// =============================================================================
+console.log('\n— « La caisse » : pas de raccourci —');
+{
+  // Sans la caisse, la tour doit rester imprenable à TOUTES les tailles
+  // atteignables. C'est ce qui fait de la caisse la solution, et non un décor.
+  for (const level of [0, 1]) {
+    const sim = new Simulation(LEVEL_02);
+    sim.player.scaleLevel = level;
+    sim.player.position = { x: -4, y: 0.2, z: -8 };
+    walkTo(sim, [-16, 0, -8], 60 * 16, { jump: true, sprint: true });
+    settle(sim);
+    check(
+      `sans la caisse, la tour tient à ×${scaleOfLevel(level)}`,
+      !sim.goalReached && sim.player.position.y < 5,
+      pos(sim),
+    );
+  }
+
+  // Et la caisse d'origine, simplement traînée jusqu'au pied de la tour sans
+  // être passée par un portail, ne doit rien changer.
+  const sim = new Simulation(LEVEL_02);
+  const caisse = sim.carryables.items[0];
+  caisse.position = { x: -11.4, y: 0, z: -8 };
+  sim.player.position = { x: -8, y: 0.2, z: -8 };
+  walkTo(sim, [-16, 0, -8], 60 * 16, { jump: true, sprint: true });
+  settle(sim);
+  check(
+    'la caisse d’origine, non agrandie, ne suffit pas',
+    !sim.goalReached && sim.player.position.y < 5,
+    pos(sim),
+  );
+
+  // À taille minuscule, on ne soulève plus rien.
+  const petit = new Simulation(LEVEL_02);
+  petit.player.scaleLevel = -1;
+  check(
+    'à ×1/4, la caisse est trop grosse pour être soulevée',
+    !petit.carryables.canLift(petit.carryables.items[0], scaleOfLevel(-1)),
   );
 }
 

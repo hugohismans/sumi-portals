@@ -66,6 +66,29 @@ l'attente.
 
 ---
 
+## Ambiance : le son et le vivant
+
+*(idée d'Hugo)*
+
+Le jeu est **trop silencieux**, et le monde trop figé. Deux manques distincts.
+
+**Le son.** Rien pour l'instant. Il faudrait au minimum du vent, des pas, le
+froissement d'un portail qu'on traverse. Piste : générer des nappes musicales
+avec d'autres outils et les intégrer comme fichiers.
+
+À faire absolument, quoi qu'il arrive : **transposer les sons avec l'échelle.**
+À ×4 tout devrait sonner plus grave et plus lent, à ×1/4 plus aigu. C'est trois
+lignes de code, et ça vend le changement de taille presque autant que l'image.
+
+**Les particules.** Peu, mais bien choisies. La référence est *Ōkami* : des
+feuilles ou des pétales qui dérivent en laissant derrière eux une **traînée
+d'encre**, comme un coup de pinceau qui s'efface. Cohérent avec tout le reste
+du rendu, et ça suffit à rendre l'air vivant.
+
+Garde-fou que je m'impose : **ne pas en mettre partout.** Une planche encrée
+tire sa force de ses vides. Quelques feuilles portées par le vent valent mieux
+qu'une neige permanente, qui tuerait la lisibilité des énigmes.
+
 ## Pistes ajoutées en chemin
 
 Non discutées, juste posées là.

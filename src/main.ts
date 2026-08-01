@@ -3,12 +3,14 @@ import { PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './core/constants.js';
 import { Simulation } from './core/simulation.js';
 import { InputManager } from './input/input.js';
 import { LEVEL_01 } from './levels/level01.js';
+import { LEVEL_02 } from './levels/level02.js';
 import { LOBBY } from './levels/lobby.js';
 import { Presence } from './net/presence.js';
 import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
 import { PortalRenderer } from './render/portalRenderer.js';
 import { Avatar } from './render/avatar.js';
+import { CarryableViews } from './render/carryableViews.js';
 import { RemotePlayers } from './render/remotePlayers.js';
 import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
 
@@ -18,8 +20,11 @@ import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
 // une seconde de chargement entre le hall et une énigme est indolore, et ça
 // évite tout un mécanisme de démontage qui n'apporterait rien pour l'instant.
 const MODE = new URLSearchParams(location.search).get('niveau');
-const EN_AVENTURE = MODE === 'cour';
-const LEVEL = EN_AVENTURE ? LEVEL_01 : LOBBY;
+const NIVEAUX: Record<string, typeof LEVEL_01> = { cour: LEVEL_01, caisse: LEVEL_02 };
+const EN_AVENTURE = MODE !== null && MODE in NIVEAUX;
+const LEVEL = EN_AVENTURE ? NIVEAUX[MODE!] : LOBBY;
+/** Enchaînement des énigmes. Le hall suit la fin de la dernière. */
+const NIVEAU_SUIVANT: Record<string, string> = { cour: '?niveau=caisse', caisse: './' };
 
 // --- Simulation ---------------------------------------------------------------
 const sim = new Simulation(LEVEL);
@@ -61,6 +66,10 @@ scene.add(goalMarker);
 const remotePlayers = new RemotePlayers();
 scene.add(remotePlayers.group);
 
+const carryableViews = new CarryableViews();
+carryableViews.build(sim.carryables.items);
+scene.add(carryableViews.group);
+
 // Le bonhomme du joueur local. Il vit dans la scène comme n'importe quel objet,
 // donc il apparaît tout seul dans les vues de portail : on se voit soi-même, de
 // dos et minuscule, à travers le grand torii.
@@ -88,6 +97,7 @@ const scaleValue = el('scale-value');
 const scaleSub = el('scale-sub');
 const hintBox = el('hint');
 const peersBox = el('peers');
+const suiteEl = el<HTMLAnchorElement>('suite');
 
 const SCALE_LABELS: Record<number, [string, string]> = {
   [-2]: ['×1/16', 'seize fois plus petit'],
@@ -266,10 +276,18 @@ function frame(now: number): void {
           : 'Le portail refuse : échelle extrême atteinte.',
       );
     }
+    if (events.carry) {
+      flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
+    }
+    if (events.tooHeavy) {
+      flash('Bien trop grosse à cette taille. Il faudrait grandir.', 2.6);
+    }
     if (events.reachedGoal) {
       if (EN_AVENTURE) {
+        suiteEl.setAttribute('href', NIVEAU_SUIVANT[MODE!] ?? './');
+        suiteEl.textContent = MODE === 'caisse' ? 'retour au hall' : 'niveau suivant';
         winPanel.classList.add('show');
-        // On rend la souris, sinon le lien de retour du panneau est inatteignable.
+        // On rend la souris, sinon le lien du panneau est inatteignable.
         document.exitPointerLock();
       } else {
         partirEnAventure();
@@ -294,6 +312,8 @@ function frame(now: number): void {
   const scale = scaleOfLevel(sim.player.scaleLevel);
   avatar.update(sim.player, scale, dt);
   avatar.syncInk();
+  carryableViews.update(sim.carryables.items);
+  carryableViews.syncInk();
 
   // --- Les autres joueurs -----------------------------------------------------
   if (presenceActive) {

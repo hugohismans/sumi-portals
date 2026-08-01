@@ -302,7 +302,11 @@ export class PortalRenderer {
     for (const view of this.views) {
       view.group.getWorldDirection(this.tmpNormal);
       const d = this.tmpVec.copy(camera.position).sub(view.group.position).dot(this.tmpNormal);
-      view.surface.position.z = Math.min(0, d - camera.near * 2.5);
+      // Uniquement quand on se tient DEVANT la face. Vu de derrière, d est
+      // négatif et la formule reculait la surface d'autant : elle s'éloignait
+      // en suivant le joueur, comme un cadre à la dérive. Derrière, il n'y a de
+      // toute façon rien à protéger — la surface n'y est pas visible.
+      view.surface.position.z = d > 0 ? Math.min(0, d - camera.near * 2.5) : 0;
     }
     this.group.updateMatrixWorld(true);
   }

@@ -11,6 +11,7 @@ import {
   SPRINT_MULTIPLIER,
   scaleOfLevel,
 } from './constants.js';
+import { Carryables } from './carryables.js';
 import { clamp, rotateY, vec3, wrapAngle, yawToForward, type Vec3 } from './math.js';
 import { moveAndCollide } from './physics.js';
 import {
@@ -20,6 +21,7 @@ import {
   transformPoint,
   transformVector,
   traversalLevelDelta,
+  traversalScale,
   withinFaceRect,
   yawDelta,
   type PortalFace,
@@ -35,12 +37,17 @@ import { World } from './world.js';
 export class Simulation {
   readonly world: World;
   readonly faces: PortalFace[];
+  readonly carryables: Carryables;
   player: PlayerState;
   goalReached = false;
+
+  /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
+  private interactHeld = false;
 
   constructor(level: LevelDef) {
     this.world = new World(level);
     this.faces = buildFaces(level.portals);
+    this.carryables = new Carryables(level.carryables);
     this.player = this.spawnState();
   }
 
@@ -58,6 +65,7 @@ export class Simulation {
 
   reset(): void {
     this.player = this.spawnState();
+    this.carryables.reset();
     this.goalReached = false;
   }
 
@@ -87,6 +95,12 @@ export class Simulation {
 
     pl.yaw = wrapAngle(input.yaw);
     pl.pitch = clamp(input.pitch, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+
+    // --- Caisses ---------------------------------------------------------------
+    // Les caisses posées deviennent des obstacles AVANT le déplacement du
+    // joueur : c'est ce qui permet de monter sur celle qu'on vient de déposer.
+    this.carryables.publishSolids(this.world);
+    this.handleInteract(input.interact, scale, events);
 
     // --- Direction souhaitée ---------------------------------------------------
     const forward = yawToForward(pl.yaw);
@@ -177,6 +191,13 @@ export class Simulation {
       }
     }
 
+    // --- Caisses : suivi du porteur, puis chute des autres ----------------------
+    const held = this.carryables.held;
+    if (held) {
+      this.carryables.followCarrier(held, pl.position, pl.yaw, this.scale);
+    }
+    this.carryables.step(this.world, dt);
+
     // --- Objectif --------------------------------------------------------------
     if (!this.goalReached) {
       const g = this.world.level.goal;
@@ -190,6 +211,39 @@ export class Simulation {
     }
 
     return events;
+  }
+
+  /**
+   * Saisir ou reposer, au front montant de la touche.
+   *
+   * On signale explicitement le refus « trop lourd » : sans ça, la touche
+   * resterait sans effet et le joueur croirait à une panne au lieu de
+   * comprendre qu'il doit d'abord grandir.
+   */
+  private handleInteract(pressed: boolean, scale: number, events: TickEvents): void {
+    const justPressed = pressed && !this.interactHeld;
+    this.interactHeld = pressed;
+    if (!justPressed) return;
+
+    const held = this.carryables.held;
+    if (held) {
+      held.held = false;
+      held.velocity.y = 0;
+      this.carryables.placeForDrop(held, this.world, this.player.position, this.player.yaw, scale);
+      events.carry = { id: held.id, taken: false };
+      return;
+    }
+
+    const target = this.carryables.targeted(this.player.position, this.player.yaw, scale);
+    if (!target) return;
+
+    if (!this.carryables.canLift(target, scale)) {
+      events.tooHeavy = { id: target.id };
+      return;
+    }
+
+    target.held = true;
+    events.carry = { id: target.id, taken: true };
   }
 
   /** Première face franchie par le segment [from → to], de l'avant vers l'arrière. */
@@ -224,5 +278,14 @@ export class Simulation {
     pl.velocity.z = newVel.z;
     pl.yaw = wrapAngle(pl.yaw + yawDelta(face));
     pl.grounded = false;
+
+    // La caisse portée subit exactement le même sort que son porteur. C'est
+    // toute la mécanique : elle ressort quatre fois plus grande, ou quatre fois
+    // plus petite, et garde ensuite cette taille une fois posée.
+    const held = this.carryables.held;
+    if (held) {
+      held.size *= traversalScale(face);
+      this.carryables.followCarrier(held, pl.position, pl.yaw, newScale);
+    }
   }
 }

@@ -102,6 +102,9 @@ export class InputManager {
       strafe: this.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight']),
       jump: this.keys.has('Space'),
       sprint: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'),
+      // Maintenue telle quelle : c'est la simulation qui détecte le front, pour
+      // que le comportement soit identique en local et sur un futur serveur.
+      interact: this.keys.has('KeyE'),
       yaw: this.yaw,
       pitch: this.pitch,
     };

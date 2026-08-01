@@ -29,15 +29,34 @@ export const overlaps = (a: Aabb, b: Aabb): boolean =>
 /** Géométrie de collision du niveau. Pas de rendu ici, uniquement des boîtes. */
 export class World {
   readonly level: LevelDef;
+  /** Décor fixe. */
   readonly solids: Aabb[];
+  /**
+   * Obstacles mobiles — les caisses posées. Réécrit à chaque tick par
+   * Carryables.publishSolids(). C'est ce qui permet de MONTER sur une caisse
+   * qu'on vient de déposer, et donc d'en faire une marche.
+   */
+  readonly dynamic: Aabb[] = [];
 
   constructor(level: LevelDef) {
     this.level = level;
     this.solids = level.boxes.filter((b) => !b.ghost).map(aabbFromBox);
   }
 
-  /** Solides potentiellement en contact avec `box`. Brut de force : ~100 boîtes. */
+  /** Tout ce qui peut arrêter le joueur : décor et caisses posées. */
   query(box: Aabb, out: Aabb[]): Aabb[] {
+    out.length = 0;
+    for (const s of this.solids) {
+      if (overlaps(box, s)) out.push(s);
+    }
+    for (const s of this.dynamic) {
+      if (overlaps(box, s)) out.push(s);
+    }
+    return out;
+  }
+
+  /** Décor fixe uniquement — ce sur quoi les caisses elles-mêmes retombent. */
+  queryStatic(box: Aabb, out: Aabb[]): Aabb[] {
     out.length = 0;
     for (const s of this.solids) {
       if (overlaps(box, s)) out.push(s);
