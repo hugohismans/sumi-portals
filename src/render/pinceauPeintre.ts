@@ -34,7 +34,7 @@ import { buildWorldGeometry } from './worldMesh.js';
 /** Durées, en secondes. */
 const EVEIL = 0.7;
 const BOND = 0.34;
-const BALAYAGE = 4.2;
+const BALAYAGE = 2.8;
 const RETOUR = 1.6;
 
 /** Rayon de l'orbite autour du joueur, en tailles de joueur. */
@@ -242,15 +242,19 @@ export class PinceauPeintre {
       // L'ARC. Il s'éloigne, tourne, et revient — un geste de main, pas un
       // déplacement. Le rayon suit l'échelle du joueur pour que le balayage
       // couvre toujours « ce qu'on voit », à toutes les tailles.
-      const rayon = 26 * echelleJoueur * Math.sin(t * Math.PI);
-      const angle = t * Math.PI * 1.8;
+      // Il part VITE et ralentit : le coup est donné au début, comme une main
+      // qui frappe la surface puis accompagne. Un arc à vitesse constante se
+      // lisait comme un déplacement.
+      const e = 1 - Math.pow(1 - t, 2.6);
+      const rayon = 30 * echelleJoueur * Math.sin(e * Math.PI);
+      const angle = e * Math.PI * 1.9;
       this.group.position.set(
         this.socle.x + Math.sin(angle) * rayon,
         this.socle.y + 5.5 + Math.sin(t * Math.PI * 2) * 4.5 * echelleJoueur,
         this.socle.z + Math.cos(angle) * rayon,
       );
       // Il pique dans le sens de sa course : la touffe la première.
-      this.corps.rotation.z = 0.5 + Math.sin(t * Math.PI * 3) * 0.35;
+      this.corps.rotation.z = 0.5 + Math.sin(e * Math.PI * 3) * 0.55;
       this.corps.rotation.y = angle;
       return;
     }

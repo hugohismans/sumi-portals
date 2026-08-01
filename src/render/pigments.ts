@@ -22,15 +22,27 @@ import type * as THREE from 'three';
  * seulement la couleur, ce qui est exactement le sujet.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * LE RETOUR DE LA COULEUR NE SE FAIT PAS D'UN COUP. Une bascule instantanée
- * lirait comme un interrupteur ; ici la teinte monte en un peu plus de deux
- * secondes, avec une amorce lente — le temps qu'un pinceau mettrait à couvrir
- * une surface. C'est la seule chose qui distingue « on m'a rendu une couleur »
- * de « un réglage a changé ».
+ * LE RETOUR DE LA COULEUR CLAQUE, mais ne bascule pas. Une bascule instantanée
+ * se lirait comme un interrupteur ; une montée lente se lisait comme une jauge,
+ * ce qui était le défaut de la première version. Ici l'encre PREND d'un coup
+ * puis s'étale — voir DUREE et sa courbe.
  */
 
 const CLE = 'sumi.pigments';
-const DUREE = 2.4;
+/**
+ * DURÉE DU RETOUR D'UNE COULEUR.
+ *
+ * Elle valait 2,4 secondes, avec une courbe douce aux deux bouts. C'était joli
+ * et ça ne claquait pas : la teinte montait si progressivement qu'on ne pouvait
+ * pas dire à quel instant elle était arrivée, et le geste du pinceau qui la
+ * portait ne se raccrochait à rien.
+ *
+ * 1,1 seconde, et surtout une courbe qui DÉMARRE FORT et finit en douceur. Les
+ * trois quarts de la couleur arrivent dans le premier tiers du temps — comme
+ * de l'encre qui prend d'un coup et s'étale ensuite. C'est ce départ franc
+ * qu'on lit comme un coup de pinceau, et non comme un réglage qui monte.
+ */
+const DUREE = 1.1;
 
 interface Chantier {
   materiaux: THREE.ShaderMaterial[];
@@ -122,8 +134,9 @@ export class Pigments {
     if (this.chantiers.length === 0) return;
     for (const c of this.chantiers) {
       c.avancement = Math.min(1, c.avancement + dt / DUREE);
-      // Amorce lente puis remplissage franc : la couleur hésite, puis prend.
-      const t = c.avancement * c.avancement * (3 - 2 * c.avancement);
+      // Départ franc, fin douce : 1 − (1 − t)³. L'encre prend d'un coup, puis
+      // s'étale. L'inverse — hésiter puis remplir — se lisait comme une jauge.
+      const t = 1 - Math.pow(1 - c.avancement, 3);
       for (const m of c.materiaux) {
         if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = t;
       }

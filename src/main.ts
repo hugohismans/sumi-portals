@@ -181,11 +181,21 @@ const REVEIL_PAR_OBJET = new Map<string, { socle: string }>([
   ['encrier', { socle: 'socle-vert' }],
   ['braise', { socle: 'socle-rouge' }],
 ]);
-/** La région que chaque pinceau doit repeindre — et donc où il se met au travail. */
-const REGION_DE_SOCLE = new Map<string, string>([
-  ['socle-vert', ''],
-  ['socle-rouge', 'hauteurs'],
-]);
+/**
+ * LE MONDE OÙ L'ON RENTRE. C'est là que les pinceaux se mettent au travail,
+ * quelle que soit la partie du monde qu'ils repeignent.
+ *
+ * Ils attendaient d'être dans la région qu'ils repeignent, et c'était faux : le
+ * pinceau rouge repeint les hauteurs, donc il patientait jusqu'à ce qu'on monte
+ * sur la terrasse. On le ramenait, on traversait tout le village, il ne se
+ * passait rien — puis la couleur arrivait dix minutes plus tard, sans rapport
+ * apparent avec ce qu'on venait de faire.
+ *
+ * Ils peignent maintenant dès qu'on remet les pieds au village, qui est le
+ * foyer. On voit la terrasse se colorer au-dessus de soi, ce qui est d'ailleurs
+ * plus beau que d'être dedans quand ça arrive.
+ */
+const REGION_MAISON = '';
 if (MODE === 'monde') {
   // Chaque pinceau : son socle de repos, sa couleur, ET l'endroit de son monde
   // où il dort, planté, en attendant qu'on vienne le prendre. La taille dont il
@@ -894,7 +904,7 @@ function frame(now: number): void {
   // l'accompagnent, puis s'en détachent pour peindre.
   const oeilPeintre = sim.eyePosition();
   tmpOeil.set(oeilPeintre.x, oeilPeintre.y, oeilPeintre.z);
-  for (const [socle, p] of peintres) {
+  for (const p of peintres.values()) {
     if (!p.enCours) continue;
     // IL PEINT EN RENTRANT, pas en arrivant sur son socle. Dès que le joueur
     // remet les pieds dans la région grise que ce pinceau doit repeindre, il
@@ -902,7 +912,7 @@ function frame(now: number): void {
     // monde en couleurs, on retrouve le sien en lavis, et la couleur arrive
     // avec soi.
     if (p.suitLeJoueur) {
-      const region = (LEVEL.regions ?? []).find((r) => r.name === REGION_DE_SOCLE.get(socle));
+      const region = (LEVEL.regions ?? []).find((r) => r.name === REGION_MAISON);
       const dedans =
         region !== undefined &&
         tmpOeil.x >= region.min[0] && tmpOeil.x <= region.max[0] &&
