@@ -24,6 +24,11 @@ export interface PortalFace {
   height: number;
   /** L'autre face de la paire. */
   twin: PortalFace;
+  /**
+   * Identifiant du logement qui descelle cette paire. Tant qu'il est vide, on
+   * ne passe pas. Absent : la porte est toujours ouverte.
+   */
+  condition?: string;
 }
 
 const makeFace = (
@@ -42,6 +47,16 @@ const makeFace = (
   height: kind === 'big' ? smallH * SCALE_RATIO : smallH,
 });
 
+/**
+ * Une paire scellée est fermée DES DEUX CÔTÉS.
+ *
+ * C'est ce qui la rend utilisable en coopération sans piéger personne : si
+ * seule l'entrée était scellée, on pourrait passer, voir le logement se vider
+ * derrière soi, et rester enfermé de l'autre côté.
+ */
+export const estScelle = (face: PortalFace, logementsPourvus: ReadonlySet<string>): boolean =>
+  face.condition !== undefined && !logementsPourvus.has(face.condition);
+
 export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
   const faces: PortalFace[] = [];
   for (const pair of pairs) {
@@ -53,6 +68,8 @@ export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
     const small = makeFace(pair.id, 'small', pair.small, w, h) as PortalFace;
     big.twin = small;
     small.twin = big;
+    big.condition = pair.condition;
+    small.condition = pair.condition;
     faces.push(big, small);
   }
   return faces;

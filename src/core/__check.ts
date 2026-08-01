@@ -10,6 +10,14 @@
  */
 import { TICK_DT, scaleOfLevel } from './constants.js';
 import { transformPoint } from './portals.js';
+import { partenaireDe, salonDe, type Attendant } from './salons.js';
+import { retrouvailles, type Dalle } from './retrouvailles.js';
+import {
+  DALLE_GEANT,
+  DALLE_MINUSCULE,
+  RAYON_DALLE,
+  construireDuo,
+} from '../levels/duo.js';
 import { Simulation } from './simulation.js';
 import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
@@ -607,6 +615,200 @@ console.log('\n— Le jardin : le détour minuscule —');
     'on tient debout dans le jardin, il n’est pas posé sur le vide',
     debout.player.grounded && debout.player.position.y > -1,
     pos(debout),
+  );
+}
+
+// =============================================================================
+console.log('\n— Le rendez-vous à deux —');
+{
+  // Ce qu'on vérifie ici n'est pas « ça marche » mais « les deux joueurs
+  // trouvent LA MÊME RÉPONSE sans se parler ». C'est toute la conception : s'ils
+  // voient la même file, ils concluent la même chose, et il n'y a rien à
+  // négocier.
+  const file: Attendant[] = [
+    { uid: 'zoe', depuis: 1000 },
+    { uid: 'alice', depuis: 2000 },
+  ];
+  check(
+    'deux joueurs isolés trouvent le même salon, chacun de son côté',
+    salonDe('zoe', file) === salonDe('alice', file) && salonDe('zoe', file) !== null,
+    `${salonDe('zoe', file)}`,
+  );
+
+  // L'ordre dans lequel la base nous livre la liste ne doit rien changer :
+  // Firebase ne garantit pas l'ordre, et s'y fier serait un bug qui n'apparaît
+  // qu'en production.
+  check(
+    'l’ordre de livraison de la liste ne change rien',
+    salonDe('zoe', file) === salonDe('zoe', [...file].reverse()),
+    `${salonDe('zoe', [...file].reverse())}`,
+  );
+
+  // Le vrai piège, et la raison du tri par ancienneté : un nouveau venu ne doit
+  // pas défaire une paire déjà formée. Trié par identifiant, « aaa » se serait
+  // glissé en tête et aurait volé le partenaire des deux premiers.
+  const avant = salonDe('zoe', file);
+  const apres = salonDe('zoe', [...file, { uid: 'aaa', depuis: 3000 }]);
+  check(
+    'un nouveau venu ne défait pas une paire déjà formée',
+    avant === apres,
+    `${avant} → ${apres}`,
+  );
+
+  // Quatre joueurs donnent deux salons distincts, et personne n'est dans deux.
+  const quatre: Attendant[] = [
+    { uid: 'd', depuis: 10 },
+    { uid: 'c', depuis: 20 },
+    { uid: 'b', depuis: 30 },
+    { uid: 'a', depuis: 40 },
+  ];
+  const salons = new Set(quatre.map((x) => salonDe(x.uid, quatre)));
+  check(
+    'quatre joueurs donnent deux salons, et deux seulement',
+    salons.size === 2 && !salons.has(null),
+    `${[...salons].join(' | ')}`,
+  );
+
+  // Un joueur seul attend. Il ne doit surtout pas partir jouer tout seul dans
+  // un monde conçu pour deux — il y serait bloqué au premier verrou.
+  check(
+    'un joueur seul reste en attente',
+    salonDe('a', [{ uid: 'a', depuis: 1 }]) === null,
+    'aucun salon',
+  );
+
+  // Impair : les deux premiers partent, le troisième garde sa place en tête de
+  // file et sera le premier servi au prochain arrivant.
+  const trois: Attendant[] = [
+    { uid: 'x', depuis: 1 },
+    { uid: 'y', depuis: 2 },
+    { uid: 'z', depuis: 3 },
+  ];
+  check(
+    'à trois, le dernier arrivé attend le suivant',
+    salonDe('z', trois) === null && salonDe('x', trois) === salonDe('y', trois),
+    `${salonDe('x', trois)}`,
+  );
+
+  check(
+    'et l’on sait qui est en face',
+    partenaireDe('x', trois) === 'y' && partenaireDe('y', trois) === 'x',
+    `${partenaireDe('x', trois)}`,
+  );
+}
+
+// =============================================================================
+console.log('\n— La clairière : ce qu’une personne seule ne peut pas faire —');
+{
+  const DUO = construireDuo('geant');
+
+  /** Un joueur posé quelque part, à l'échelle qu'on veut. */
+  const joueur = (niveau: number, x: number, y: number, z: number): Simulation => {
+    const s = new Simulation(DUO);
+    s.player.scaleLevel = niveau;
+    s.player.position = { x, y, z };
+    return s;
+  };
+
+  // --- Les deux routes sont exclusives, et le sont PHYSIQUEMENT --------------
+  // C'est le cœur du niveau : on ne l'obtient par aucun script, seulement par
+  // des dimensions. Si ces quatre vérifications passent, la coopération est
+  // garantie par la géométrie et non par une règle qu'on aurait pu oublier.
+  const geantColonne = joueur(1, -34, 0.5, 0);
+  walkTo(geantColonne, [-26, 9.45, 0], 60 * 30, { jump: true });
+  settle(geantColonne, 60);
+  check(
+    'à ×4, le géant gravit la colonne',
+    geantColonne.player.position.y > 9,
+    pos(geantColonne),
+  );
+
+  const petitColonne = joueur(-1, -34, 0.5, 0);
+  walkTo(petitColonne, [-26, 9.45, 0], 60 * 60, { jump: true, sprint: true });
+  settle(petitColonne, 60);
+  check(
+    'à ×1/4, la même colonne est un mur — marches de 3, enjambée de 0,22',
+    petitColonne.player.position.y < 1,
+    pos(petitColonne),
+  );
+
+  const petitFente = joueur(-1, 16, 0, 0);
+  walkTo(petitFente, [28.5, 0, 0], 60 * 90);
+  settle(petitFente, 30);
+  check(
+    'à ×1/4, le minuscule se glisse sous la dalle',
+    petitFente.player.position.x > 26 && petitFente.player.position.y < 0.5,
+    pos(petitFente),
+  );
+
+  // Ce qu'on vérifie n'est pas que le géant reste à distance — il peut très
+  // bien MARCHER SUR la dalle, et c'est même une jolie image : il arpente le
+  // toit du monde de l'autre. Ce qu'il ne doit pas pouvoir, c'est atteindre le
+  // logement, qui est dessous.
+  const geantFente = joueur(1, 14, 0.5, 0);
+  walkTo(geantFente, [28.5, 0, 0], 60 * 30, { jump: true, sprint: true });
+  settle(geantFente, 30);
+  check(
+    'à ×4, la fente lui reste fermée — il passe par-dessus, jamais dessous',
+    geantFente.player.position.y > 1.5,
+    pos(geantFente),
+  );
+
+  // --- Les portes scellées ---------------------------------------------------
+  const ferme = joueur(1, -20, 0.5, 0);
+  const refus = walkTo(ferme, [-2, 0.35, 0], 60 * 20, { stopOnEvent: true });
+  check(
+    'la porte du géant reste close tant que la fente est vide',
+    refus.refused?.reason === 'scelle' && ferme.player.scaleLevel === 1,
+    `${refus.refused?.reason ?? 'aucun refus'}`,
+  );
+
+  // Et la même, une fois que l'AUTRE joueur a fait son travail à l'autre bout
+  // du monde. C'est la seule chose qui change entre les deux essais.
+  const ouvert = joueur(1, -20, 0.5, 0);
+  ouvert.sockets.items.find((s) => s.id === 'socle-fissure')!.filledBy = 'galet';
+  const passe = walkTo(ouvert, [-2, 0.35, 0], 60 * 20, { stopOnEvent: true });
+  check(
+    'et elle s’ouvre dès que le minuscule l’a garnie',
+    passe.traversed?.pairId === 'porte-du-geant' && ouvert.player.scaleLevel === 0,
+    `échelle ${ouvert.player.scaleLevel}`,
+  );
+
+  const ouvert2 = joueur(-1, 20, 0, 0);
+  ouvert2.sockets.items.find((s) => s.id === 'socle-colonne')!.filledBy = 'pierre-lourde';
+  const passe2 = walkTo(ouvert2, [2, 0.35, 0], 60 * 90, { stopOnEvent: true });
+  check(
+    'symétriquement, la porte du minuscule s’ouvre grâce au géant',
+    passe2.traversed?.pairId === 'porte-du-minuscule' && ouvert2.player.scaleLevel === 0,
+    `échelle ${ouvert2.player.scaleLevel}`,
+  );
+
+  // --- La retrouvaille -------------------------------------------------------
+  const dalles: [Dalle, Dalle] = [
+    { centre: DALLE_GEANT, rayon: RAYON_DALLE },
+    { centre: DALLE_MINUSCULE, rayon: RAYON_DALLE },
+  ];
+  const sur = (d: [number, number, number], lvl: number) => ({
+    position: { x: d[0], y: d[1], z: d[2] },
+    scaleLevel: lvl,
+  });
+
+  check(
+    'chacun sur sa dalle, à la même taille : c’est gagné',
+    retrouvailles(sur(DALLE_GEANT, 0), sur(DALLE_MINUSCULE, 0), dalles),
+    'les deux à ×1',
+  );
+  check(
+    'mais pas s’ils n’ont pas la même taille',
+    !retrouvailles(sur(DALLE_GEANT, 1), sur(DALLE_MINUSCULE, 0), dalles),
+    'l’un à ×4, l’autre à ×1',
+  );
+  // Le piège qu'il fallait fermer : un joueur seul qui viendrait poser un pied
+  // sur chaque dalle ne doit rien déclencher. La victoire exige deux personnes.
+  check(
+    'et surtout pas si une seule personne occupe les deux dalles',
+    !retrouvailles(sur(DALLE_GEANT, 0), sur(DALLE_GEANT, 0), dalles),
+    'deux fois la même dalle',
   );
 }
 

@@ -53,6 +53,15 @@ export interface PortalPairDef {
    */
   smallHeight?: number;
   smallWidth?: number;
+  /**
+   * Identifiant d'un logement qui tient cette porte scellée.
+   *
+   * C'est la seule addition qu'il ait fallu au moteur pour rendre possibles des
+   * énigmes qu'une personne seule ne peut pas résoudre : l'un pose la caisse,
+   * la porte de l'autre s'ouvre. Aucune géométrie mobile, aucune physique
+   * nouvelle — donc aucun des ennuis habituels du jeu à plusieurs.
+   */
+  condition?: string;
   /** Grande face : la traverser rend PLUS PETIT. */
   big: PortalFaceDef;
   /** Petite face : la traverser rend PLUS GRAND. */
@@ -122,10 +131,35 @@ export interface RegionDef {
   ink?: string;
 }
 
+/**
+ * Un seuil : une porte du hall qui mène ailleurs.
+ *
+ * Le choix du mode de jeu est SPATIAL, pas administratif. Pas de menu, pas de
+ * bouton « chercher une partie » — trois arches côte à côte, on prend celle
+ * qu'on veut. C'est cohérent avec un jeu qui n'explique jamais rien par du
+ * texte, et c'est la raison pour laquelle ceci vit dans le niveau et non dans
+ * une interface.
+ */
+export interface SeuilDef {
+  position: [number, number, number];
+  radius: number;
+  mode: 'solo' | 'duo' | 'reve';
+  /** Ce qui est gravé sur le linteau. */
+  label: string;
+}
+
 export interface LevelDef {
   name: string;
   spawn: [number, number, number];
   spawnYaw: number;
+  /**
+   * Palier d'échelle au départ. 0 par défaut, c'est-à-dire taille normale.
+   *
+   * N'existe que pour l'aventure à deux, où l'un commence géant et l'autre
+   * minuscule : c'est la première image du niveau, et elle ne s'obtient pas
+   * autrement.
+   */
+  spawnScale?: number;
   boxes: BoxDef[];
   /** Régions colorées. La première contenant le joueur donne l'ambiance. */
   regions?: RegionDef[];
@@ -133,6 +167,8 @@ export interface LevelDef {
   sockets?: SocketDef[];
   portals: PortalPairDef[];
   goal: { position: [number, number, number]; radius: number };
+  /** Les sorties du hall. Absent partout ailleurs. */
+  seuils?: SeuilDef[];
   /** Indices contextuels déclenchés par proximité. */
   hints?: { position: [number, number, number]; radius: number; text: string }[];
   /**
@@ -182,11 +218,16 @@ export interface TickEvents {
   refused?: {
     pairId: string;
     face: 'big' | 'small';
-    /** `tooBig` : le joueur ne rentre pas. `scaleLimit` : garde-fou d'échelle. */
-    reason: 'tooBig' | 'scaleLimit';
+    /**
+     * `tooBig` : le joueur ne rentre pas. `scaleLimit` : garde-fou d'échelle.
+     * `scelle` : le logement qui l'ouvre est encore vide.
+     */
+    reason: 'tooBig' | 'scaleLimit' | 'scelle';
   };
   /** L'objectif vient d'être atteint. */
   reachedGoal?: boolean;
+  /** On vient de franchir un seuil du hall. */
+  seuil?: { mode: 'solo' | 'duo' | 'reve'; label: string };
   /** Une caisse vient d'être saisie ou reposée. */
   carry?: { id: string; taken: boolean };
   /** On a tenté de soulever une caisse trop grosse pour soi. */

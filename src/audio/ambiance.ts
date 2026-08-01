@@ -314,6 +314,37 @@ export class Ambiance {
   }
 
   /**
+   * LA RETROUVAILLE — les deux joueurs de la même taille, chacun sur sa dalle.
+   *
+   * C'est le seul son du jeu qui ne soit pas un événement mais une CONCLUSION,
+   * et il est construit pour ça : cinq cloches qui montent lentement en accord
+   * parfait, chacune tenant plus longtemps que la précédente, si bien qu'elles
+   * finissent toutes ensemble. On entend cinq départs et une seule fin.
+   *
+   * Et il ne se transpose PAS avec l'échelle, alors que tout le reste du jeu le
+   * fait. À ce moment précis les deux joueurs sont à la même taille : ils
+   * doivent entendre exactement la même chose, chacun de son côté. C'est le
+   * seul endroit où la règle de transposition dessert le propos.
+   */
+  retrouvaille(): void {
+    const ctx = this.ctx;
+    const maitre = this.maitre;
+    if (!ctx || !maitre) return;
+    try {
+      const t = ctx.currentTime;
+      // Fondamentale, quinte, octave, tierce à l'octave, double octave : les
+      // premiers rangs de la série harmonique, dans l'ordre. C'est l'accord le
+      // plus stable qui existe, et c'est exactement ce qu'on veut dire.
+      const rapports = [1, 1.5, 2, 2.5, 3];
+      rapports.forEach((r, i) => {
+        this.cloche(PINCEAU_NOTE * r * 0.5, 2.6 + i * 0.55, 0.055 - i * 0.006, t + i * 0.16);
+      });
+    } catch {
+      /* idem */
+    }
+  }
+
+  /**
    * UNE CAISSE SE POSE — la même note, trois octaves plus bas.
    *
    * On y ajoute une quinte juste (×1,5) très effacée : deux fréquences en

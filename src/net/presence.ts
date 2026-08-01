@@ -42,6 +42,13 @@ export interface RemoteSnapshot {
   /** 1 si au sol. */
   sol: number;
   t: number;
+  /**
+   * Horodatage d'entrée dans la file d'attente du duo, ou 0 si l'on n'attend
+   * pas. C'est l'ancienneté qui sert à apparier — voir core/salons.ts.
+   */
+  duo?: number;
+  /** Salon rejoint, une fois apparié. Vide tant qu'on attend. */
+  salon?: string;
 }
 
 /** Palette des joueurs. Teintes d'encre, lisibles sur le papier crème. */
@@ -64,6 +71,19 @@ export class Presence {
   private accumulator = 0;
   private lastLevel = Number.NaN;
   private peers = new Map<string, RemoteSnapshot>();
+
+  /**
+   * File d'attente du duo, publiée dans SA PROPRE fiche.
+   *
+   * C'est ce qui permet de tenir dans les règles d'accès existantes : elles
+   * n'ouvrent en écriture que `lobby/$uid`, et la validation n'exige que la
+   * présence de x, y, z, yaw, lvl et t — les clés supplémentaires passent. Pas
+   * une règle à republier pour tout le rendez-vous à deux.
+   */
+  duoDepuis = 0;
+  salon = '';
+  private lastDuo = 0;
+  private lastSalon = '';
 
   /** Rejoint le lobby et commence à écouter les autres. */
   async join(): Promise<void> {
@@ -109,10 +129,17 @@ export class Presence {
 
     this.accumulator += dt;
     const scaleChanged = state.scaleLevel !== this.lastLevel;
-    if (!scaleChanged && this.accumulator < PUBLISH_PERIOD) return;
+    // Entrer dans la file d'attente ou trouver son salon part IMMÉDIATEMENT :
+    // à dix envois par seconde, attendre le prochain créneau rallongerait le
+    // rendez-vous de cent millisecondes pour rien, et l'autre joueur est en
+    // train de compter les secondes.
+    const duoChanged = this.duoDepuis !== this.lastDuo || this.salon !== this.lastSalon;
+    if (!scaleChanged && !duoChanged && this.accumulator < PUBLISH_PERIOD) return;
 
     this.accumulator = 0;
     this.lastLevel = state.scaleLevel;
+    this.lastDuo = this.duoDepuis;
+    this.lastSalon = this.salon;
 
     const paquet = {
       x: round(state.position.x),
@@ -123,6 +150,8 @@ export class Presence {
       mv: round(speedInBodies),
       sol: state.grounded ? 1 : 0,
       t: Date.now(),
+      duo: this.duoDepuis,
+      salon: this.salon,
     };
 
     // Un envoi raté est signalé UNE fois. Une version antérieure avalait

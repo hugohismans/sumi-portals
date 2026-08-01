@@ -4,10 +4,14 @@ import { Simulation } from './core/simulation.js';
 import { InputManager } from './input/input.js';
 import { LEVEL_01 } from './levels/level01.js';
 import { LEVEL_02 } from './levels/level02.js';
+import { DALLE_GEANT, DALLE_MINUSCULE, RAYON_DALLE, construireDuo, roleDansSalon, type RoleDuo } from './levels/duo.js';
 import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
 import { Ambiance } from './audio/ambiance.js';
-import { Presence } from './net/presence.js';
+import { retrouvailles, type Dalle } from './core/retrouvailles.js';
+import { Talisman } from './render/talisman.js';
+import { AttenteDuo } from './net/attente.js';
+import { Presence, type RemoteSnapshot } from './net/presence.js';
 import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
 import { PortalRenderer } from './render/portalRenderer.js';
@@ -24,13 +28,25 @@ import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
 // que par reconstruction de la scène à chaud. C'est volontairement rustique :
 // une seconde de chargement entre le hall et une énigme est indolore, et ça
 // évite tout un mécanisme de démontage qui n'apporterait rien pour l'instant.
-const MODE = new URLSearchParams(location.search).get('niveau');
+const PARAMS = new URLSearchParams(location.search);
+const MODE = PARAMS.get('niveau');
+/**
+ * Le rôle du duo voyage dans l'adresse plutôt que d'être déduit à l'exécution.
+ *
+ * C'est délibéré : le niveau se construit au chargement du module, alors que
+ * l'identifiant du joueur n'arrive qu'après une connexion asynchrone. Chaque
+ * client calcule son rôle AVANT de basculer, et l'emporte avec lui.
+ */
+const SALON = PARAMS.get('salon') ?? '';
+const ROLE: RoleDuo = PARAMS.get('role') === 'minuscule' ? 'minuscule' : 'geant';
 const NIVEAUX: Record<string, typeof LEVEL_01> = {
   monde: MONDE,
   cour: LEVEL_01,
   caisse: LEVEL_02,
+  duo: construireDuo(ROLE),
 };
 const EN_AVENTURE = MODE !== null && MODE in NIVEAUX;
+const EN_DUO = MODE === 'duo' && SALON !== '';
 const LEVEL = EN_AVENTURE ? NIVEAUX[MODE!] : LOBBY;
 /** Enchaînement des énigmes. Le hall suit la fin de la dernière. */
 const NIVEAU_SUIVANT: Record<string, string> = {
@@ -94,6 +110,15 @@ scene.add(socketViews.group);
 // douzaine, pas davantage : une planche encrée tire sa force de ses vides.
 const feuilles = new Feuilles();
 scene.add(feuilles.group);
+
+// Le sceau de la retrouvaille, entre les deux dalles. Invisible partout
+// ailleurs : il n'a de sens que dans l'aventure à deux.
+const talisman = new Talisman([
+  (DALLE_GEANT[0] + DALLE_MINUSCULE[0]) * 0.5,
+  DALLE_GEANT[1],
+  DALLE_GEANT[2],
+]);
+if (EN_DUO) scene.add(talisman.group);
 
 // Le Pinceau. Il vit dans le monde, se laisse rejoindre, puis file plus loin.
 const brush = new Brush(LEVEL.guide);
@@ -223,22 +248,33 @@ input.onReset = () => {
 };
 
 // --- Réseau --------------------------------------------------------------------
-// Le hall est peuplé, l'Aventure se joue seul pour l'instant.
+// Le hall est peuplé, et l'aventure à deux l'est nécessairement. Les autres
+// niveaux se jouent seul, et n'ouvrent donc aucune connexion.
 const presence = new Presence();
+const attenteDuo = new AttenteDuo();
 let presenceActive = false;
 let transitionEnCours = false;
 
-if (!EN_AVENTURE) {
+if (!EN_AVENTURE || EN_DUO) {
   presence
     .join()
     .then(() => {
       presenceActive = true;
+      // En duo, on garde son salon publié : c'est ce qui permet à chacun de
+      // reconnaître SON partenaire parmi tous les joueurs connectés, sans
+      // ouvrir le moindre chemin nouveau dans la base.
+      if (EN_DUO) presence.salon = SALON;
     })
     .catch((e: Error) => {
       // Le hall reste parfaitement jouable seul : le réseau est un supplément,
       // jamais une condition. Une panne de Firebase ne doit pas fermer le jeu.
       console.warn('Réseau indisponible :', e);
-      flash('Hall hors ligne — tu es seul, mais le jeu marche.', 5);
+      flash(
+        EN_DUO
+          ? 'Connexion perdue — impossible de rejoindre ton partenaire.'
+          : 'Hall hors ligne — tu es seul, mais le jeu marche.',
+        5,
+      );
     });
 
   // Départ propre quand on ferme l'onglet. Le serveur efface aussi la fiche de
@@ -246,14 +282,77 @@ if (!EN_AVENTURE) {
   window.addEventListener('pagehide', () => void presence.leave());
 }
 
-/** Franchir l'arche du hall lance la première énigme. */
-function partirEnAventure(): void {
+/**
+ * Franchir un seuil du hall.
+ *
+ * Trois arches, trois destins. Celui du duo ne part pas tout de suite : il
+ * faut être deux, et l'attente se passe DANS le hall — on continue à jouer avec
+ * les portails pendant ce temps. Une salle d'attente muette est insupportable
+ * au bout de vingt secondes.
+ */
+function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
   if (transitionEnCours) return;
-  transitionEnCours = true;
-  flash('Départ pour l’Aventure…', 4);
-  void presence.leave().finally(() => {
-    location.search = '?niveau=monde';
-  });
+
+  if (mode === 'solo') {
+    transitionEnCours = true;
+    flash('Départ pour l’Aventure…', 4);
+    void presence.leave().finally(() => {
+      location.search = '?niveau=monde';
+    });
+    return;
+  }
+
+  if (mode === 'reve') {
+    // Pas encore rêvé. Mieux vaut le dire que d'ouvrir une porte sur du vide.
+    flash('Ce rêve-là n’est pas encore rêvé. Reviens bientôt.', 4);
+    sim.seuilFranchi = false;
+    return;
+  }
+
+  // À deux : on se met en attente et l'on reste libre de ses mouvements.
+  if (!presenceActive) {
+    flash('Le hall est hors ligne — impossible de trouver quelqu’un.', 4);
+    sim.seuilFranchi = false;
+    return;
+  }
+  attenteDuo.demarrer(presence);
+  flash('Tu attends sous l’arche. Reste dans le hall, joue en attendant.', 4);
+  // Le seuil se réarme : on peut ressortir de la file en s'éloignant, et la
+  // repasser plus tard. S'engager ne doit pas être un aller sans retour.
+  sim.seuilFranchi = false;
+}
+
+// --- La retrouvaille ------------------------------------------------------------
+/**
+ * La seule fin de partie du jeu qu'on ne peut pas déclencher seul.
+ *
+ * La règle vit dans core/retrouvailles.ts et se vérifie sans réseau ; ici il
+ * n'y a que la lecture du partenaire et l'affichage. On tolère une donnée un
+ * peu vieille — elle arrive dix fois par seconde, et exiger la simultanéité
+ * parfaite ferait rater des retrouvailles pourtant réussies.
+ */
+const DALLES: [Dalle, Dalle] = [
+  { centre: DALLE_GEANT, rayon: RAYON_DALLE },
+  { centre: DALLE_MINUSCULE, rayon: RAYON_DALLE },
+];
+let retrouves = false;
+
+function surveillerRetrouvailles(pairs: Map<string, RemoteSnapshot>): void {
+  if (retrouves) return;
+  const autre = pairs.values().next().value as RemoteSnapshot | undefined;
+  if (!autre) return;
+
+  const ensemble = retrouvailles(
+    { position: sim.player.position, scaleLevel: sim.player.scaleLevel },
+    { position: { x: autre.x, y: autre.y, z: autre.z }, scaleLevel: autre.lvl },
+    DALLES,
+  );
+  if (!ensemble) return;
+
+  retrouves = true;
+  talisman.declencher();
+  ambiance.retrouvaille();
+  flash('Vous voilà de la même taille. C’était tout ce qu’il fallait.', 8);
 }
 
 // --- Échelle ------------------------------------------------------------------
@@ -390,16 +489,15 @@ function frame(now: number): void {
     if (events.tooHeavy) {
       flash('Bien trop grosse à cette taille. Il faudrait grandir.', 2.6);
     }
+    if (events.seuil) {
+      franchirSeuil(events.seuil.mode);
+    }
     if (events.reachedGoal) {
-      if (EN_AVENTURE) {
-        suiteEl.setAttribute('href', NIVEAU_SUIVANT[MODE!] ?? './');
-        suiteEl.textContent = MODE === 'caisse' ? 'retour au hall' : 'niveau suivant';
-        winPanel.classList.add('show');
-        // On rend la souris, sinon le lien du panneau est inatteignable.
-        document.exitPointerLock();
-      } else {
-        partirEnAventure();
-      }
+      suiteEl.setAttribute('href', NIVEAU_SUIVANT[MODE!] ?? './');
+      suiteEl.textContent = MODE === 'caisse' ? 'retour au hall' : 'niveau suivant';
+      winPanel.classList.add('show');
+      // On rend la souris, sinon le lien du panneau est inatteignable.
+      document.exitPointerLock();
     }
   }
 
@@ -441,6 +539,7 @@ function frame(now: number): void {
   socketViews.syncInk();
   brush.update(sim.player, scale, dt, camera);
   feuilles.update(dt, camera, scale);
+  if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
 
   // --- Les autres joueurs -----------------------------------------------------
@@ -450,7 +549,44 @@ function frame(now: number): void {
     const speedInBodies =
       Math.hypot(sim.player.velocity.x, sim.player.velocity.z) / (scale * PLAYER_HEIGHT);
     presence.publish(sim.player, dt, speedInBodies);
-    remotePlayers.sync(presence.getPeers());
+
+    // Le hall et le duo partagent le même chemin dans la base — c'est ce qui
+    // évite d'avoir à republier des règles d'accès. On trie donc à l'arrivée :
+    // dans le hall on ignore ceux qui sont partis jouer, et en duo on ne
+    // regarde que son partenaire.
+    const tous = presence.getPeers();
+    const visibles = new Map<string, RemoteSnapshot>();
+    for (const [uid, p] of tous) {
+      if (EN_DUO ? p.salon === SALON : !p.salon) visibles.set(uid, p);
+    }
+    remotePlayers.sync(visibles);
+
+    if (EN_DUO) surveillerRetrouvailles(visibles);
+
+    // --- Le rendez-vous à deux ------------------------------------------------
+    if (attenteDuo.actif && !transitionEnCours) {
+      const salon = attenteDuo.update(presence);
+      if (salon) {
+        transitionEnCours = true;
+        flash('Quelqu’un a passé la même arche. On y va.', 3);
+        // Une seconde avant de basculer : sans elle, le message n'a pas le
+        // temps d'être lu et le départ paraît être un plantage.
+        const role = roleDansSalon(salon, presence.uid);
+        window.setTimeout(() => {
+          location.search =
+            `?niveau=duo&salon=${encodeURIComponent(salon)}&role=${role}`;
+        }, 1000);
+      } else {
+        const autres = attenteDuo.compagnons(presence);
+        flash(
+          autres === 0
+            ? `En attente d’un second joueur — ${attenteDuo.secondes.toFixed(0)} s. ` +
+                'Joue avec les portails en attendant.'
+            : `${autres} autre(s) sous l’arche — ça vient.`,
+          0.5,
+        );
+      }
+    }
     peersBox.textContent =
       remotePlayers.count === 0
         ? 'seul dans le hall'

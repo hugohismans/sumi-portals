@@ -49,18 +49,71 @@ const markers = (): BoxDef[] => {
   return out;
 };
 
-/** Arche d'Aventure : deux montants et un linteau, à l'échelle d'un humain. */
-const archway = (): BoxDef[] => {
-  const z = -24;
-  const w = 3.2;
-  const h = 5.0;
-  const t = 0.45;
-  return [
-    box([-w - t, -0.4, z - t], [-w, h, z + t], 3),
-    box([w, -0.4, z - t], [w + t, h, z + t], 3),
-    box([-w - t * 2.4, h, z - t * 1.3], [w + t * 2.4, h + t * 1.2, z + t * 1.3], 3),
-    box([-w - t, h * 0.82, z - t * 0.9], [w + t, h * 0.82 + t * 0.45, z + t * 0.9], 2),
-  ];
+/**
+ * Une arche : deux montants et un linteau, à l'échelle d'un humain.
+ *
+ * `cx` est le milieu du passage, `w` sa demi-largeur. La traverse basse est
+ * volontairement DÉCALÉE en profondeur (t * 0,9 contre t) : deux faces
+ * exactement dans le même plan se disputent la profondeur et grésillent.
+ */
+const arche = (cx: number, z: number, w: number, h: number, ink: number, t = 0.45): BoxDef[] => [
+  box([cx - w - t, -0.4, z - t], [cx - w, h, z + t], ink),
+  box([cx + w, -0.4, z - t], [cx + w + t, h, z + t], ink),
+  box([cx - w - t * 2.4, h, z - t * 1.3], [cx + w + t * 2.4, h + t * 1.2, z + t * 1.3], ink),
+  box([cx - w - t, h * 0.82, z - t * 0.9], [cx + w + t, h * 0.82 + t * 0.45, z + t * 0.9], 2),
+];
+
+/**
+ * LES TROIS SORTIES DU HALL.
+ *
+ * Elles ne portent aucune inscription, et c'est délibéré : **elles se
+ * distinguent par leur forme.** Une seule ouverture pour partir seul, deux
+ * ouvertures jumelles pour partir à deux, une arche de guingois pour le rêve.
+ * On comprend laquelle mène où avant d'avoir lu quoi que ce soit — comme on
+ * comprend la règle des portails en regardant un inconnu rapetisser.
+ *
+ * Les pavés au sol répètent le même signe : un devant la première, deux côte à
+ * côte devant la deuxième, une poignée dispersée devant la troisième.
+ */
+const SEUIL_Z = -24;
+// Le solo est AU MILIEU, face au point d'arrivée. C'est l'arche qu'on franchit
+// sans réfléchir, en marchant droit devant — et c'est la seule qui fonctionne
+// toujours. Mettre le duo là aurait laissé un joueur seul attendre dans le vide
+// pour n'avoir fait que marcher tout droit.
+export const ARCHE_SOLO_X = 0;
+export const ARCHE_DUO_X = -27;
+export const ARCHE_REVE_X = 27;
+
+const arches = (): BoxDef[] => {
+  const out: BoxDef[] = [];
+
+  // Seul — une porte franche, sans ornement. La plus simple des trois.
+  out.push(...arche(ARCHE_SOLO_X, SEUIL_Z, 2.6, 5.0, 3));
+  out.push(box([ARCHE_SOLO_X - 1.1, -0.35, -19.2], [ARCHE_SOLO_X + 1.1, 0.16, -17.4], 2));
+
+  // À deux — deux passages jumeaux sous un même linteau. Le montant du milieu
+  // est mince : on voit à travers, on comprend qu'il en faut deux.
+  out.push(...arche(ARCHE_DUO_X - 2.9, SEUIL_Z, 2.1, 5.4, 3));
+  out.push(...arche(ARCHE_DUO_X + 2.9, SEUIL_Z, 2.1, 5.4, 3));
+  // Linteau commun, posé PAR-DESSUS les deux — il mord de 20 cm sur chacun
+  // plutôt que d'affleurer, sinon les deux faces grésillent.
+  out.push(box([ARCHE_DUO_X - 6.0, 5.4, SEUIL_Z - 0.75], [ARCHE_DUO_X + 6.0, 6.1, SEUIL_Z + 0.75], 2));
+  out.push(box([ARCHE_DUO_X - 2.6, -0.35, -19.2], [ARCHE_DUO_X - 0.5, 0.16, -17.4], 2));
+  out.push(box([ARCHE_DUO_X + 0.5, -0.35, -19.2], [ARCHE_DUO_X + 2.6, 0.16, -17.4], 2));
+
+  // Rêve — de guingois. Montants de hauteurs inégales, linteau qui ne repose
+  // pas d'aplomb, un fragment qui flotte au-dessus sans rien toucher. Rien
+  // n'est cassé : c'est dessiné comme ça.
+  const rx = ARCHE_REVE_X;
+  out.push(box([rx - 3.05, -0.4, SEUIL_Z - 0.45], [rx - 2.6, 5.6, SEUIL_Z + 0.45], 3));
+  out.push(box([rx + 2.6, -0.4, SEUIL_Z - 0.6], [rx + 3.05, 4.3, SEUIL_Z + 0.3], 3));
+  out.push(box([rx - 3.5, 4.9, SEUIL_Z - 0.7], [rx + 2.2, 5.5, SEUIL_Z + 0.2], 2));
+  out.push(box([rx + 1.4, 5.9, SEUIL_Z - 0.2], [rx + 3.6, 6.4, SEUIL_Z + 0.7], 3, { ghost: true }));
+  for (const [dx, dz] of [[-1.9, -1.4], [0.3, -2.2], [1.8, -0.6], [-0.6, 0.4]] as const) {
+    out.push(box([rx + dx - 0.5, -0.35, -18.4 + dz], [rx + dx + 0.5, 0.13, -17.5 + dz], 2));
+  }
+
+  return out;
 };
 
 export const LOBBY: LevelDef = {
@@ -76,7 +129,7 @@ export const LOBBY: LevelDef = {
     // Estrade centrale, entre les deux portails : un point de rendez-vous.
     box([-3.4, -0.4, -1.4], [3.4, 0.22, 1.4], 1),
 
-    ...archway(),
+    ...arches(),
     ...markers(),
   ],
 
@@ -90,9 +143,16 @@ export const LOBBY: LevelDef = {
     },
   ],
 
-  // Dans le hall, « l'objectif » n'est pas une victoire : c'est le seuil de
-  // l'Aventure. Franchir l'arche lance la première énigme.
-  goal: { position: [0, 1.2, -24], radius: 3.4 },
+  // Dans le hall il n'y a rien à gagner : l'objectif est repoussé hors du
+  // terrain pour ne jamais se déclencher. Ce sont les trois seuils qui mènent
+  // quelque part.
+  goal: { position: [0, -900, 0], radius: 1 },
+
+  seuils: [
+    { position: [ARCHE_SOLO_X, 0, SEUIL_Z], radius: 3.0, mode: 'solo', label: 'Seul' },
+    { position: [ARCHE_DUO_X, 0, SEUIL_Z], radius: 5.6, mode: 'duo', label: 'À deux' },
+    { position: [ARCHE_REVE_X, 0, SEUIL_Z], radius: 3.0, mode: 'reve', label: 'Le rêve' },
+  ],
 
   hints: [
     {
@@ -101,9 +161,19 @@ export const LOBBY: LevelDef = {
       text: 'Le torii vermillon rend quatre fois plus petit, la porte indigo quatre fois plus grande. Essaie — les autres te voient changer.',
     },
     {
-      position: [0, 0, -20],
-      radius: 8,
-      text: 'Passe sous l’arche pour partir en Aventure.',
+      position: [ARCHE_SOLO_X, 0, -18],
+      radius: 7,
+      text: 'Une seule ouverture : le voyage en solitaire.',
+    },
+    {
+      position: [ARCHE_DUO_X, 0, -18],
+      radius: 7,
+      text: 'Deux ouvertures jumelles : on y part à deux. Si tu es seul, tu attendras ici que quelqu’un vienne.',
+    },
+    {
+      position: [ARCHE_REVE_X, 0, -18],
+      radius: 7,
+      text: 'Cette arche-là ne tient pas droit. Derrière, rien n’est jamais deux fois pareil.',
     },
   ],
 };

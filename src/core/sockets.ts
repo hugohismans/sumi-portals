@@ -70,6 +70,19 @@ export class Sockets {
     return this.items.length > 0 && this.filled === this.items.length;
   }
 
+  /**
+   * Les logements pourvus, par identifiant. C'est ce qui descelle les portails
+   * conditionnés — voir `estScelle` dans portals.ts.
+   *
+   * Reconstruit à chaque appel : la liste tient sur les doigts d'une main, et
+   * un ensemble mis en cache serait une source d'incohérence pour rien.
+   */
+  get pourvus(): ReadonlySet<string> {
+    const out = new Set<string>();
+    for (const s of this.items) if (s.filledBy !== null) out.add(s.id);
+    return out;
+  }
+
   /** La caisse est-elle à la bonne taille pour ce logement ? */
   fits(socket: Socket, c: Carryable): boolean {
     return Math.abs(c.size - socket.size) <= socket.size * socket.tolerance;

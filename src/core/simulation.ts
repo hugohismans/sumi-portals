@@ -18,6 +18,7 @@ import { moveAndCollide } from './physics.js';
 import {
   buildFaces,
   canPass,
+  estScelle,
   signedDistance,
   transformPoint,
   transformVector,
@@ -42,6 +43,8 @@ export class Simulation {
   readonly sockets: Sockets;
   player: PlayerState;
   goalReached = false;
+  /** Un seuil ne se franchit qu'une fois : au-delà, la page part ailleurs. */
+  seuilFranchi = false;
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
@@ -62,7 +65,7 @@ export class Simulation {
       velocity: vec3(0, 0, 0),
       yaw: this.world.level.spawnYaw,
       pitch: 0,
-      scaleLevel: 0,
+      scaleLevel: this.world.level.spawnScale ?? 0,
       grounded: false,
     };
   }
@@ -72,6 +75,7 @@ export class Simulation {
     this.carryables.reset();
     this.sockets.reset();
     this.goalReached = false;
+    this.seuilFranchi = false;
   }
 
   get scale(): number {
@@ -173,11 +177,19 @@ export class Simulation {
 
       // Un portail trop petit pour nous fait simplement mur. C'est ça qui borne
       // la taille maximale, et ça se comprend sans qu'on ait rien à expliquer.
-      const reason: 'tooBig' | 'scaleLimit' | null = !canPass(face, scale)
-        ? 'tooBig'
-        : nextLevel < SCALE_MIN_LEVEL || nextLevel > SCALE_MAX_LEVEL
-          ? 'scaleLimit'
-          : null;
+      // Une porte scellée fait mur exactement comme une porte trop petite. Le
+      // joueur n'a pas à connaître la différence : dans les deux cas, il ne
+      // passe pas, et dans les deux cas la raison est visible dans le monde.
+      const reason: 'tooBig' | 'scaleLimit' | 'scelle' | null = estScelle(
+        face,
+        this.sockets.pourvus,
+      )
+        ? 'scelle'
+        : !canPass(face, scale)
+          ? 'tooBig'
+          : nextLevel < SCALE_MIN_LEVEL || nextLevel > SCALE_MAX_LEVEL
+            ? 'scaleLimit'
+            : null;
 
       if (reason) {
         pl.position.x = prevPos.x;
@@ -233,6 +245,21 @@ export class Simulation {
       if (dx * dx + dy * dy + dz * dz < g.radius * g.radius) {
         this.goalReached = true;
         events.reachedGoal = true;
+      }
+    }
+
+    // --- Seuils du hall ---------------------------------------------------------
+    // Trois arches, trois destins. On ne teste que la distance horizontale :
+    // sauter en franchissant une arche doit compter comme la franchir.
+    if (!this.seuilFranchi && this.world.level.seuils) {
+      for (const s of this.world.level.seuils) {
+        const dx = pl.position.x - s.position[0];
+        const dz = pl.position.z - s.position[2];
+        if (dx * dx + dz * dz < s.radius * s.radius) {
+          this.seuilFranchi = true;
+          events.seuil = { mode: s.mode, label: s.label };
+          break;
+        }
       }
     }
 
