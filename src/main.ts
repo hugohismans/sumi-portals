@@ -13,6 +13,7 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments } from './render/pigments.js';
+import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
 import { AttenteDuo } from './net/attente.js';
@@ -149,6 +150,39 @@ scene.add(socketViews.group);
 // Les socles suivent le monde : gris tant qu'il l'est, et ils reprennent leur
 // vermillon en même temps que lui. Un socle vide ne porte aucune couleur.
 if (pigmentDe.size > 0) socketViews.setCouleur(pigments.nombre / 2);
+
+// ─── LES PINCEAUX DE COULEUR ────────────────────────────────────────────────
+//
+// Un par socle. Il jaillit de l'objet qu'on vient d'y poser, part balayer le
+// monde — et c'est PENDANT son vol que la teinte remonte —, puis revient
+// flotter au-dessus de son socle et y reste.
+//
+// La couleur revenait toute seule, en fondu. Ça marchait, et ça ne racontait
+// rien : un monde qui se repeint sans personne pour le peindre est un réglage,
+// pas une scène. La galerie devient du même coup une collection — à mesure
+// qu'on rapporte des couleurs, la place se peuple de pinceaux qui flottent
+// au-dessus de leurs socles. C'est la jauge de progression du jeu, et elle est
+// faite de personnages plutôt que de chiffres.
+const peintres = new Map<string, PinceauPeintre>();
+if (MODE === 'monde') {
+  const AUX_SOCLES: [string, string, [number, number, number], string][] = [
+    ['socle-vert', 'vert', [-16, 1.5, -6], '#4c7a3f'],
+    ['socle-rouge', 'rouge', [-3.5, 0.9, -17.5], '#c8492e'],
+  ];
+  for (const [socle, pigment, ou, teinte] of AUX_SOCLES) {
+    const p = new PinceauPeintre(ou, teinte, 1.2);
+    p.onPeint = () => {
+      pigments.rendre(pigment, worldView.parRegion, pigmentDe);
+      socketViews.setCouleur(pigments.nombre / 2);
+      portals.setCouleurCadres(pigments.nombre / 2);
+      ambiance.progression(pigments.nombre, 3);
+    };
+    // Déjà rapporté dans une partie précédente : il flotte, sans refaire la fête.
+    if (pigments.a(pigment)) p.poserDejaAcquis();
+    peintres.set(socle, p);
+    scene.add(p.group);
+  }
+}
 
 // Quelques feuilles portées par le vent, qui laissent une traînée d'encre. Une
 // douzaine, pas davantage : une planche encrée tire sa force de ses vides.
@@ -800,6 +834,7 @@ function frame(now: number): void {
   feuilles.update(dt, camera, scale);
   pigments.update(dt);
   if (sceau.enCours) sceau.update(dt);
+  for (const p of peintres.values()) if (p.enCours) p.update(dt, scale);
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
 
