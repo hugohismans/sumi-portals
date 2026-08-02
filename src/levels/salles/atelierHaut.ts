@@ -3,12 +3,9 @@ import type { SalleModule } from './contrat.js';
 
 /**
  * L'ATELIER DU HAUT — la tuilerie de la côte rouge, prise par le toit. Elle joue
- * LE PALIER 2 puis LE PALIER 3 de l'énigme chromatique (CONCEPTION § 3.5) dans
- * un seul lieu, et elle suppose lue `atelier.ts`, qui en jouait le palier 1 : on
- * y a appris qu'on ne peint que ce qu'on pourrait tenir.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * DEUX ÉTAGES, DEUX TAILLES, UNE SEULE PORTE ENTRE LES DEUX
+ * LE PALIER 2 puis LE PALIER 3 de l'énigme chromatique (CONCEPTION § 3.5) dans un
+ * seul lieu, et suppose lue `atelier.ts`, qui en jouait le palier 1 : on y a
+ * appris qu'on ne peint que ce qu'on pourrait tenir.
  *
  *   LE TOIT  (y = 14, on y est à ×4)  les tuiles, les faîtières, les mitres
  *   LA COUR  (y =  0, on y est à ×1)  les pots, une pile de tuiles, un tableau
@@ -23,72 +20,60 @@ import type { SalleModule } from './contrat.js';
  *     à ×4  (7,20 m)  on peint jusqu'à 3,96  →  les tuiles oui, les pots aussi
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * COMMENT LE VOYAGE EST RENDU OBLIGATOIRE — c'est LA question de cette salle
- *
+ * COMMENT LE VOYAGE EST RENDU OBLIGATOIRE — c'est LA question de cette salle.
  * Le piège est dans la seconde ligne : à ×4 la loi de la main n'interdit rien,
- * donc rien n'obligerait à redescendre. Le texte de conception dit « le tableau
- * ne se lit que d'en bas » ; on l'a pris au pied de la lettre et rendu
- * GÉOMÉTRIQUE, un angle de vue défavorable n'étant pas une garantie et une
- * garantie molle finissant toujours par céder au banc d'essai.
+ * donc rien n'obligerait à redescendre. Le texte de conception dit « le tableau ne
+ * se lit que d'en bas » ; on l'a pris au pied de la lettre et rendu GÉOMÉTRIQUE,
+ * un angle de vue défavorable n'étant pas une garantie, et une garantie molle
+ * finissant toujours par céder au banc d'essai.
  *
- *   1. LES POTS N'EXISTENT QUE DANS LA COUR — pas un seul sur le toit, et c'est
- *      une décision, pas un oubli : un seul suffirait à faire basculer toute la
- *      famille sans qu'on ait bougé. Depuis le toit, le plus proche est vingt
- *      mètres plus bas et cinquante plus loin ; la portée d'un géant vaut 11,52,
- *      donc `Familles.visee` ne le désigne jamais. Ce n'est pas « illisible »,
- *      c'est hors de portée.
- *   2. ON NE VOIT PAS LA COUR DEPUIS LE TOIT : les parapets montent à plus de
- *      6 m au-dessus du dallage, au-delà du saut d'un géant (5,18). On ne peut
- *      ni tomber dedans, ni se pencher pour lire le cadre d'en haut. La seule
- *      ouverture sur la cour est LA PORTE — ce qui est la chose la plus juste
- *      que ce jeu puisse faire d'un portail.
- *   3. RÉCIPROQUEMENT, la pile de tuiles posée dans la cour fait 3,00 et se
- *      refuse à un joueur de 1,80 : le « trop lourd », connu depuis l'atelier de
- *      lavis, arrive EN BAS, où il enseigne.
+ * LES POTS N'EXISTENT QUE DANS LA COUR — pas un seul sur le toit, et c'est une
+ * décision, pas un oubli : un seul suffirait à faire basculer toute la famille
+ * sans qu'on ait bougé. Depuis le toit, le plus proche est vingt mètres plus bas
+ * et cinquante plus loin, quand la portée d'un géant vaut 11,52 : `Familles.visee`
+ * ne le désigne jamais. Ce n'est pas « illisible », c'est hors de portée. ET L'ON
+ * NE VOIT MÊME PAS LA COUR DEPUIS LE TOIT, les parapets montant à plus de 6 m
+ * au-dessus du dallage, au-delà du saut d'un géant (5,18) : on ne peut ni tomber
+ * dedans, ni se pencher pour lire le cadre d'en haut. La seule ouverture sur la
+ * cour est LA PORTE, ce qui est la chose la plus juste que ce jeu puisse faire
+ * d'un portail. RÉCIPROQUEMENT, la pile de tuiles de la cour fait 3,00 et se
+ * refuse à un joueur de 1,80 : le « trop lourd », connu depuis l'atelier de lavis,
+ * arrive EN BAS, où il enseigne. Le tableau de la cour demandant les deux familles
+ * à la fois, il est impossible à satisfaire sans avoir été en haut ET en bas.
  *
- * Le tableau de la cour demande les deux familles à la fois : il est impossible
- * à satisfaire sans avoir été en haut ET en bas. C'est tout, et c'est mesuré.
- *
- * NOTE À L'ASSEMBLAGE. `haut-tableau-cour` est le SEUL des deux tableaux qui
- * exige les deux tailles ; `haut-tableau-oeil` ne demande que des familles du
- * toit et se satisfait sans descendre. **Si la porte de sortie ne doit s'ouvrir
- * qu'après le voyage, c'est `haut-tableau-cour` qu'il faut lui donner comme
- * `condition`** — ou deux portes en file, la cour puis l'œil. Et les stations du
- * Pinceau passent du toit à la cour, donc à travers vingt mètres de maçonnerie :
- * `guidePorte` le ferait entrer dans `haut-descente` sous nos yeux, mais il ne
- * se déclare qu'à l'assemblage.
+ * NOTE À L'ASSEMBLAGE. `haut-tableau-cour` est le SEUL des deux tableaux qui exige
+ * les deux tailles ; `haut-tableau-oeil` ne demande que des familles du toit et se
+ * satisfait sans descendre. **Si la sortie ne doit s'ouvrir qu'après le voyage,
+ * c'est `haut-tableau-cour` qu'il faut lui donner comme `condition`** — ou deux
+ * portes en file, la cour puis l'œil. Et les stations du Pinceau passent du toit à
+ * la cour, donc à travers vingt mètres de maçonnerie : `guidePorte` le ferait
+ * entrer dans `haut-descente` sous nos yeux, mais il ne se déclare qu'à
+ * l'assemblage.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * RÈGLE 8 — la côte rouge a quatre fours en ruche, hauts de trente mètres, qui
  * donnent le cap pendant deux cents mètres de marche et qu'on n'approche jamais.
  * Le cinquième est ici et l'on est DANS SA COUR : trente-huit mètres, vingt-sept
- * au pied, et l'on lève la tête à ×1 comme à ×4. La silhouette qui servait de
- * repère à l'horizon sert de mur.
+ * au pied, et l'on lève la tête à ×1 comme à ×4. RÈGLE 9 — l'étalon : les deux
+ * faces de `haut-descente` sont le même objet à deux étages, 2,80 × 1,90 dans la
+ * cour et 11,20 × 7,60 sur le toit, et le mur nord de la cour fait exactement cinq
+ * de ces portes. RÈGLE 10 — la pile qui se refuse est adossée au four : aller s'y
+ * faire dire non met le joueur au pied de trente-huit mètres de brique, nez en
+ * l'air, au seul endroit d'où le four remplisse tout le ciel ; quatre secondes
+ * perdues, une image gagnée, et une couleur se reprend. RÈGLE 11 — aucun logement,
+ * aucune caisse : rien à trancher, et rien à craindre des QUATORZE MÈTRES devant
+ * soi auxquels un géant repose ce qu'il porte, nombre qui a déjà rendu une salle
+ * infaisable.
  *
- * RÈGLE 9 — l'étalon : les deux faces de `haut-descente` sont le même objet à
- * deux étages, 2,80 × 1,90 dans la cour — la porte que le joueur franchit depuis
- * la première minute du jeu — et 11,20 × 7,60 sur le toit. Le mur nord de la
- * cour fait exactement cinq de ces portes ; on ne juge rien à l'œil.
- *
- * RÈGLE 10 — la pile qui se refuse est adossée au four : aller s'y faire dire
- * non met le joueur au pied de trente-huit mètres de brique, nez en l'air, au
- * seul endroit d'où le four remplisse tout le ciel. Quatre secondes perdues, une
- * image gagnée, et une couleur se reprend.
- *
- * RÈGLE 11 — aucun logement, aucune caisse : rien à trancher, et donc rien à
- * craindre des QUATORZE MÈTRES devant soi auxquels un géant repose ce qu'il
- * porte, nombre qui a déjà rendu une salle infaisable.
- *
- * ═══════════════════════════════════════════════════════════════════════════
  * L'OBJET QUI DIT « C'EST CE LIEU-CI » — LE FOUR, et il est dans les DEUX
  * tableaux. C'est le vrai risque, le même que dans l'atelier de lavis : que le
- * joueur regarde une image et ne comprenne pas qu'elle montre l'endroit où il se
+ * joueur regarde une image sans comprendre qu'elle montre l'endroit où il se
  * tient. La grande jarre y répondait ; ici c'est le four, et il répond deux fois.
- * D'en bas il prend 44 % de la largeur du cadre et déborde par le haut. D'en
+ * D'en bas il prend 44 % de la largeur du cadre et déborde par le haut ; d'en
  * haut, mesuré depuis le tabouret, on en voit les dix-huit derniers mètres monter
- * derrière le parapet : 17,5 % de la largeur de l'image, 12,6 % de sa hauteur, au
- * milieu. Il n'appartient à AUCUNE famille — il reste gris dans les deux vues, et
- * c'est ce qui en fait un repère.
+ * derrière le parapet — 17,5 % de la largeur, 12,6 % de la hauteur, au milieu. Il
+ * n'appartient à AUCUNE famille : il reste gris dans les deux vues, et c'est
+ * exactement ce qui en fait un repère.
  *
  * PAS DE `pigment` SUR CETTE RÉGION, pour la raison de l'atelier de lavis : une
  * région à pigment se repeint d'un coup quand on rapporte sa couleur, et le rouge
@@ -116,8 +101,8 @@ const box = (min: V3, max: V3, ink = 1, o: { famille?: string; outline?: boolean
 //   POT      0,86 au plus (0,853 mesuré), soit 86 % du seuil de ×1.
 //   TUILE    3,00 = 303 % du seuil de ×1 et 76 % de celui de ×4 : elle se refuse
 //                   en bas et se donne en haut, c'est elle qui fait le voyage.
-//   FAITIERE 2,60 · MITRE 2,30 — hors de portée à ×1, ce qui interdit de
-//                   résoudre le palier 3 par en bas.
+//   FAITIERE 2,60 · MITRE 2,30 — hors de portée à ×1, ce qui interdit de résoudre
+//                   le palier 3 par en bas.
 //
 // On avait d'abord fait la tuile à 4,00, par symétrie avec le mur de l'atelier de
 // lavis : elle ne se peignait plus nulle part et la salle était morte au premier
@@ -148,16 +133,14 @@ const TOIT = 14.0;
 const PARAPET_SUD = 20.1;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// LE REPÈRE DU PEINTRE — tout le palier 3 est écrit dans ces coordonnées-là.
-// Le tabouret est en (78 ; 2082), le tableau de l'œil regarde le four en
-// (36 ; 1958). On ne place donc RIEN d'important du palier 3 en x et z : on le
-// place en PROFONDEUR et en ÉCART LATÉRAL le long de cette visée, et `vue()`
-// convertit. Trois cheminées posées « à peu près par là » ne se seraient alignées
-// d'aucun point de vue.
-//
-// Conséquence voulue et visible dès l'arrivée : l'axe de la visée fait 18,7° avec
-// les murs, donc LA CRÊTE DE SÉCHAGE EST DE BIAIS SUR LE TOIT. Elle a l'air posée
-// de travers de partout ailleurs. C'est le premier indice, et il ne dit rien.
+// LE REPÈRE DU PEINTRE — tout le palier 3 est écrit dans ces coordonnées-là. Le
+// tabouret est en (78 ; 2082), le tableau de l'œil regarde le four en (36 ; 1958).
+// On ne place donc RIEN d'important du palier 3 en x et z : on le place en
+// PROFONDEUR et en ÉCART LATÉRAL le long de cette visée, et `vue()` convertit.
+// Trois cheminées posées « à peu près par là » ne se seraient alignées d'aucun
+// point de vue. Conséquence voulue et visible dès l'arrivée : l'axe de la visée
+// fait 18,7° avec les murs, donc LA CRÊTE DE SÉCHAGE EST DE BIAIS SUR LE TOIT.
+// Elle a l'air posée de travers de partout ailleurs, et c'est le premier indice.
 // ═════════════════════════════════════════════════════════════════════════════
 const OEIL_X = 78.0;
 const OEIL_Z = 2082.0;
@@ -177,11 +160,11 @@ const vue = (d: number, l: number): [number, number] => [
 
 /**
  * LE TABOURET. 2,10 de haut, sous la marche automatique d'un géant (3,60) : on y
- * monte sans sauter, en marchant dessus, sans avoir décidé de le faire. Plateau
- * de 3,40 de côté — un joueur à ×4 en fait 2,72 de large, et un tabouret plus
- * étroit que le corps qui doit s'y tenir est une farce. L'œil est alors à
- * 2,10 + 1,80 × 0,92 × 4 = 22,724 : ce n'est pas un goût, c'est `EYE_FRACTION`
- * × la taille, et toute la géométrie du palier 3 en dépend au centimètre.
+ * monte sans sauter, en marchant dessus, sans avoir décidé de le faire. Plateau de
+ * 3,40 de côté — un joueur à ×4 en fait 2,72 de large, et un tabouret plus étroit
+ * que le corps qui doit s'y tenir est une farce. L'œil est alors à
+ * 2,10 + 1,80 × 0,92 × 4 = 22,724 : ce n'est pas un goût, c'est `EYE_FRACTION` ×
+ * la taille, et toute la géométrie du palier 3 en dépend au centimètre.
  */
 const TABOURET_H = 2.1;
 const OEIL_Y = TOIT + TABOURET_H + 1.8 * 0.92 * 4;
@@ -197,15 +180,15 @@ const K = (CRETE_Y - OEIL_Y) / CRETE_D;
  * ne font pas la même hauteur (8,10 · 7,97 · 7,85 au-dessus du dallage) et c'est
  * précisément pour ça qu'elles s'alignent : à des distances différentes, seules
  * des hauteurs différentes tombent sur la même ligne. Trois cheminées identiques
- * ne se seraient alignées d'AUCUN point de vue, et le palier 3 n'aurait été
- * qu'une chasse au trésor.
+ * ne se seraient alignées d'AUCUN point de vue, et le palier 3 n'aurait été qu'une
+ * chasse au trésor.
  *
  * Les profondeurs sont COURTES — 10, 12, 14 — quand la crête est à 34, et c'est
  * cet écart-là qui rend l'alignement sensible. Mesuré : descendre du tabouret
  * décale les trois pieds de 0,16, 0,20 et 0,27 de demi-image au-dessus de la
  * ligne, donc de trois quantités différentes, et le rang se rompt aussi. On
  * l'avait d'abord dessiné avec les mitres à 62 m et la crête à 76 : l'écart
- * tombait à un pour cent, on ne voyait rien, et le tabouret ne servait à rien.
+ * tombait à un pour cent, on ne voyait rien, le tabouret ne servait à rien.
  */
 const CHEMINEES: { d: number; l: number }[] = [
   { d: 10.0, l: +3.2 },
@@ -251,9 +234,8 @@ const pot = (cx: number, cz: number, r: number, h: number): BoxDef[] => [
 
 /**
  * UNE CLAIE À TUILES : deux longrines et six tuiles de champ. Les longrines
- * n'appartiennent à aucune famille — c'est du bois de couvreur, il reste gris. On
+ * n'appartiennent à aucune famille — c'est du bois de couvreur, il reste gris ; on
  * ne peint pas « le meuble », on peint LA TUILE, celle qu'un couvreur soulève.
- *
  * Chaque tuile fait 3,00 en x (la cote de la famille), 1,98 de haut, 0,22
  * d'épaisseur, au pas de 0,60 : deux tuiles ne se touchent jamais, donc aucune de
  * leurs faces n'en rencontre une autre. Le décalage vertical par tuile et par
@@ -275,9 +257,9 @@ const claie = (px: number, pz: number, r: number): BoxDef[] => {
 const decor = (): BoxDef[] => {
   const out: BoxDef[] = [];
 
-  // LA MASSE DU BÂTIMENT — une seule boîte, de −9 à 14 : son dessus EST le
-  // dallage du toit, donc pas une couture sous les pieds du géant ni un trait
-  // d'encre en travers. Tout s'y enterre, et jamais l'inverse.
+  // LA MASSE DU BÂTIMENT — une seule boîte de −9 à 14 : son dessus EST le dallage
+  // du toit, donc pas une couture sous les pieds du géant ni un trait d'encre en
+  // travers. Tout s'y enterre, et jamais l'inverse.
   out.push(box([-8, -9, 1971], [118, TOIT, 2097], 2, { outline: false }));
 
   // LES QUATRE PARAPETS : quatre hauteurs, quatre profondeurs d'ancrage. Aucun ne
@@ -346,15 +328,13 @@ const decor = (): BoxDef[] => {
 
   // LA CRÊTE DE SÉCHAGE : un mur de biais, à 34 m de l'œil, sur lequel on met les
   // faîtières à durcir. Son dessus est à 19,58, soit 5,58 au-dessus du dallage,
-  // donc AU-DELÀ du saut d'un géant (5,18) : on ne monte pas sur la crête, et
-  // l'on ne triche donc pas avec le point de vue en s'y perchant. La marge est de
+  // donc AU-DELÀ du saut d'un géant (5,18) : on ne monte pas sur la crête, et l'on
+  // ne triche donc pas avec le point de vue en s'y perchant. La marge est de
   // quarante centimètres, elle est mesurée, et c'est la seule raison pour laquelle
-  // ce mur fait cette hauteur-là plutôt qu'une autre.
-  //
-  // Trente-quatre plots qui se mordent de treize centimètres : deux plots bout à
-  // bout partageraient une face, et une crête de quarante mètres grésillerait sur
-  // toute sa longueur. Le dessus alterne entre 19,58 et 19,54, ce qui achève
-  // d'écarter les plans et fait onduler la crête comme un vrai mur monté à la main.
+  // ce mur fait cette hauteur-là. Trente-quatre plots qui se mordent de treize
+  // centimètres : deux plots bout à bout partageraient une face, et une crête de
+  // quarante mètres grésillerait sur toute sa longueur. Le dessus alterne entre
+  // 19,58 et 19,54, ce qui achève d'écarter les plans et fait onduler la crête.
   for (let k = 0; k < 34; k++) {
     const [x, z] = vue(CRETE_D, -21 + 1.2727 * k);
     out.push(box([x - 0.67, 13.7, z - 0.9], [x + 0.67, 19.58 - 0.04 * (k % 2), z + 0.9], 2));
@@ -371,8 +351,7 @@ const decor = (): BoxDef[] => {
 
   // LES TROIS CHEMINÉES. La souche est de la brique et n'appartient à rien ; la
   // MITRE est la coiffe de terre cuite — collerette et chapeau — et c'est elle, la
-  // famille : la chose qu'on a cuite dans ce four-là et qu'un couvreur pose à la
-  // main.
+  // famille : ce qu'on a cuit dans ce four-là et qu'un couvreur pose à la main.
   for (const { d, l } of CHEMINEES) {
     const [x, z] = vue(d, l);
     const y = piedMitre(d);
@@ -396,25 +375,21 @@ const decor = (): BoxDef[] => {
   return out;
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// LES DEUX TABLEAUX — tous deux CARRÉS, et ce n'est pas un goût : la prise se
-// fait dans une cible de 512 × 512 avec une caméra de rapport 1, donc une toile
-// plus large que haute étirerait l'image et le tableau mentirait sur la seule
-// chose qu'on lui demande, montrer la pièce.
-// ═════════════════════════════════════════════════════════════════════════════
+// LES DEUX TABLEAUX SONT CARRÉS, et ce n'est pas un goût : la prise se fait dans
+// une cible de 512 × 512 avec une caméra de rapport 1, donc une toile plus large
+// que haute étirerait l'image et le tableau mentirait sur la seule chose qu'on lui
+// demande, montrer la pièce.
 
 /**
- * PALIER 2 — LE TABLEAU DE LA COUR. Point de vue non déclaré : il est peint
- * depuis son propre mur, en regardant la cour. C'est le seul point de vue qu'un
- * joueur retrouve sans le chercher — il lit, il se retourne, l'image se referme —
- * et pour la salle qui inaugure l'aller-retour, faire de l'angle une question
- * serait une seconde inconnue.
- *
- * Champ de 58°, donc un demi-champ qui ouvre de 0,554 par mètre : la planche de
- * pots à cinq mètres (chacun 11 % de la largeur), la pile de tuiles à vingt-huit
- * mètres sur la gauche, et le four qui prend 44 % de la largeur et déborde par le
- * haut. 1,10 × 1,10 centré à 1,60 — la hauteur d'œil d'un joueur de 1,80 est
- * 1,656 : on ne se penche ni ne se hausse pour le lire.
+ * PALIER 2 — LE TABLEAU DE LA COUR. Point de vue non déclaré : il est peint depuis
+ * son propre mur, en regardant la cour. C'est le seul point de vue qu'un joueur
+ * retrouve sans le chercher — il lit, il se retourne, l'image se referme — et pour
+ * la salle qui inaugure l'aller-retour, faire de l'angle une question serait une
+ * seconde inconnue. Champ de 58°, donc un demi-champ qui ouvre de 0,554 par
+ * mètre : la planche de pots à cinq mètres (chacun 11 % de la largeur), la pile de
+ * tuiles à vingt-huit mètres sur la gauche, et le four qui prend 44 % de la
+ * largeur et déborde par le haut. 1,10 × 1,10 centré à 1,60 — la hauteur d'œil
+ * d'un joueur de 1,80 est 1,656 : on ne se penche ni ne se hausse pour le lire.
  */
 const tableauCour: TableauDef = {
   id: 'haut-tableau-cour',
@@ -430,16 +405,15 @@ const tableauCour: TableauDef = {
  * ailleurs.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * CE QUE LA COMPOSITION FAIT QUAND ELLE SE REFERME
- *
- * De ce point-là, et de ce point-là seulement, LE PIED DES TROIS MITRES SE POSE
- * EXACTEMENT SUR LA LIGNE DES FAÎTIÈRES — mesuré : les trois pieds et le dessus
- * des quinze faîtières tombent tous à 0,1442 de la demi-image, à zéro près. La
- * crête, qui est de biais sur le toit et qui a l'air posée de travers de partout
- * ailleurs, redevient une horizontale franche en travers du cadre ; les trois
- * coiffes se dressent au-dessus d'elle, détachées, et la couronne du four monte
- * entre la première et la deuxième. Quatre masses sans rapport deviennent un
- * rang : une ligne, trois verticales et un sommet.
+ * CE QUE LA COMPOSITION FAIT QUAND ELLE SE REFERME. De ce point-là, et de ce
+ * point-là seulement, LE PIED DES TROIS MITRES SE POSE EXACTEMENT SUR LA LIGNE DES
+ * FAÎTIÈRES — mesuré : les trois pieds et le dessus des quinze faîtières tombent
+ * tous à 0,1442 de la demi-image, à zéro près. La crête, qui est de biais sur le
+ * toit et qui a l'air posée de travers de partout ailleurs, redevient une
+ * horizontale franche en travers du cadre ; les trois coiffes se dressent au-dessus
+ * d'elle, détachées, et la couronne du four monte entre la première et la deuxième.
+ * Quatre masses sans rapport deviennent un rang : une ligne, trois verticales et un
+ * sommet.
  *
  * D'un pas de côté, ou simplement en descendant du tabouret, les trois pieds
  * remontent de 0,16, 0,20 et 0,27 de demi-image — jusqu'à 13 % de la hauteur du
@@ -455,10 +429,9 @@ const tableauCour: TableauDef = {
  * met le dallage hors cadre en deçà de seize mètres et l'horizon du parapet juste
  * au-dessus de la ligne. Les claies bleues occupent tout le bas, la crête verte
  * barre le tiers inférieur, les mitres rouges le tiers médian, le four le milieu.
- *
- * Le cadre fait 4,40 × 4,40 : celui de la cour multiplié par quatre, parce qu'on
- * le lit avec des yeux à 6,62 m du sol. Un tableau à taille d'homme accroché pour
- * un géant serait un timbre-poste.
+ * Le cadre fait 4,40 × 4,40 : celui de la cour multiplié par quatre, parce qu'on le
+ * lit avec des yeux à 6,62 m du sol, et qu'un tableau à taille d'homme accroché
+ * pour un géant serait un timbre-poste.
  */
 const tableauOeil: TableauDef = {
   id: 'haut-tableau-oeil',
@@ -473,9 +446,9 @@ const tableauOeil: TableauDef = {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
-// LA PORTE INTERNE — le seul chemin entre les deux étages. PAS DE `condition`,
-// PAS DE `miroir`, PAS DE `dessinee` : on la franchit autant qu'on veut, dans les
-// deux sens, parce que le palier 2 est un aller-retour.
+// LA PORTE INTERNE — le seul chemin entre les deux étages. PAS DE `condition`, PAS
+// DE `miroir`, PAS DE `dessinee` : on la franchit autant qu'on veut, dans les deux
+// sens, parce que le palier 2 est un aller-retour.
 //
 // L'ORIENTATION SE RAISONNE À L'ENVERS (`Simulation.findCrossing` : d0 > 0 puis
 // d1 ≤ 0). On franchit une face en marchant CONTRE sa normale, en venant de son
@@ -499,11 +472,10 @@ const tableauOeil: TableauDef = {
 // Les deux faces sont à quatre-vingt-quinze mètres l'une de l'autre et vingt de
 // dénivelé, et toutes deux à plus de cinquante mètres de `entree` et de `sortie` :
 // deux portes plantées au même point se disputent le passage, et l'on traverse
-// celle qu'on ne voulait pas.
-//
-// Les pieds tombent sur les pieds : `transformPoint` multiplie l'écart vertical
-// par le rapport d'échelle, donc une face posée à 14,00 (le dallage) et l'autre à
-// 0,00 (la cour) se raccordent exactement, sans une image de chute.
+// celle qu'on ne voulait pas. Les pieds tombent sur les pieds, enfin, puisque
+// `transformPoint` multiplie l'écart vertical par le rapport d'échelle : une face
+// posée à 14,00 (le dallage) et l'autre à 0,00 (la cour) se raccordent exactement,
+// sans une image de chute.
 // ═════════════════════════════════════════════════════════════════════════════
 const portes: PortalPairDef[] = [
   {
@@ -565,12 +537,11 @@ export const ATELIER_HAUT: SalleModule = {
   ],
 
   // ON ENTRE ET L'ON SORT À ×4, SUR LE TOIT. `echelle` EST UN PALIER, PAS UN
-  // MULTIPLICATEUR : −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16.
-  //
-  // L'entrée est au nord-est, dos aux claies : on arrive et l'on ne voit qu'un
-  // toit encombré de tuiles trop grandes pour un homme, ce qu'il faut justement ne
-  // pas comprendre tout de suite. La sortie est à l'autre bout, soixante-seize
-  // mètres à l'ouest, hors de portée de toute autre face.
+  // MULTIPLICATEUR : −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16. L'entrée est au nord-est,
+  // dos aux claies : on arrive et l'on ne voit qu'un toit encombré de tuiles trop
+  // grandes pour un homme, ce qu'il faut justement ne pas comprendre tout de
+  // suite. La sortie est à l'autre bout, soixante-seize mètres à l'ouest, hors de
+  // portée de toute autre face.
   entree: { position: [92, TOIT + 0.02, 2076], echelle: 1 },
   sortie: { position: [16, TOIT + 0.02, 2074], echelle: 1 },
 };

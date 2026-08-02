@@ -1326,8 +1326,12 @@ function frame(now: number): void {
         ambiance.retrouvaille();
         document.exitPointerLock();
       } else {
-        suiteEl.setAttribute('href', NIVEAU_SUIVANT[MODE!] ?? './');
-        suiteEl.textContent = MODE === 'caisse' ? 'retour au hall' : 'niveau suivant';
+        // Le lien dit où il va. Il annonçait « niveau suivant » et ramenait au
+        // hall dès qu'il n'y avait plus de suite — au bout de la montée, donc
+        // à la fin du plus long voyage du jeu, là où mentir coûte le plus cher.
+        const suite = NIVEAU_SUIVANT[MODE!];
+        suiteEl.setAttribute('href', suite ?? './');
+        suiteEl.textContent = suite ? 'niveau suivant' : 'retour au hall';
         winPanel.classList.add('show');
         // On rend la souris, sinon le lien du panneau est inatteignable.
         document.exitPointerLock();
