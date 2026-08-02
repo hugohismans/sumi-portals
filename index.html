@@ -57,15 +57,39 @@
       #scale-readout .peers { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(27,23,20,.2); opacity: .5; }
       #scale-readout .peers:empty { display: none; }
 
+      /* --- Le mot, quand il y en a un ------------------------------------ */
+      /*
+        CE JEU N'EXPLIQUE RIEN, et la bulle disait le contraire : un cadre noir
+        de deux pixels sur un fond opaque, c'est-à-dire un élément d'interface
+        posé sur le dessin. Elle reste — le moteur du texte est intact et servira
+        peut-être — mais elle cesse d'être une boîte.
+
+        Plus de cadre, plus de fond : le mot est écrit À MÊME LE PAPIER, avec un
+        halo clair qui le détache de n'importe quel décor. Il se lit sur un mur
+        noir comme sur un ciel crème, et il ne ressemble plus à une consigne.
+
+        ET VIDE, IL N'EXISTE PAS. `display: none` sur `:empty`, et `visibility`
+        qui bascule APRÈS le fondu — sinon la boîte garde sa place, et sur un
+        écran de téléphone on voit un rectangle vide en bas, ce qui est
+        exactement ce qu'on ne veut pas.
+      */
       #hint {
-        align-self: center; margin: 0 0 26px;
-        padding: 8px 16px;
-        background: rgba(239, 231, 214, .72);
-        border: 2px solid var(--ink); border-radius: 2px;
-        font-size: 13px; letter-spacing: .02em;
-        opacity: 0; transition: opacity .4s ease;
+        align-self: center; margin: 0 0 30px;
+        padding: 2px 10px;
+        font-size: 13px; letter-spacing: .02em; line-height: 1.4;
+        text-align: center; max-width: 30ch;
+        color: var(--ink);
+        text-shadow:
+          0 0 6px var(--paper), 0 0 6px var(--paper),
+          0 0 14px var(--paper), 0 1px 2px var(--paper);
+        opacity: 0; visibility: hidden;
+        transition: opacity .5s ease, visibility 0s linear .5s;
       }
-      #hint.show { opacity: 1; }
+      #hint.show {
+        opacity: 1; visibility: visible;
+        transition: opacity .5s ease, visibility 0s;
+      }
+      #hint:empty { display: none; }
 
       /* --- Les repères de mise au point (?debug=1) ------------------------ */
       /* Volontairement laid et lisible : ce n'est pas le jeu, c'est l'établi. */
