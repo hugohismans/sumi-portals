@@ -67,9 +67,10 @@ import type { SalleModule } from './contrat.js';
  * La couronne des positions qui marcheraient est EXACTEMENT celle qu'occupe la
  * paroi du bol. Le bol interdit ce que le bol demande, et il n'y a rien à
  * expliquer : on le sent en trois essais. Le banc d'essai le confirme par la
- * force brute : 2,8 millions de dépôts tentés à ×1 depuis toutes les positions
- * d'appui, tous les lacets et toutes les inclinaisons — aucun ne se loge, et le
- * meilleur manque de plus de 0,16 m.
+ * force brute : huit cent mille dépôts tentés à ×1 depuis toutes les positions
+ * d'appui du voisinage, quarante-huit lacets et vingt-neuf inclinaisons chacune
+ * — aucun ne se loge, et le meilleur manque de 0,37 m pour une tolérance de
+ * 0,09.
  *
  * À ×1/4, tout se renverse d'un coup. La pierre portée vaut 0,12 — elle a
  * traversé la porte dans les bras, comme la bille du hall — et la distance de
@@ -272,11 +273,13 @@ const MARGELLE_HAUT = 1.32;
  *
  * ET C'EST PAR LA BRÈCHE QU'ON VOIT LE FOND. Le bord monte à 1,46 et l'œil du
  * joueur ×1 est à 1,656 : de si près, il ne verrait rien par-dessus. Mais
- * l'ébrèchement regarde l'ouest-nord-ouest, c'est-à-dire la pièce, et la ligne
- * qui part de l'œil, passe 19 cm au-dessus de la margelle du viaduc, franchit
- * l'entaille avec 10 cm de jour et tombe sur le logement, est vraie depuis TOUT
- * le sol de la pièce jusqu'à 2,37 m de l'axe. On voit le fond du bol par le trou
- * de son bord, et l'on voit qu'il y a quelque chose de minuscule dedans.
+ * l'ébrèchement regarde l'ouest-nord-ouest, c'est-à-dire la pièce. La ligne qui
+ * part de l'œil, passe 17 cm au-dessus de la margelle du viaduc, franchit
+ * l'entaille et tombe sur le logement est vérifiée par lancer de rayons contre
+ * les 207 boîtes du module : elle est vraie sur une bande de 49 cm, entre 1,46
+ * et 1,95 m de l'axe — c'est-à-dire quand on vient s'accouder à l'étagère, et
+ * pas avant. On voit le fond du bol par le trou de son bord, et l'on voit qu'il
+ * y a quelque chose de minuscule dedans.
  */
 const R_INT = 0.5;
 const R_EXT = 0.56;
@@ -861,22 +864,27 @@ const portes: PortalPairDef[] = [
  * et non une vérification.
  *
  * LA PIÈCE. Elle est close par ses six faces. On n'en sort que par une porte.
- *   — À ×1, on tient debout partout au sol, on ne monte sur rien (l'étagère est
- *     à 0,92 et sa margelle à 1,30 : le saut culmine à 1,293, il s'en faut de
- *     sept millimètres et je ne fais reposer aucune démonstration là-dessus),
- *     et l'on entre dans « bol-tour » quand on veut.
+ *   — À ×1, on tient debout partout au sol et l'on entre dans « bol-tour » quand
+ *     on veut. On ne monte PAS sur l'étagère : deux cent seize assauts au
+ *     harnais, en courant et en sautant, avec et sans sprint, aucun n'aboutit —
+ *     la margelle est à 1,32 et le saut culmine à 1,293. Deux centimètres sept,
+ *     et je préfère le dire : aucune démonstration de ce fichier n'en dépend, et
+ *     qui portera une pierre au pied de l'étagère pour grimper dessus (0,51 +
+ *     1,293) y montera. Le §2 couvre ce cas comme les autres.
  *   — À ×1/4, on n'est JAMAIS ailleurs que sur l'étagère : on y arrive par la
- *     porte, la margelle et la panse du bol montent toutes deux à 0,38
- *     au-dessus du tablier contre un saut mesuré à 0,306, et les trois autres
- *     côtés sont des murs. On ne peut donc pas tomber dans la pièce, ce qui
- *     interdit du même coup d'entrer dans la grande face à ×1/4 et de finir à
- *     ×1/16. Mille sept cents courses au harnais, dans seize directions, avec
- *     et sans sprint, sauts compris : aucune chute.
+ *     porte, la margelle monte à 0,40 au-dessus du tablier et la panse du bol à
+ *     0,54, contre un saut mesuré à 0,306, et les trois autres côtés sont des
+ *     murs. On ne peut donc pas tomber dans la pièce, ce qui interdit du même
+ *     coup d'entrer dans la grande face à ×1/4 et de finir à ×1/16. Mille six
+ *     cent quatre-vingt-seize courses au harnais, dans seize directions, avec et
+ *     sans sprint, sauts compris : aucune chute.
  *   — DANS LE BOL, une seule issue et elle marche dans les deux sens :
- *     l'ébrèchement, 0,18 depuis le tablier, 0,15 depuis le fond, contre une
- *     enjambée de 0,225. Le reste du bord est à 0,35 au-dessus du fond, donc
- *     au-dessus du saut. On entre en marchant, on sort en marchant, et il n'y a
- *     pas de troisième cas.
+ *     l'ébrèchement, cassé jusqu'au fond, donc trois centimètres de marche dans
+ *     un sens comme dans l'autre. Le reste du bord est à 0,51 au-dessus du fond,
+ *     soit une fois et demie le saut. Trente-six azimuts essayés depuis le
+ *     centre du bassin : cinq en sortent, tous par la brèche ; et trente-six
+ *     départs sur trente-six y rentrent. On entre en marchant, on sort en
+ *     marchant, et il n'y a pas de troisième cas.
  *
  * LA PIERRE. Ses tailles vivent sur les puissances de quatre à partir de 0,48,
  * et elle ne peut pas monter plus haut : franchir la petite face en objet libre
@@ -1010,12 +1018,22 @@ export const BOL: SalleModule = {
  *    et le bleu dormirait dans un monde qui n'en a pas — je n'ai pas su
  *    trancher autrement qu'en suivant les deux salles déjà livrées.
  *
- * 5. LES SEPT MILLIMÈTRES DE L'ÉTAGÈRE. Le saut d'un joueur ×1 culmine à 1,293
- *    et la margelle du viaduc est à 1,30. Il ne monte donc pas sur l'étagère —
- *    de sept millimètres. Aucune démonstration de ce fichier n'en dépend (le
- *    logement reste inatteignable depuis le tablier, depuis le bord et depuis
- *    l'intérieur du bol), mais c'est une cote que personne ne devrait toucher
- *    sans mesurer à nouveau.
+ * 5. LES DEUX CENTIMÈTRES SEPT DE L'ÉTAGÈRE. Le saut d'un joueur ×1 culmine à
+ *    1,293 et la margelle du viaduc est à 1,32. Il ne monte donc pas sur
+ *    l'étagère — de deux centimètres sept. Aucune démonstration de ce fichier
+ *    n'en dépend (le logement reste inatteignable depuis le tablier, depuis le
+ *    bord et depuis l'intérieur du bol), et l'on y monte de toute façon en se
+ *    hissant sur une pierre. Mais c'est une cote que personne ne devrait
+ *    toucher sans remesurer.
+ *
+ * 6. LE HARNAIS N'A JOUÉ QU'UN CHEMIN. La partie complète est vérifiée de bout
+ *    en bout — ramasser, traverser, faire le tour du viaduc, entrer par la
+ *    brèche, loger, revenir, franchir la porte dessinée, descendre la grève,
+ *    éveiller le bleu — mais par UN itinéraire. Les balayages en force brute
+ *    couvrent l'espace des dépôts et des chutes, pas celui des trajets. Un
+ *    joueur qui lance ses pierres au hasard dans une pièce fermée finit
+ *    toujours par les retrouver (elles restent sous le seuil de levage, voir
+ *    « la clôture »), mais je ne l'ai pas prouvé exhaustivement.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 export const CALIBRAGE_BOL = {
@@ -1030,13 +1048,24 @@ export const CALIBRAGE_BOL = {
   ],
   /** Rayon d'accueil du logement, et les deux bornes qu'il doit respecter. */
   portee: PORTEE_LOGEMENT,
-  /** Les trois hauteurs du bol, comptées depuis le fond du bassin. */
+  /** Les hauteurs du bol, comptées depuis le fond du bassin puis du tablier. */
   bol: {
     bord: BOL_BORD - BOL_FOND,
     ebrechement: BOL_EBRECHE - BOL_FOND,
     depuisLeTablier: BOL_BORD - ETAGERE_Y,
+    rayons: [R_INT, R_EXT, R_LEVRE],
   },
-  /** Saut et enjambée à ×1/4 : les deux nombres contre lesquels tout se juge. */
+  /** Le garde-corps du viaduc, compté depuis le tablier. */
+  margelle: MARGELLE_HAUT - ETAGERE_Y,
+  /**
+   * Saut et enjambée à ×1/4. Le saut est celui de la formule (0,72 × la
+   * taille) ; le second est celui qu'on MESURE au harnais, sprint et élan
+   * compris, et c'est lui qui décide. L'écart de 1,7 cm entre les deux n'est
+   * pas une erreur : c'est le pas de simulation.
+   */
   sautPetit: 0.323,
+  sautPetitMesure: 0.306,
   enjambeePetite: 0.225,
+  /** Saut mesuré à ×1, contre lequel se juge la margelle. */
+  sautGrandMesure: 1.293,
 };

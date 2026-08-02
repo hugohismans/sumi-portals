@@ -562,6 +562,14 @@ console.log('\n— Le monde : la spirale monte, et chaque étage voit le précé
   );
 
   // Étage 2 → 3. Une paire quatre fois plus grande prend le relais.
+  //
+  // ELLE NAÎT FERMÉE : c'est la porte que le Pinceau dessine, et depuis qu'elle
+  // le déclare dans les données, la simulation la scelle d'elle-même au
+  // démarrage. Ce test-ci vérifie la SPIRALE, pas le tracé — il ouvre donc la
+  // porte comme le Pinceau le ferait, en une ligne, et le tracé est vérifié
+  // ailleurs. Une porte scellée qui s'ouvrait toute seule était le défaut ;
+  // qu'elle casse ce test est la preuve qu'il est corrigé.
+  sim.portesFermees.delete('ascension-2');
   walkTo(sim, [0, 30, 60], 60 * 16);
   const t2 = walkTo(sim, [0, 30, 88], 60 * 14, { stopOnEvent: true });
   check('la seconde porte fait grandir encore', t2.traversed?.newLevel === 2, pos(sim));
@@ -2117,6 +2125,19 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   const atteintes = new Set<number>([0]);
   for (const r of RACCORDS_DESCENTE) atteintes.add(r.vers);
   const orphelines = SALLES_DESCENTE.filter((_, i) => !atteintes.has(i)).map((s) => s.nom);
+  // ET UNE PORTE À DESSINER NAÎT FERMÉE, DÈS LE DÉMARRAGE. Le scellement ne
+  // vivait que dans la remise à zéro, qui n'est jamais appelée au lancement :
+  // on commençait la partie avec toutes les portes dessinées déjà ouvertes.
+  {
+    const neuve = new Simulation(DESCENTE);
+    const aDessiner = (DESCENTE.portals ?? []).filter((p) => p.dessinee).map((p) => p.id);
+    check(
+      'les portes à dessiner naissent fermées, sans qu’on ait rien remis à zéro',
+      aDessiner.length > 0 && aDessiner.every((id) => neuve.portesFermees.has(id)),
+      `${aDessiner.join(', ') || 'aucune'} — fermées : ${[...neuve.portesFermees].join(', ') || 'aucune'}`,
+    );
+  }
+
   // ET DEUX PORTES NE SE PLANTENT PAS AU MÊME ENDROIT. Une salle qui a deux
   // sorties les mettait exactement l'une sur l'autre : on traversait celle
   // qu'on ne voulait pas, ou rien du tout, et le monde n'en disait rien.

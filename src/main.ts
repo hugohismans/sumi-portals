@@ -430,7 +430,9 @@ const sceau = new SceauFinal([0, 114.2, 0]);
 if (MODE === 'monde') scene.add(sceau.group);
 let coupsPoses = 0;
 
-if (MODE === 'monde') sim.portesFermees.add(PORTE_A_DESSINER);
+// La porte du monde est marquée `dessinee` comme les autres : la simulation
+// la scelle elle-même au démarrage. La ligne qui le faisait à la main a disparu,
+// et c'est elle qui masquait le défaut — la descente, elle, n'avait personne.
 
 // Le bonhomme du joueur local. Il vit dans la scène comme n'importe quel objet,
 // donc il apparaît tout seul dans les vues de portail : on se voit soi-même, de

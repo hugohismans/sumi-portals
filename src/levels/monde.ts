@@ -705,6 +705,13 @@ export const MONDE: LevelDef = {
       // grand. C'est ce qui permet de continuer à monter : une seule paire ne
       // franchirait jamais qu'un cran.
       id: 'ascension-2',
+      // ELLE SE DESSINE AVANT DE S'OUVRIR, et c'est déclaré ici désormais.
+      // C'était une ligne écrite à la main dans `main.ts`, et cette ligne
+      // masquait un défaut du moteur : le scellement ne vivait que dans la
+      // remise à zéro, jamais appelée au lancement. La seconde suite de salles
+      // n'avait personne pour la refermer, et toutes ses portes dessinées
+      // s'ouvraient d'avance.
+      dessinee: true,
       colorBig: 0xc8492e,
       colorSmall: 0x2f4b7c,
       smallHeight: 11.2,

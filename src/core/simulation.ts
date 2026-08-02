@@ -102,6 +102,7 @@ export class Simulation {
     this.sockets = new Sockets(level.sockets);
     this.familles = new Familles(level.boxes, level.tableaux);
     this.player = this.spawnState();
+    this.scellerLesPortesADessiner();
   }
 
   private spawnState(): PlayerState {
@@ -123,10 +124,23 @@ export class Simulation {
     this.familles.reset();
     this.goalReached = false;
     this.seuilFranchi = false;
-    // UNE PORTE QUI DOIT ÊTRE DESSINÉE NAÎT FERMÉE. C'était écrit à la main dans
-    // `main.ts` pour la seule porte du monde qui l'exigeait ; en le déduisant du
-    // niveau, un mouvement entier peut en enchaîner autant qu'il veut, et la
-    // vérification hors navigateur voit la même chose que le jeu.
+    this.scellerLesPortesADessiner();
+  }
+
+  /**
+   * Une porte qui doit être dessinée naît FERMÉE.
+   *
+   * Appelée au démarrage ET à chaque remise à zéro — et c'est le démarrage qui
+   * manquait. Le scellement ne vivait que dans `reset()`, qui n'est jamais
+   * appelé au lancement : on commençait donc la partie avec toutes les portes
+   * dessinées déjà ouvertes. Le monde central n'en souffrait pas, parce qu'une
+   * ligne écrite à la main dans `main.ts` refermait la sienne ; la descente,
+   * elle, n'avait personne pour le faire.
+   *
+   * Deux endroits qui doivent faire la même chose finissent toujours par ne
+   * plus la faire. Il n'y en a plus qu'un.
+   */
+  private scellerLesPortesADessiner(): void {
     this.portesFermees.clear();
     for (const p of this.world.level.portals ?? []) {
       if (p.dessinee) this.portesFermees.add(p.id);
