@@ -63,6 +63,8 @@ export interface Carryable {
   size: number;
   /** Main courante. Elle BASCULE à chaque passage par un portail miroir. */
   main?: 'L' | 'D';
+  /** Ce qu'il écrit, si c'est un stylo. Voir CarryableDef.encre. */
+  encre?: string;
   ink: number;
   held: boolean;
   grounded: boolean;
@@ -163,6 +165,7 @@ export class Carryables {
         spin: vec3(0, 0, 0),
         size: d.size,
         main: d.main,
+        encre: d.encre,
         ink: d.ink ?? 3,
         held: false,
         grounded: false,

@@ -19,6 +19,7 @@ import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
 import { Tableaux } from './render/tableaux.js';
+import { CanevasView } from './render/canevasView.js';
 import { AttenteDuo } from './net/attente.js';
 import { CaissesPartagees } from './net/caisses.js';
 import { Presence, type RemoteSnapshot } from './net/presence.js';
@@ -359,6 +360,13 @@ if (MODE === 'monde') {
 // qu'il montre — et il ne coûte rien par image.
 const tableaux = new Tableaux(LEVEL.tableaux);
 scene.add(tableaux.group);
+
+// Les toiles sur lesquelles on dessine. Voir `src/core/canevas.ts` : le trait
+// fait la POINTE, donc un géant qui ramasse un petit stylo trace un fil.
+const canevas = new CanevasView(LEVEL.canevas);
+scene.add(canevas.group);
+/** A-t-on tracé pendant ce pas ? Sert à couper le trait quand on relâche. */
+let aTrace = false;
 
 // Quelques feuilles portées par le vent, qui laissent une traînée d'encre. Une
 // douzaine, pas davantage : une planche encrée tire sa force de ses vides.
@@ -1072,6 +1080,21 @@ function frame(now: number): void {
         portals.tracer(paire.id, 0);
       }
     }
+    if (events.trace) {
+      canevas.tracer(
+        events.trace.canevas,
+        events.trace.u,
+        events.trace.v,
+        events.trace.rayon,
+        events.trace.encre,
+      );
+      aTrace = true;
+    }
+    if (events.effacee) {
+      canevas.effacer(events.effacee.canevas);
+      ambiance.tache(0);
+      flash('La toile est nette.', 3);
+    }
     if (events.rappele) {
       ambiance.tache(0);
       flash('Tout est remis en place.', 3);
@@ -1282,6 +1305,8 @@ function frame(now: number): void {
     tableaux.syncInk();
   }
 
+  canevas.update(aTrace);
+  aTrace = false;
   feuilles.update(dt, camera, scale);
   pigments.update(dt, peintreEnCours?.group.position);
 

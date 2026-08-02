@@ -14,6 +14,7 @@ import {
 import { Carryables } from './carryables.js';
 import { Sockets } from './sockets.js';
 import { Familles } from './familles.js';
+import { surLaGomme, viser } from './canevas.js';
 import { clamp, rotateY, vec3, wrapAngle, yawToForward, type Vec3 } from './math.js';
 import { moveAndCollide } from './physics.js';
 import {
@@ -348,6 +349,14 @@ export class Simulation {
     // ramasser : c'est quelqu'un qu'on rencontre. S'il est là, il a la priorité
     // sur tout le reste — on ne veut pas qu'un caillou traînant à côté vole le
     // geste.
+    // La gomme d'un canevas : on efface en appuyant à son pied. Avant le reste,
+    // pour la même raison que le levier de rappel — c'est ce qui débloque.
+    for (const t of this.world.level.canevas ?? []) {
+      if (!surLaGomme(t, this.player.position)) continue;
+      events.effacee = { canevas: t.id };
+      return;
+    }
+
     // ─── LE LEVIER DE RAPPEL, EN PREMIER ──────────────────────────────────
     //
     // Avant les pinceaux et avant les caisses : c'est le seul geste qui doit
@@ -508,10 +517,35 @@ export class Simulation {
     }
   }
 
-  /** Lancer au clic. Front montant, comme la saisie. */
+  /**
+   * Lancer au clic — SAUF si l'on tient un stylo, auquel cas on trace.
+   *
+   * C'est le seul objet du jeu qui change ce que fait un bouton, et c'est
+   * assumé : on tient un stylo comme on tient une arme dans un jeu de tir, et
+   * personne n'a jamais eu besoin qu'on lui explique à quoi sert la gâchette.
+   *
+   * Et le trait se pose EN CONTINU tant qu'on appuie, contrairement au lancer
+   * qui n'obéit qu'au front montant : on ne dessine pas par clics, on dessine
+   * en promenant la main.
+   */
   private handleThrow(pressed: boolean, scale: number, events: TickEvents): void {
     const justPressed = pressed && !this.throwHeld;
     this.throwHeld = pressed;
+
+    const stylo = this.carryables.held;
+    if (pressed && stylo?.encre) {
+      const impact = viser(
+        this.world.level.canevas ?? [],
+        this.eyePosition(),
+        this.player.yaw,
+        this.player.pitch,
+        scale,
+        stylo.size,
+      );
+      if (impact) events.trace = { ...impact, encre: stylo.encre };
+      return;
+    }
+
     if (!justPressed) return;
 
     const held = this.carryables.held;

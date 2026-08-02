@@ -132,6 +132,15 @@ export interface CarryableDef {
   /** Arête du cube, en unités du monde. */
   size: number;
   ink?: number;
+  /**
+   * CE QUE CET OBJET ÉCRIT. Un stylo, et la couleur de son encre.
+   *
+   * Tant qu'on le tient, le clic ne LANCE plus : il TRACE. C'est le seul objet
+   * du jeu qui change ce que fait un bouton, et c'est assumé — on tient un
+   * stylo comme on tient une arme dans un jeu de tir, et personne n'a jamais eu
+   * besoin qu'on lui explique à quoi sert la gâchette.
+   */
+  encre?: string;
 }
 
 /**
@@ -340,6 +349,47 @@ export interface RegionDef {
  * qu'il n'y a rien à perdre, et c'est précisément ce qui distingue le hall du
  * reste du jeu.
  */
+/**
+ * UN CANEVAS — un mur sur lequel on dessine, et la taille du trait est la vôtre.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * POURQUOI C'EST LA MEILLEURE DÉMONSTRATION DU JEU
+ *
+ * Tout *Lavis* tient dans une phrase : le monde ne change pas, c'est vous qui
+ * changez. On peut la dire, on peut la montrer par une falaise qui devient une
+ * marche — ou on peut la mettre dans la main du joueur.
+ *
+ * Un géant trace des barres larges comme un bras. Un joueur de quarante-cinq
+ * centimètres, sur le même mur, trace un fil. Et les deux dessins restent là,
+ * côte à côte, sur la même toile. **On n'a rien expliqué, et il n'y a plus rien
+ * à expliquer.**
+ *
+ * Et si le stylo passe un portail miroir, ce qu'on écrit sort à l'envers.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * La toile est un plan, pas un objet : on vise, on appuie, ça marque. Le calcul
+ * de l'impact est fait par la simulation et non par le rendu — c'est de la
+ * géométrie pure, donc c'est vérifiable sans navigateur, et le trait qu'on voit
+ * est exactement celui qui a été calculé.
+ */
+export interface CanevasDef {
+  id: string;
+  /** Centre de la toile. */
+  position: [number, number, number];
+  /** Orientation du mur. La toile regarde vers `+normale`. */
+  yaw: number;
+  largeur: number;
+  hauteur: number;
+  /**
+   * Où l'on appuie pour tout effacer, et son rayon.
+   *
+   * Un canevas sans gomme est un canevas qu'on abîme une fois pour toutes. Ici
+   * il n'y a rien à gagner : ce qui s'y trace est une expérience, pas un
+   * progrès, et une expérience doit pouvoir se recommencer.
+   */
+  gomme?: { position: [number, number, number]; radius: number };
+}
+
 export interface RappelDef {
   position: [number, number, number];
   radius: number;
@@ -397,6 +447,8 @@ export interface LevelDef {
   tableaux?: TableauDef[];
   /** Le levier qui remet le bac à sable en ordre. Voir RappelDef. */
   rappel?: RappelDef;
+  /** Les murs sur lesquels on dessine. Voir CanevasDef. */
+  canevas?: CanevasDef[];
   portals: PortalPairDef[];
   goal: { position: [number, number, number]; radius: number };
   /** Les sorties du hall. Absent partout ailleurs. */
@@ -513,6 +565,14 @@ export interface TickEvents {
   socketVide?: { socketId: string };
   /** On a tiré le levier de rappel : tout est retourné à sa place. */
   rappele?: boolean;
+  /**
+   * Un trait vient d'être posé sur une toile. `u` et `v` vont de 0 à 1 sur la
+   * toile, `rayon` est en fraction de sa largeur — donc proportionnel à la
+   * taille de celui qui écrit, ce qui est tout l'intérêt.
+   */
+  trace?: { canevas: string; u: number; v: number; rayon: number; encre: string };
+  /** Une toile vient d'être effacée. */
+  effacee?: { canevas: string };
   /** Une famille vient de recevoir une couleur. */
   peinte?: { famille: string; pigment: string };
   /**
