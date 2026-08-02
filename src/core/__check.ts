@@ -64,6 +64,7 @@ import { REACH } from './carryables.js';
 import { conditionsDe } from './portals.js';
 import { FORMES } from '../levels/formes.js';
 import {
+  POURQUOI_MONTEE_ORPHELINS,
   REPERES_DESCENTE,
   REPERES_FORMES,
   REPERES_LOBBY,
@@ -3461,6 +3462,49 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       perdus.join(' · '),
     );
   }
+
+  // ─── ET AUCUNE SALLE N'EST HORS D'ATTEINTE ──────────────────────────────
+  //
+  // Les deux lucarnes n'avaient AUCUN repère, et ce sont les salles où il y a
+  // le plus à perdre : elles portent la seule récompense des deux voyages, et
+  // elles sont derrière la DERNIÈRE porte. Les vérifier à la main coûtait donc
+  // le trajet entier — exactement le prix que ces raccourcis existent pour
+  // supprimer, et exactement la raison pour laquelle personne ne les aurait
+  // regardées.
+  //
+  // C'est un trou qu'on ne voit pas : la liste était complète pour les salles
+  // qu'elle connaissait, et son en-tête annonçait encore « six salles » quand
+  // il y en avait sept. Trouvé par l'autrice des raisons, en comptant.
+  for (const [nom, salles, liste] of [
+    ['la descente', SALLES_DESCENTE, REPERES_DESCENTE],
+    ['la montée', SALLES_MONTEE, REPERES_MONTEE],
+  ] as const) {
+    const sansRepere = salles.filter(
+      (s) =>
+        !liste.some((r) => {
+          const b = s.bounds;
+          return (
+            r.position[0] >= b.min[0] && r.position[0] <= b.max[0] &&
+            r.position[2] >= b.min[2] && r.position[2] <= b.max[2]
+          );
+        }),
+    );
+    check(
+      `dans ${nom}, chaque salle a au moins un raccourci qui y mène`,
+      sansRepere.length === 0,
+      sansRepere.map((s) => s.nom).join(', '),
+    );
+  }
+
+  // ET AUCUNE RAISON N'EST ÉCRITE POUR RIEN. La table des raisons de la montée
+  // est indexée par titre : renommer une station la ferait disparaître du
+  // panneau sans erreur, sans test rouge, et sans que personne ne le remarque
+  // avant d'être devant l'écran.
+  check(
+    'aucune raison de test ne vise une station qui n’existe plus',
+    POURQUOI_MONTEE_ORPHELINS.length === 0,
+    POURQUOI_MONTEE_ORPHELINS.join(', '),
+  );
 }
 
 // =============================================================================
