@@ -7,6 +7,7 @@ import { BLANCHIMENT } from './salles/blanchiment.js';
 import { ESCALIER } from './salles/escalier.js';
 import { ATELIER_HAUT } from './salles/atelierHaut.js';
 import { VALLEE } from './salles/vallee.js';
+import { LUCARNE_DOREE } from './salles/lucarneDoree.js';
 
 /**
  * LA MONTÉE — le second mouvement de la suite, et il rapporte l'or.
@@ -38,7 +39,7 @@ import { VALLEE } from './salles/vallee.js';
  * chose qu'aucun auteur de salle ne peut voir depuis son coin.
  */
 
-const SALLES: SalleModule[] = [TOITS, REFUS, BLANCHIMENT, ESCALIER, ATELIER_HAUT, VALLEE];
+const SALLES: SalleModule[] = [TOITS, REFUS, BLANCHIMENT, ESCALIER, ATELIER_HAUT, VALLEE, LUCARNE_DOREE];
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -118,6 +119,15 @@ const RACCORDS: Raccord[] = [
   // Son autrice l'a écrit en gras dans son en-tête sans pouvoir le corriger —
   // un tableau appartient à la salle, la porte qu'il descelle appartient ici.
   { depuis: 4, vers: 5, cran: +1, condition: 'haut-tableau-cour' },
+  // ─── ET LA LUCARNE, QUI EST LA FIN ───────────────────────────────────────
+  //
+  // Sans elle, on traversait six salles pour réveiller l'or au bout de la
+  // vallée et… le niveau s'arrêtait. **La couleur ne se posait nulle part.**
+  // Le village ne peut pas venir jusqu'ici, mais un morceau de village le peut,
+  // à une autre taille. Aucune condition : la porte est ouverte, on voit les
+  // toits gris à travers, et c'est en réveillant le pinceau qu'on les regarde
+  // s'allumer depuis la corniche où l'on se tient.
+  { depuis: 5, vers: 6, cran: -1 },
 ];
 
 /** Écart d'échelle entre la sortie d'une salle et l'entrée de la suivante. */
@@ -223,9 +233,21 @@ const assembler = (): LevelDef => ({
   // suit l'échelle du lieu : six mètres à taille d'homme, quatre-vingt-seize à
   // ×16, où le joueur en fait vingt-huit — un but qu'on ne peut pas manquer en
   // posant le pied à côté.
+  // ═══════════════════════════════════════════════════════════════════════
+  // LE BUT A DÉMÉNAGÉ, POUR LA MÊME RAISON QUE DANS LA DESCENTE.
+  //
+  // Il était sur la sortie de la vallée, à dix mètres de l'endroit où dort l'or
+  // — et son rayon vaut quatre-vingt-seize mètres à ×16. Réveiller la couleur
+  // déclenchait donc la fin dans la même seconde, et le panneau de victoire
+  // serait tombé par-dessus la peinture qu'on venait de mériter.
+  //
+  // Il est maintenant dans la maquette : on réveille l'or, on regarde les toits
+  // s'allumer un par un depuis la corniche, puis on descend d'une porte et l'on
+  // se retrouve debout au-dessus du village qu'on vient d'éclairer.
+  // ═══════════════════════════════════════════════════════════════════════
   goal: {
-    position: VALLEE.sortie.position,
-    radius: 6 * Math.pow(4, VALLEE.sortie.echelle),
+    position: LUCARNE_DOREE.sortie.position,
+    radius: 6 * Math.pow(4, LUCARNE_DOREE.sortie.echelle),
   },
 });
 

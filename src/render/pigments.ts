@@ -84,6 +84,29 @@ const REPOS = 0.1;
 interface Chantier {
   materiaux: THREE.ShaderMaterial[];
   avancement: number;
+  /**
+   * ─── OÙ LE FRONT RENCONTRE CETTE RÉGION ────────────────────────────────
+   *
+   * Distance du pinceau au point le PLUS PROCHE de la région. Zéro quand il
+   * peint le monde où il se tient — c'est-à-dire dans tous les cas d'avant.
+   *
+   * Il a fallu l'inventer pour les lucarnes. L'or dort au bout de la vallée et
+   * la maquette du village est à six cent cinquante mètres de là, derrière une
+   * porte. Le front, sphère centrée sur le pinceau, passait donc quatre
+   * secondes à balayer la vallée — la part « visible » de sa course — puis
+   * rattrapait les six cents mètres restants dans le dernier cinquième.
+   *
+   * Mesuré par l'autrice de la lucarne dorée en rejouant cette boucle : **la
+   * salle entière basculait en 0,14 s**, quatre secondes après le coup de
+   * pinceau. Ce qui annule exactement ce qu'on voulait — on ne regardait pas la
+   * couleur se poser, on la découvrait posée. C'est le défaut qu'on avait déjà
+   * corrigé une fois pour les hauteurs du village, revenu par l'autre bout.
+   *
+   * En partant de `debut`, la course visible couvre la région ELLE-MÊME et non
+   * le vide qui l'en sépare. Le trajet du pinceau jusqu'à elle est gratuit : il
+   * n'y a rien à peindre en chemin, et personne pour le regarder.
+   */
+  debut: number;
   /** Vrai si c'est l'ACCENT de la région qu'on repeint, et non son corps. */
   accent: boolean;
   /**
@@ -188,7 +211,14 @@ export class Pigments {
       if (cibles.length === 0) continue;
       const b = bornes?.get(region);
       let portee = 900;
+      let debut = 0;
       if (b && depart) {
+        // Le point le plus proche de la boîte : zéro si l'on est dedans, ce qui
+        // est le cas de toutes les régions qu'un pinceau peint chez lui.
+        const px = Math.min(Math.max(depart.x, b.min[0]), b.max[0]);
+        const py = Math.min(Math.max(depart.y, b.min[1]), b.max[1]);
+        const pz = Math.min(Math.max(depart.z, b.min[2]), b.max[2]);
+        debut = Math.hypot(px - depart.x, py - depart.y, pz - depart.z);
         // La distance au coin le plus éloigné de la boîte. On la prend sur les
         // huit coins plutôt qu'au centre : une région longue et basse comme les
         // hauteurs du monde a un centre tout proche et un bout à quatre cents
@@ -213,7 +243,7 @@ export class Pigments {
             else m.uniforms.uFront.value.x = 1;
           }
         }
-        this.chantiers.push({ materiaux, avancement: 0, portee, accent });
+        this.chantiers.push({ materiaux, avancement: 0, debut, portee, accent });
       }
     }
     return true;
@@ -253,7 +283,11 @@ export class Pigments {
       // définition la distance au-delà de laquelle plus rien ne se lit. Le
       // front met l'essentiel du temps à parcourir ce qu'on peut voir, puis
       // rattrape le reste dans le dernier cinquième — invisible, donc gratuit.
-      const visible = Math.min(c.portee, VUE);
+      // La part visible se compte DEPUIS la région, pas depuis le pinceau :
+      // voir `Chantier.debut`. Sans ça, une région lointaine se faisait peindre
+      // tout entière dans le dernier cinquième de la course, en un dixième de
+      // seconde.
+      const visible = Math.min(c.portee, c.debut + VUE);
       const a = c.avancement;
       // Décélération douce sur la part visible : l'encre part fort et s'épuise
       // en rencontrant la fibre. En cube elle était trop brutale ; au carré on
@@ -274,7 +308,7 @@ export class Pigments {
       const b = Math.max(0, (a - REPOS) / (1 - REPOS));
       const rayon =
         b < LISIBLE
-          ? visible * (1 - Math.pow(1 - b / LISIBLE, 2))
+          ? c.debut + (visible - c.debut) * (1 - Math.pow(1 - b / LISIBLE, 2))
           : visible + (c.portee - visible) * ((b - LISIBLE) / (1 - LISIBLE));
       const fini = a >= 1;
       for (const m of c.materiaux) {

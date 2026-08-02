@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 411 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 440 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -383,6 +383,39 @@ brancher, a compté 4 688 postes de prise : 11,3 % traversaient de la pierre, et
 sont au fond de la fente du lavoir et dans le bol — ils perdent les angles qui
 passaient par le dallage, ce qui est précisément la leçon que ces salles
 voulaient donner.
+
+---
+
+## 3 sexies. LES LUCARNES — la couleur se pose enfin quelque part
+
+**C'est le plus gros manque du jeu, et il vient d'être bouché.** On traversait
+six salles pour réveiller le bleu au fond du bol, six autres pour l'or au bout
+de la vallée — et le niveau s'arrêtait. La couleur ne se posait nulle part.
+
+Derrière la dernière porte de chaque voyage, il y a maintenant **une maquette du
+village au seizième**. La porte n'a aucune condition : elle est ouverte, on voit
+le village **gris** à travers.
+
+**Le geste :** réveille le pinceau, puis **tourne-toi vers la porte et ne bouge
+plus.**
+→ *Le village prend sa couleur, là-bas, pendant que tu es encore dans la salle
+grise.* Le bleu va à l'eau — bassin, gouttières, puits. L'or va à la lumière —
+lanternes, bouches de four, rais sous les portes.
+Puis franchis : **tu te retrouves debout dans le village que tu viens de
+colorier.**
+
+**Défaut à guetter, et c'est celui qui a failli tout annuler :** que ça bascule
+d'un coup au lieu de se peindre. Le front d'encre est une sphère centrée sur le
+pinceau, et la maquette est à six cent cinquante mètres de là — il passait donc
+tout son temps à balayer la vallée, puis rattrapait la lucarne en **0,21 s**.
+Corrigé : la course se compte désormais **depuis la région**, pas depuis le
+pinceau, et la maquette met 3,77 s à se peindre. Si tu vois encore un
+basculement instantané, c'est que le correctif n'a pas pris.
+
+**Et regarde bien AVANT :** on doit reconnaître le village en gris, sans un
+mot. Le torii, la cour creusée et son liseré, la maison basse au toit rouge sont
+déjà en couleur pour ça. **Si tu ne reconnais pas l'endroit, les deux salles
+sont à reprendre** — c'est leur seul critère.
 
 ---
 
