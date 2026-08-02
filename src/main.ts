@@ -503,11 +503,23 @@ const peersBox = el('peers');
 const suiteEl = el<HTMLAnchorElement>('suite');
 const fpsBox = el('fps');
 
+/**
+ * Les paliers, en toutes lettres.
+ *
+ * Les quatre derniers ne se lisent plus en fractions — « ×1/1024 » n'apprend
+ * rien à personne. On dit ce que ça FAIT : à ce compte-là, un pavé est une
+ * plaine, et c'est la seule chose qui compte pour qui y est.
+ */
 const SCALE_LABELS: Record<number, [string, string]> = {
+  [-5]: ['×1/1024', 'un millimètre et demi'],
+  [-4]: ['×1/256', 'sept millimètres'],
+  [-3]: ['×1/64', 'moins de trois centimètres'],
   [-2]: ['×1/16', 'seize fois plus petit'],
   [-1]: ['×1/4', 'quatre fois plus petit'],
   [0]: ['×1', 'taille normale'],
   [1]: ['×4', 'quatre fois plus grand'],
+  [2]: ['×16', 'seize fois plus grand'],
+  [3]: ['×64', 'soixante-quatre fois plus grand'],
 };
 
 let hintText = '';

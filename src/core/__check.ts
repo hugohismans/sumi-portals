@@ -12,7 +12,7 @@ import { SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './const
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
-import { buildFaces, estScelle, transformPoint, transformVector, traversalLevelDelta } from './portals.js';
+import { buildFaces, canPass, estScelle, transformPoint, transformVector, traversalLevelDelta } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
@@ -2194,17 +2194,28 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     const sim = new Simulation(niveau);
     const fautes: string[] = [];
     for (const f of sim.faces) {
-      for (const palier of [-1, 0, 1]) {
+      // TOUS les paliers du jeu, et non plus trois. La butée basse est passée
+      // de −2 à −5 pour qu'on puisse rapetisser aussi loin qu'on veut : c'est
+      // le monde qui doit dire non, en devenant impraticable, et jamais une
+      // règle énoncée devant une porte manifestement ouverte.
+      for (let palier = SCALE_MIN_LEVEL; palier <= SCALE_MAX_LEVEL; palier++) {
         const suivant = palier + traversalLevelDelta(f);
-        if (suivant < SCALE_MIN_LEVEL || suivant > SCALE_MAX_LEVEL) {
-          fautes.push(`${f.pairId}/${f.kind} à ×${scaleOfLevel(palier)}`);
-        }
+        if (suivant >= SCALE_MIN_LEVEL && suivant <= SCALE_MAX_LEVEL) continue;
+        // On ne compte QUE les refus qu'on ne peut pas voir. Si le corps ne
+        // rentre pas de toute façon, le monde a déjà dit non, et il l'a dit
+        // avec une porte trop petite — ce qui est la bonne façon de le dire.
+        if (!canPass(f, scaleOfLevel(palier))) continue;
+        fautes.push(`${f.pairId}/${f.kind} à ×${scaleOfLevel(palier)}`);
       }
     }
+    // Une seule exception est légitime : au tout dernier cran, une grande face
+    // n'a effectivement plus où mener. C'est le fond du monde, il est loin, et
+    // le message le dit maintenant en parlant du monde et non du programme.
+    const inattendues = fautes.filter((f) => !f.endsWith(`×${scaleOfLevel(SCALE_MIN_LEVEL)}`));
     check(
-      `dans ${nom}, aucune porte ne bute sur la limite aux tailles ordinaires`,
-      fautes.length === 0,
-      fautes.slice(0, 3).join(', '),
+      `dans ${nom}, aucune porte ne bute sur la limite avant le tout dernier cran`,
+      inattendues.length === 0,
+      inattendues.slice(0, 3).join(', '),
     );
   }
 }

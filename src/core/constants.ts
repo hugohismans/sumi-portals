@@ -29,14 +29,41 @@ export const GROUND_FRICTION = 13;
 // --- Échelles ----------------------------------------------------------------
 /** Rapport de taille entre les deux portails d'une paire. */
 export const SCALE_RATIO = 4;
-export const SCALE_MIN_LEVEL = -2;
 /**
- * Butée haute. Ce n'est qu'un garde-fou : c'est la taille des portails qui
- * borne réellement la montée, paire par paire. Un monde en spirale enchaîne
- * plusieurs paires, chacune taillée pour l'étage qu'elle dessert, d'où une
- * butée plus haute qu'une seule paire ne permettrait d'atteindre.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ON DESCEND AUSSI LOIN QU'ON VEUT, ET C'EST LE MONDE QUI DIT NON.
+ *
+ * La butée basse valait −2, et elle se faisait sentir : devant une grande porte
+ * manifestement ouverte, on lisait un refus qui ne parlait que du moteur. Or
+ * dans ce jeu, **une porte doit refuser pour une raison qu'on voit**.
+ *
+ * La bonne borne existait déjà et elle est physique : on ne franchit pas une
+ * porte où l'on n'entre pas. C'est elle qui interdit de GRANDIR sans fin —
+ * grandir se fait par la petite face, et l'on finit par ne plus y tenir. Rien
+ * n'interdisait de RAPETISSER, puisqu'une grande face accueille tout le monde.
+ *
+ * On descend donc de cinq crans au lieu de deux, jusqu'à un millimètre et demi.
+ * Et ce n'est pas une permission sans conséquence : plus on descend, moins le
+ * monde est praticable. À ×1/256 un pavé est une plaine, à ×1/1024 le grain du
+ * sol tremble sous les pieds parce que les nombres de la carte graphique n'ont
+ * plus assez de décimales pour un corps de deux millimètres.
+ *
+ * C'est exactement ce qu'on veut : la limite n'est plus une règle énoncée, elle
+ * est une SENSATION. On peut toujours entrer dans la porte suivante ; c'est le
+ * monde d'après qui ne vaut plus la peine.
+ *
+ * Cinq et pas six : au sixième cran le corps devient plus petit que la
+ * précision des coordonnées, et l'on traverserait le sol. Le vertige, oui ; la
+ * panne, non.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
-export const SCALE_MAX_LEVEL = 2;
+export const SCALE_MIN_LEVEL = -5;
+/**
+ * Butée haute. Ce n'est qu'un garde-fou, et il ne devrait jamais servir : c'est
+ * la taille des portails qui borne réellement la montée, paire par paire, et
+ * elle le fait d'une manière que le joueur VOIT — il ne rentre pas.
+ */
+export const SCALE_MAX_LEVEL = 3;
 
 export const scaleOfLevel = (level: number): number => Math.pow(SCALE_RATIO, level);
 
