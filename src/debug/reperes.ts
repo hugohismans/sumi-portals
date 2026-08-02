@@ -453,3 +453,124 @@ export const REPERES_MONTEE: Repere[] = [
     25,
   ),
 ];
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LE HALL — le trou du protocole, et c'était le plus gros.
+ *
+ * « Le protocole est dans le jeu » : trois touchers sur l'échelle et la liste
+ * s'ouvre, sans taper d'adresse. C'était vrai du monde, de la descente et de la
+ * montée. **Le hall n'avait pas une ligne** — alors que c'est devenu le terrain
+ * le plus dense du projet, et le seul où l'on arrive par défaut.
+ *
+ * Un protocole qui ne couvre pas la première chose qu'on voit n'est pas un
+ * protocole, c'est une annexe.
+ *
+ * PAS DE TÉLÉPORTATION UTILE ICI, et c'est la différence avec les autres
+ * mondes. Le hall tient dans soixante mètres : le trajet ne coûte rien, et ce
+ * qu'on gagne à sauter n'est pas le temps mais **l'attention**. Chaque repère
+ * pose donc le joueur en face de la chose et lui dit ce qu'il doit voir.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const REPERES_LOBBY: Repere[] = [
+  {
+    titre: 'La toile et les deux stylos',
+    verifier:
+      'Prends le petit stylo, clic gauche maintenu, écris. Prends le gros, écris à ' +
+      'côté. → Le trait du second est visiblement plus épais, et les deux dessins ' +
+      'restent côte à côte. Recharge la page : c’est encore là. Défaut à guetter : ' +
+      'un trait en pointillés au lieu d’une ligne, ou qui saute d’un bout à l’autre ' +
+      'quand tu relâches et reprends.',
+    position: [-9.6, 0.2, -10.4],
+    echelle: 0,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 1,
+  },
+  {
+    titre: 'Le stylo qui grossit en passant la porte',
+    verifier:
+      'Prends le stylo vermillon, franchis la porte indigo à deux pas de là. → Il ' +
+      'ressort quatre fois plus gros, ET TON TRAIT AVEC. C’est la seule démonstration ' +
+      'du jeu où l’on voit une loi s’appliquer à ce qu’on fabrique soi-même.',
+    position: [5.0, 0.2, 2.0],
+    echelle: 0,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'Le bac aux galets — et celui qui refuse',
+    verifier:
+      'Quatre pierres : 0,22 · 0,50 · 0,90 · 1,70. La dernière REFUSE de se ' +
+      'soulever, et la réponse — les portes — est à vingt mètres. Aucun creux ne ' +
+      'les attend : elles sont là pour être prises, lancées, changées de taille.',
+    position: [6.0, 0.2, -1.0],
+    echelle: 0,
+    lacet: -Math.PI * 0.5,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'L’établi — deux billes, deux creux',
+    verifier:
+      'Deux billes RIGOUREUSEMENT identiques, deux creux de tailles différentes. ' +
+      'L’une se pose telle quelle ; l’autre doit franchir une porte pour grossir. ' +
+      'Le grand creux garni ouvre LE CABINET, vingt mètres à l’est. → Dedans, une ' +
+      'Aiguille en réduction et cinq creux vides.',
+    position: [3.2, 0.2, 28.5],
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'La maisonnette — le pendant, dans l’autre sens',
+    verifier:
+      'Le cabinet se mérite en devenant grand ; celle-ci en devenant petit. Loge ' +
+      'le galet de 0,10 dans le creux minuscule, la porte verte s’ouvre. → Sa petite ' +
+      'face fait 62 cm : on n’y entre qu’à quarante-cinq centimètres.',
+    position: [11.5, 0.2, 7.6],
+    echelle: 0,
+    lacet: -Math.PI * 0.5,
+    pigments: [],
+    jalon: 4,
+  },
+  {
+    titre: 'Le levier de rappel — ce qui autorise tout le reste',
+    verifier:
+      'Appuie sur E dans sa bulle. → TOUT retourne à sa place, d’un coup. C’est ce ' +
+      'qui permet de tout essayer sans rien casser, et donc la pièce la plus ' +
+      'importante du hall. Défaut à guetter : que la bulle morde sur une dalle — un ' +
+      'appui dedans rappellerait tout au lieu de reposer ce qu’on tient.',
+    position: [0, 0.25, -1.2],
+    echelle: 0,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'La toise — un miroir, pas une serrure',
+    verifier:
+      'Trois trous, trois tailles. → Tu vois de quelle taille tu es, et c’est tout ' +
+      'ce qu’elle fait. Elle se contourne par les deux bouts, exprès : on ne doit ' +
+      'jamais avoir besoin d’elle, seulement envie de la regarder.',
+    position: [16.0, 0.2, -4.0],
+    echelle: 0,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'Les trois arches — solo, duo, rêve',
+    verifier:
+      'Le seuil de gauche attend quelqu’un ; celui du milieu part pour l’aventure ; ' +
+      'celui de droite endort. → L’attente à deux se passe DANS le hall, sans écran ' +
+      'de salle d’attente : on continue à jouer avec les portails pendant ce temps.',
+    position: [0, 0.2, -17.0],
+    echelle: 0,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 5,
+  },
+];

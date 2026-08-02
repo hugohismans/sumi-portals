@@ -57,6 +57,12 @@ import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
 import { LOBBY } from '../levels/lobby.js';
+import {
+  REPERES_DESCENTE,
+  REPERES_LOBBY,
+  REPERES_MONDE,
+  REPERES_MONTEE,
+} from '../debug/reperes.js';
 import { MONDE } from '../levels/monde.js';
 import { reve } from '../levels/reve.js';
 import { verifierParcelle } from '../levels/regions/contrat.js';
@@ -2652,6 +2658,77 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       'on ne naît pas dans la pierre, sur les toits',
       sim.player.position.y > -50,
       `y = ${sim.player.position.y.toFixed(2)}`,
+    );
+  }
+}
+
+// =============================================================================
+{
+  console.log('\n— Aucun repère ne dépose dans la pierre —');
+
+  // ─── LE DÉFAUT DES COORDONNÉES ÉCRITES À LA MAIN ────────────────────────
+  //
+  // Un repère est une paire de nombres tapés en lisant un fichier de niveau. Il
+  // n'a aucun lien avec la géométrie : le jour où quelqu'un déplace un mur, le
+  // repère continue de viser l'ancien endroit et l'on se réveille à l'intérieur
+  // d'un rocher, immobile, sans rien comprendre. C'est exactement ce qui est
+  // arrivé au pinceau vert, déplacé dans une table et pas dans l'autre.
+  //
+  // Les repères de la montée demandent leur position aux salles elles-mêmes et
+  // ne peuvent pas dériver. Ceux du hall, du monde et de la descente sont
+  // écrits à la main — donc vérifiés ici, à chaque fois, pour toujours.
+  for (const [nom, niveau, liste] of [
+    ['le hall', LOBBY, REPERES_LOBBY],
+    ['le monde', MONDE, REPERES_MONDE],
+    ['la descente', DESCENTE, REPERES_DESCENTE],
+    ['la montée', MONTEE, REPERES_MONTEE],
+  ] as const) {
+    // ON NE DEMANDE PAS D'ÊTRE À L'AIR LIBRE, ON DEMANDE DE POUVOIR MARCHER.
+    //
+    // La première version exigeait `isClear`, et elle refusait cinq repères qui
+    // marchent parfaitement : quand on dépose le corps à quelques centimètres
+    // dans une dalle, la gravité de l'image suivante le repose dessus et
+    // personne ne s'aperçoit de rien. Un repère « dans » la pointe de l'Aiguille
+    // pose en réalité le joueur SUR elle, ce qui est exactement le but.
+    //
+    // Ce qui compte n'est donc pas la propreté du point mais **ce qu'il advient
+    // du joueur** : au bout d'une seconde et demie, est-il debout, quelque part,
+    // et peut-il avancer ? Une vérification qui décrit l'état visé au lieu de la
+    // géométrie ne se trompe pas de reproche.
+    const perdus: string[] = [];
+    for (const r of liste) {
+      const sim = new Simulation(niveau);
+      sim.player.position = { x: r.position[0], y: r.position[1], z: r.position[2] };
+      sim.player.scaleLevel = r.echelle;
+      sim.player.yaw = r.lacet;
+      const immobile = {
+        forward: 0,
+        strafe: 0,
+        jump: false,
+        sprint: false,
+        yaw: r.lacet,
+        pitch: 0,
+        interact: false,
+        throwIt: false,
+      };
+      for (let i = 0; i < 90; i++) sim.step(immobile, TICK_DT);
+      const pose = sim.player.position;
+      if (!sim.player.grounded || pose.y < -100) {
+        perdus.push(`« ${r.titre} » finit à y=${pose.y.toFixed(1)}${sim.player.grounded ? '' : ', en l’air'}`);
+        continue;
+      }
+      // ET IL PEUT AVANCER. Un corps coincé entre deux boîtes est « au sol » et
+      // parfaitement immobile — c'est le pire des deux mondes, puisque rien ne
+      // le signale.
+      const avant = { x: pose.x, z: pose.z };
+      for (let i = 0; i < 45; i++) sim.step({ ...immobile, forward: 1 }, TICK_DT);
+      const d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      if (d < 0.3 * scaleOfLevel(r.echelle)) perdus.push(`« ${r.titre} » ne peut pas marcher (${d.toFixed(2)} m)`);
+    }
+    check(
+      `${nom} : ses ${liste.length} repères laissent tous le joueur debout et libre`,
+      perdus.length === 0,
+      perdus.join(' · '),
     );
   }
 }

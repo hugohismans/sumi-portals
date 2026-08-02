@@ -15,7 +15,13 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
-import { REPERES_DESCENTE, REPERES_MONDE, REPERES_MONTEE, changeDeMonde } from './debug/reperes.js';
+import {
+  REPERES_DESCENTE,
+  REPERES_LOBBY,
+  REPERES_MONDE,
+  REPERES_MONTEE,
+  changeDeMonde,
+} from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
@@ -814,7 +820,10 @@ const REPERES =
       ? REPERES_MONTEE
       : MODE === 'monde'
         ? REPERES_MONDE
-        : [];
+        // LE HALL EST LE DÉFAUT, et il l'était sans avoir une seule ligne. Un
+        // protocole qui ne couvre pas la première chose qu'on voit n'est pas un
+        // protocole, c'est une annexe.
+        : REPERES_LOBBY;
 
 {
   const panneau = el('debug');
@@ -855,13 +864,25 @@ const REPERES =
     const r = REPERES[i];
     if (!r) return;
 
-    if (changeDeMonde(r.pigments, Pigments.lire())) {
+    // ─── DEUX FAUTES QUI RENDAIENT LE PANNEAU DU HALL INUTILISABLE ─────────
+    //
+    // 1. `?niveau=${MODE}` avec MODE à `null` — donc, dans le hall, une adresse
+    //    `?niveau=null` qui ne désigne aucun monde. On cliquait sur une ligne et
+    //    l'on atterrissait sur un niveau inexistant.
+    // 2. Le rechargement se déclenchait sur l'état des couleurs, alors que **le
+    //    hall n'a pas de couleurs du tout** : ses régions ne déclarent aucun
+    //    pigment. Rentrer d'une aventure avec le rouge en poche suffisait donc à
+    //    recharger la page pour rien, à chaque ligne du protocole.
+    //
+    // Les deux ne se voyaient que dans le hall, c'est-à-dire à l'endroit que le
+    // protocole ne couvrait pas encore. Un trou en cachait un autre.
+    if (pigmentDe.size > 0 && changeDeMonde(r.pigments, Pigments.lire())) {
       try {
         localStorage.setItem(clePigments(), JSON.stringify(r.pigments));
       } catch {
         /* sans mémoire, le repère arrive dans l'état courant : tant pis */
       }
-      location.search = `?niveau=${MODE}&debug=1&repere=${i}`;
+      location.search = MODE ? `?niveau=${MODE}&debug=1&repere=${i}` : `?debug=1&repere=${i}`;
       return;
     }
 
