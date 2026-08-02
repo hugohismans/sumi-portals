@@ -7,6 +7,7 @@ import { LEVEL_02 } from './levels/level02.js';
 import { DALLE_GEANT, DALLE_MINUSCULE, RAYON_DALLE, construireDuo, roleDansSalon, type RoleDuo } from './levels/duo.js';
 import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
+import { DESCENTE } from './levels/descente.js';
 import { reve } from './levels/reve.js';
 import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
@@ -63,6 +64,7 @@ const ROLE: RoleDuo = PARAMS.get('role') === 'minuscule' ? 'minuscule' : 'geant'
  */
 const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   monde: () => MONDE,
+  descente: () => DESCENTE,
   cour: () => LEVEL_01,
   caisse: () => LEVEL_02,
   duo: () => construireDuo(ROLE),
