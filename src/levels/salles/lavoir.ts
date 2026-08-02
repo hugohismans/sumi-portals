@@ -286,18 +286,17 @@ export const LAVOIR: SalleModule = {
       big: { position: [X0 - 10.4, 0.006, Z0 + 2.2], yaw: Math.PI / 2 },
       small: { position: [X0 + 9.6, 0.006, Z0 - 6.2], yaw: -Math.PI / 2 },
     },
-    {
-      // LA PORTE QUE LE PINCEAU DESSINE, sur la feuille qu'on lui a tendue.
-      // Elle naît fermée (`dessinee`), s'ouvre quand le chevalet est pourvu, et
-      // seulement une fois le tracé fini.
-      id: 'lavoir-suite',
-      condition: 'chevalet-lavoir',
-      dessinee: true,
-      colorBig: 0xb2503a,
-      colorSmall: 0xb2503a,
-      big: { position: [X0 + 10.4, 0.006, Z0 + 2.2], yaw: -Math.PI / 2 },
-      small: { position: [X0 - 9.6, 0.006, Z0 - 6.2], yaw: Math.PI / 2 },
-    },
+    // LA PORTE QUE LE PINCEAU DESSINE N'EST PAS DÉCLARÉE ICI.
+    //
+    // Elle l'était, avec ses deux faces dans cette parcelle — donc elle ne
+    // menait nulle part : on serait ressorti du lavoir dans le lavoir. Une
+    // porte qui RELIE DEUX SALLES appartient à l'assemblage, qui est le seul à
+    // savoir ce qu'il y a de l'autre côté et à quelle taille on doit y naître.
+    //
+    // Le lavoir se contente donc de tendre la feuille : `chevalet-lavoir` est
+    // pourvu, et l'assemblage en fait la condition d'une paire marquée
+    // `dessinee`. C'est exactement le partage que le contrat décrit — les portes
+    // internes ici, les raccords là-bas — et je ne l'avais pas respecté.
   ],
 
   stations: [
@@ -308,6 +307,10 @@ export const LAVOIR: SalleModule = {
     [X0 - 5.25, 2.4, Z0 - 4.25],
   ],
 
+  // On entre à taille d'homme par le sud, face au bassin. On repart par où le
+  // Pinceau aura dessiné : devant le chevalet, au nord-ouest de la cour, et
+  // toujours à taille d'homme — c'est la porte elle-même qui décidera de la
+  // taille où l'on naîtra dans la salle suivante.
   entree: { position: [X0, 0.05, Z0 - 8], echelle: 0 },
   sortie: { position: [X0 - 9.6, 0.05, Z0 - 6.2], echelle: 0 },
 };

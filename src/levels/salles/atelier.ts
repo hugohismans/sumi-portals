@@ -102,10 +102,13 @@ import type { SalleModule } from './contrat.js';
  * RECONNAISSABLE, IMMOBILE, et présent au même endroit dans les deux vues.
  *
  * La jarre est plantée sur l'axe du cadre (x = 0), au fond de l'allée, à dix
- * mètres de l'objectif : c'est le POINT DE FUITE des deux vues à la fois. Elle
- * monte à 1,55 quand tout le reste de la pièce plafonne à 0,84 — c'est la seule
- * silhouette verticale du séchoir, donc la seule qu'on ne puisse confondre avec
- * rien. Elle n'appartient à AUCUNE famille : elle reste grise dans le tableau
+ * mètres de l'objectif : c'est le POINT DE FUITE des deux vues à la fois — la
+ * mesure donne 50,0 % de la largeur de l'image, c'est-à-dire le milieu exact.
+ * Elle monte à 1,55 quand tout le reste de la pièce plafonne à 1,24 (les pots
+ * sur leurs claies), et c'est la seule silhouette verticale du séchoir, donc la
+ * seule qu'on ne puisse confondre avec rien.
+ *
+ * Elle n'appartient à AUCUNE famille : elle reste grise dans le tableau
  * comme dans la pièce, et c'est justement ce qui en fait un repère — l'unique
  * chose qui ne change pas entre les deux images, alors que sept claies, elles,
  * changent. Enfin, les trois sébiles empilées à sa DROITE et nulle part
@@ -571,9 +574,11 @@ const decor = (): BoxDef[] => {
   // claire-voie et la salle est ouverte au ciel entre les lattes. C'est aussi
   // par là que tombe le jour rasant du soir.
   //
-  // Tout est à 3,54 et plus haut, c'est-à-dire hors d'atteinte : un joueur de
-  // 1,80 monté sur une claie (0,77) et sautant de 1,293 culmine à 2,06. Rien
-  // ici ne se grimpe, et les bouts des pièces sont enterrés dans les murs.
+  // Tout est à 3,56 et plus haut, c'est-à-dire hors d'atteinte, et le nombre est
+  // mesuré et non estimé : le plus haut perchoir de toute la nef est l'épaule de
+  // la grande jarre, à 1,55 ; augmenté du saut (1,293), cela fait 2,85. Il reste
+  // 0,71 sous la première poutre et 1,05 sous la crête des murs. Rien ici ne se
+  // grimpe, et les bouts des pièces sont enterrés dans les murs.
   for (let j = 0; j < 4; j++) {
     const cz = 1298.5 + j * 2.7;
     out.push(box([-2.4, 3.56 + 0.01 * j, cz], [2.4, 3.79 + 0.01 * j, cz + 0.2], 3));
@@ -700,10 +705,17 @@ const decor = (): BoxDef[] => {
 // chose qu'on lui demande — montrer la pièce. 1,10 × 1,10, centré à 1,60, donc
 // à hauteur de l'œil (1,656) : on ne se penche ni ne se hausse pour le lire.
 //
-// CE QU'IL MONTRE. Champ de 58°, donc un demi-champ qui ouvre de 0,554 par
-// mètre. Le mur du fond est à 11,00 : le champ y fait 6,10 de large pour une nef
-// de 4,20, elle y est donc tout entière. Les sept claies, dont la plus proche est
-// à 4,10, y sont toutes ; la jarre est à 10,00, sur l'axe, au point de fuite.
+// CE QU'IL MONTRE, ET CE N'EST PAS UNE ESPÉRANCE — la caméra a été refaite hors
+// navigateur et l'on a tiré une visée sur chacun des sommets du décor. Champ de
+// 58°, donc un demi-champ qui ouvre de 0,554 par mètre. Le mur du fond est à
+// 11,00 : le champ y fait 6,10 de large pour une nef de 4,20, elle y est donc
+// tout entière. LES SEPT CLAIES Y SONT TOUTES — de 50 % à 67 % de leurs sommets
+// dans le cadre et non masqués, la plus proche étant à 4,30 —, et la grande
+// jarre y est à 92 %, au milieu exact de la largeur de l'image.
+//
+// C'est la nef qui a été taillée pour cette prise, et non l'inverse : à 5,20 de
+// large au lieu de 4,20, les claies du premier plan sortaient du champ et le
+// tableau ne montrait plus ce qu'il demande.
 // La porte de sortie (z = 1305,43) y est aussi — encore scellée, encore un simple
 // trou dans le mur, et c'est très bien : le tableau montre l'endroit d'où l'on
 // sortira avant qu'il n'existe.

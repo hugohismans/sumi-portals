@@ -19,12 +19,15 @@ import { facesConfondues } from './coplanaires.js';
 import { verifierParcelleSalle, verifierTaillesDistinctes, type SalleModule } from '../levels/salles/contrat.js';
 import { CREUX } from '../levels/salles/creux.js';
 import { PLUIE } from '../levels/salles/pluie.js';
+import { LAVOIR } from '../levels/salles/lavoir.js';
+import { ATELIER } from '../levels/salles/atelier.js';
+import { RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
 
 /**
  * Les salles de la descente déjà bâties. On en ajoute une ligne par livraison ;
  * tout le reste des vérifications suit sans qu'on y touche.
  */
-const SALLES_LIVREES: SalleModule[] = [CREUX, PLUIE];
+const SALLES_LIVREES: SalleModule[] = [LAVOIR, CREUX, PLUIE, ATELIER];
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
 import {
@@ -2080,6 +2083,37 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     // une salle où le joueur n'a aucune raison d'aller.
     check(`${salle.nom} : le Pinceau la traverse`, salle.stations.length > 0, `${salle.stations.length} jalons`);
   }
+
+  // ─── LA LOI DE L'ENCHAÎNEMENT : UNE PORTE NE VAUT QU'UN CRAN ────────────
+  //
+  // Une paire de portails multiplie ou divise par quatre. Toujours, parce que
+  // c'est le verbe unique du jeu. Il en découle une contrainte que rien
+  // d'autre ne rappelle : la sortie d'une salle et l'entrée de la suivante
+  // doivent différer d'EXACTEMENT un cran.
+  //
+  // Deux crans d'écart demandent deux portes, donc une salle intermédiaire ;
+  // zéro cran n'est franchissable par aucune porte du tout. Sans cette
+  // vérification, on découvrirait le défaut en jouant — devant une porte qui
+  // refuse, sans aucune raison visible dans le monde.
+  for (const r of RACCORDS_DESCENTE) {
+    const a = SALLES_DESCENTE[r.depuis];
+    const b = SALLES_DESCENTE[r.depuis + 1];
+    const ecart = ecartDeRaccord(a, b);
+    check(
+      `de ${a.nom} à ${b.nom}, une seule porte suffit`,
+      Math.abs(ecart) === 1 && ecart === r.cran,
+      `écart de ${ecart} cran(s), raccord déclaré à ${r.cran}`,
+    );
+  }
+  // On ne réclame pas encore la chaîne complète : les dernières salles ne sont
+  // pas nées. Mais on exige que ce qui est déclaré soit VRAI, et que les
+  // raccords se suivent sans trou — un raccord isolé au milieu du tableau
+  // serait une salle inatteignable qu'on croirait reliée.
+  check(
+    'les raccords déclarés partent du début et se suivent',
+    RACCORDS_DESCENTE.every((r, i) => r.depuis === i),
+    RACCORDS_DESCENTE.map((r) => r.depuis).join(', '),
+  );
 
   // ET LES PARCELLES NE SE CHEVAUCHENT PAS. C'est la garantie qui rend le
   // travail en parallèle possible : deux salles bâties le même soir par deux
