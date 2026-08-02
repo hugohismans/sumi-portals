@@ -59,6 +59,31 @@ interface Goutte {
   v: number;
   /** Hauteur du sol sous elle : c'est là qu'elle s'écrasera. */
   sol: number;
+  /** Vrai si elle tombe dans l'eau. La tache n'est pas la même. */
+  eau: boolean;
+}
+
+/**
+ * UNE SURFACE OÙ LA PLUIE S'ÉCRASE.
+ *
+ * Une cour n'est pas un plan. Il y a des terrasses, une goulotte, un lac, une
+ * margelle de puits, le toit d'un auvent, l'assise d'un banc. Sans cette table,
+ * les gouttes traversent tout et éclaboussent le sol à travers un toit.
+ *
+ * ET IL N'Y A PAS DE LISTE D'ABRIS, ce qui est le point important. Un toit
+ * déclaré comme surface d'impact ordinaire ARRÊTE la pluie, donc il ne tombe
+ * rien dessous, donc c'est sec. La zone sèche n'est pas une règle, c'est une
+ * conséquence — et le joueur qui se met à l'abri voit la pluie s'arrêter net
+ * au-dessus de sa tête, ce qui est le seul argument qui vaille.
+ *
+ * L'ordre compte : la PREMIÈRE surface qui contient le point gagne. Elles se
+ * recouvrent en plan, et c'est voulu.
+ */
+export interface Surface {
+  min: [number, number];
+  max: [number, number];
+  y: number;
+  eau: boolean;
 }
 
 interface Tache {
@@ -93,6 +118,7 @@ export class Gouttes {
   private readonly min: THREE.Vector3;
   private readonly max: THREE.Vector3;
   private readonly sol: number;
+  private readonly surfaces: Surface[];
 
   /**
    * `zone` : la boîte où il pleut, en unités du monde. `sol` : la hauteur où
@@ -102,13 +128,16 @@ export class Gouttes {
   constructor(
     zone: { min: [number, number, number]; max: [number, number, number] },
     sol: number,
+    /** Le relief. Sans lui, la pluie tombe à travers les toits. Voir Surface. */
+    surfaces: Surface[] = [],
   ) {
     this.min = new THREE.Vector3(...zone.min);
     this.max = new THREE.Vector3(...zone.max);
     this.sol = sol;
+    this.surfaces = surfaces;
 
     for (let i = 0; i < GOUTTES; i++) {
-      this.gouttes.push({ x: 0, y: 0, z: 0, v: 0, sol });
+      this.gouttes.push({ x: 0, y: 0, z: 0, v: 0, sol, eau: false });
       this.semer(i, true);
     }
 
@@ -223,7 +252,17 @@ export class Gouttes {
     // l'averse commence par un rideau parfaitement aligné, ce qui se voit.
     g.y = premiere ? alea(this.sol, this.max.y) : this.max.y;
     g.v = 0;
+    // On décide de ce qu'elle va toucher AU DÉPART, une seule fois : elle tombe
+    // droit, donc le résultat ne changera pas, et faire la recherche à chaque
+    // image pour quatre-vingt-dix gouttes serait payer soixante fois pour rien.
     g.sol = this.sol;
+    g.eau = false;
+    for (const s of this.surfaces) {
+      if (g.x < s.min[0] || g.x > s.max[0] || g.z < s.min[1] || g.z > s.max[1]) continue;
+      g.sol = s.y;
+      g.eau = s.eau;
+      break;
+    }
   }
 
   update(dt: number, camera: THREE.Camera): void {
@@ -243,7 +282,9 @@ export class Gouttes {
           age: 0,
           // L'éclaboussure est bien plus large que la goutte — c'est ce rapport
           // qui la rend lisible, et il est celui de l'eau sur la pierre.
-          rayon: CALIBRE * alea(3.5, 5.5),
+          // Sur l'eau, l'onde porte plus loin et s'ouvre plus vite : c'est ce
+          // qui distingue une flaque d'un pavé, sans qu'on ait rien à dessiner.
+          rayon: CALIBRE * (g.eau ? alea(6, 9) : alea(3.5, 5.5)),
         };
         this.semer(i);
       }

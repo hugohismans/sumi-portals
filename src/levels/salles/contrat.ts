@@ -107,6 +107,18 @@ export interface SalleModule {
    * Le raccord, tenu au mètre près : où l'on arrive, où l'on repart, et à
    * quelle échelle. C'est le seul contrat avec le reste du monde, et le seul
    * endroit où une erreur coûte à quelqu'un d'autre que soi.
+   *
+   * ═══════════════════════════════════════════════════════════════════════
+   * `echelle` EST UN PALIER, PAS UN MULTIPLICATEUR.
+   *
+   *     −1 = ×1/4 (45 cm) · 0 = ×1 (1,80 m) · 1 = ×4 · 2 = ×16
+   *
+   * C'est la convention de `PlayerState.scaleLevel` et de `VeilleurDef`, donc
+   * de tout le reste du jeu. Le contrat ne le disait pas, un auteur de salle a
+   * écrit `0.25` en toute bonne foi et l'a signalé — la faute était dans le
+   * contrat, pas dans la salle. Un contrat ambigu produit exactement autant de
+   * versions qu'il a de lecteurs.
+   * ═══════════════════════════════════════════════════════════════════════
    */
   entree: { position: [number, number, number]; echelle: number };
   sortie: { position: [number, number, number]; echelle: number };

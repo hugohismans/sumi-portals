@@ -26,9 +26,10 @@ import type { SalleModule } from './contrat.js';
  * celle où l'on tombe au premier quart d'heure de jeu, trois mètres de fond, la
  * margelle rouge, la petite porte indigo au fond. On la retrouve ici TROIS FOIS
  * EMBOÎTÉES : une cour creusée dans une cour creusée dans une cour. La margelle
- * y est devenue une balustrade, et c'est la mesure qui l'a imposée — on ne
- * borde pas de la même façon un trou de trois mètres et un puits de vingt-
- * quatre.
+ * y est devenue une GRILLE tendue en travers du puits, et c'est la mesure qui
+ * l'a imposée — on ne borde pas de la même façon un trou de trois mètres et un
+ * puits de vingt-quatre. Voir `grille` : cette pièce-là a été trouvée en
+ * cassant la salle, pas en la dessinant.
  *
  * LA FORME. Un puits à gradins, vu depuis la margelle du grand :
  *
@@ -50,9 +51,14 @@ import type { SalleModule } from './contrat.js';
  * TOUT SE LIT DEPUIS LE BORD (le goût, et la règle 9). Les trois logements sont
  * alignés sur le MÊME MÉRIDIEN (x = 200) et à la même fraction de leur cour
  * (1,9 / 7,6 / 30,4 au sud du centre — exactement ×4 l'un de l'autre). Depuis
- * la margelle nord de la grande cour, la ligne de visée descend par les deux
- * puits et l'on voit les trois creux d'un seul coup d'œil, gigogne : 12,8 m,
- * 3,2 m, 0,8 m de dalle pâle. On ne va rien chercher, on regarde.
+ * le bord nord du puits, la ligne de visée descend par les deux grilles et l'on
+ * voit les trois creux d'un seul coup d'œil, gigogne : 12,8 m, 3,2 m, 0,8 m de
+ * dalle pâle. On ne va rien chercher, on regarde.
+ *
+ * Ce n'est pas une intention, c'est une mesure : quatre-vingt-une visées tirées
+ * de l'œil du joueur ×4 posté au nord du puits atteignent la dalle du grand
+ * creux à 100 %, celle du moyen à 88 % (une grille), celle du petit à 66 %
+ * (deux grilles). L'énigme entière est lisible sans faire un pas.
  *
  * L'ÉTALON (règle 9), et il est double :
  *   — chaque cour contient la porte de son étage, et la petite face d'une porte
@@ -183,62 +189,65 @@ const anneau = (
 ];
 
 /**
- * UNE BALUSTRADE — le vide se protège par des barreaux, jamais par un mur
- * (règle 6). On est venu voir en contrebas ; un parapet plein rendrait le
- * voyage inutile, et c'est justement en contrebas que se trouve la moitié de
- * l'énigme.
+ * UNE GRILLE — la balustrade de la règle 6, mais COUCHÉE en travers du puits.
  *
- * Les deux seules cotes qui comptent, et elles se calculent :
- *   — HAUTEUR = 0,90 × la taille du joueur de l'étage. Son saut n'en fait que
- *     0,72 : il ne monte pas dessus. Ses yeux sont à 0,92 : il voit par-dessus.
- *     L'intervalle entre 0,72 et 0,92 est étroit, il n'est pas négociable, et
- *     c'est lui qui donne 0,90.
- *   — VIDE ENTRE DEUX MONTANTS < un diamètre de joueur (0,378 × sa taille). On
- *     prend 0,25 × sa taille, soit les deux tiers : on passe la tête et le
- *     regard, jamais le corps.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * POURQUOI PAS UNE BALUSTRADE, ET C'EST LA MESURE QUI A TRANCHÉ
  *
- * Les montants sont RETIRÉS de l'arête du trou et PLANTÉS dans la dalle : sans
- * le retrait, leur flanc tomberait dans le plan de la paroi du puits ; sans
- * l'enfoncement, leur dessous serait dans le plan du sol. Deux fautes classiques
- * pour le prix d'une.
+ * La première version bordait chaque puits d'une balustrade droite, calibrée
+ * dans les règles : 0,90 fois la taille du joueur (au-dessus de son saut de
+ * 0,72, sous ses yeux à 0,92), montants espacés de 0,25 fois sa taille. Elle
+ * retenait parfaitement le joueur. Elle ne retenait pas ce qu'il PORTE.
  *
- * Chaque montant est aussi un poil plus haut que le précédent (`pas`). Quarante
- * barreaux au même niveau, ce sont quarante dessus dans le même plan — le défaut
- * qu'on vient d'éviter deux lignes plus haut, réintroduit par la boucle.
+ * On repose ce qu'on tient à DEUX FOIS L'ARÊTE DE LA CAISSE devant soi. Debout
+ * contre la rambarde, une perle de 0,80 se pose donc 1,94 m plus loin —
+ * c'est-à-dire par-dessus la rambarde, dans le vide, et elle tombe dans la cour
+ * d'en dessous. Là, elle vaut 0,80 dans un monde où l'on ne soulève que 0,2475 :
+ * elle est perdue pour de bon, et la salle avec elle. Le harnais l'a fait du
+ * premier coup, sans le chercher.
+ *
+ * Aucune hauteur de rambarde ne corrige ça : le moteur ne teste que l'endroit
+ * où la caisse ATTERRIT, jamais le trajet. Il fallait supprimer le vide, pas le
+ * border.
+ *
+ * D'où la grille. Et elle ne fait pas que réparer — elle DIT la salle :
+ *
+ *   VIDE ENTRE DEUX BARREAUX = 0,25 × la taille du joueur de l'étage.
+ *     C'est 0,66 diamètre de joueur : il ne passe pas, il marche dessus, il
+ *     voit à travers, et il peut aller se poster AU-DESSUS DU VIDE pour
+ *     regarder droit en bas — ce qu'aucune balustrade ne permet.
+ *   C'est aussi 0,56 fois l'arête de la perle de l'étage (0,45 contre 0,80 ;
+ *     1,80 contre 3,20). Une perle ne passe donc jamais la grille de sa propre
+ *     cour. Or une perle est TOUJOURS à la taille de la cour où elle se trouve
+ *     — toute traversée de porte la remet d'accord avec son étage — donc aucune
+ *     perle ne peut jamais tomber d'un cran. La grille trie par la taille, ce
+ *     qui est exactement le sujet de la salle.
+ *
+ * Et l'image qu'on y gagne était introuvable autrement : la grille du haut est
+ * le PLAFOND de la cour moyenne. Le géant marche sur le toit du monde de
+ * l'autre, et l'autre le voit passer.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Les barreaux mordent de `mordre` dans le gradin de part et d'autre : leurs
+ * bouts se retrouvent enterrés, donc jamais coplanaires avec la paroi du puits.
  */
-const balustrade = (
-  xa: number,
-  xb: number,
-  za: number,
-  zb: number,
+const grille = (
+  x0: number,
+  x1: number,
+  z0: number,
+  z1: number,
   yBas: number,
   yHaut: number,
   demi: number,
   vide: number,
-  pas: number,
+  mordre: number,
   ink: number,
 ): BoxDef[] => {
   const out: BoxDef[] = [];
-  let i = 0;
-  const poser = (cx: number, cz: number): void => {
-    out.push(box([cx - demi, yBas, cz - demi], [cx + demi, yHaut + i * pas, cz + demi], ink));
-    i++;
-  };
-  const pasAxe = 2 * demi + vide;
-  // Les deux files est-ouest tiennent toute la longueur, COINS COMPRIS.
-  const nz = Math.max(1, Math.round((zb - za) / pasAxe));
-  for (let k = 0; k <= nz; k++) {
-    const cz = za + ((zb - za) * k) / nz;
-    poser(xa, cz);
-    poser(xb, cz);
-  }
-  // Les deux files nord-sud sautent les coins : deux montants au même endroit,
-  // ce sont deux cubes exactement superposés — le pire cas possible.
-  const nx = Math.max(1, Math.round((xb - xa) / pasAxe));
-  for (let k = 1; k < nx; k++) {
-    const cx = xa + ((xb - xa) * k) / nx;
-    poser(cx, za);
-    poser(cx, zb);
+  const n = Math.max(1, Math.round((z1 - z0) / (2 * demi + vide)));
+  for (let k = 0; k < n; k++) {
+    const cz = z0 + ((z1 - z0) * (k + 0.5)) / n;
+    out.push(box([x0 - mordre, yBas, cz - demi], [x1 + mordre, yHaut, cz + demi], ink));
   }
   return out;
 };
@@ -352,8 +361,17 @@ const decor = (): BoxDef[] => {
   // La roche dans laquelle tout est creusé. Son DESSUS est le sol du petit
   // creux ; on ne le voit donc que par la fenêtre de 6 × 6 que lui laissent les
   // deux anneaux. Une seule boîte : pas de couture, pas de plan disputé.
+  //
+  // Il DÉBORDE de 50 cm sur l'anneau supérieur, et ce n'est pas un détail de
+  // dessin : à ras, son flanc et celui de l'anneau tombaient exactement dans le
+  // même plan sur cinquante-huit mètres carrés — la plus grosse face confondue
+  // que la salle ait produite, et elle a été trouvée par la vérification, pas à
+  // l'œil. La lisière de 50 cm qu'on obtient est trente mètres sous la cour et
+  // derrière la roche : personne ne la verra jamais.
   out.push(
-    box([CX - R_G, -38, CZ - R_G], [CX + R_G, Y_P, CZ + R_G], 2, { outline: false }),
+    box([CX - R_G - 0.5, -38, CZ - R_G - 0.5], [CX + R_G + 0.5, Y_P, CZ + R_G + 0.5], 2, {
+      outline: false,
+    }),
   );
 
   // ─── L'ANNEAU MOYEN ────────────────────────────────────────────────────────
@@ -384,48 +402,46 @@ const decor = (): BoxDef[] => {
   // ─── L'ENCEINTE DE LA GRANDE COUR ──────────────────────────────────────────
   //
   // Ici, et ici seulement, un MUR PLEIN : dehors il n'y a rien à voir, et la
-  // règle 6 protège une vue, pas une bordure. Neuf mètres au-dessus de la dalle,
-  // contre un saut de 5,18 : le joueur ×4 ne sort pas de sa cour.
+  // règle 6 protège une vue, pas une bordure. Douze mètres au-dessus de la
+  // dalle contre un saut de 5,18, soit plus du double : le joueur ×4 ne sort pas
+  // de sa cour, et il n'y a pas de « presque » à discuter.
   //
-  // Le mur est RENTRÉ de 0,4 m sur l'arête du socle. Posé à ras, sa face
+  // Le mur est RENTRÉ de 0,4 m sur l'arête de l'anneau. Posé à ras, sa face
   // extérieure serait exactement dans le plan du flanc de l'anneau — quatre-
   // vingt-seize mètres de faces confondues, la plus grosse faute possible.
-  // La lisière de 0,4 m qu'on laisse dehors est à dix mètres au-dessus du vide
-  // et derrière un mur infranchissable : personne n'y posera jamais le pied.
+  // La lisière de 0,4 m qu'on laisse dehors surplombe trente mètres de roche,
+  // derrière un mur infranchissable : personne n'y posera jamais le pied.
   const M0 = CX - R_G + 0.4;
   const M1 = CX + R_G - 0.4;
   const N0 = CZ - R_G + 0.4;
   const N1 = CZ + R_G - 0.4;
-  out.push(box([M0, -1, N0], [M0 + 2, 9, N1], 2));
-  out.push(box([M1 - 2, -1, N0], [M1, 9, N1], 2));
+  out.push(box([M0, -1, N0], [M0 + 2, 12, N1], 2));
+  out.push(box([M1 - 2, -1, N0], [M1, 12, N1], 2));
   // Les faces nord et sud sont 10 cm plus hautes et plus profondément plantées :
   // sans cet écart, leur dessus tomberait dans le plan de celui des deux autres.
-  out.push(box([M0 + 2, -1.1, N0], [M1 - 2, 9.1, N0 + 2], 2));
-  out.push(box([M0 + 2, -1.1, N1 - 2], [M1 - 2, 9.1, N1], 2));
+  out.push(box([M0 + 2, -1.1, N0], [M1 - 2, 12.1, N0 + 2], 2));
+  out.push(box([M0 + 2, -1.1, N1 - 2], [M1 - 2, 12.1, N1], 2));
 
-  // ─── LES DEUX BALUSTRADES ──────────────────────────────────────────────────
+  // ─── LES DEUX GRILLES ──────────────────────────────────────────────────────
   //
-  // Celle du haut : joueur de 7,20, saut 5,18, diamètre 2,72.
-  //   hauteur 6,50 (0,90 × 7,20)  →  au-dessus du saut, sous les yeux (6,62)
-  //   vide 1,73 (mesuré, 25,6 / 11 - 0,60)  →  les deux tiers d'un diamètre
-  //   retrait 0,5 m de l'arête, montants plantés de 0,50 dans la dalle
+  // Chacune couvre exactement la bouche de son puits. Voir `grille` : ce sont
+  // les balustrades de la règle 6, COUCHÉES, parce qu'une balustrade debout
+  // retient le joueur mais pas ce qu'il porte — et c'est le harnais qui l'a
+  // montré, pas le raisonnement.
+  //
+  // Celle du haut — joueur de 7,20, diamètre 2,72, perle de 3,20 :
+  //   vide 1,80 (= 0,25 × 7,20). 0,66 diamètre : on marche dessus, on voit à
+  //   travers, on va se poster au-dessus du vide. 0,56 arête de perle : rien
+  //   ne tombe. Les barreaux dépassent de 4 cm au-dessus de la dalle — l'enjambée
+  //   en fait 3,60, on ne les sent pas — et pendent de 48 cm en dessous, ce qui
+  //   les rend lisibles depuis la cour moyenne : c'est son plafond.
+  out.push(...grille(CX - R_M, CX + R_M, CZ - R_M, CZ + R_M, -0.48, 0.04, 0.3, 1.8, 0.4, 3));
+  // Celle du bas — joueur de 1,80, diamètre 0,68, perle de 0,80 :
+  //   vide 0,45 (= 0,25 × 1,80). Rigoureusement les mêmes deux rapports, à un
+  //   quart d'échelle. Un seul nombre — le quart de la taille du joueur — fait
+  //   les deux métiers aux deux étages.
   out.push(
-    ...balustrade(
-      CX - R_M - 0.8, CX + R_M + 0.8, CZ - R_M - 0.8, CZ + R_M + 0.8,
-      -0.5, 6.5, 0.3, 1.8, 0.02, 3,
-    ),
-  );
-  // Celle du bas : joueur de 1,80, saut 1,293, diamètre 0,68.
-  //   hauteur 1,62 (0,90 × 1,80), vide 0,45, retrait 0,225, plantée de 0,20.
-  // Elle est aussi ce qui empêche une perle de 0,80 de tomber dans le petit
-  // creux : 0,80 ne passe pas entre deux montants distants de 0,45, et le moteur
-  // refuse de poser une caisse qui chevaucherait un solide. Le vide calibré sur
-  // le joueur protège donc aussi la caisse, gratuitement.
-  out.push(
-    ...balustrade(
-      CX - R_P - 0.3, CX + R_P + 0.3, CZ - R_P - 0.3, CZ + R_P + 0.3,
-      Y_M - 0.2, Y_M + 1.62, 0.075, 0.45, 0.004, 3,
-    ),
+    ...grille(CX - R_P, CX + R_P, CZ - R_P, CZ + R_P, Y_M - 0.12, Y_M + 0.01, 0.075, 0.45, 0.1, 3),
   );
 
   // ─── LES QUATRE PORTES ─────────────────────────────────────────────────────
@@ -484,8 +500,8 @@ const logements: SocketDef[] = [
     position: [CREUX_M[0], poseDuCreux(Y_M, PERLE * 4), CREUX_M[2]],
     size: PERLE * 4,
     // 3,00 : une fois et demie la distance de dépose à ×1 (1,94). Le creux est
-    // à 4,2 m de la balustrade du petit puits, donc une perle logée là ne peut
-    // pas être happée depuis le bord, ni l'inverse.
+    // à 4,6 m de la bouche du petit puits, donc une perle posée sur la grille ne
+    // peut pas se faire happer par ce logement-ci, ni l'inverse.
     portee: 3.0,
     ink: 3,
   },
@@ -572,8 +588,8 @@ const portes: PortalPairDef[] = [
  * et pourquoi c'est CELA qui rend la salle infaillible.
  *
  * On n'entre dans une cour que par une porte, jamais par le haut (les deux
- * chutes valent 4,6 sauts pour qui devrait les remonter, et les balustrades
- * empêchent d'y tomber). Or :
+ * chutes valent 4,6 sauts pour qui devrait les remonter, et les grilles
+ * ferment les deux bouches). Or :
  *
  *   — on n'arrive dans LE PETIT CREUX que par la grande face de « creux-bas »,
  *     qui divise par quatre : on y est donc toujours à ×1/4 ;
@@ -587,6 +603,21 @@ const portes: PortalPairDef[] = [
  * pour laquelle sa porte de sortie est taillée. Il n'existe donc aucun état d'où
  * l'on ne puisse repartir — la démonstration ne dépend d'aucune vérification, de
  * l'adresse de personne, ni du bon vouloir du décor : elle est dans la forme.
+ *
+ * Corollaire, et c'est lui qui rend les perles infaillibles : toute traversée —
+ * portée OU lancée — remet la perle à la taille de la cour où elle arrive. Une
+ * perle est donc toujours exactement à la taille de l'étage où elle se trouve,
+ * les grilles ne laissent jamais passer une perle de leur propre étage, et les
+ * trois perles sont INTERCHANGEABLES. Se tromper de perle ne veut rien dire.
+ *
+ * LA SEULE CHOSE QUI RESTE POSSIBLE, ET JE PRÉFÈRE L'ÉCRIRE : à ×4, un lancer
+ * (clic gauche) part à 50,4 m/s et culmine à quarante-huit mètres. Aucun mur de
+ * cette parcelle ne l'arrête ; on peut donc, DÉLIBÉRÉMENT, expédier une perle
+ * par-dessus l'enceinte, hors du monde. C'est le même risque que jeter la caisse
+ * du haut du belvédère dans le monde central, et il n'a pas de correctif
+ * géométrique. Si l'on tient à le fermer un jour, le remède qui coûte le moins
+ * est une QUATRIÈME perle dans le petit creux : elle ne change ni l'énigme ni la
+ * leçon, et rend le lancer sans conséquence.
  */
 
 export const CREUX: SalleModule = {
@@ -605,7 +636,7 @@ export const CREUX: SalleModule = {
       '#dbe3e6', // 0 — la pierre pâle : les trois dalles de creux, et rien d'autre
       '#adbcc4', // 1 — le gris de taille : les deux gradins
       '#5a707c', // 2 — l'ombre du fond : le socle, l'enceinte
-      '#c2703a', // 3 — la terre cuite : balustrades, portes, perles. L'accent.
+      '#c2703a', // 3 — la terre cuite : grilles, portes, perles. L'accent.
     ],
     ink: '#18232a',
     // La parcelle fait 200 de côté ; 260 la laisse entièrement lisible tout en

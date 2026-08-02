@@ -50,18 +50,29 @@ import type { SalleModule } from './contrat.js';
  * elles tombent à la vitesse du monde. À ×1/4, tout ce qui n'est pas vous
  * tombe deux fois plus vite que vous.
  *
- * C'est ça qu'on lui montre, et on le lui montre une vingtaine de fois sans
- * jamais le nommer :
+ * LE RAPPORT EST EXACTEMENT DE DEUX, et il se calcule : une goutte tombe de
+ * 0,45 (la taille du joueur) en √(2 × 0,45 / 26) = 0,186 s ; le joueur tombe de
+ * 0,45 en √(0,45 / 13 × 0,25) = 0,372 s. Deux fois. Ce n'est pas une impression
+ * à régler à l'œil dans le rendu, c'est une conséquence des deux lois, et si un
+ * jour la pluie cessait de tomber à la gravité du monde, cette salle mentirait.
  *
- *   1. la nappe qui tombe du bord de l'auvent, 1,47 m — trois fois sa taille ;
- *   2. le jet de la goulotte du puits, 0,45 m — exactement sa taille, à deux
- *      pas du chemin, et c'est celui-là qu'il verra le mieux ;
- *   3. la chute d'eau au bord de la première terrasse, 0,19 m, en travers du
- *      chemin, qu'il enjambe sans y penser ;
- *   4. les deux cascades de la grande rigole, 0,186 chacune ;
- *   5. la ligne d'égouttement entre les deux planches du banc, sous laquelle
- *      il peut se tenir debout et regarder tomber ;
- *   6. et la pluie elle-même, partout, qui s'écrase.
+ * C'est ça qu'on lui montre, et on le lui montre une vingtaine de fois sans
+ * jamais le nommer. Les six chutes de la cour, mesurées, et ce qu'elles valent
+ * en tailles de joueur et en tailles par seconde à l'arrivée :
+ *
+ *   1. la nappe qui tombe du bord de l'auvent — 1,36 m, soit 3,0 fois sa
+ *      taille, atteinte en 0,32 s, arrivée à 18,7 tailles/s ;
+ *   2. le jet de la goulotte du puits — 0,44 m, c'est-à-dire EXACTEMENT sa
+ *      taille, à deux pas du chemin et en continu : c'est celui-là qu'il verra
+ *      le mieux, et c'est le mètre-étalon de la leçon ;
+ *   3. l'égouttement entre les deux planches du banc — 0,56 m, et le seul sous
+ *      lequel il puisse se tenir DEBOUT pour regarder tomber ;
+ *   4. la chute du filet au nez de la première terrasse — 0,19 m, en travers
+ *      du chemin, qu'il enjambe sans y penser ;
+ *   5. les deux cascades de la grande rigole — 0,186 chacune ;
+ *   6. et la pluie elle-même, partout, qui tombe de 3,40 m et s'écrase à
+ *      29,5 tailles/s. Son plafond de vitesse à lui, dans les airs, en vaut
+ *      5,3 (MESURES.md). Tout ce qui tombe ici va cinq fois plus vite que lui.
  *
  * Trois salles plus loin, dans un puits de quarante mètres, il ne se dira pas
  * qu'on le lui a appris.
@@ -523,38 +534,62 @@ const PUITS_BORD = 0.55;
 /** Niveau de l'eau. 0,11 sous le bord — un puits plein à ras, en pleine averse. */
 const PUITS_EAU = 0.44;
 
+/**
+ * LES HUIT PIERRES DE LA MARGELLE : `[dx, dz, demi-x, demi-z]` autour du centre.
+ * Quatre côtés, quatre coins ; les coins mordent dans les côtés de 10 cm, donc
+ * aucune face interne n'est à l'air libre et l'octogone se lit.
+ *
+ * C'est une constante de module et non une suite d'appels enterrés dans une
+ * fonction, parce que DEUX choses en dépendent : les boîtes du décor, et la
+ * table des surfaces où la pluie s'écrase (voir `PLUIE_AVERSE`). On avait
+ * d'abord donné à la pluie un carré de 2,50 pour couvrir tout le puits ; la
+ * vérification a montré que les gouttes s'écrasaient alors EN L'AIR aux quatre
+ * coins de l'octogone, soixante-huit centimètres au-dessus du pavé — une fois
+ * et demie la taille du joueur, en plein sur le chemin. Un octogone décrit
+ * deux fois est un octogone décrit faux.
+ */
+const PUITS_PIERRES: [number, number, number, number][] = [
+  // NORD : deux demi-pierres et une ÉCHANCRURE de 0,76 entre elles. La pierre
+  // du nord était d'un seul tenant, et la vérification l'a prise en flagrant
+  // délit : haute de 0,55, elle barrait la goulotte, dont l'auge n'est qu'à
+  // 0,40. Le trop-plein sortait donc du puits en traversant un bloc de pierre.
+  // C'était invisible en jeu — l'auge est basse et la margelle la cache — et
+  // c'est exactement le genre de chose qu'on ne trouve qu'en demandant à un
+  // autre système (ici la pluie) où se trouve le dessus des choses.
+  // Une margelle percée d'un bec, c'est d'ailleurs à quoi ressemble un vrai
+  // puits qui déborde.
+  [-0.5, 1.02, 0.24, 0.23], // nord-gauche
+  [0.5, 1.02, 0.24, 0.23], // nord-droite
+  [0, -1.02, 0.54, 0.23], // sud
+  [1.02, 0, 0.23, 0.55], // est
+  [-1.02, 0, 0.23, 0.53], // ouest
+  [0.76, 0.76, 0.35, 0.35], // nord-est
+  [-0.76, 0.76, 0.34, 0.36], // nord-ouest
+  [0.76, -0.76, 0.36, 0.34], // sud-est
+  [-0.76, -0.76, 0.35, 0.33], // sud-ouest
+];
+
+/**
+ * Le dessus de la k-ième pierre. Chacune a le sien, à quelques millimètres
+ * près : une margelle de puits n'a jamais deux pierres identiques, et surtout
+ * deux dessus au même niveau sont deux plans qui se disputent la profondeur.
+ */
+const puitsDessus = (k: number): number =>
+  sol(PUITS_X, PUITS_Z) + PUITS_BORD + (k % 3) * 0.012 - k * 0.003;
+
 const puits = (): BoxDef[] => {
   const out: BoxDef[] = [];
   const pave = sol(PUITS_X, PUITS_Z);
 
-  /**
-   * Une pierre de la margelle. `cote` est le demi-côté extérieur, `ouv` le
-   * demi-côté intérieur. Chaque pierre reçoit sa propre hauteur (à quelques
-   * millimètres près) et son propre débord : une margelle de puits n'a jamais
-   * deux pierres identiques, et surtout deux dessus au même niveau sont deux
-   * plans qui se disputent la profondeur.
-   */
-  const pierre = (k: number, dx: number, dz: number, lx: number, lz: number): void => {
-    const h = pave + PUITS_BORD + (k % 3) * 0.012 - k * 0.003;
+  PUITS_PIERRES.forEach(([dx, dz, lx, lz], k) => {
     out.push(
       box(
         [PUITS_X + dx - lx, pave - 0.55 - 0.01 * k, PUITS_Z + dz - lz],
-        [PUITS_X + dx + lx, h, PUITS_Z + dz + lz],
+        [PUITS_X + dx + lx, puitsDessus(k), PUITS_Z + dz + lz],
         2,
       ),
     );
-  };
-
-  // Quatre côtés, quatre coins. Les coins mordent dans les côtés de 10 cm :
-  // aucune face interne n'est à l'air libre, et l'octogone se lit.
-  pierre(0, 0, 1.02, 0.56, 0.23); // nord
-  pierre(1, 0, -1.02, 0.54, 0.23); // sud
-  pierre(2, 1.02, 0, 0.23, 0.55); // est
-  pierre(3, -1.02, 0, 0.23, 0.53); // ouest
-  pierre(4, 0.76, 0.76, 0.35, 0.35); // nord-est
-  pierre(5, -0.76, 0.76, 0.34, 0.36); // nord-ouest
-  pierre(6, 0.76, -0.76, 0.36, 0.34); // sud-est
-  pierre(7, -0.76, -0.76, 0.35, 0.33); // sud-ouest
+  });
 
   // L'eau du puits. Elle déborde de 15 cm sous les pierres : ses propres flancs
   // sont enterrés, et l'on ne voit qu'un disque noir dans un trou.
@@ -572,12 +607,14 @@ const puits = (): BoxDef[] => {
   out.push(box([PUITS_X - 0.35, pave + 0.26, PUITS_Z + 0.7], [PUITS_X - 0.24, pave + 0.47, PUITS_Z + 1.75], 2));
   out.push(box([PUITS_X + 0.24, pave + 0.28, PUITS_Z + 0.7], [PUITS_X + 0.35, pave + 0.465, PUITS_Z + 1.75], 2));
   // L'eau dans l'auge, 3,5 cm d'épaisseur, qui va jusqu'au bec.
-  out.push(box([PUITS_X - 0.235, fond - 0.02, PUITS_Z + 0.66], [PUITS_X + 0.235, fond + 0.035, PUITS_Z + 1.76], 0));
+  out.push(box([PUITS_X - 0.235, fond - 0.02, PUITS_Z + 0.66], [PUITS_X + 0.235, fond + 0.035, PUITS_Z + 1.735], 0));
 
   // LE JET. Fantôme : une colonne d'eau n'arrête pas un joueur, et surtout on
-  // ne veut pas d'un poteau invisible à côté du chemin. Il tombe de 0,455 —
-  // exactement la taille du joueur — et c'est le plus long spectacle gratuit
-  // de la salle.
+  // ne veut pas d'un poteau invisible à côté du chemin. Il tombe de 0,439 —
+  // c'est-à-dire, à un centimètre près, la taille du joueur — en 0,184 s, et
+  // c'est le plus long spectacle gratuit de la salle. Il est aussi son
+  // mètre-étalon : la seule chute de la cour dont on puisse dire « elle fait
+  // exactement moi ».
   out.push(
     box([PUITS_X - 0.13, sol(PUITS_X, PUITS_Z + 1.8) - 0.02, PUITS_Z + 1.69],
         [PUITS_X + 0.13, fond + 0.03, PUITS_Z + 1.84], 0, { ghost: true }),
@@ -618,8 +655,8 @@ const filetDEau = (): BoxDef[] => {
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // On entre, on regarde à gauche : un appentis de planches contre le mur, deux
-// poteaux, et sous l'auvent un baquet plein à ras bord. Du bord du toit tombe
-// une nappe d'eau de 1,47 m — TROIS FOIS ET DEMIE la taille du joueur — qui
+// poteaux, et sous l'auvent un baquet plein à ras bord. De la panne de rive
+// tombe une nappe d'eau de 1,36 m — TROIS FOIS la taille du joueur — qui
 // s'écrase dans la tête de la rigole, laquelle part vers l'est, vers la porte.
 // La salle entière est lisible depuis le seuil, et personne n'a rien expliqué.
 //
@@ -722,6 +759,31 @@ const auvent = (): BoxDef[] => {
 //
 // De là on ne s'échappe pas : 0,64 + 0,323 = 0,96 contre des murs à 3,2.
 
+/**
+ * UN CRAN DU MANCHE DE BALAI : son emprise au sol et son dessus.
+ *
+ * Six crans. Chaque cran monte de 0,115 et recule de 0,17 : la pente d'un balai
+ * appuyé, et la MOITIÉ d'une enjambée — on n'y saute jamais, on y marche. Il
+ * est large de 0,17, exactement la largeur du joueur : on y tient, on n'y flâne
+ * pas. Le sixième culmine 2,5 cm au-dessus de l'assise, donc on ne monte pas
+ * dessus, on en descend.
+ *
+ * C'est une fonction et non une boucle enterrée, pour la même raison que
+ * `PUITS_PIERRES` : la pluie doit savoir où est le dessus des choses. Un manche
+ * de balai fait un mètre de long et se tient jusqu'à 0,68 au-dessus du pavé ;
+ * sans lui dans la table, les gouttes le traversaient.
+ */
+const BALAI_X = -194.68;
+const BALAI_N = 6;
+const balaiCran = (k: number): { min: [number, number]; max: [number, number]; y: number } => {
+  const z = 996.78 - k * 0.17;
+  return {
+    min: [BALAI_X - 0.004 * k, z - 0.22],
+    max: [BALAI_X + 0.17 + 0.005 * k, z],
+    y: sol(-194.5, 995) + 0.1 + k * 0.115,
+  };
+};
+
 const BANC_X0 = -197.6;
 const BANC_X1 = -191.4;
 /** Dessous de l'assise. 0,56 au-dessus du pavé pour un joueur de 0,45 : il passe. */
@@ -747,27 +809,20 @@ const banc = (): BoxDef[] => {
   out.push(box([-196.0, p + 0.02, 994.765], [-193.3, p + BANC_VIDE - 0.01, 994.805], 0, { ghost: true }));
 
   // ─── LE BALAI ──────────────────────────────────────────────────────────────
-  // Le manche, en six crans. Chaque cran monte de 0,115 et recule de 0,17 : la
-  // pente d'un balai appuyé, et la moitié d'une enjambée. Il est large de 0,17,
-  // c'est-à-dire exactement la largeur du joueur — on y tient, on n'y flâne pas.
-  // Le sixième cran culmine 2,5 cm au-dessus de l'assise : on ne monte pas
-  // dessus, on en descend.
-  const MX = -194.68;
-  for (let k = 0; k < 6; k++) {
-    const z = 996.78 - k * 0.17;
-    out.push(
-      box(
-        [MX - 0.004 * k, p + 0.1 + k * 0.115 - 0.075, z - 0.22],
-        [MX + 0.17 + 0.005 * k, p + 0.1 + k * 0.115, z],
-        3,
-      ),
-    );
+  // Voir `balaiCran`. Chaque cran est une planchette de 7,5 cm d'épaisseur.
+  for (let k = 0; k < BALAI_N; k++) {
+    const c = balaiCran(k);
+    out.push(box([c.min[0], c.y - 0.075, c.min[1]], [c.max[0], c.y, c.max[1]], 3));
   }
   // Les soies. Une touffe de tiges au pied du manche : à 0,45, un roncier. Rien
   // ne dépasse 0,20, donc rien n'est un obstacle et rien n'est une prise.
+  // Elles ne sont PAS dans la table de la pluie : chacune fait 3,6 cm de côté,
+  // soit un quart d'éclaboussure, et une goutte qui les traverse pour s'écraser
+  // vingt centimètres plus bas ne se remarque pas. La margelle du puits faisait
+  // deux mètres cinquante ; c'est là qu'est la limite, et elle est passée.
   const r = rng(7717);
   for (let k = 0; k < 11; k++) {
-    const sx = MX - 0.16 + r() * 0.5;
+    const sx = BALAI_X - 0.16 + r() * 0.5;
     const sz = 996.86 + r() * 0.44;
     const h = 0.09 + r() * 0.11;
     out.push(box([sx, p - 0.06 - 0.002 * k, sz], [sx + 0.036, p + h, sz + 0.034], 3));
@@ -824,15 +879,19 @@ const murs = (): BoxDef[] => {
     [-186.35, -184.6, -1.66, 3.1, 1], // est
   ];
   for (const [x0, x1, bas, haut, k] of jambages) {
-    const zp = k === 0 ? AXE_Z : AXE_Z;
-    out.push(box([x0, bas, 992.3 - 0.04 * k], [x1, haut, zp - PORTE_DEMI], 2));
-    out.push(box([x0 + 0.02 * k, bas - 0.03, zp + PORTE_DEMI], [x1 - 0.01 * k, haut - 0.02, 1007.62 + 0.05 * k], 2));
+    // Les deux jambages. Chacun s'enfonce dans le mur nord et dans le mur sud
+    // (z 992,3 → 1007,62), avec un décalage propre au mur : deux jambages qui
+    // s'arrêteraient sur la même ligne partageraient une tranche entière.
+    out.push(box([x0, bas, 992.3 - 0.04 * k], [x1, haut, AXE_Z - PORTE_DEMI], 2));
+    out.push(box([x0 + 0.02 * k, bas - 0.03, AXE_Z + PORTE_DEMI], [x1 - 0.01 * k, haut - 0.02, 1007.62 + 0.05 * k], 2));
     // Le linteau. Son dessus est 6 cm sous la crête du mur : un tableau de
     // porte se lit toujours en creux, et deux dessus au même niveau grésillent.
+    // Il déborde de 12 cm de chaque côté de l'ouverture, donc il mord dans les
+    // jambages au lieu de venir affleurer leur tranche.
     out.push(
       box(
-        [x0 + 0.05, PORTE_HAUT, zp - PORTE_DEMI - 0.12],
-        [x1 - 0.04, haut - 0.06, zp + PORTE_DEMI + 0.12],
+        [x0 + 0.05, PORTE_HAUT, AXE_Z - PORTE_DEMI - 0.12],
+        [x1 - 0.04, haut - 0.06, AXE_Z + PORTE_DEMI + 0.12],
         2,
       ),
     );
@@ -954,9 +1013,12 @@ export const PLUIE: SalleModule = {
     brouillard: 110,
   },
 
-  // La parcelle réservée, telle qu'attribuée. Tout ce qui précède tient dans
-  // x ∈ [−214,5 ; −184,5], y ∈ [−1,4 ; 5,3], z ∈ [986,6 ; 1012,5] — soit
-  // largement à l'intérieur, sur les trois axes.
+  // La parcelle réservée, telle qu'attribuée. L'emprise RÉELLE des 217 boîtes,
+  // mesurée et non estimée, tient dans
+  //   x ∈ [−214,50 ; −184,53]   y ∈ [−1,69 ; 5,27]   z ∈ [987,70 ; 1012,35]
+  // soit 85 m de marge à l'ouest, 84 m à l'est, 34 m sous les pieds, 34 m
+  // au-dessus des toits, et 87 m devant comme derrière. Rien ne s'approche
+  // d'un bord.
   bounds: { min: [-300, -40, 900], max: [-100, 40, 1100] },
 
   boxes: decor(),
@@ -982,8 +1044,246 @@ export const PLUIE: SalleModule = {
   // ×1/4 dans les deux sens : cette salle ne change personne de taille.
   // Les deux positions sont le MILIEU DU SEUIL, au niveau du dessus de la
   // pierre — c'est-à-dire l'endroit exact où poser une face de portail.
-  entree: { position: [PORTE_O, solDalle(0, 3) + 0.035, AXE_Z], echelle: 0.25 },
-  sortie: { position: [PORTE_E, solDalle(NX - 1, 3) + 0.03, AXE_Z], echelle: 0.25 },
+  // PALIER, et non multiplicateur : −1 vaut ×1/4. Le contrat était muet
+  // là-dessus et disait donc autant de choses qu'il avait de lecteurs ; il ne
+  // l'est plus.
+  entree: { position: [PORTE_O, solDalle(0, 3) + 0.035, AXE_Z], echelle: -1 },
+  sortie: { position: [PORTE_E, solDalle(NX - 1, 3) + 0.03, AXE_Z], echelle: -1 },
+};
+
+/**
+ * OÙ IL PLEUT, ET SUR QUOI ÇA TOMBE.
+ *
+ * `src/render/gouttes.ts` sait déjà tout faire — une goutte de quatre
+ * centimètres, la gravité du monde, le trait qui s'étire avec la vitesse,
+ * l'anneau qui s'ouvre en séchant. Il lui manque une seule chose, et c'est la
+ * seule chose que le rendu ne peut pas inventer : SUR QUOI la goutte s'écrase.
+ * Son constructeur prend un `sol` unique et plat ; cette cour a trois terrasses,
+ * une rigole en escalier, un lac, un puits, un baquet et un banc — dix hauteurs,
+ * pas une.
+ *
+ * Ce n'est pas au rendu de connaître le décor : c'est au décor de le dire. D'où
+ * cette table. Elle est DÉRIVÉE des mêmes fonctions que les boîtes, jamais
+ * recopiée : si une terrasse bouge, la pluie la suit sans que personne y pense.
+ *
+ * Les surfaces sont dans l'ordre où il faut les essayer — de la plus petite et
+ * la plus haute à la plus grande — parce qu'elles se recouvrent en plan et que
+ * la première qui contient le point est la bonne.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CE QUE CETTE TABLE A FAIT TROUVER, et c'est la vraie raison de l'écrire.
+ *
+ * En la confrontant point par point au décor (4 545 points de la cour), on a
+ * mis la main sur six défauts que ni le marcheur, ni la vérification des faces,
+ * ni celle de la parcelle n'auraient jamais vus — parce qu'aucun d'eux ne pose
+ * jamais la question « où est le dessus des choses ? » :
+ *
+ *   — la pierre nord de la margelle BARRAIT LA GOULOTTE : le trop-plein du
+ *     puits sortait en traversant un bloc de pierre de cinquante centimètres.
+ *     D'où l'échancrure, qui est aussi à quoi ressemble un vrai puits ;
+ *   — un carré posé sur le puits faisait s'écraser les gouttes EN L'AIR
+ *     au-dessus des quatre angles de l'octogone, à 0,68 du sol ;
+ *   — la lèvre des deux marches de terrasse — 10 cm, en travers de toute la
+ *     cour — donnait 0,194 d'erreur, soit presque une demi-taille de joueur ;
+ *   — la tête de rigole, c'est-à-dire l'endroit exact où tombe la plus longue
+ *     chute de la salle, passait pour du pavé sec sur douze centimètres ;
+ *   — le rivage du lac et le manche du balai n'existaient pas du tout.
+ *
+ * RÉSIDU ASSUMÉ : 70 mm, soit 15,6 % de la taille du joueur, sur les deux
+ * bandes de 4 cm où le fond du canal est à découvert entre la berge et le bord
+ * de la nappe. Ces bandes existent exprès — deux plans qui se touchent
+ * grésillent — et elles sont plus étroites qu'une éclaboussure n'est large.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export interface SurfacePluie {
+  nom: string;
+  /** Emprise au sol, (x, z). */
+  min: [number, number];
+  max: [number, number];
+  /** Le niveau où la goutte meurt. */
+  y: number;
+  /** Un rond dans l'eau, ou une couronne sèche sur la pierre. */
+  eau: boolean;
+}
+
+/**
+ * LA LÈVRE : de combien une colonne déborde sur sa voisine de l'est.
+ *
+ * Chaque dalle est bâtie 5 cm plus large que sa case, et comme le pavé descend
+ * vers l'est (−0,006 par colonne, −0,18 par terrasse), c'est TOUJOURS la
+ * colonne amont qui surplombe l'aval. La couture entre deux surfaces de pluie
+ * n'est donc pas sur la grille : elle est 5,5 cm plus loin.
+ *
+ * Sans ça, la table se trompait de 0,194 sur la lèvre des deux marches de
+ * terrasse — une bande de 10 cm, en travers de toute la cour, où les gouttes
+ * s'écrasaient vingt centimètres sous la pierre qu'on voyait.
+ */
+const LEVRE = 0.055;
+
+/**
+ * Bord OUEST de la première travée du canal — et il n'obéit pas à `LEVRE`.
+ *
+ * Partout ailleurs, la couture entre deux surfaces tombe sur le débord de la
+ * colonne amont. Ici il n'y a pas de colonne amont : le canal commence en
+ * colonne 2, et sa première pierre déborde de 6 cm vers l'ouest, sous la nappe
+ * de l'auvent. La couture est donc l'arête de la boîte, sinon douze centimètres
+ * de tête de rigole — c'est-à-dire l'endroit exact où tombe la plus longue
+ * chute de la salle — passaient pour du pavé sec, vingt centimètres trop haut.
+ */
+const RIG_X0 = -208.07;
+
+/** Le fond du canal, avec l'affouillement de la première travée. */
+const rigoleEau = (i: number): number =>
+  solDalle(i, 5) - RIG_FOND - (i === RIG_I0 ? 0.06 : 0) + RIG_EAU;
+
+export const PLUIE_AVERSE = {
+  /**
+   * La boîte où il pleut. Le plafond est à 3,40 : juste au-dessus de la crête
+   * des murs (3,22), pour que les gouttes entrent dans le champ par-dessus le
+   * mur, déjà lancées, au lieu de se matérialiser en l'air.
+   */
+  zone: { min: [-211.7, -0.6, 994.0] as V3, max: [-186.35, 3.4, 1006.3] as V3 },
+
+  /**
+   * LES SURFACES D'IMPACT, à essayer dans cet ordre : la première qui contient
+   * le point est la bonne. Elles se recouvrent en plan, et c'est voulu — un
+   * toit couvre un dallage.
+   *
+   * IL N'Y A PAS DE LISTE D'ABRIS, et c'est le point important. On a d'abord
+   * écrit deux rectangles « ici, il ne pleut pas », sous l'auvent et sous le
+   * banc. C'était une redite, et une redite qui ment : elle empêchait aussi la
+   * pluie de tomber SUR le toit de l'auvent et SUR l'assise du banc, c'est-à-
+   * dire de faire exactement ce qu'un abri fait pour de vrai. En déclarant le
+   * toit et l'assise comme des surfaces d'impact ordinaires, la zone sèche
+   * n'est plus une règle : c'est une CONSÉQUENCE. Les gouttes s'arrêtent
+   * dessus, donc il ne tombe rien dessous, donc c'est sec — et le joueur qui
+   * s'y met voit la pluie s'arrêter net au-dessus de sa tête, ce qui est le
+   * seul argument qui vaille.
+   */
+  surfaces: [
+    // Le toit de l'auvent. Il fait l'ombre sèche du nord-ouest.
+    { nom: 'auvent', min: [-212.2, 1001.32], max: [AUVENT_X1, 1006.42], y: 1.465, eau: false },
+    // Le baquet, plein à ras : la seule cible au-dessus de la ceinture.
+    { nom: 'baquet', min: [-210.885, 1004.015], max: [-210.115, 1004.785], y: sol(-210.5, 1004.4) + 0.5, eau: true },
+    // L'auge de la goulotte, AVANT la margelle : elle passe par l'échancrure,
+    // c'est-à-dire entre les deux demi-pierres du nord, dont les faces internes
+    // sont à ±0,26. La table s'arrête donc là, et non au bord extérieur des
+    // joues : au-delà, ce sont les pierres qui sont dessus, pas l'auge.
+    { nom: 'goulotte-echancrure', min: [PUITS_X - 0.26, PUITS_Z + 0.66], max: [PUITS_X + 0.26, PUITS_Z + 1.25], y: sol(PUITS_X, PUITS_Z) + 0.435, eau: true },
+    // Passé le bec (dz > 1,25), il n'y a plus de pierre autour : l'auge est
+    // seule, joues comprises, et la table peut s'élargir à ±0,35.
+    { nom: 'goulotte-bec', min: [PUITS_X - 0.35, PUITS_Z + 1.25], max: [PUITS_X + 0.35, PUITS_Z + 1.745], y: sol(PUITS_X, PUITS_Z) + 0.435, eau: true },
+    // Les neuf pierres de la margelle, une par une et non un carré autour du
+    // tout : voir `PUITS_PIERRES`. Chacune avec sa propre hauteur.
+    ...PUITS_PIERRES.map(([dx, dz, lx, lz], k) => ({
+      nom: `margelle-${k}`,
+      min: [PUITS_X + dx - lx, PUITS_Z + dz - lz] as [number, number],
+      max: [PUITS_X + dx + lx, PUITS_Z + dz + lz] as [number, number],
+      y: puitsDessus(k),
+      eau: false,
+    })),
+    // Le puits, APRÈS les pierres, et c'est tout l'intérêt de l'ordre : le trou
+    // est ce que les pierres laissent, et ses quatre coins sont mangés par les
+    // pierres d'angle. Un carré posé AVANT elles faisait s'écraser les gouttes
+    // en l'air au-dessus des angles, à 0,68 du sol — une fois et demie la
+    // taille du joueur, en plein sur le chemin.
+    // Le joueur ne verra jamais cette surface-là ; le Pinceau, si.
+    { nom: 'puits', min: [PUITS_X - 0.79, PUITS_Z - 0.79], max: [PUITS_X + 0.79, PUITS_Z + 0.79], y: sol(PUITS_X, PUITS_Z) + PUITS_EAU, eau: true },
+    // Les six crans du balai, du plus haut au plus bas : ils se chevauchent de
+    // 5 cm, et c'est toujours le cran amont qui est dessus.
+    ...Array.from({ length: BALAI_N }, (_, k) => BALAI_N - 1 - k).map((k) => ({
+      nom: `balai-${k}`,
+      ...balaiCran(k),
+      eau: false,
+    })),
+    // L'assise du banc. C'est elle qui fait la galerie sèche du sud-est, et
+    // c'est sur elle que la flaque de la planche gauchie reçoit de quoi
+    // alimenter la ligne d'égouttement.
+    { nom: 'banc', min: [BANC_X0 - 0.06, 993.92], max: [BANC_X1 + 0.05, 995.66], y: sol(-194.5, 995) + BANC_ASSISE - 0.002, eau: true },
+    // La plinthe du mur nord, une par travée : le trottoir au pied du mur.
+    ...Array.from({ length: NX - RIG_I0 }, (_, k) => RIG_I0 + k).map((i) => ({
+      nom: `plinthe-${i}`,
+      min: [i === RIG_I0 ? RIG_X0 : X0 + i * DALLE + LEVRE, 1005.72 - 0.002 * i] as [number, number],
+      max: [X0 + (i + 1) * DALLE + LEVRE, 1006.3] as [number, number],
+      y: solDalle(i, 5) + RIG_PLINTHE,
+      eau: false,
+    })),
+    // Le canal, une travée à la fois. Par travée et non par terrasse : la
+    // première est affouillée de 6 cm sous la nappe de l'auvent, et une
+    // moyenne par terrasse s'y trompait de 54 mm — soit douze pour cent de la
+    // taille du joueur, c'est-à-dire visible.
+    ...Array.from({ length: NX - RIG_I0 }, (_, k) => RIG_I0 + k).map((i) => ({
+      // La berge sud s'arrête à 1004,75 + 0,004·i — c'est la cote exacte de la
+      // boîte, pas une valeur ronde. On avait posé la couture à 1004,80 : il
+      // restait cinq centimètres de canal grand ouvert que la table croyait
+      // encore pavés, et les gouttes s'y écrasaient 25 cm trop haut.
+      nom: `rigole-${i}`,
+      min: [i === RIG_I0 ? RIG_X0 : X0 + i * DALLE + LEVRE, 1004.75 + 0.004 * i] as [number, number],
+      max: [X0 + (i + 1) * DALLE + LEVRE, 1005.72 - 0.002 * i] as [number, number],
+      y: rigoleEau(i),
+      eau: true,
+    })),
+    // Le lac, puis SON RIVAGE : la nappe s'arrête à 35 cm des berges (pour ne
+    // pas mettre deux plans en contact), et cette bande de pierre mouillée est
+    // une cible à part entière, 10 cm sous l'eau. Sans elle, un anneau de
+    // gouttes s'écrasait dans le vide tout autour du lac.
+    { nom: 'lac', min: [-201.65, 998.35], max: [-198.35, 1001.65], y: LAC_EAU, eau: true },
+    { nom: 'rivage', min: [X0 + LAC_I[0] * DALLE, Z0 + LAC_J[0] * DALLE], max: [X0 + (LAC_I[1] + 1) * DALLE, Z0 + (LAC_J[1] + 1) * DALLE], y: solDalle(6, 2) - LAC_CREUX, eau: false },
+    // Le lit du fossé.
+    // Le fossé — et c'est la CREVASSE qu'on décrit, pas le lit de sable.
+    // Le lit court sous les deux dalles voisines ; la fente réelle ne va que
+    // du bord est de la colonne 8 (−193,942) au bord ouest de la dalle qui a
+    // glissé (−193,706), soit 0,236. La table donnait un mètre de large, et
+    // les gouttes s'écrasaient 20 cm sous des dalles bien pleines.
+    { nom: 'fosse', min: [-193.94, 998.09], max: [-193.71, 1001.92], y: solDalle(FOSSE_I, 2) - FOSSE_LIT + 0.045, eau: true },
+    // Et enfin le dallage, une colonne à la fois. Reste l'écart de rangée
+    // (0,004 par rangée, soit ±8 mm sur la largeur de la cour) : 1,8 % de la
+    // taille du joueur, moins qu'une goutte n'est grosse. On s'arrête là.
+    ...Array.from({ length: NX }, (_, i) => ({
+      nom: `pave-${i}`,
+      min: [i === 0 ? -212.2 : X0 + i * DALLE + LEVRE, 994.0] as [number, number],
+      // Les colonnes 0 et 1 n'ont pas de canal : leur dallage court jusqu'au
+      // mur nord. Les autres s'arrêtent au bord de la berge.
+      max: [i === NX - 1 ? -185.9 : X0 + (i + 1) * DALLE + LEVRE, i < RIG_I0 ? 1006.3 : 1004.75 + 0.004 * i] as [number, number],
+      y: solDalle(i, 2),
+      eau: false,
+    })),
+  ] as SurfacePluie[],
+
+  /**
+   * LES TROIS SOURCES SUIVIES, celles qui ne sont pas de la pluie tombée du
+   * ciel mais de l'eau qu'un objet rend. Ce sont les trois chutes qu'on
+   * REGARDE, par opposition aux mille qu'on subit : chacune est une ligne (ou
+   * un point) d'où les gouttes partent en cadence, et non au hasard.
+   *
+   *   `debit` est en gouttes par seconde pour la source entière.
+   */
+  sources: [
+    // La nappe de l'auvent : le plus grand geste de la salle. Cinq mètres de
+    // ligne, 1,36 m de chute, arrivée à 18,7 tailles/s dans la tête de rigole.
+    { nom: 'nappe', a: [-207.98, 1.155, 1001.5] as V3, b: [-207.98, 1.155, 1006.2] as V3, debit: 34 },
+    // Le jet de la goulotte : 0,44 m, la taille du joueur, en continu.
+    { nom: 'jet', a: [PUITS_X, sol(PUITS_X, PUITS_Z) + 0.435, PUITS_Z + 1.76] as V3, b: [PUITS_X, sol(PUITS_X, PUITS_Z) + 0.435, PUITS_Z + 1.79] as V3, debit: 22 },
+    // L'égouttement du banc : lent, régulier, et le seul qu'on puisse regarder
+    // tomber en étant debout dessous et au sec. Deux gouttes par seconde, pas
+    // vingt — c'est le rythme qui le rend hypnotique.
+    { nom: 'egout-banc', a: [-196.0, sol(-194.5, 995) + BANC_VIDE - 0.01, 994.785] as V3, b: [-193.3, sol(-194.5, 995) + BANC_VIDE - 0.01, 994.785] as V3, debit: 2.5 },
+  ],
+
+  /**
+   * LES DEUX ZONES SÈCHES — à VÉRIFIER, jamais à appliquer.
+   *
+   * Ce ne sont pas des consignes données au rendu : ce sont les deux endroits
+   * où, si la table ci-dessus est juste, il ne doit pas arriver une seule
+   * goutte au sol. On les écrit ici pour qu'un banc d'essai puisse le prouver
+   * plutôt que pour qu'un module l'obéisse. Le jour où quelqu'un raccourcit
+   * l'auvent, c'est le contrôle qui doit crier — pas le joueur qui doit se
+   * mouiller sous un toit.
+   */
+  secs: [
+    { nom: 'sous l’auvent', min: [-212.2, 1001.32] as [number, number], max: [AUVENT_X1, 1006.42] as [number, number] },
+    { nom: 'sous le banc', min: [BANC_X0, 993.92] as [number, number], max: [BANC_X1, 995.66] as [number, number] },
+  ],
 };
 
 /**
