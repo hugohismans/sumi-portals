@@ -1,6 +1,6 @@
-# Protocole de test — la nuit du 2 août
+# Protocole de test — les nuits du 2 et du 3 août
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 385 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 386 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -8,6 +8,27 @@ Chaque entrée donne la touche, le geste, ce que tu dois voir si c'est juste, et
 **ce qui trahirait un défaut**. Ce dernier point est le plus utile : quand
 quelque chose cloche sans qu'on sache dire quoi, c'est souvent qu'on regardait
 la mauvaise chose.
+
+---
+
+## PAR OÙ COMMENCER, SI TU N'AS QU'UNE DEMI-HEURE
+
+Rien de ce document n'a encore été suivi une seule fois. Dans l'ordre du risque,
+du plus gros au plus petit :
+
+1. **Le voyage de l'introduction, de bout en bout** — `?niveau=monde&neuf=1`.
+   Le moteur a énormément bougé sous lui : la gravité, le franchissement de
+   marche, le sprint en l'air, le son. C'est ce qui a le plus de chances d'être
+   cassé, et c'est ce que verrait un ami en premier.
+2. **La montée**, `?niveau=montee&debug=1`, et surtout ses trois salles neuves
+   qui n'ont jamais été regardées par un œil humain : les toits, l'escalier, la
+   vallée. Les trois questions de la fin de ce fichier sont là.
+3. **Le hall**, `./?debug=1`. C'est là qu'on arrive par défaut, donc là qu'un
+   défaut coûte le plus cher.
+4. Le reste, dans n'importe quel ordre.
+
+**Ce qu'aucune vérification ne peut te dire, et qui est le vrai sujet :** est-ce
+que tu comprends ce qu'on te demande sans qu'on te l'écrive.
 
 ---
 
