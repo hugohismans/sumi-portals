@@ -12,7 +12,7 @@ import { TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
-import { buildFaces, transformPoint, transformVector } from './portals.js';
+import { buildFaces, estScelle, transformPoint, transformVector } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
@@ -1931,6 +1931,99 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   f.peindre('pots', 'vert');
   check('repeindre par-dessus est permis', f.teintes.get('pots') === 'vert', '');
   check('mais le tableau reste satisfait', f.satisfaits.has('atelier'), 'un progrès ne se défait pas par accident');
+}
+
+
+{
+  console.log('\n— L’établi du hall se résout vraiment —');
+
+  // Le hall n'enseignait rien qu'on puisse FAIRE : on regardait un inconnu
+  // rapetisser, on franchissait une porte, on partait. L'établi est un bac à
+  // sable — deux billes identiques, deux creux de tailles différentes — et il
+  // n'a de valeur que s'il se résout. Un creux qu'on ne peut pas garnir dans la
+  // toute première salle est la pire promesse qu'on puisse faire.
+  const hall = new Simulation(LOBBY);
+
+  /** Un appui franc sur la touche d'action, front montant compris. */
+  const agir = (sim: Simulation, pitch = -0.35): void => {
+    const base = {
+      forward: 0, strafe: 0, jump: false, sprint: false,
+      yaw: sim.player.yaw, pitch,
+    };
+    sim.step({ ...base, interact: false, throwIt: false }, TICK_DT);
+    sim.step({ ...base, interact: true, throwIt: false }, TICK_DT);
+    sim.step({ ...base, interact: false, throwIt: false }, TICK_DT);
+  };
+  const tient = (sim: Simulation): boolean => sim.carryables.held !== null;
+
+  // La bille qui reste : elle est déjà de la bonne taille, c'est la leçon
+  // gratuite. On la porte de trois pas et on la pose.
+  walkTo(hall, [2.6, 0, 33.2], 60 * 40);
+  agir(hall);
+  check('on prend une bille sur l’établi', tient(hall), pos(hall));
+  walkTo(hall, [3.2, 0, 31.6], 60 * 20);
+  agir(hall);
+  settle(hall, 30);
+  check(
+    'et le petit creux l’accepte telle quelle',
+    hall.sockets.pourvus.has('creux-petit'),
+    [...hall.sockets.pourvus].join(',') || 'aucun',
+  );
+
+  // LA SECONDE DOIT FRANCHIR UNE PORTE. On la prend, on entre par la petite
+  // face, on ressort géant en la tenant — elle vaut alors 1,20 — et l'on va la
+  // poser dans le grand creux sans jamais avoir rapetissé.
+  walkTo(hall, [3.8, 0, 33.2], 60 * 40);
+  agir(hall);
+  check('on prend la seconde bille', tient(hall), pos(hall));
+  const avant = hall.carryables.items.find((c) => c.id === 'bille-b')?.size ?? 0;
+
+  // Le couloir libre entre les repères de taille : ils sont plantés partout
+  // entre z = 10 et z = 24, et le premier essai s'est cogné dans l'un d'eux.
+  //
+  // ET L'ON ENTRE DANS LA PETITE FACE PAR L'OUEST. Elle regarde l'ouest, donc
+  // on y pénètre en marchant vers l'EST — le premier essai la traversait à
+  // rebours et ne déclenchait rien. C'est le genre de chose qu'un test dit tout
+  // de suite et qu'on chercherait longtemps en jouant.
+  for (const p of [[3, 0, 22], [3, 0, 10], [2, 0, 5]] as [number, number, number][]) {
+    walkTo(hall, p, 60 * 60);
+  }
+  walkTo(hall, [12, 0, 5], 60 * 40, { stopOnEvent: true });
+  settle(hall, 20);
+  const apres = hall.carryables.items.find((c) => c.id === 'bille-b')?.size ?? 0;
+  check(
+    'la porte multiplie par quatre ce qu’on tient',
+    hall.player.scaleLevel === 1 && Math.abs(apres - avant * 4) < 0.01,
+    `${avant.toFixed(2)} → ${apres.toFixed(2)}, joueur à ×${scaleOfLevel(hall.player.scaleLevel)}`,
+  );
+
+  // Le géant traverse le hall jusqu'à l'établi. Il ressort de la grande face au
+  // nord-ouest, à (−8, −5), et le grand creux est au sud-est.
+  for (const p of [[-4, 0, 8], [6, 0, 26], [15, 0, 31]] as [number, number, number][]) {
+    walkTo(hall, p, 60 * 120);
+  }
+  agir(hall);
+  settle(hall, 40);
+  check(
+    'et le géant loge la grosse bille dans le grand creux',
+    hall.sockets.pourvus.has('creux-grand'),
+    `${[...hall.sockets.pourvus].join(',') || 'aucun'} — ${pos(hall)}`,
+  );
+
+  // LA RÉCOMPENSE. Le cabinet est scellé tant que le grand creux est vide : on
+  // voit la porte, on voit qu'elle ne s'ouvre pas, et l'on voit à trois pas de
+  // là ce qui l'ouvrira. Rien n'est écrit nulle part.
+  const scelle = new Simulation(LOBBY);
+  check(
+    'le cabinet est scellé tant que rien n’est logé',
+    estScelle(scelle.faces.find((f) => f.pairId === 'cabinet')!, scelle.conditionsRemplies),
+    '',
+  );
+  check(
+    'et il s’ouvre une fois le grand creux garni',
+    !estScelle(hall.faces.find((f) => f.pairId === 'cabinet')!, hall.conditionsRemplies),
+    '',
+  );
 }
 
 

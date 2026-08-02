@@ -137,6 +137,81 @@ const fenteBasse = (): BoxDef[] => [
   box([-31.6, -0.4, 5.2], [-31, 0.9, 12.8], 1),
 ];
 
+
+/**
+ * L'ÉTABLI — de quoi jouer, sans rien à gagner.
+ *
+ * Le hall enseignait trois choses et n'en laissait faire aucune : on regardait
+ * un inconnu rapetisser, on franchissait une porte, on partait. Il manquait ce
+ * qui donne envie de rester dix minutes — **des objets qu'on peut prendre, et
+ * des creux qui les attendent.**
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * DEUX CREUX, DEUX BILLES IDENTIQUES, ET RIEN À DEVINER
+ *
+ * Les billes font toutes deux 0,30. Les creux font 0,30 et 1,20. L'une reste
+ * où elle est ; l'autre doit franchir une porte, et elle en ressort quatre fois
+ * plus grosse.
+ *
+ * Ce n'est pas une énigme, c'est un BAC À SABLE, et c'est délibéré : on
+ * comprend ici, sans conséquence et sans qu'on nous l'ait dit, la règle sur
+ * laquelle reposera toute la suite du jeu — **le nombre de portes qu'un objet
+ * franchit est une variable.**
+ *
+ * DEUX ET PAS TROIS, et la raison est mécanique. Un troisième creux de 4,80
+ * demanderait de faire franchir DEUX portes à une bille ; or le hall n'a
+ * qu'une paire, et un joueur devenu géant ne repasse pas par sa petite face —
+ * il n'y entre plus. La suite du jeu résoudra ça avec des paires imbriquées,
+ * une par étage. Ici, un creux qu'on ne peut pas garnir serait une promesse
+ * fausse, et une promesse fausse dans la première salle est le pire départ
+ * possible.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Et le grand creux, celui qui exige deux passages, ouvre une petite porte vers
+ * un cabinet où l'on voit ce qui attend. C'est la seule récompense du hall, et
+ * elle ne donne aucun avantage : elle donne une envie.
+ */
+/**
+ * L'établi est AU SUD, au-delà de z = 26.
+ *
+ * Ce n'est pas un goût : les repères de taille (`markers`) sont plantés partout
+ * entre z = −14 et z = 24, et le plus haut d'entre eux fait six mètres de large
+ * à sa base. La première version du grand creux était enterrée dedans, et c'est
+ * la vérification « rien ne démarre dans un solide » qui l'a dit — pas l'œil.
+ */
+const CREUX_Z = 32;
+const etabli = (): BoxDef[] => [
+  // Le plateau, à hauteur de hanche : on y pose sans se baisser.
+  box([1.4, -0.4, CREUX_Z - 2.2], [6.6, 0.62, CREUX_Z + 2.2], 1),
+  box([1.2, 0.62, CREUX_Z - 2.4], [6.8, 0.78, CREUX_Z + 2.4], 2),
+
+  // Le socle du grand creux est AU SOL et LARGE, et ce n'est pas un détail :
+  // on y pose une bille de 4,80 en mesurant sept mètres, donc en la reposant à
+  // huit mètres devant soi. Un plateau étroit rendrait le geste impossible sans
+  // que rien ne le laisse voir — la faute a déjà coûté un niveau entier.
+  box([12, -0.4, CREUX_Z - 6], [24, 0.3, CREUX_Z + 6], 1),
+  box([11.7, 0.3, CREUX_Z - 6.3], [24.3, 0.5, CREUX_Z + 6.3], 2),
+
+  // Le cabinet, muré : on n'y entre que par la petite porte, et seulement une
+  // fois le grand creux garni. De l'extérieur on n'en voit que le toit.
+  box([40, -0.4, 26], [56, 0.2, 42], 0),
+  box([40, 0.2, 26], [56, 7, 26.7], 2),
+  box([40, 0.2, 41.3], [56, 7, 42], 2),
+  box([40, 0.2, 26.7], [40.7, 7, 41.3], 2),
+  box([55.3, 0.2, 26.7], [56, 7, 41.3], 2),
+  box([39.6, 7, 25.6], [56.4, 7.9, 42.4], 3),
+
+  // Dedans : une Aiguille en réduction, la plume du monde qu'on ira remplir, et
+  // cinq creux vides à ses pieds dont les tailles annoncent cinq voyages. Rien
+  // n'est expliqué. On regarde, on se demande, on part.
+  box([47.4, 0.2, 33.4], [48.6, 5.4, 34.6], 2),
+  box([46.9, 5.4, 32.9], [49.1, 5.7, 35.1], 1),
+  box([47.6, 5.7, 33.6], [48.4, 6.1, 34.4], 3),
+  ...[
+    [44.6, 0.34], [45.9, 0.5], [47.3, 0.8], [48.9, 1.2], [50.6, 0.62],
+  ].map(([x, d]) => box([x - d * 0.7, 0.2, 30.2], [x + d * 0.7, 0.2 + d * 0.55, 30.2 + d * 1.4], 1)),
+];
+
 export const LOBBY: LevelDef = {
   name: 'Le hall',
   spawn: [0, 0.2, 6],
@@ -151,6 +226,7 @@ export const LOBBY: LevelDef = {
     box([-3.4, -0.4, -1.4], [3.4, 0.22, 1.4], 1),
 
     ...arches(),
+    ...etabli(),
     ...markers(),
     ...fenteBasse(),
   ],
@@ -199,11 +275,57 @@ export const LOBBY: LevelDef = {
       big: { position: [-8, 0, -5], yaw: Math.PI / 2 }, // normale +X, regarde l'est
       small: { position: [8, 0, 5], yaw: -Math.PI / 2 }, // normale -X, regarde l'ouest
     },
+    {
+      // LE CABINET. Scellé tant que le grand creux est vide — donc tant qu'on
+      // n'a pas fait franchir deux portes à une bille. On voit la porte, on
+      // voit qu'elle ne s'ouvre pas, et l'on voit à trois pas de là ce qui
+      // l'ouvrira. Rien n'est écrit.
+      id: 'cabinet',
+      condition: 'creux-grand',
+      colorBig: 0xb08a48,
+      colorSmall: 0xb08a48,
+      smallHeight: 2.4,
+      smallWidth: 1.6,
+      big: { position: [26.5, 0, CREUX_Z], yaw: -Math.PI / 2 },
+      small: { position: [48, 0.2, 40.6], yaw: Math.PI },
+    },
   ],
 
   // Dans le hall il n'y a rien à gagner : l'objectif est repoussé hors du
   // terrain pour ne jamais se déclencher. Ce sont les trois seuils qui mènent
   // quelque part.
+  /**
+   * TROIS BILLES IDENTIQUES. C'est leur ressemblance qui fait la démonstration :
+   * elles ne se distinguent que par le nombre de portes qu'on leur fera
+   * franchir, et rien d'autre ne les sépare.
+   */
+  carryables: [
+    { id: 'bille-a', position: [2.6, 0.8, CREUX_Z + 1.2], size: 0.3, ink: 3 },
+    { id: 'bille-b', position: [3.8, 0.8, CREUX_Z + 1.2], size: 0.3, ink: 3 },
+    // Et une caisse à part, sans creux qui l'attende : celle-là ne sert à rien
+    // qu'à être portée d'un bout à l'autre et à changer de taille en chemin.
+    // Un bac à sable a besoin d'un objet qui ne demande rien.
+    { id: 'caisse-libre', position: [-2, 0.3, 27], size: 0.6, ink: 2 },
+  ],
+
+  /**
+   * Les trois creux, dans l'ordre des puissances de quatre. Aucun n'accepte la
+   * taille d'un autre : la tolérance est de 12 %, et 0,30 · 1,20 · 4,80 sont
+   * séparés par un facteur quatre. Aucun placement correct ne peut être une
+   * faute.
+   */
+  sockets: [
+    // Rayon d'accueil très large pour un si petit creux, et c'est voulu : un
+    // joueur repose ce qu'il porte à trois mètres devant lui, et un établi ne
+    // doit jamais être une épreuve de visée.
+    { id: 'creux-petit', position: [3.2, 0.78, CREUX_Z - 1.4], size: 0.3, ink: 3, portee: 2.2 },
+    // Le grand est AU SOL et son rayon d'accueil est très large, et ce n'est pas
+    // un ornement : on vient le garnir en mesurant sept mètres, donc en reposant
+    // ce qu'on porte à huit mètres devant soi. Viser un creux d'un mètre vingt à
+    // cette distance serait une épreuve d'adresse, et ce jeu n'en est pas une.
+    { id: 'creux-grand', position: [18, 0.5, CREUX_Z], size: 1.2, ink: 3, portee: 4.5 },
+  ],
+
   goal: { position: [0, -900, 0], radius: 1 },
 
   seuils: [
