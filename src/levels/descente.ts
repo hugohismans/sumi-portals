@@ -1,9 +1,11 @@
 import type { LevelDef, PortalPairDef } from '../core/types.js';
 import type { SalleModule } from './salles/contrat.js';
 import { LAVOIR } from './salles/lavoir.js';
+import { CONDUIT } from './salles/conduit.js';
 import { CREUX } from './salles/creux.js';
-import { PLUIE } from './salles/pluie.js';
 import { ATELIER } from './salles/atelier.js';
+import { BOL } from './salles/bol.js';
+import { PLUIE } from './salles/pluie.js';
 
 /**
  * LA DESCENTE — le premier mouvement de la suite, et il rapporte le bleu.
@@ -36,7 +38,7 @@ import { ATELIER } from './salles/atelier.js';
  * Chacune est un fichier autonome sous `salles/`, conforme à `salles/contrat.ts`
  * et vérifiée en permanence par `src/core/__check.ts`.
  */
-const SALLES: SalleModule[] = [LAVOIR, CREUX, ATELIER, PLUIE];
+const SALLES: SalleModule[] = [LAVOIR, CONDUIT, CREUX, ATELIER, BOL, PLUIE];
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -60,10 +62,23 @@ const SALLES: SalleModule[] = [LAVOIR, CREUX, ATELIER, PLUIE];
 export interface Raccord {
   /** Rang de la salle d'où l'on part, dans `SALLES`. */
   depuis: number;
+  /** Rang de celle où l'on arrive. Pas forcément la suivante : voir plus bas. */
+  vers: number;
   /** Écart d'échelle : +1 si l'on grandit, −1 si l'on rapetisse. */
   cran: number;
   /** Nom du logement ou du tableau qui la descelle, s'il y en a un. */
   condition?: string;
+  /**
+   * Où planter la face de départ, si ce n'est pas la sortie déclarée de la
+   * salle.
+   *
+   * Il en faut une dès qu'une salle a DEUX portes qui en partent : sans ça, les
+   * deux se retrouvent au même endroit, exactement superposées, et l'on
+   * traverse celle qu'on ne voulait pas — ou pire, on ne traverse rien du tout
+   * parce que les deux plans se disputent le même point. Le premier assemblage
+   * l'a fait, et rien dans le monde ne l'aurait expliqué au joueur.
+   */
+  depart?: [number, number, number];
 }
 
 /**
@@ -74,29 +89,40 @@ export interface Raccord {
  * mouvement, et elle se lit ici d'un coup d'œil.
  */
 const RACCORDS: Raccord[] = [
-  { depuis: 0, cran: +1, condition: 'chevalet-lavoir' },
-  { depuis: 1, cran: -1 },
+  { depuis: 0, vers: 1, cran: -1, condition: 'chevalet-lavoir' },
+  { depuis: 1, vers: 2, cran: +1 },
+  { depuis: 2, vers: 3, cran: -1 },
+  { depuis: 3, vers: 4, cran: +1 },
+  // ET UN DÉTOUR, qui repart du lavoir. Voir plus bas.
+  { depuis: 0, vers: 5, cran: -1, depart: [-203, 0.05, 706.4] },
 ];
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * CE QUI MANQUE ENCORE, ET POURQUOI ON NE PEUT PAS LE BRICOLER
+ * L'ORDRE N'EST PAS CELUI QUE J'AVAIS PRÉVU, ET C'EST L'ARITHMÉTIQUE QUI L'A
+ * DÉCIDÉ.
  *
- * L'atelier se quitte à ×1/4 et la cour de pluie s'aborde à ×1/4. Zéro cran
- * d'écart : **aucune porte de ce jeu ne peut les relier**, puisqu'une porte
- * multiplie ou divise toujours par quatre.
+ * Les six salles ont pour paliers (entrée, sortie) :
  *
- * Ce n'est pas un oubli, c'est une conséquence, et la vérification l'a dit
- * avant qu'on ait pu la découvrir en jouant devant une porte qui refuse. Les
- * quatre salles écrites ont pour paliers (entrée, sortie) : le lavoir (×1, ×1),
- * les trois creux (×4, ×4), l'atelier (×1, ×1/4), la pluie (×1/4, ×1/4). On
- * peut en chaîner trois, jamais quatre — la cour de pluie a besoin d'un voisin
- * qui se quitte à ×1, et aucune des trois autres ne le fait après elle.
+ *     lavoir (×1, ×1) · conduit (×1/4, ×1) · creux (×4, ×4)
+ *     atelier (×1, ×1/4) · bol (×1, ×1/4) · pluie (×1/4, ×1/4)
  *
- * LE CONDUIT est justement la salle qui traverse les échelles : c'est lui qui
- * fermera la chaîne. En attendant, la cour de pluie est dans le monde, bâtie et
- * vérifiée, mais elle n'est reliée à rien — on y va par les repères de mise au
- * point, pas en jouant. Une porte qui refuse sans raison visible serait pire.
+ * Trois d'entre elles s'abordent par une échelle qui exige un prédécesseur
+ * quittant à ×1 — le conduit, les creux et la pluie. Or DEUX SALLES SEULEMENT
+ * se quittent à ×1 : le lavoir et le conduit. Une file unique en laisse donc
+ * forcément une dehors, et aucune manière d'ordonner les six ne l'évite. Ce
+ * n'est pas un manque d'imagination, c'est un compte.
+ *
+ * D'où la cour de pluie en DÉTOUR, à partir du lavoir. Elle ne demande rien,
+ * elle ne rapporte rien, et elle installe en douce ce qui comptera dans le
+ * puits : à cette taille, tout ce qui tombe tombe vite. Une salle qui
+ * n'enseigne qu'en passant est exactement ce qu'on peut se permettre de rendre
+ * facultatif — et le joueur qui la manque perdra deux essais de plus dans le
+ * conduit, ce qui est une punition juste et douce.
+ *
+ * Le voyage devient donc : le lavoir, puis le puits, puis la cour à trois
+ * gradins, puis l'atelier, puis le bol où dort le bleu. Et sur le côté, pour
+ * qui regarde, une cour sous la pluie.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -114,8 +140,8 @@ export const ecartDeRaccord = (a: SalleModule, b: SalleModule): number =>
  */
 const raccorder = (r: Raccord): PortalPairDef => {
   const a = SALLES[r.depuis];
-  const b = SALLES[r.depuis + 1];
-  const [ax, ay, az] = a.sortie.position;
+  const b = SALLES[r.vers];
+  const [ax, ay, az] = r.depart ?? a.sortie.position;
   const [bx, by, bz] = b.entree.position;
 
   // On rapetisse en franchissant une GRANDE face ; on grandit en franchissant
@@ -162,9 +188,11 @@ const assembler = (): LevelDef => ({
   veilleurs: SALLES.flatMap((s) => s.veilleurs ?? []),
   portals: [...SALLES.flatMap((s) => s.portals ?? []), ...RACCORDS.map(raccorder)],
   guide: SALLES.flatMap((s) => s.stations),
+  // LE BUT EST LÀ OÙ DORT LE BLEU, et non au bout du tableau : la cour de pluie
+  // est un détour, et finir un voyage dans un détour n'aurait aucun sens.
   goal: {
-    position: SALLES[SALLES.length - 1].sortie.position,
-    radius: 6 * Math.pow(4, SALLES[SALLES.length - 1].sortie.echelle),
+    position: BOL.sortie.position,
+    radius: 6 * Math.pow(4, BOL.sortie.echelle),
   },
 });
 

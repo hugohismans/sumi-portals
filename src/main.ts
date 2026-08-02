@@ -76,7 +76,7 @@ const EN_DUO = MODE === 'duo' && SALON !== '';
 const LEVEL = EN_AVENTURE ? NIVEAUX[MODE!]() : LOBBY;
 /** Enchaînement des énigmes. Le hall suit la fin de la dernière. */
 const NIVEAU_SUIVANT: Record<string, string> = {
-  monde: './',
+  monde: '?niveau=descente',
   cour: '?niveau=caisse',
   caisse: '?niveau=monde',
 };

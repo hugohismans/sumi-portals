@@ -21,13 +21,15 @@ import { CREUX } from '../levels/salles/creux.js';
 import { PLUIE } from '../levels/salles/pluie.js';
 import { LAVOIR } from '../levels/salles/lavoir.js';
 import { ATELIER } from '../levels/salles/atelier.js';
-import { RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
+import { CONDUIT } from '../levels/salles/conduit.js';
+import { BOL } from '../levels/salles/bol.js';
+import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
 
 /**
  * Les salles de la descente déjà bâties. On en ajoute une ligne par livraison ;
  * tout le reste des vérifications suit sans qu'on y touche.
  */
-const SALLES_LIVREES: SalleModule[] = [LAVOIR, CREUX, PLUIE, ATELIER];
+const SALLES_LIVREES: SalleModule[] = [LAVOIR, CONDUIT, CREUX, ATELIER, BOL, PLUIE];
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
 import {
@@ -2097,7 +2099,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // refuse, sans aucune raison visible dans le monde.
   for (const r of RACCORDS_DESCENTE) {
     const a = SALLES_DESCENTE[r.depuis];
-    const b = SALLES_DESCENTE[r.depuis + 1];
+    const b = SALLES_DESCENTE[r.vers];
     const ecart = ecartDeRaccord(a, b);
     check(
       `de ${a.nom} à ${b.nom}, une seule porte suffit`,
@@ -2109,10 +2111,32 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // pas nées. Mais on exige que ce qui est déclaré soit VRAI, et que les
   // raccords se suivent sans trou — un raccord isolé au milieu du tableau
   // serait une salle inatteignable qu'on croirait reliée.
+  // ET TOUTE SALLE EST ATTEIGNABLE. Une salle bâtie, vérifiée, et que personne
+  // ne peut atteindre est le pire gaspillage possible — et rien d'autre ne le
+  // dirait : elle passe toutes les autres vérifications sans broncher.
+  const atteintes = new Set<number>([0]);
+  for (const r of RACCORDS_DESCENTE) atteintes.add(r.vers);
+  const orphelines = SALLES_DESCENTE.filter((_, i) => !atteintes.has(i)).map((s) => s.nom);
+  // ET DEUX PORTES NE SE PLANTENT PAS AU MÊME ENDROIT. Une salle qui a deux
+  // sorties les mettait exactement l'une sur l'autre : on traversait celle
+  // qu'on ne voulait pas, ou rien du tout, et le monde n'en disait rien.
+  {
+    const vues = new Map<string, string>();
+    for (const f of new Simulation(DESCENTE).faces) {
+      const clef = `${f.position.x.toFixed(2)},${f.position.y.toFixed(2)},${f.position.z.toFixed(2)}`;
+      const avant = vues.get(clef);
+      check(
+        `la face ${f.pairId}/${f.kind} n’en recouvre aucune autre`,
+        avant === undefined,
+        `elle est plantée sur ${avant ?? ''} en ${clef}`,
+      );
+      if (avant === undefined) vues.set(clef, `${f.pairId}/${f.kind}`);
+    }
+  }
   check(
-    'les raccords déclarés partent du début et se suivent',
-    RACCORDS_DESCENTE.every((r, i) => r.depuis === i),
-    RACCORDS_DESCENTE.map((r) => r.depuis).join(', '),
+    'aucune salle n’est laissée hors du monde',
+    orphelines.length === 0,
+    orphelines.join(', '),
   );
 
   // ET LES PARCELLES NE SE CHEVAUCHENT PAS. C'est la garantie qui rend le

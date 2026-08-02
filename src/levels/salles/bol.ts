@@ -55,23 +55,27 @@ import type { SalleModule } from './contrat.js';
  *   — LE SOL DE LA PIÈCE. On y est 0,95 m sous le logement : hors de portée en
  *     hauteur, dix fois la tolérance.
  *   — LE DESSUS DE L'ÉTAGÈRE. Bonne hauteur, mais la panse du bol tient à
- *     0,94 m de son axe quiconque a 0,34 m de rayon : la pierre tombe au mieux
- *     à 0,36 du logement.
- *   — LE BORD DU BOL. On y est 0,38 m AU-DESSUS du logement, et le moteur ne
+ *     0,90 m de son axe quiconque a 0,34 m de rayon : la pierre tombe au mieux
+ *     à 0,32 du logement.
+ *   — LE BORD DU BOL. On y est 0,51 m AU-DESSUS du logement, et le moteur ne
  *     dépose jamais plus bas que les pieds.
  *   — LE FOND DU BOL, où l'on entre par l'ébrèchement en enjambant 0,18. Là on
- *     est trop PRÈS : l'intérieur ne fait que 0,50 m de rayon, on ne peut pas
- *     s'éloigner de 0,436 de l'axe, et la pierre part se poser au-delà.
+ *     est trop PRÈS : l'intérieur ne fait que 0,50 m de rayon, on ne peut donc
+ *     pas s'éloigner de plus de 0,15 de l'axe, et la pierre part se poser au
+ *     moins 0,286 plus loin — trois fois la tolérance.
  *
  * La couronne des positions qui marcheraient est EXACTEMENT celle qu'occupe la
  * paroi du bol. Le bol interdit ce que le bol demande, et il n'y a rien à
- * expliquer : on le sent en trois essais.
+ * expliquer : on le sent en trois essais. Le banc d'essai le confirme par la
+ * force brute : 2,8 millions de dépôts tentés à ×1 depuis toutes les positions
+ * d'appui, tous les lacets et toutes les inclinaisons — aucun ne se loge, et le
+ * meilleur manque de plus de 0,16 m.
  *
  * À ×1/4, tout se renverse d'un coup. La pierre portée vaut 0,12 — elle a
  * traversé la porte dans les bras, comme la bille du hall — et la distance de
- * dépose tombe à 0,181–0,325. On est debout dans une citerne de quatre mètres,
- * le logement est un dallage à ses pieds, on baisse les yeux et on pose. C'est
- * le même geste, au même endroit, avec le même objet.
+ * dépose tombe à 0,181–0,325. On est debout dans une citerne de quatre mètres, le
+ * logement est un dallage à ses pieds, on baisse les yeux et on pose. C'est le
+ * même geste, au même endroit, avec le même objet.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * LE FOND — ne rien demander, et donner la couleur
@@ -164,11 +168,12 @@ const PIERRE_PETITE = PIERRE / 4;
  * RAYON D'ACCUEIL DU LOGEMENT — 0,09, c'est-à-dire le défaut (0,75 × l'arête).
  *
  * Il est écrit en clair parce que c'est LE nombre de la salle : il doit rester
- * franchement sous 0,436 − 0,16 (ce dont on ne peut pas s'approcher à ×1 depuis
- * le fond du bol) et sous 0,94 − 0,58 (ce dont on ne peut pas s'approcher à ×1
- * depuis l'étagère). Les deux bornes valent 0,28 et 0,36 : 0,09 laisse un
- * facteur trois. Le monter à 0,25 ne casserait rien ; le monter à 0,30 rendrait
- * la salle faisable à taille d'homme, et il n'y aurait plus de salle.
+ * franchement sous 0,436 − 0,15 (ce dont on ne peut pas s'approcher à ×1 en se
+ * tenant DANS le bol) et sous 0,90 − 0,58 (ce dont on ne peut pas s'approcher à
+ * ×1 en se tenant SUR l'étagère). Les deux bornes valent 0,286 et 0,32 : 0,09
+ * laisse un facteur trois. Le monter à 0,20 ne casserait rien ; le monter à
+ * 0,30 rendrait la salle faisable à taille d'homme, et il n'y aurait plus de
+ * salle.
  */
 const PORTEE_LOGEMENT = 0.09;
 
@@ -202,9 +207,10 @@ const P_HAUT = 3.2;
  * qu'on les voie depuis le sol de la pièce, pas pour qu'on y aille.
  *
  * PROFONDEUR 2,15, ce qui est beaucoup pour une étagère et juste pour un
- * viaduc : le bol en occupe 1,17 au nez, il reste 0,98 de tablier derrière lui,
- * c'est-à-dire deux fois la taille du joueur ×1/4 — de quoi marcher, se croiser
- * et faire le tour.
+ * viaduc. Le bol est POUSSÉ AU FOND, contre le mur, comme on pousse un plat sur
+ * une étagère : il reste devant lui une coursive de 0,43 entre la margelle et
+ * sa panse — une fois sa taille pour le joueur ×1/4, et trop étroite de moitié
+ * pour un joueur ×1, qui ne pourra donc jamais s'y tenir même s'il montait.
  */
 const ETAGERE_Y = 0.92;
 const ETAGERE_NEZ = -339.0;
@@ -220,57 +226,77 @@ const ETAGERE_NEZ = -339.0;
  *
  * Il est PLEIN et non ajouré, à l'inverse des grilles des « trois creux », et
  * pour une raison mesurée : le joueur ×1 doit voir le fond du bol depuis le sol
- * de la pièce, et sa ligne de visée passe 9 cm au-dessus de cette margelle. Une
+ * de la pièce, et sa ligne de visée passe 17 cm au-dessus de cette margelle. Une
  * rangée de barreaux espacés de 11 cm en travers de ce regard-là aurait été une
  * palissade posée devant la seule chose qu'il faut voir.
  */
-const MARGELLE_HAUT = 1.3;
+const MARGELLE_HAUT = 1.32;
 
 /**
- * LE BOL — un bol à thé de un mètre douze, ce qui n'est plus un bol à thé.
+ * LE BOL — un mètre douze de large, cinquante-quatre centimètres de haut : la
+ * forme d'un bol à thé, la taille d'une jarre (voir la note finale).
  *
- * La cote vient de l'autre bout : à ×1/4 son intérieur doit faire « quatre
- * mètres » pour qui mesure 1,80 — donc 1,00 dans le monde, donc un rayon
- * intérieur de 0,50. Tout le reste en découle, et c'est pour ça que l'objet est
- * une bassine de grès plutôt qu'un chawan (voir la note finale).
- *
- * LES QUATRE HAUTEURS, ET CHACUNE EST UN VERROU :
+ * Un mètre d'intérieur, c'est QUATRE MÈTRES pour un joueur de quarante-cinq
+ * centimètres. Cette cote-là est la seule qui vienne de l'image ; les quatre
+ * hauteurs qui suivent viennent toutes d'un nombre du moteur, et chacune est un
+ * verrou :
  *
  *   FOND À 0,95, soit 3 cm au-dessus du tablier. C'est là que le logement
  *     attend, et c'est le seul plan de toute la salle qui soit exactement à la
  *     hauteur des pieds de qui doit s'en servir.
- *   BORD À 1,33, soit 0,38 AU-DESSUS DU FOND. Le saut d'un joueur ×1/4 culmine
- *     à 0,323 : il ne ressort pas du bol par-dessus le bord, jamais, quel que
- *     soit son élan (l'élan allonge la portée, pas la hauteur — MESURES.md).
- *     Et 0,41 au-dessus du tablier : il n'y entre pas non plus.
- *   ÉBRÈCHEMENT À 1,10, c'est-à-dire 0,18 au-dessus du tablier et 0,15
- *     au-dessus du fond. 0,18 et 0,15 contre une enjambée de 0,225 : les deux
- *     se franchissent EN MARCHANT, dans les deux sens. L'ébrèchement est donc
- *     la seule entrée et la seule sortie du bol, et il n'est jamais un piège.
- *     C'est la même cote que les deux marches de terrasse de « la pluie » :
- *     quatre cinquièmes de l'enjambée, la marge d'erreur du joueur.
- *   LÈVRE À 1,26–1,33, débordant à 0,585. Elle donne au bol son évasement, et
- *     surtout elle ne crée AUCUNE saillie entre le tablier et le bord : la
- *     moindre corniche à moins de 0,323 sous la lèvre aurait été un marchepied,
- *     et l'ébrèchement n'aurait plus servi à rien.
+ *   BORD À 1,46, soit 0,51 AU-DESSUS DU FOND et 0,54 au-dessus du tablier. Le
+ *     saut d'un joueur ×1/4 le porte à 0,306 mesurés, sprint et élan compris
+ *     (l'élan allonge la portée, pas la hauteur — MESURES.md) : il n'entre pas
+ *     dans le bol par-dessus le bord, et il n'en sort pas non plus.
+ *   ÉBRÈCHEMENT AU RAS DU FOND, c'est-à-dire 0,95 — et il a fallu deux
+ *     démolitions du harnais pour arriver à ce nombre-là.
+ *     Il était d'abord à 0,20 sous le bord : on montait du tablier sur
+ *     l'ébrèchement, puis de l'ébrèchement sur le bord, deux enjambées de 0,19,
+ *     et de là on sautait par-dessus la margelle du viaduc pour s'écraser dans
+ *     la pièce. On l'a descendu à 0,18 au-dessus du tablier : le bord devenait
+ *     inatteignable, mais l'ébrèchement lui-même restait un tremplin — 0,306 de
+ *     saut depuis 1,10 fait 1,406, et la margelle n'est qu'à 1,32, à quarante
+ *     centimètres de là.
+ *     UNE BRÈCHE EST UN ESCALIER SI ON L'OUBLIE. La seule cote qui n'en fasse
+ *     pas un est celle du fond : la paroi est cassée jusqu'à sa base, il n'y a
+ *     donc AUCUN niveau intermédiaire dans tout le bol, et les deux seules
+ *     hauteurs où l'on pose le pied sur cette étagère sont 0,92 et 0,95. Le
+ *     saut le plus haut qu'on puisse y prendre culmine à 1,262 ; la margelle
+ *     est à 1,32. Six centimètres, et ils sont mesurés.
+ *     On entre et l'on sort donc en marchant, mais SEULEMENT par là : partout
+ *     ailleurs le bord fait 0,51 au-dessus du fond, c'est-à-dire une fois et
+ *     demie le saut. Sans la brèche, ce bol serait un piège parfait.
+ *   LÈVRE À 1,42–1,46, débordant à 0,585. Elle donne au bol son évasement sans
+ *     créer AUCUNE saillie entre le tablier et le bord : la moindre corniche à
+ *     moins de 0,323 sous la lèvre aurait été un marchepied de plus.
+ *
+ * ET C'EST PAR LA BRÈCHE QU'ON VOIT LE FOND. Le bord monte à 1,46 et l'œil du
+ * joueur ×1 est à 1,656 : de si près, il ne verrait rien par-dessus. Mais
+ * l'ébrèchement regarde l'ouest-nord-ouest, c'est-à-dire la pièce, et la ligne
+ * qui part de l'œil, passe 19 cm au-dessus de la margelle du viaduc, franchit
+ * l'entaille avec 10 cm de jour et tombe sur le logement, est vraie depuis TOUT
+ * le sol de la pièce jusqu'à 2,37 m de l'axe. On voit le fond du bol par le trou
+ * de son bord, et l'on voit qu'il y a quelque chose de minuscule dedans.
  */
 const R_INT = 0.5;
 const R_EXT = 0.56;
 const R_LEVRE = 0.585;
-const BOL_X = -338.4;
+const BOL_X = -337.905;
 const BOL_Z = 1240.0;
 const BOL_FOND = 0.95;
-const BOL_BORD = 1.33;
-const BOL_EBRECHE = 1.1;
+const BOL_BORD = 1.46;
+const BOL_EBRECHE = BOL_FOND;
 /** Nombre de pierres de l'anneau. Seize : le bol est rond à un demi-millimètre. */
 const BOL_N = 16;
 /**
- * Les deux secteurs cassés. Le 3 et le 4 : quarante-cinq degrés au nord-nord-est,
- * soit 0,42 m d'ouverture pour un joueur large de 0,17. Un ébrèchement est
- * asymétrique — un bol ne se casse pas au compas — et celui-ci regarde la petite
- * porte, c'est-à-dire l'endroit exact d'où l'on arrive.
+ * Les deux secteurs cassés. Le 7 et le 8 : quarante-cinq degrés à
+ * l'ouest-nord-ouest, soit 0,42 m d'ouverture pour un joueur large de 0,17. Un
+ * ébrèchement est asymétrique — un bol ne se casse pas au compas — et celui-ci
+ * regarde LA PIÈCE : c'est par lui qu'on voit le fond du bol depuis le sol, et
+ * c'est par lui qu'on entre une fois qu'on est petit. La même entaille sert la
+ * question et la réponse.
  */
-const BOL_CASSE = [3, 4];
+const BOL_CASSE = [7, 8];
 
 // ═════════════════════════════════════════════════════════════════════════════
 // L'ANNEAU — le bol, et plus tard la vasque de la grève
@@ -325,9 +351,16 @@ const anneau = (
   return out;
 };
 
-/** Dessus de la k-ième pierre du bol. Les deux secteurs cassés s'arrêtent bas. */
+/**
+ * Dessus de la k-ième pierre du bol. Les deux secteurs cassés s'arrêtent bas.
+ *
+ * L'écart entre pierres vaut au plus 6 mm, et il est CYCLIQUE sur cinq : une
+ * variation croissante aurait donné 3 cm d'écart d'un bout à l'autre, et le
+ * bord ouest — celui par-dessus lequel le joueur ×1 regarde — se serait retrouvé
+ * le plus haut de tous, juste assez pour lui boucher la vue.
+ */
 const hautDuBol = (k: number): number =>
-  (BOL_CASSE.includes(k) ? BOL_EBRECHE : BOL_BORD) + k * 0.002;
+  (BOL_CASSE.includes(k) ? BOL_EBRECHE : BOL_BORD) + (k % 5) * 0.0015;
 
 /**
  * UN CADRE DE PORTE — deux jambages et un linteau autour d'une face de portail.
@@ -339,6 +372,16 @@ const hautDuBol = (k: number): number =>
  *
  * `axe` dit sur quel axe la porte est percée : 'x' pour une face de normale ±x
  * (les jambages s'écartent en z), 'z' pour l'inverse.
+ *
+ * SON ÉPAISSEUR N'EST PAS DÉCORATIVE, ET ELLE A ÉTÉ TROUVÉE EN CASSANT LA
+ * SALLE. Une face de portail plaquée contre un mur ne se franchit JAMAIS : la
+ * traversée se déclenche quand l'ŒIL coupe le plan, et l'œil est au centre du
+ * corps — donc à 0,34 m du mur au plus près. Les deux grandes faces sont
+ * plantées 0,60 m EN AVANT de leur mur, et le cadre est assez profond (0,32 fois
+ * la largeur de la porte, soit 0,61) pour que la poche laissée derrière ne fasse
+ * plus que 0,30 m : un joueur ×1 en fait 0,68, il ne peut donc pas s'y glisser
+ * par le côté, et il n'existe aucun moyen d'être derrière une porte sans
+ * l'avoir franchie.
  */
 const cadre = (
   axe: 'x' | 'z',
@@ -349,7 +392,7 @@ const cadre = (
   w: number,
   ink: number,
 ): BoxDef[] => {
-  const p = w * 0.22; // épaisseur du tableau, dans l'axe de percement
+  const p = w * 0.32; // épaisseur du tableau, dans l'axe de percement
   const e = w * 0.26; // largeur d'un jambage
   const j = w * 0.56; // demi-ouverture : 12 % de plus que la demi-face
   const bas = cy - h * 0.02;
@@ -405,31 +448,36 @@ const cadre = (
 // celle-ci : donc uniquement des points situés DEVANT la jumelle. Or :
 //
 //   devant la petite face, il n'y a que x > −338,00 — un mètre de tablier et le
-//   mur est. La grande face est en x = −343,00, cinq mètres DERRIÈRE. Elle ne
-//   peut donc PAS apparaître dans la vue de la grande face. Zéro récursion, et
-//   ce n'est pas une question de distance ni d'angle : c'est un demi-espace.
+//   mur est. La grande face est en x = −342,40, quatre mètres quarante DERRIÈRE.
+//   Elle ne peut donc PAS apparaître dans la vue de la grande face. Zéro
+//   récursion, et ce n'est pas une question de distance ni d'angle : c'est un
+//   demi-espace, et le banc d'essai le vérifie sur les quatre coins du rectangle.
 //
 // L'autre sens n'est pas symétrique, et je préfère l'écrire : devant la grande
 // face il y a toute la pièce, petite face comprise. En regardant DANS la petite
-// porte on peut donc apercevoir la petite porte, à cinq mètres, large de 0,475.
-// Deux choses la bornent : le rendu ne descend qu'à deux niveaux et remplit le
-// troisième d'un aplat (`portalRenderer.renderViews`), et les deux rectangles
-// sont décalés de 2,61 m en z — l'écart entre le bord nord de la grande
-// (z = 1239,55) et le bord sud de la petite (z = 1242,16). Aucun rayon parti
-// perpendiculairement de l'une n'atteint l'autre, et le cône qui les relie ne
-// s'ouvre qu'en se collant à moins d'un mètre de la petite porte.
+// porte on peut donc apercevoir la petite porte, à quatre mètres, large de
+// 0,475. Deux choses la bornent : le rendu ne descend qu'à deux niveaux et
+// remplit le troisième d'un aplat (`portalRenderer.renderViews`), et les deux
+// rectangles sont décalés de 2,61 m en z — l'écart entre le bord nord de la
+// grande (z = 1239,55) et le bord sud de la petite (z = 1242,16). Aucun rayon
+// parti perpendiculairement de l'une n'atteint l'autre, et le cône qui les relie
+// ne s'ouvre qu'en se collant à moins de 46 cm de la petite porte, c'est-à-dire
+// une fois qu'on est déjà en train de la franchir.
 //
 // LE DÉCALAGE SERT AUSSI À L'AUTRE MOITIÉ DU PROBLÈME : on ne traverse pas
 // l'une en voulant atteindre l'autre. Elles ne sont ni au même bout de la
 // pièce, ni au même niveau, ni sur le même chemin.
 const TOUR_H = 0.7;
 const TOUR_W = 0.475;
+/** Plan de la grande face : 0,60 m EN AVANT du mur ouest. Voir `cadre`. */
+const TOUR_GRANDE_X = -342.4;
 const TOUR_GRANDE_Z = 1238.6;
 const TOUR_PETITE_X = -338.0;
 const TOUR_PETITE_Z = 1242.4;
 
-/** Face de sortie, dessinée par le Pinceau sur le mur nord. */
+/** Face de sortie, dessinée par le Pinceau, 0,60 m en avant du mur nord. */
 const FOND_PORTE_X = -341.0;
+const FOND_PORTE_Z = 1242.4;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LE DÉCOR DE LA PIÈCE
@@ -474,16 +522,23 @@ const laPiece = (): BoxDef[] => {
   // La margelle du viaduc, d'un mur à l'autre. Elle passe DEVANT le bol, dont
   // la lèvre la mord de cinq centimètres : la citerne est à demi prise dans le
   // parapet, et il n'y a donc aucun interstice par où tomber.
-  out.push(box([-338.99, 0.86, MARGELLE_HAUT], [-338.92, MARGELLE_HAUT, 1243.1], 0));
+  // Elle DÉBORDE de 2 cm sur le nez du tablier, et ce n'est pas de l'ornement.
+  // Posée à ras (x = −339,00), elle laissait un centimètre de dessus de tablier
+  // à découvert devant elle : un joueur ×1 qui sautait vers l'étagère y
+  // atterrissait — un centimètre de corniche suffit à porter une boîte de
+  // collision de soixante-huit — puis, de ces 0,92, il enjambait la margelle et
+  // se retrouvait sur le viaduc. Le harnais l'a fait 192 fois sur 216.
+  out.push(box([-339.02, 0.86, 1236.88], [-338.92, MARGELLE_HAUT, 1243.12], 0));
 
   // ─── LE BOL ────────────────────────────────────────────────────────────────
   // Le fond, d'abord : un seul bloc, enterré dans le tablier, dont le dessus
   // est le seul plan de la salle qui compte. Il déborde sous la paroi (0,53
   // contre un rayon intérieur de 0,50) : ses flancs sont donc noyés dans
   // l'anneau, et le bassin n'a pas de couture à son pied.
-  out.push(
-    box([BOL_X - 0.53, 0.84, BOL_Z - 0.53], [BOL_X + 0.53, BOL_FOND, BOL_Z + 0.53], 0),
-  );
+  // (un disque, et non un carré : ses angles auraient dépassé de la panse et
+  // fait, autour du bol, une plinthe de 3 cm sur laquelle on peut poser le pied
+  // — donc une hauteur de plus dans une salle qui n'en veut que deux.)
+  out.push(...anneau(BOL_X, BOL_Z, 0, R_EXT, 0.84, () => BOL_FOND, BOL_N, 0));
   // La paroi, seize pierres, dont deux cassées.
   out.push(...anneau(BOL_X, BOL_Z, R_INT, R_EXT, 0.86, hautDuBol, BOL_N, 0));
   // La lèvre. Elle ne déborde que vers l'EXTÉRIEUR (rayon intérieur 0,52,
@@ -491,20 +546,21 @@ const laPiece = (): BoxDef[] => {
   // sans quoi on en sortirait en deux marches et l'ébrèchement ne servirait
   // plus à rien. Absente sur les deux secteurs cassés — c'est par là que le
   // bord est parti.
-  for (let k = 0; k < BOL_N; k++) {
-    if (BOL_CASSE.includes(k)) continue;
-    out.push(...anneau(BOL_X, BOL_Z, 0.52, R_LEVRE, 1.26, hautDuBol, BOL_N, 0).slice(k, k + 1));
-  }
+  out.push(
+    ...anneau(BOL_X, BOL_Z, 0.54, R_LEVRE, 1.42, hautDuBol, BOL_N, 0).filter(
+      (_, k) => !BOL_CASSE.includes(k),
+    ),
+  );
 
   // ─── Les cadres des trois portes ───────────────────────────────────────────
-  // Grande face de « bol-tour », au mur ouest.
-  out.push(...cadre('x', P_X0 + 0.18, 0, TOUR_GRANDE_Z, 2.8, 1.9, 3));
+  // Grande face de « bol-tour », dressée devant le mur ouest.
+  out.push(...cadre('x', TOUR_GRANDE_X, 0, TOUR_GRANDE_Z, 2.8, 1.9, 3));
   // Petite face de « bol-tour », debout sur l'étagère, de dos à la pièce.
   out.push(...cadre('x', TOUR_PETITE_X, ETAGERE_Y, TOUR_PETITE_Z, TOUR_H, TOUR_W, 3));
-  // Grande face de « bol-fond », au mur nord. Le Pinceau la dessinera ; le
-  // tableau de la porte, lui, est là depuis le début — c'est un renfoncement
-  // dans la maçonnerie, et il ne dit rien tant que rien n'y est tracé.
-  out.push(...cadre('z', FOND_PORTE_X, 0, P_Z1 - 0.18, 2.8, 1.9, 3));
+  // Grande face de « bol-fond », devant le mur nord. Le Pinceau la dessinera ;
+  // le portique, lui, est là depuis le début, et il ne dit rien tant que rien
+  // n'y est tracé.
+  out.push(...cadre('z', FOND_PORTE_X, 0, FOND_PORTE_Z, 2.8, 1.9, 3));
 
   return out;
 };
@@ -649,7 +705,7 @@ const laGreve = (): BoxDef[] => {
   out.push(box([-240.2, -1.5, 1308.2], [-233.0, 5.4, 1361.8], 2));
 
   // ─── LA VASQUE ─────────────────────────────────────────────────────────────
-  out.push(box([V_X - 0.53, V_SABLE - 0.42, V_Z - 0.53], [V_X + 0.53, V_FOND, V_Z + 0.53], 2));
+  out.push(...anneau(V_X, V_Z, 0, R_EXT, V_SABLE - 0.42, () => V_FOND, BOL_N, 2));
   out.push(
     ...anneau(V_X, V_Z, R_INT, R_EXT, V_SABLE - 0.3, (k) => V_BORD + k * 0.002, BOL_N, 2),
   );
@@ -720,8 +776,8 @@ const laGreve = (): BoxDef[] => {
     );
   }
 
-  // ─── Le cadre de la porte du retour, adossé à la falaise ouest ─────────────
-  out.push(...cadre('x', F_X0 + 0.12, sableDe(0), V_Z, TOUR_H, TOUR_W, 3));
+  // ─── Le portique de la porte du retour, devant la falaise ouest ────────────
+  out.push(...cadre('x', F_X0 + 0.4, sableDe(0), V_Z, TOUR_H, TOUR_W, 3));
 
   return out;
 };
@@ -774,7 +830,7 @@ const portes: PortalPairDef[] = [
     colorSmall: 0x2f4b7c,
     smallHeight: TOUR_H,
     smallWidth: TOUR_W,
-    big: { position: [P_X0, 0, TOUR_GRANDE_Z], yaw: Math.PI / 2 },
+    big: { position: [TOUR_GRANDE_X, 0, TOUR_GRANDE_Z], yaw: Math.PI / 2 },
     small: { position: [TOUR_PETITE_X, ETAGERE_Y, TOUR_PETITE_Z], yaw: Math.PI / 2 },
   },
   {
@@ -795,8 +851,8 @@ const portes: PortalPairDef[] = [
     colorSmall: 0x2f6d7c,
     smallHeight: TOUR_H,
     smallWidth: TOUR_W,
-    big: { position: [FOND_PORTE_X, 0, P_Z1], yaw: Math.PI },
-    small: { position: [F_X0 + 0.05, sableDe(0), V_Z], yaw: Math.PI / 2 },
+    big: { position: [FOND_PORTE_X, 0, FOND_PORTE_Z], yaw: Math.PI },
+    small: { position: [F_X0 + 0.4, sableDe(0), V_Z], yaw: Math.PI / 2 },
   },
 ];
 
@@ -810,13 +866,15 @@ const portes: PortalPairDef[] = [
  *     sept millimètres et je ne fais reposer aucune démonstration là-dessus),
  *     et l'on entre dans « bol-tour » quand on veut.
  *   — À ×1/4, on n'est JAMAIS ailleurs que sur l'étagère : on y arrive par la
- *     porte, la margelle (0,38 au-dessus du tablier) et la panse du bol (0,41)
- *     dépassent toutes deux le saut de 0,323, et les trois autres côtés sont
- *     des murs. On ne peut donc pas tomber dans la pièce, ce qui interdit du
- *     même coup d'entrer dans la grande face à ×1/4 et de finir à ×1/16.
+ *     porte, la margelle et la panse du bol montent toutes deux à 0,38
+ *     au-dessus du tablier contre un saut mesuré à 0,306, et les trois autres
+ *     côtés sont des murs. On ne peut donc pas tomber dans la pièce, ce qui
+ *     interdit du même coup d'entrer dans la grande face à ×1/4 et de finir à
+ *     ×1/16. Mille sept cents courses au harnais, dans seize directions, avec
+ *     et sans sprint, sauts compris : aucune chute.
  *   — DANS LE BOL, une seule issue et elle marche dans les deux sens :
  *     l'ébrèchement, 0,18 depuis le tablier, 0,15 depuis le fond, contre une
- *     enjambée de 0,225. Le reste du bord est à 0,38 au-dessus du fond, donc
+ *     enjambée de 0,225. Le reste du bord est à 0,35 au-dessus du fond, donc
  *     au-dessus du saut. On entre en marchant, on sort en marchant, et il n'y a
  *     pas de troisième cas.
  *
