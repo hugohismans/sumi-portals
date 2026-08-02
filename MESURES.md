@@ -393,3 +393,62 @@ rattrapé en vingt secondes d'immobilité — et une chute de quarante mètres d
 le puits du conduit reste une chute. Un rattrapage trop bavard téléporterait le
 joueur hors d'un gouffre qu'il descend exprès, ce qui serait pire que le défaut
 qu'on corrige.
+
+## LE SAUT A DEUX NOMBRES, ET ON N'EN DONNAIT QU'UN — corrigé le 3 août
+
+Le tableau du contrat disait :
+
+```
+enjambée = 0,50 × sa taille   →  ×1 : 0,90
+saut     = 0,72 × sa taille   →  ×1 : 1,29
+```
+
+**Les deux sont des HAUTEURS.** L'enjambée est la marche qu'on gravit sans
+sauter ; le saut est le sommet qu'on atteint. Aucune ligne ne donnait de
+distance horizontale — et tout le monde en a lu une.
+
+### Qui s'est trompé, et c'est le problème
+
+Moi, dans trois consignes d'affilée. Puis **trois modèles extérieurs**, à qui
+j'avais décrit le jeu, et qui ont bâti cinq idées sur la même phrase : *« à ×4 le
+bras atteint 11,52 m quand le saut n'en franchit que 5,18 »*. C'était le filon
+que j'annonçais comme le plus riche du jeu.
+
+**Il n'existe pas.** L'autrice de la rive opposée est allée mesurer.
+
+| échelle | portée d'un saut, à l'arrêt | en marchant | en sprintant |
+|---|---|---|---|
+| ×1/4 | 0 | **1,24 m** | 1,61 m |
+| ×1 | 0 | **4,95 m** | 6,42 m |
+| ×4 | 0 | **19,82 m** | 25,68 m |
+
+À ×4, le saut franchit donc **19,82 m** là où le bras n'atteint que 11,52 et où
+l'on dépose à 8,56. **Un bras de mer de quatorze mètres se traverse d'un bond.**
+Toute salle bâtie sur « on ne peut pas y aller mais on peut y poser » est morte
+avant d'être dessinée.
+
+*(À l'arrêt on ne franchit rien du tout : sans élan, la vitesse horizontale est
+nulle au décollage et le saut est strictement vertical. C'est le nombre qui rend
+la rampe de 0,6 s si décisive — voir plus haut.)*
+
+### La dissociation existe, mais elle est VERTICALE
+
+C'est ce que la mesure a rendu, et c'est plus beau que ce qu'on cherchait :
+
+```
+à ×4  on ESCALADE 4,90 m          on POSE à 21,93 m de haut
+```
+
+**Un facteur quatre et demi entre ce qu'on atteint du bras et ce qu'on atteint
+du pied.** On pose donc des choses sur des corniches où l'on ne montera jamais —
+et l'on peut interdire une rive par sa HAUTEUR, jamais par sa largeur.
+
+### Ce qu'on retient
+
+**Un nombre qui ne dit pas sa dimension est un nombre faux.** Celui-ci a survécu
+des semaines parce qu'il était juste, seul, dans une colonne dont personne
+n'avait relu l'en-tête. Cinq idées de salles et trois consignes d'agents en sont
+sorties, et une seule autrice a pensé à aller vérifier.
+
+Les trois portées horizontales sont désormais épinglées par une vérification :
+si le moteur bouge, c'est elle qui préviendra, pas une salle infaisable.

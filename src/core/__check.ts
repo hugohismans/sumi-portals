@@ -8,7 +8,7 @@
  *
  *   npm run check
  */
-import { PLAYER_HEIGHT, SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
+import { PLAYER_HEIGHT, PLAYER_RADIUS, SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
@@ -2788,6 +2788,112 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la taille', piece(3, 'vrille', 'L', 2)],
   ] as const) {
     check(`et il refuse dès que ${quoi} manque`, !creux.fits(tout, p), '');
+  }
+}
+
+// =============================================================================
+{
+  console.log('\n— Le saut a deux nombres, et on n’en donnait qu’un —');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // LE NOMBRE QUI A FAIT ÉCRIRE CINQ SALLES INFAISABLES.
+  //
+  // Le tableau du contrat donnait « saut = 0,72 × sa taille → ×1 : 1,29 »,
+  // juste sous « enjambée = 0,50 × sa taille ». **Les deux sont des HAUTEURS**
+  // — la marche qu'on gravit, et le sommet qu'on atteint. Aucune ligne ne
+  // donnait de distance HORIZONTALE.
+  //
+  // Tout le monde en a lu une quand même. Moi dans trois consignes d'affilée,
+  // puis trois modèles extérieurs à qui l'on avait décrit le jeu, et qui ont
+  // bâti cinq idées sur la même phrase : « à ×4 le bras atteint 11,52 m quand
+  // le saut n'en franchit que 5,18 ». C'était le filon annoncé comme le plus
+  // riche du projet. Il n'existe pas : à ×4 un saut franchit **19,82 m**, donc
+  // bien au-delà du bras — et un bras de mer de quatorze mètres se traverse
+  // d'un bond.
+  //
+  // Un nombre qui ne dit pas sa dimension est un nombre faux. Celui-ci a
+  // survécu des semaines parce qu'il était juste, seul, dans une colonne dont
+  // personne n'avait relu l'en-tête.
+  //
+  // Les trois portées sont épinglées ici. Si le moteur bouge, c'est cette
+  // vérification qui préviendra — pas une salle infaisable livrée trois
+  // semaines plus tard.
+  // ═══════════════════════════════════════════════════════════════════════
+  const plat: LevelDef = {
+    name: 'plat',
+    spawn: [0, 0.2, 0],
+    spawnYaw: 0,
+    // La dalle descend à quatre mille mètres : le rattrapage happe désormais
+    // quiconque tombe sous la géométrie la plus basse, et l'on mesure ici en
+    // sautant. Voir le banc du sprint, qui s'est fait prendre le premier.
+    boxes: [{ min: [-500, -4000, -500], max: [500, 0, 500], ink: 0 }],
+    portals: [],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+  const neutre = {
+    forward: 0, strafe: 0, jump: false, sprint: false,
+    yaw: 0, pitch: 0, interact: false, throwIt: false,
+  };
+  const portee = (niveau: number, forward: number, sprint: boolean): number => {
+    const sim = new Simulation(plat);
+    sim.player.scaleLevel = niveau;
+    sim.player.position = { x: 0, y: 0, z: 0 };
+    const c = { ...neutre, forward, sprint };
+    for (let i = 0; i < 240; i++) sim.step(c, TICK_DT);
+    const z0 = sim.player.position.z;
+    sim.step({ ...c, jump: true }, TICK_DT);
+    for (let i = 0; i < 400; i++) {
+      sim.step(c, TICK_DT);
+      if (i > 4 && sim.player.grounded) break;
+    }
+    return sim.player.position.z - z0;
+  };
+
+  // SANS ÉLAN, ON NE FRANCHIT RIEN. La vitesse horizontale est nulle au
+  // décollage et le saut est strictement vertical. C'est le nombre qui rend la
+  // rampe de 0,6 s si décisive, et celui qu'aucune intuition ne donne.
+  for (const n of [-1, 0, 1] as const) {
+    check(
+      `à ×${n === -1 ? '1/4' : n === 0 ? '1' : '4'}, sauter sur place ne franchit rien`,
+      Math.abs(portee(n, 0, false)) < 0.02,
+      `${portee(n, 0, false).toFixed(2)} m`,
+    );
+  }
+
+  // ET LES TROIS PORTÉES, ÉPINGLÉES À 8 %. Assez lâche pour survivre à un
+  // réglage d'équilibrage, assez serré pour attraper un facteur quatre.
+  for (const [nom, n, attendu] of [
+    ['×1/4', -1, 1.24],
+    ['×1', 0, 4.95],
+    ['×4', 1, 19.82],
+  ] as const) {
+    const mesure = portee(n, 1, false);
+    check(
+      `à ${nom}, un saut lancé franchit ${attendu} m`,
+      Math.abs(mesure - attendu) < attendu * 0.08,
+      `${mesure.toFixed(2)} m au lieu de ${attendu}`,
+    );
+  }
+
+  // ET LA DISSOCIATION QUI EXISTE VRAIMENT EST VERTICALE. On escalade bien
+  // moins haut qu'on ne pose : c'est ce qui permet de poser des choses sur des
+  // corniches où l'on ne montera jamais, et d'interdire une rive par sa HAUTEUR
+  // quand sa largeur ne l'interdirait jamais.
+  {
+    const s = scaleOfLevel(1);
+    const escalade = PLAYER_HEIGHT * s * 0.72;
+    // On dépose à `PLAYER_RADIUS × échelle + 2 × l'arête`, à hauteur d'épaule.
+    const arete = PLAYER_HEIGHT * s * 0.55;
+    const pose = PLAYER_HEIGHT * s * 0.6 + PLAYER_RADIUS * s + 2 * arete;
+    // Deux fois et demie, mesuré : 5,18 m d'escalade contre 13,60 m de dépose.
+    // L'autrice de la rive obtient 4,90 contre 21,93 en montant d'abord sur
+    // quelque chose — le rapport dépend donc de ce qu'on a sous les pieds, mais
+    // il ne descend jamais sous deux.
+    check(
+      'à ×4, on pose bien plus haut qu’on n’escalade',
+      pose > escalade * 2,
+      `escalade ${escalade.toFixed(2)} m, pose ${pose.toFixed(2)} m — ×${(pose / escalade).toFixed(1)}`,
+    );
   }
 }
 

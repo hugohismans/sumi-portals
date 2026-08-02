@@ -50,8 +50,17 @@ import type {
  * LES NOMBRES QU'ON NE DEVINE PAS. Ils sont mesurés, pas calculés, et ils
  * contredisent l'intuition. Voir `MESURES.md` à la racine.
  *
+ *   ── CE QU'ON MONTE (des HAUTEURS) ──
  *   enjambée      = 0,50 × sa taille      →  ×1/4 : 0,225   ×1 : 0,90   ×4 : 3,60
- *   saut          = 0,72 × sa taille      →  ×1/4 : 0,323   ×1 : 1,29   ×4 : 5,18
+ *   saut, sommet  = 0,72 × sa taille      →  ×1/4 : 0,323   ×1 : 1,29   ×4 : 5,18
+ *
+ *   ── CE QU'ON FRANCHIT (des DISTANCES) — mesuré, et ce n'est pas le même
+ *      nombre. Il manquait, et son absence a produit cinq idées de salles
+ *      infaisables et trois consignes fausses avant que quelqu'un aille voir. ──
+ *   saut, portée en marchant  →  ×1/4 : 1,24    ×1 : 4,95   ×4 : 19,82
+ *   saut, portée en sprintant →  ×1/4 : 1,61    ×1 : 6,42   ×4 : 25,68
+ *   saut, portée À L'ARRÊT    →  ZÉRO à toutes les tailles : sans élan, on
+ *                                 monte et l'on retombe sur place.
  *   on soulève    ≤ 0,55 × sa taille      →  ×1/4 : 0,2475  ×1 : 0,99   ×4 : 3,96
  *   ON PEINT      ≤ 0,55 × sa taille      →  le même seuil, exactement
  *   portée de bras= 1,60 × sa taille      →  ×1/4 : 0,72    ×1 : 2,88   ×4 : 11,52
