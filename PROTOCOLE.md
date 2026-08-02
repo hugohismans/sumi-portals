@@ -1,6 +1,6 @@
 # Protocole de test — la nuit du 2 août
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 247 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 355 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -38,7 +38,8 @@ start "https://hugohismans.github.io/sumi-portals/"
 - **le hall** — l'adresse nue.
 - **l'introduction** — `?niveau=monde` · ajoute `&neuf=1` pour oublier les
   couleurs déjà rapportées.
-- **la descente** (les six salles neuves) — `?niveau=descente`
+- **la descente** (six salles, on y cherche le bleu) — `?niveau=descente`
+- **la montée** (six salles neuves, on y cherche l'or) — `?niveau=montee`
 - **les repères** — ajoute `&debug=1` à l'un ou l'autre. Une touche par moment ;
   `H` replie la liste. Le mode débug a sa propre sauvegarde : il n'abîme plus ta
   partie.
