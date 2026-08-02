@@ -82,31 +82,30 @@ type V3 = [number, number, number];
  *   d = 1 à 5  4-7/18 loterie. Ce n'est pas un chemin, c'est du bruit
  *   d ≥ 6      0/18   franc, net, définitif
  *
- * La paroi ne tolère qu'un DEMI-MÈTRE de jeu : au-delà, on monte sur son cube
- * et l'on retombe dans la fente restée entre le cube et la pierre. C'est ça, un
- * îlot, et c'est ça qu'on ne peut pas voir avec des yeux de sept mètres vingt.
+ * La paroi ne tolère qu'un DEMI-MÈTRE de jeu : au-delà on monte sur son cube et
+ * l'on retombe dans la fente restée entre le cube et la pierre. C'est ça, un
+ * îlot, et c'est ça qu'on ne voit pas avec des yeux de sept mètres vingt.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 const FOND = -3.6;
 const VIRE_A = -2.1;
 const VIRE_B = -0.6;
 
-/** Le cube. 0,80 : sous les 0,99 qu'on soulève à ×1, sous les 3,96 à ×4. */
+/** 0,80 : sous les 0,99 qu'on soulève à ×1, sous les 3,96 à ×4. */
 const CUBE = 0.8;
 /** Le jeton, et sa taille est un verrou. Voir LE JETON NE REMONTE PAS SEUL. */
 const JETON = 0.2;
-
 const X_O = -268;
 const X_E = -92;
 /** La fosse et la galerie sont creusées entre ces deux méridiens. */
 const F_O = -250;
 const F_E = -150;
-/** La trouée du parapet, et le méridien où l'on ressort en haut. */
+/** La trouée du parapet, et son milieu — le méridien de la salle. */
 const TROUEE_O = -222;
 const TROUEE_E = -208;
 const MERIDIEN = -215;
 
-/** Les plans en z, du sud (le fond de la galerie) au nord (le plateau). */
+/** Les plans en z, du sud (fond de la galerie) au nord (le plateau). */
 const Z_BOUT = 1908;
 const Z_TOIT = 1941;
 const Z_BOUCHE = 1952;
@@ -148,8 +147,7 @@ const b = (min: V3, max: V3, ink = 0, opts: { outline?: boolean } = {}): BoxDef 
  * devant son propre cube pour monter dessus. À 2,60 il lui reste 1,80.
  */
 const terrain = (): BoxDef[] => [
-  // Le plateau, en trois morceaux qui cernent le trou : le nord, l'ouest,
-  // l'est. C'est le monde du géant, et il n'en verra jamais rien d'autre.
+  // Le plateau, en trois morceaux qui cernent le trou. Le monde du géant.
   b([X_O, -12.06, Z_B], [X_E, 0, 2126], 0, { outline: false }),
   b([X_O, -12.07, 1904], [F_O, 0, Z_B], 0, { outline: false }),
   b([F_E, -12.08, 1904], [X_E, 0, Z_B], 0, { outline: false }),
@@ -225,22 +223,21 @@ const parapet = (): BoxDef[] => [
  * secours, et le creux — 0,20 à 12 % près — le refuse alors, comme il refuse un
  * cube. Vérifié aux trois tailles. Le secours sauve le corps, jamais le progrès.
  *
- * ET SYMÉTRIQUEMENT, LES CUBES SE JETTENT, ILS NE SE PORTENT PAS : un cube
- * emporté à travers la grande face arrive en bas à 0,20, mesuré, et ne vaut
- * plus rien comme marche. On le remonte, il redevient 0,80, on le rejette
- * par-dessus la lèvre. C'est la leçon du lavoir reprise à l'envers, et elle ne
- * coûte qu'un aller-retour.
+ * ET SYMÉTRIQUEMENT, LES CUBES SE JETTENT, ILS NE SE PORTENT PAS : emporté à
+ * travers la grande face, un cube arrive en bas à 0,20 (mesuré) et ne vaut plus
+ * rien comme marche. On le remonte, il redevient 0,80, on le rejette par-dessus
+ * la lèvre. C'est la leçon du lavoir reprise à l'envers, pour un aller-retour.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 const objets = (): CarryableDef[] => [
   // LE JETON, au fond de la galerie. Rien à comprendre, rien à manipuler : le
   // VOYAGE est l'énigme, l'objet n'est qu'un prétexte, et un prétexte compliqué
-  // la brouillerait. Il est rouge parce que c'est la seule chose rouge en bas.
+  // la brouillerait. Il est rouge : c'est la seule chose rouge en bas.
   { id: 'jeton-escalier', position: [-200, FOND + 0.01, 1922], size: JETON, ink: 3 },
   // LES QUATRE CUBES, en haut, en tas devant la trouée. C'est ce qui fait
   // exister l'erreur : à ×4 le tas se ramasse en quatre gestes et l'on jette
   // sans y penser. Personne ne fait quatre voyages en réfléchissant à une
-  // échelle qu'il n'a pas encore.
+  // échelle qu'il n'a pas encore prise.
   ...(
     [
       [-224, 0.01, 1989.4],
@@ -262,8 +259,8 @@ const objets = (): CarryableDef[] => [
  *
  * On repose ce qu'on porte à DEUX FOIS SA TAILLE DEVANT SOI : 14,4 m à ×4. Un
  * géant qui lâche un cube au bord de la fosse ne le pose pas au pied de la
- * paroi, il l'envoie quatorze mètres plus loin. C'est le nombre qui a déjà tué
- * une salle du projet sans que rien ne le laisse voir.
+ * paroi, il l'envoie quatorze mètres plus loin. Ce nombre a déjà tué une salle
+ * du projet sans que rien ne le laisse voir.
  *
  * 1. LA FOSSE FAIT 24 m DE LARGE, ET C'EST POUR ÇA. Un cube lâché depuis la
  *    lèvre nord atterrit à 14,4 m de la paroi, donc en plein fond, à 9,6 m
@@ -273,20 +270,19 @@ const objets = (): CarryableDef[] => [
  *    3,60 est à hauteur de genou pour un géant. La première version lui donnait
  *    dix mètres — une salle où un géant ne pouvait pas travailler.
  * 3. ET À ×1 ON REPOSE À 3,6 m : la vraie construction se fait petit, au
- *    décimètre au lieu du décamètre. C'est pour ça que les cubes font 0,80,
- *    sous les 0,99 qu'on soulève à ×1 — l'erreur se répare EN BAS, à la main,
- *    sans repasser aucune porte.
+ *    décimètre au lieu du décamètre. D'où des cubes de 0,80, sous les 0,99
+ *    qu'on soulève à ×1 — l'erreur se répare EN BAS, à la main, sans repasser
+ *    aucune porte.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 const cailloux = (): BoxDef[] => [
   // Le socle du creux, sur le plateau : 0,55, on y pose sans lever les bras.
   b([-216.2, -0.03, 1994.8], [-213.8, 0.55, 1997.2], 3),
-  // Un bloc au fond de la fosse, à quatorze mètres de la paroi et haut de 0,55.
-  // RIEN DE CE QU'ON PEUT ESCALADER DANS CETTE FOSSE N'A LE DROIT D'AIDER :
-  // c'est la règle qui a chassé tout le reste du décor sur le plateau.
+  // Un bloc au fond, à quatorze mètres de la paroi et haut de 0,55 : RIEN DE CE
+  // QU'ON ESCALADE DANS CETTE FOSSE N'A LE DROIT D'AIDER. D'où le décor si nu.
   b([-238, -3.9, 1957], [-233.4, -3.05, 1961.6], 2),
-  // Et trois choses qui ne servent à rien : sans elles, un plateau de cent
-  // soixante-seize mètres vu à ×4 n'a plus d'échelle du tout.
+  // Et trois choses qui ne servent à rien : sans elles, cent soixante-seize
+  // mètres de plateau vus à ×4 n'ont plus d'échelle du tout.
   b([-190, -0.04, 2020], [-181, 0.62, 2029], 1),
   b([-160, -0.07, 2078], [-151.4, 2.85, 2086.4], 2),
   b([-262, -0.09, 1930], [-256, 1.9, 1936], 2),
@@ -303,16 +299,10 @@ export const ESCALIER: SalleModule = {
   sockets: [
     // LE CREUX DU PLATEAU. Un seul, donc la règle 11 ne peut pas être enfreinte
     // — mais elle sert quand même : 0,20 à 12 % près refuse les cubes de 0,80
-    // ET le jeton grossi à 0,80 par un passage de porte. Il VERROUILLE, sans
-    // `rend` : ce qu'il tient est un progrès, pas une décision.
-    {
-      id: 'creux-escalier',
-      position: [MERIDIEN, 0.55, 1996],
-      size: JETON,
-      ink: 3,
-      // Généreux, parce qu'on y arrive à ×1 en reposant à 3,6 m devant soi.
-      portee: 2.4,
-    },
+    // ET le jeton grossi à 0,80 par un passage de porte (les trois cas passés
+    // au banc). Il VERROUILLE, sans `rend` : c'est un progrès, pas une décision.
+    // `portee` généreuse : on y arrive à ×1 en reposant à 3,6 m devant soi.
+    { id: 'creux-escalier', position: [MERIDIEN, 0.55, 1996], size: JETON, ink: 3, portee: 2.4 },
   ],
 
   portals: [
@@ -380,9 +370,9 @@ export const ESCALIER: SalleModule = {
   ],
 
   stations: [
-    // Le Pinceau vole, donc il coupe droit ; mais il descend AVEC le joueur, et
-    // il s'enfonce dans la galerie, ce qui est la seule façon de dire qu'elle
-    // existe à quelqu'un qui la regarde d'en haut sans pouvoir y entrer.
+    // Le Pinceau vole, donc il coupe droit ; mais il descend AVEC le joueur et
+    // s'enfonce dans la galerie — seule façon de dire qu'elle existe à
+    // quelqu'un qui la regarde d'en haut sans pouvoir y entrer.
     [-180, 7, 2106],
     [-180, 5.5, 2064],
     [MERIDIEN, 2, 1986],

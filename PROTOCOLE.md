@@ -223,6 +223,30 @@ donnaient le cap pendant deux cents mètres de marche, arrive à mi-mollet.
 n'ouvre rien, personne ne la mentionnera, c'est pour ça qu'elle est là.
 Au bout, sur une corniche qui n'est une corniche que pour un géant, **l'or**.
 
+### Les trois choses de la montée que je n'ai pas su juger
+
+Les six salles ont été ouvertes dans le navigateur : **aucune erreur de shader,
+les palettes s'appliquent, la géométrie est là aux trois échelles.** C'est tout
+ce qu'un écran peut me dire. Trois questions restent, et elles sont pour toi.
+
+**1. Les fours de la vallée lisent-ils comme des ruches, ou comme des flaques ?**
+Les deux nombres de la conception sont incompatibles : « huit enjambées » impose
+une réduction au 1/1,8, « le four de trente mètres arrive à mi-mollet » impose
+1/7,2. Son autrice a gardé les deux en écrasant les **hauteurs** quatre fois
+plus que le plan, au motif qu'une maquette se lit en plan et non en silhouette.
+Vue de haut, ça tient. **Vue à hauteur d'œil, je n'ai pas su trancher.** Si les
+fours lisent plat, le levier est un seul nombre — `HAUT = PLAN / 4` devient
+`PLAN / 2,5`, et les fours passent à sept mètres, mi-cuisse, sans toucher au
+plan ni à la longueur.
+
+**2. Le plateau de l'escalier est nu.** Du sable jusqu'à l'horizon, et la fosse
+n'est visible que d'assez près. C'est peut-être juste — on doit chercher où
+l'on va — et peut-être vide. À regarder en arrivant, avant de savoir où est la
+fosse.
+
+**3. Les toits se reconnaissent-ils ?** C'est la seule question qui décide de la
+première salle. Rien de ce que j'ai vérifié ne peut y répondre.
+
 ---
 
 ## 4. Ce que ce chantier pourrait avoir cassé

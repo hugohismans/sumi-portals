@@ -93,7 +93,17 @@ const RACCORDS: Raccord[] = [
   { depuis: 0, vers: 1, cran: -1 },
   { depuis: 1, vers: 2, cran: -1, condition: 'creux-refus' },
   { depuis: 2, vers: 3, cran: +1, condition: 'creux-blanchiment' },
-  { depuis: 3, vers: 4, cran: +1 },
+  // ─── ET CE `condition`-CI N'EST PAS UNE DÉCORATION ────────────────────────
+  //
+  // C'est le dernier verrou de l'escalier, et son autrice ne pouvait pas le
+  // poser : elle déclare le logement, l'assemblage décide s'il ferme quelque
+  // chose. Sans lui, la salle se traverse sans avoir rien bâti — on descend par
+  // le secours, on remonte par le secours, et l'escalier n'a jamais servi.
+  //
+  // C'est le genre de fil qui pend entre deux fichiers et que personne ne voit
+  // rompre : la salle passe toutes ses vérifications, l'assemblage aussi, et
+  // c'est l'ÉNIGME qui manque, pas le code.
+  { depuis: 3, vers: 4, cran: +1, condition: 'creux-escalier' },
   { depuis: 4, vers: 5, cran: +1 },
 ];
 
