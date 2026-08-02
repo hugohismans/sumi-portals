@@ -1,3 +1,4 @@
+import { scaleOfLevel } from '../core/constants.js';
 import type { LevelDef, PortalPairDef } from '../core/types.js';
 import type { SalleModule } from './salles/contrat.js';
 import { LAVOIR } from './salles/lavoir.js';
@@ -6,6 +7,7 @@ import { CREUX } from './salles/creux.js';
 import { ATELIER } from './salles/atelier.js';
 import { BOL } from './salles/bol.js';
 import { PLUIE } from './salles/pluie.js';
+import { LUCARNE_BLEUE } from './salles/lucarneBleue.js';
 
 /**
  * LA DESCENTE — le premier mouvement de la suite, et il rapporte le bleu.
@@ -38,7 +40,7 @@ import { PLUIE } from './salles/pluie.js';
  * Chacune est un fichier autonome sous `salles/`, conforme à `salles/contrat.ts`
  * et vérifiée en permanence par `src/core/__check.ts`.
  */
-const SALLES: SalleModule[] = [LAVOIR, CONDUIT, CREUX, ATELIER, BOL, PLUIE];
+const SALLES: SalleModule[] = [LAVOIR, CONDUIT, CREUX, ATELIER, BOL, PLUIE, LUCARNE_BLEUE];
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -95,6 +97,19 @@ const RACCORDS: Raccord[] = [
   { depuis: 3, vers: 4, cran: +1 },
   // ET UN DÉTOUR, qui repart du lavoir. Voir plus bas.
   { depuis: 0, vers: 5, cran: -1, depart: [-203, 0.05, 706.4] },
+  // ─── ET LA LUCARNE, QUI EST LA FIN ───────────────────────────────────────
+  //
+  // Sans elle, on traversait six salles pour réveiller le bleu au fond du bol
+  // et… le niveau s'arrêtait. **La couleur ne se posait nulle part.** Douze
+  // salles pour une récompense qui n'arrivait jamais.
+  //
+  // Le village ne peut pas venir jusqu'ici — les mondes sont des poches
+  // séparées, et les fondre serait un chantier d'architecture qu'on refuse.
+  // Mais rien n'interdit qu'un morceau du village soit DANS la salle, à une
+  // autre taille. La porte n'a donc AUCUNE condition : elle est ouverte, on
+  // voit la maquette grise à travers, et c'est en réveillant le pinceau qu'on
+  // la regarde prendre sa couleur depuis la pièce où l'on se tient.
+  { depuis: 4, vers: 6, cran: +1 },
 ];
 
 /**
@@ -188,11 +203,40 @@ const assembler = (): LevelDef => ({
   veilleurs: SALLES.flatMap((s) => s.veilleurs ?? []),
   portals: [...SALLES.flatMap((s) => s.portals ?? []), ...RACCORDS.map(raccorder)],
   guide: SALLES.flatMap((s) => s.stations),
+  /**
+   * La taille du guide, jalon par jalon — un MULTIPLICATEUR, jamais un palier.
+   *
+   * C'est la seule exception du projet : partout ailleurs une échelle s'écrit
+   * −1 / 0 / 1 / 2, et ici 0,25 / 1 / 4 / 16. La montée a été remplie avec des
+   * paliers, et toute salle à ×1 y donnait un Pinceau de taille zéro — donc
+   * invisible, donc pas de guide du tout. Une vérification attrape désormais
+   * les deux formes de la confusion.
+   */
+  guideEchelle: SALLES.flatMap((s) => s.stations.map(() => scaleOfLevel(s.entree.echelle))),
+  /**
+   * Par où le Pinceau PASSE. Une salle dont les jalons sont de l'autre côté
+   * d'une paroi — ou de six cents unités de vide — doit nommer sa porte, sinon
+   * le guide traverse la pierre et cesse d'être un guide.
+   */
+  guidePorte: SALLES.flatMap((s) => s.stationsPorte ?? s.stations.map(() => null)),
   // LE BUT EST LÀ OÙ DORT LE BLEU, et non au bout du tableau : la cour de pluie
   // est un détour, et finir un voyage dans un détour n'aurait aucun sens.
+  // ═══════════════════════════════════════════════════════════════════════
+  // LE BUT A DÉMÉNAGÉ, ET C'EST LA LUCARNE QUI L'A RÉVÉLÉ.
+  //
+  // Il était sur la sortie du bol — **exactement le point où dort le pinceau
+  // bleu**. Réveiller la couleur et finir le niveau se produisaient donc dans
+  // la même image, et le panneau de victoire serait tombé par-dessus la
+  // peinture. Personne ne pouvait le voir tant qu'il n'y avait rien à regarder.
+  //
+  // Il est maintenant DANS la maquette. L'ordre devient : on réveille le bleu,
+  // on regarde le village se peindre depuis la salle encore grise, puis on
+  // franchit la porte et l'on se retrouve debout dans le village qu'on vient
+  // de colorier. C'est une fin, et l'autre n'en était pas une.
+  // ═══════════════════════════════════════════════════════════════════════
   goal: {
-    position: BOL.sortie.position,
-    radius: 6 * Math.pow(4, BOL.sortie.echelle),
+    position: LUCARNE_BLEUE.sortie.position,
+    radius: 6 * Math.pow(4, LUCARNE_BLEUE.sortie.echelle),
   },
 });
 

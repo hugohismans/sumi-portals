@@ -60,6 +60,26 @@ import type {
  * CE DERNIER NOMBRE A DÉJÀ RENDU UNE SALLE INFAISABLE sans que rien ne le
  * laisse voir. Toute surface où l'on doit poser quelque chose en étant grand
  * doit être plus large que ça, et son `portee` généreux.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ET UNE CHOSE QU'ON CROIT SAVOIR ET QU'ON SAIT DE TRAVERS :
+ *
+ *     UN PORTAIL REDIMENSIONNE CE QU'ON VOIT À TRAVERS.
+ *
+ * `portalRenderer.computeVirtual` met la caméra virtuelle à l'échelle du
+ * franchissement. Ce qu'on aperçoit par une porte est donc cadré EXACTEMENT
+ * comme on le verra après l'avoir franchie — c'est la seule façon cohérente de
+ * faire, sinon la scène sauterait d'un facteur quatre au moment du passage.
+ *
+ * CONSÉQUENCE POUR QUI DESSINE UNE SALLE QU'ON REGARDE SANS Y ENTRER : le bon
+ * observateur n'est pas le joueur tel qu'il est de l'autre côté, **c'est le
+ * joueur tel qu'il sera une fois entré**. Composer pour le premier donne une
+ * image quatre fois trop grande ou quatre fois trop petite.
+ *
+ * Je l'avais écrit à l'envers dans une consigne, et l'autrice de la lucarne
+ * bleue est allée lire le rendu plutôt que de me croire. C'est pour ça que
+ * c'est ici : la prochaine main n'aura pas à le redécouvrir.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 export interface SalleModule {
   /** Nom court, en minuscules : sert de clef de région et de préfixe d'identifiants. */

@@ -2617,18 +2617,34 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // « il s'est téléporté ».
   {
     const fautes: string[] = [];
-    for (const s of SALLES_MONTEE) {
-      if (!s.stationsPorte) continue;
-      if (s.stationsPorte.length !== s.stations.length) {
-        fautes.push(`${s.nom} : ${s.stationsPorte.length} portes pour ${s.stations.length} jalons`);
-        continue;
-      }
-      const siennes = new Set((s.portals ?? []).map((p) => p.id));
-      for (const id of s.stationsPorte) {
-        if (id !== null && !siennes.has(id)) fautes.push(`${s.nom} : « ${id} » n’est pas une de ses portes`);
+    // UNE PORTE DU NIVEAU, PAS FORCÉMENT UNE PORTE DE LA SALLE.
+    //
+    // La première version n'acceptait que les portes qu'une salle déclare
+    // elle-même, parce que le seul cas connu était l'atelier du haut et sa
+    // porte interne. La lucarne bleue a montré l'autre moitié : elle doit
+    // nommer le RACCORD qui la relie au bol — une porte qu'elle ne déclare pas
+    // et ne peut pas déclarer, puisque l'assemblage seul la fabrique.
+    //
+    // Le bon critère est donc : est-ce une porte du monde assemblé. Il est plus
+    // large, et il est juste — le guide a le droit de passer par n'importe
+    // quelle porte du niveau, et par aucune autre.
+    for (const [salles, niveau] of [
+      [SALLES_DESCENTE, DESCENTE],
+      [SALLES_MONTEE, MONTEE],
+    ] as const) {
+      const portes = new Set((niveau.portals ?? []).map((p) => p.id));
+      for (const s of salles) {
+        if (!s.stationsPorte) continue;
+        if (s.stationsPorte.length !== s.stations.length) {
+          fautes.push(`${s.nom} : ${s.stationsPorte.length} portes pour ${s.stations.length} jalons`);
+          continue;
+        }
+        for (const id of s.stationsPorte) {
+          if (id !== null && !portes.has(id)) fautes.push(`${s.nom} : « ${id} » n’existe pas dans ce niveau`);
+        }
       }
     }
-    check('le guide de la montée ne passe que par des portes réelles', fautes.length === 0, fautes[0] ?? '');
+    check('les guides ne passent que par des portes réelles', fautes.length === 0, fautes[0] ?? '');
   }
 
   // ET UNE PORTE À DESSINER NAÎT FERMÉE, ici comme dans la descente. Le
