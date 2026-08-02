@@ -1,6 +1,6 @@
 # Protocole de test — la nuit du 2 août
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 355 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 369 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -19,7 +19,7 @@ elle s'ouvre sans taper d'adresse :
 > **Trois touchers sur l'affichage de l'échelle**, en haut à gauche, en moins
 > d'une seconde et demie.
 
-Un panneau s'ouvre : les quatre mondes en une ligne, puis la liste des choses à
+Un panneau s'ouvre : les cinq mondes en une ligne, puis la liste des choses à
 faire, dans l'ordre. **Touche le titre** d'une ligne pour aller à l'endroit où on
 la fait ; **touche la case** à gauche pour la cocher. Ce qui est coché survit au
 rechargement — sans quoi on recommencerait la liste vingt fois par séance.
@@ -46,9 +46,16 @@ start "https://hugohismans.github.io/sumi-portals/"
 
 ---
 
-## 1. Le hall
+## 1. Le hall — `./?debug=1`
 
 C'était un couloir à trois arches. C'est devenu un terrain d'expérience.
+
+**Ses huit lignes sont maintenant DANS le jeu**, comme celles des autres mondes.
+Elles n'y étaient pas — le hall était le seul endroit que le protocole ne
+couvrait pas, alors que c'est le seul où l'on arrive par défaut. Et ce trou en
+cachait deux autres, qui ne pouvaient se voir qu'en cliquant une ligne dans le
+hall : l'adresse de rechargement s'y écrivait `?niveau=null`, et le
+rechargement se déclenchait sur des couleurs que le hall ne possède pas.
 
 **Le canevas.** Prends le petit stylo sur le tablier, clic gauche maintenu, écris
 sur la toile. Prends le gros, écris à côté. → *Le trait du second doit être
