@@ -152,6 +152,33 @@ export interface SalleModule {
   stationsPorte?: (string | null)[];
 
   /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * LA TAILLE DU PINCEAU, JALON PAR JALON — et c'est un ÉTALON.
+   *
+   * L'assemblage donne à tous les jalons d'une salle la taille de son ENTRÉE.
+   * C'était juste tant qu'une salle se jouait à une seule taille, et c'est faux
+   * dès qu'elle en contient deux.
+   *
+   * L'autrice de la pièce sans étalon l'a trouvé en mesurant ce qui pouvait
+   * trahir la taille du joueur, et son verdict est sans appel : sa salle est
+   * faite de deux lobes identiques, l'un quatre fois l'autre, et **un Pinceau
+   * d'un mètre au pied d'un rocher de douze annonce la taille du rocher, donc
+   * la vôtre.** Il éteint la salle en trois secondes.
+   *
+   * Le guide est donc un instrument de mesure au même titre que la petite face
+   * d'une porte — on ne l'avait jamais dit, parce qu'aucune salle n'avait
+   * jusqu'ici deux tailles sous le même toit.
+   *
+   * Autant d'entrées que de stations ; absent, c'est l'entrée de la salle qui
+   * décide, comme avant. **Ce sont des TAILLES et non des paliers** — 0,25, 1,
+   * 4, 16 — parce que c'est ce qu'attend le rendu, et c'est la seule exception
+   * de tout le projet. Elle a déjà produit un Pinceau de taille zéro, donc
+   * invisible, dans trois salles à la fois.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  stationsEchelle?: number[];
+
+  /**
    * Le raccord, tenu au mètre près : où l'on arrive, où l'on repart, et à
    * quelle échelle. C'est le seul contrat avec le reste du monde, et le seul
    * endroit où une erreur coûte à quelqu'un d'autre que soi.

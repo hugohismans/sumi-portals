@@ -222,7 +222,13 @@ const assembler = (): LevelDef => ({
    * confusion, dans l'autre sens, à quinze lignes de l'avertissement.
    * ═══════════════════════════════════════════════════════════════════════
    */
-  guideEchelle: SALLES.flatMap((s) => s.stations.map(() => scaleOfLevel(s.entree.echelle))),
+  guideEchelle: SALLES.flatMap(
+    (s) =>
+      // UNE SALLE PEUT DÉCIDER JALON PAR JALON. Il le faut dès qu'elle contient
+      // deux tailles : le Pinceau est un instrument de mesure, et un guide d'un
+      // mètre au pied d'un rocher de douze annonce la taille du rocher.
+      s.stationsEchelle ?? s.stations.map(() => scaleOfLevel(s.entree.echelle)),
+  ),
   /**
    * Par où le Pinceau PASSE. Voir `SalleModule.stationsPorte` : une salle dont
    * les stations sont des deux côtés d'une paroi doit nommer sa porte, sinon le
