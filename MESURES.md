@@ -138,7 +138,24 @@ tick 67   x=0.00  y=1.660  z= 1.230     (passé par-dessus le mur)
 **On franchit donc n'importe quel mur en le longeant**, du moment qu'il porte un
 linteau — c'est-à-dire dans toute porte trop basse pour soi.
 
-### Trois corrections essayées, trois échecs, et ce qu'ils apprennent
+### LA CAUSE EXACTE, trouvée le 2 août
+
+Ce n'est pas un défaut de conception de la gravité : **c'est une erreur
+d'arrondi.**
+
+La résolution latérale pose le corps EXACTEMENT au bord de ce qu'il heurte —
+`h.minZ − rayon`. À la virgule flottante près. Mesuré sur le cas ci-dessus :
+
+```
+z = −0,95   boîte z −1,290 … −0,610   →  0 contact
+z = −0,94   boîte z −1,280 … −0,600   →  1 contact : le linteau
+```
+
+La boîte s'arrête à `−0,600` contre un linteau qui commence à `−0,6`, et le
+dernier bit décide. Quand il tombe du mauvais côté, le corps **pénètre** le
+linteau — et la gravité de l'image suivante le pose dessus.
+
+### Cinq corrections essayées, cinq échecs, et ce qu'ils apprennent
 
 1. **Filtrer dans `moveAxis`** ce qui est plus haut qu'une marche au-dessus d'où
    l'on venait. Casse trois vérifications de niveau : quand tous les contacts
@@ -150,15 +167,31 @@ linteau — c'est-à-dire dans toute porte trop basse pour soi.
    **y = −208 221**.
 3. **Refuser une accroche au sol qui remonte.** Sans effet : le saut ne vient
    pas de l'accroche mais de la gravité elle-même.
+4. **Rentrer la boîte du corps d'un dixième de millimètre.** Un corps plus mince
+   passe **entre les montants d'une balustrade** : le parapet du belvédère cesse
+   de retenir à ×16.
+5. **Séparer d'un micron à la résolution latérale.** Même symptôme que 4 : le
+   parapet du belvédère lâche. Tout ce coin du moteur est en équilibre sur le
+   contact EXACT, et le moindre jeu ouvre un passage ailleurs.
+
+### Ancien inventaire des tentatives
 
 **La leçon :** un correctif juste au mauvais endroit est un correctif faux, et
 mieux vaut un défaut connu qu'un monde sans sol.
 
 ### La piste pour la prochaine passe
 
-La vraie question n'est pas « sur quoi se poser » mais **« comment le joueur
-s'est-il retrouvé à toucher ce linteau »**. Il y arrive parce que la résolution
-latérale l'arrête AU CONTACT — sa boîte touche le jambage, donc elle touche
-aussi le linteau qui le surmonte. Une marge d'un millimètre à la résolution
-latérale supprimerait le contact, donc la pénétration, donc la catapulte —
-sans jamais toucher à la gravité. C'est de ce côté qu'il faut chercher.
+Les cinq échecs disent tous la même chose : **on ne peut pas donner du jeu à la
+collision** sans ouvrir un passage ailleurs, parce que les balustrades du jeu
+sont calibrées au diamètre du corps.
+
+Il reste donc une seule direction : **traiter la pénétration comme une
+pénétration**, et non comme un appui. Quand une descente ne peut se résoudre que
+sur une boîte dont le dessus est plus haut que la tête du joueur, ce n'est pas
+un sol — c'est un corps étranger. La bonne réponse est de repousser
+LATÉRALEMENT, sur l'axe par lequel on y est entré, et non de poser le joueur
+dessus.
+
+Cela demande de savoir par quel axe la pénétration est arrivée, donc de garder
+la position d'avant le pas complet — pas seulement celle d'avant l'axe courant.
+C'est un vrai petit chantier, pas un réglage, et c'est pour ça qu'il attend.
