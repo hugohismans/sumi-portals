@@ -2647,51 +2647,103 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     check('les guides ne passent que par des portes réelles', fautes.length === 0, fautes[0] ?? '');
   }
 
-  // ET UNE PORTE À DESSINER NAÎT FERMÉE, ici comme dans la descente. Le
-  // scellement ne vivait que dans la remise à zéro, qui n'est jamais appelée au
-  // lancement : on commençait la partie avec toutes les portes déjà ouvertes,
-  // et une ligne écrite à la main dans `main.ts` masquait le défaut pour le
-  // monde central. C'est le genre de faute qui ne se voit que sur un niveau
-  // neuf, donc précisément quand plus personne ne la cherche.
-  {
-    const neuve = new Simulation(MONTEE);
-    const aDessiner = (MONTEE.portals ?? []).filter((p) => p.dessinee).map((p) => p.id);
-    check(
-      'les portes dessinées de la montée naissent fermées',
-      aDessiner.length > 0 && aDessiner.every((id) => neuve.portesFermees.has(id)),
-      `${aDessiner.join(', ') || 'aucune'} — fermées : ${[...neuve.portesFermees].join(', ') || 'aucune'}`,
-    );
-  }
+  // ═══════════════════════════════════════════════════════════════════════
+  // LES QUATRE INVARIANTS QUI VALENT POUR TOUS LES MONDES
+  //
+  // Ils ont tous été écrits pour la montée, parce que c'est là qu'ils ont mordu
+  // — et ils y sont restés enfermés. Or aucun des quatre ne parle de la montée :
+  // ils parlent de ce qu'est un monde jouable. Un défaut qui reviendrait par le
+  // hall, le village ou la boîte à formes n'aurait rencontré personne.
+  //
+  // C'est le genre de dette qu'on ne voit pas, puisque tout est vert : les
+  // vérifications passent, simplement elles ne regardent qu'un cinquième du jeu.
+  // ═══════════════════════════════════════════════════════════════════════
+  for (const [nom, niveau] of [
+    ['le hall', LOBBY],
+    ['le monde', MONDE],
+    ['la descente', DESCENTE],
+    ['la montée', MONTEE],
+    ['la boîte à formes', FORMES],
+  ] as const) {
+    const sim = new Simulation(niveau);
 
-  // ET DEUX PORTES NE SE PLANTENT PAS AU MÊME ENDROIT. Trois salles de la
-  // montée déclarent une porte CHEZ ELLES, ce qu'aucune salle de la descente ne
-  // faisait : chacune a donc désormais deux faces à elle plus celles des
-  // raccords, et le risque de superposition a triplé d'un coup. Deux plans qui
-  // se disputent le même point font traverser celui qu'on ne voulait pas — ou
-  // rien du tout, et le monde n'en dit rien.
-  {
-    const vues = new Map<string, string>();
-    const doublons: string[] = [];
-    for (const f of new Simulation(MONTEE).faces) {
-      const clef = `${f.position.x.toFixed(2)},${f.position.y.toFixed(2)},${f.position.z.toFixed(2)}`;
-      const deja = vues.get(clef);
-      if (deja) doublons.push(`${deja} et ${f.pairId}/${f.kind} en ${clef}`);
-      else vues.set(clef, `${f.pairId}/${f.kind}`);
+    // 1. UNE PORTE À DESSINER NAÎT FERMÉE. Le scellement ne vivait que dans la
+    //    remise à zéro, qui n'est jamais appelée au lancement : on commençait la
+    //    partie avec toutes les portes dessinées déjà ouvertes, et une ligne
+    //    écrite à la main dans `main.ts` masquait le défaut pour le village.
+    const aDessiner = (niveau.portals ?? []).filter((p) => p.dessinee).map((p) => p.id);
+    if (aDessiner.length > 0) {
+      check(
+        `dans ${nom}, les portes dessinées naissent fermées`,
+        aDessiner.every((id) => sim.portesFermees.has(id)),
+        `${aDessiner.join(', ')} — fermées : ${[...sim.portesFermees].join(', ') || 'aucune'}`,
+      );
     }
-    check('aucune porte de la montée n’en recouvre une autre', doublons.length === 0, doublons[0] ?? '');
-  }
 
-  // LE POINT DE DÉPART EST LIBRE. Une salle dont l'entrée est dans la roche est
-  // une partie qui ne commence pas — et ça s'est déjà produit, dans un lavoir
-  // dont la dalle de base passait sous tout le reste. Aucune vérification ne
-  // l'avait trouvé : il a fallu s'y téléporter.
-  {
-    const sim = new Simulation(MONTEE);
-    check(
-      'on ne naît pas dans la pierre, sur les toits',
-      sim.player.position.y > -50,
-      `y = ${sim.player.position.y.toFixed(2)}`,
-    );
+    // 2. DEUX PORTES NE SE PLANTENT JAMAIS AU MÊME POINT. Deux plans qui se
+    //    disputent le même endroit font traverser celui qu'on ne voulait pas —
+    //    ou rien du tout, et le monde n'en dit rien.
+    {
+      const vues = new Map<string, string>();
+      const doublons: string[] = [];
+      for (const f of sim.faces) {
+        const clef = `${f.position.x.toFixed(2)},${f.position.y.toFixed(2)},${f.position.z.toFixed(2)}`;
+        const deja = vues.get(clef);
+        if (deja) doublons.push(`${deja} et ${f.pairId}/${f.kind} en ${clef}`);
+        else vues.set(clef, `${f.pairId}/${f.kind}`);
+      }
+      check(`dans ${nom}, aucune porte n’en recouvre une autre`, doublons.length === 0, doublons[0] ?? '');
+    }
+
+    // 3. TOUT VERROU NOMMÉ EXISTE. C'est le seul endroit du projet où l'on peut
+    //    écrire un nom qui ne désigne rien : la salle compile, l'assemblage
+    //    aussi, la porte reste scellée POUR TOUJOURS, et le joueur cherche
+    //    vingt minutes une clef qui n'a jamais existé.
+    {
+      const noms = new Set<string>();
+      for (const k of niveau.sockets ?? []) noms.add(k.id);
+      for (const t of niveau.tableaux ?? []) noms.add(t.id);
+      const fantomes: string[] = [];
+      for (const paire of niveau.portals ?? []) {
+        for (const c of conditionsDe(paire) ?? []) {
+          if (!noms.has(c)) fantomes.push(`${paire.id} attend « ${c} »`);
+        }
+      }
+      check(`dans ${nom}, chaque porte scellée nomme un verrou qui existe`, fantomes.length === 0, fantomes[0] ?? '');
+    }
+
+    // 4. ON NE NAÎT PAS DANS LA PIERRE. Une partie qui commence dans la roche
+    //    est une partie qui ne commence pas — et c'est arrivé, dans un lavoir
+    //    dont la dalle de base passait sous tout le reste. Aucune vérification
+    //    ne l'avait trouvé : il a fallu s'y téléporter.
+    //
+    //    On ne se contente pas de regarder le point de départ : on laisse une
+    //    seconde et demie passer, puis on demande au joueur d'avancer. Debout et
+    //    capable de marcher, c'est ce qu'on veut vraiment dire par « le monde
+    //    commence ».
+    {
+      const immobile = {
+        forward: 0, strafe: 0, jump: false, sprint: false,
+        yaw: sim.player.yaw, pitch: 0, interact: false, throwIt: false,
+      };
+      for (let i = 0; i < 90; i++) sim.step(immobile, TICK_DT);
+      // L'APPUI SE LIT AVANT DE MARCHER, et ce détail m'a valu un faux positif.
+      // Je le lisais après trois quarts de seconde de marche — et l'on naît, sur
+      // la montée, au sommet d'une faîtière de toit. Le joueur se posait
+      // parfaitement, puis marchait droit dans le vide, et la vérification
+      // annonçait « jamais posé le pied » dans un monde irréprochable.
+      //
+      // Naître debout et pouvoir avancer sont deux questions, pas une.
+      const debout = sim.player.grounded;
+      const avant = { x: sim.player.position.x, z: sim.player.position.z };
+      for (let i = 0; i < 45; i++) sim.step({ ...immobile, forward: 1 }, TICK_DT);
+      const d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      check(
+        `dans ${nom}, on naît debout et l’on peut marcher`,
+        debout && d > 0.3 * scaleOfLevel(sim.player.scaleLevel),
+        !debout ? 'jamais posé le pied' : `${d.toFixed(2)} m parcourus`,
+      );
+    }
   }
 }
 
