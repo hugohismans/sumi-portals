@@ -174,6 +174,57 @@ rien.*
 
 ---
 
+## 3 bis. La montée — `?niveau=montee&debug=1`
+
+Six salles neuves, **aucune jamais regardée**, et une idée qui dormait depuis
+des semaines : **la main**. Les portails miroirs étaient écrits et vérifiés
+depuis longtemps, mais on dessinait chaque objet avec un cube — et un cube n'a
+pas de main gauche. La **vrille** (quatre cubes en escalier hélicoïdal, la plus
+petite forme chirale qui existe) lui donne enfin un corps.
+
+**`1` — Les toits.** Le village de la première heure, vu à ×4. → *Tu dois
+reconnaître l'endroit avant de comprendre quoi que ce soit.* La maison dont le
+toit culminait à 3,40 et qu'on ne pouvait pas atteindre est une marche : on
+monte dessus sans y penser.
+**Défaut à guetter, et c'est le seul qui compte ici :** ne pas reconnaître le
+village. Si ça arrive, la salle ne vaut rien et il faut la reprendre.
+
+**`2` — Le creux qui refuse.** Une vrille au sol, un creux à sa forme. Présente-la
+→ *elle refuse, et tu crois que c'est la taille.* Porte-la par la porte du fond,
+ressors quatre fois plus grand, elle entre.
+→ *Elle a AUSSI changé de main, et rien ne te l'a dit.* C'est voulu : cette
+salle est le brouillon de la suivante.
+
+**`3` — Le blanchiment.** Le creux veut la taille d'origine **et** l'autre main.
+La navette au miroir ne peut pas marcher — un nombre impair de passages ne fait
+jamais une taille nulle, c'est de l'arithmétique et non de la difficulté. Il
+faut la **seconde porte, ordinaire**, derrière le mur de refend.
+→ *Et on ne la voit qu'en étant grand : la tête passe au-dessus de la lame.*
+**Défaut à guetter :** ne jamais la trouver, et faire la navette dix minutes. Si
+ça arrive, le mur de refend est trop haut ou mal placé.
+
+**`4` — L'escalier pour plus tard.** À ×4, en haut d'une falaise de 3,60. Quatre
+cubes de 0,80 traînent là : dispose-les **en escalier pour quelqu'un d'1,80**,
+marches à moins d'un mètre l'une de l'autre. Puis rapetisse, retourne-toi.
+**L'erreur est automatique et elle est le sujet :** on les espace à son œil de
+géant, donc de quatre mètres, et l'on découvre quatre îlots séparés par des
+gouffres. On n'a pas mal joué — on a pensé à la mauvaise échelle.
+→ *La correction doit être gratuite : on remonte, on rapproche, on redescend.*
+
+**`5` — L'atelier du haut.** La couleur, paliers 2 et 3. Deux familles, deux
+couleurs, deux tailles : descendre peindre les pots, remonter peindre les
+tuiles. Puis le point de vue — un tabouret quelque part, et **depuis lui seul la
+composition du tableau se referme**.
+
+**`6` — La vallée en maquette.** ×16. La côte rouge entière **sous les
+semelles**, traversée en huit enjambées. Le dernier four, trente mètres qui
+donnaient le cap pendant deux cents mètres de marche, arrive à mi-mollet.
+→ *À mi-chemin, une grue de papier passe une fois et ne revient pas.* Elle
+n'ouvre rien, personne ne la mentionnera, c'est pour ça qu'elle est là.
+Au bout, sur une corniche qui n'est une corniche que pour un géant, **l'or**.
+
+---
+
 ## 4. Ce que ce chantier pourrait avoir cassé
 
 À vérifier même si ça n'a rien à voir :

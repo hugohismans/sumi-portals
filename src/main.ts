@@ -8,13 +8,14 @@ import { DALLE_GEANT, DALLE_MINUSCULE, RAYON_DALLE, construireDuo, roleDansSalon
 import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
 import { DESCENTE } from './levels/descente.js';
+import { MONTEE } from './levels/montee.js';
 import { reve } from './levels/reve.js';
 import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
-import { REPERES_DESCENTE, REPERES_MONDE, changeDeMonde } from './debug/reperes.js';
+import { REPERES_DESCENTE, REPERES_MONDE, REPERES_MONTEE, changeDeMonde } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
@@ -66,6 +67,7 @@ const ROLE: RoleDuo = PARAMS.get('role') === 'minuscule' ? 'minuscule' : 'geant'
 const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   monde: () => MONDE,
   descente: () => DESCENTE,
+  montee: () => MONTEE,
   cour: () => LEVEL_01,
   caisse: () => LEVEL_02,
   duo: () => construireDuo(ROLE),
@@ -77,6 +79,10 @@ const LEVEL = EN_AVENTURE ? NIVEAUX[MODE!]() : LOBBY;
 /** Enchaînement des énigmes. Le hall suit la fin de la dernière. */
 const NIVEAU_SUIVANT: Record<string, string> = {
   monde: '?niveau=descente',
+  // On descend chercher le bleu, puis l'on monte chercher l'or. L'ordre n'est
+  // pas un goût : la montée revisite le village vu d'en haut, et cette lecture
+  // ne s'acquiert qu'après y avoir marché longtemps à hauteur d'homme.
+  descente: '?niveau=montee',
   cour: '?niveau=caisse',
   caisse: '?niveau=monde',
 };
@@ -802,7 +808,13 @@ applyScale(true);
  * tout le panneau suit — ajouter un monde, c'est ajouter une ligne.
  */
 const REPERES =
-  MODE === 'descente' ? REPERES_DESCENTE : MODE === 'monde' ? REPERES_MONDE : [];
+  MODE === 'descente'
+    ? REPERES_DESCENTE
+    : MODE === 'montee'
+      ? REPERES_MONTEE
+      : MODE === 'monde'
+        ? REPERES_MONDE
+        : [];
 
 {
   const panneau = el('debug');
@@ -948,6 +960,7 @@ const REPERES =
     ['hall', './?debug=1'],
     ['monde', '?niveau=monde&debug=1'],
     ['descente', '?niveau=descente&debug=1'],
+    ['montée', '?niveau=montee&debug=1'],
     ['rêve', '?niveau=reve&graine=7&debug=1'],
   ] as const) {
     const a = document.createElement('a');

@@ -1,3 +1,5 @@
+import { SALLES_MONTEE } from '../levels/montee.js';
+
 /**
  * LES REPÈRES — un raccourci vers chaque moment qui mérite d'être regardé.
  *
@@ -363,4 +365,91 @@ export const REPERES_DESCENTE: Repere[] = [
     pigments: [],
     jalon: 24,
   },
+];
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA MONTÉE — et ses positions ne sont pas écrites ici.
+ *
+ * Les repères de la descente portent des coordonnées à la main, et ça se paie :
+ * quand un auteur déplace un mur, son repère continue de viser l'ancien
+ * endroit, et l'on se retrouve à vérifier une salle depuis l'intérieur d'un
+ * rocher sans comprendre pourquoi. C'est arrivé au pinceau vert, qui avait
+ * changé de place dans une table et pas dans l'autre.
+ *
+ * Ici, chaque repère demande sa position à la SALLE elle-même. Une salle qui
+ * bouge emmène son repère avec elle, et la question ne se pose plus jamais.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const auSeuil = (
+  salle: (typeof SALLES_MONTEE)[number],
+  titre: string,
+  verifier: string,
+  jalon: number,
+  lacet = 0,
+): Repere => ({
+  titre,
+  verifier,
+  position: [
+    salle.entree.position[0],
+    salle.entree.position[1] + 0.05,
+    salle.entree.position[2],
+  ],
+  echelle: salle.entree.echelle,
+  lacet,
+  pigments: ['rouge', 'vert', 'bleu'],
+  jalon,
+});
+
+export const REPERES_MONTEE: Repere[] = [
+  auSeuil(
+    SALLES_MONTEE[0],
+    'Les toits — on connaît cet endroit',
+    'Le village vu d’en haut, à ×4. La maison dont le toit culminait à 3,40 et ' +
+      'qu’on ne pouvait pas atteindre est une MARCHE : on monte dessus sans y penser. ' +
+      'Défaut à guetter : ne pas reconnaître le village. Si ça arrive, la salle est ratée.',
+    0,
+  ),
+  auSeuil(
+    SALLES_MONTEE[1],
+    'Le creux qui refuse — la vrille',
+    'Une vrille au sol, un creux à sa forme dans la cour. Présente-la : elle refuse, ' +
+      'et l’on croit que c’est la taille. Porte-la par la porte du fond, ressors quatre ' +
+      'fois plus grand, elle entre. Elle a changé de MAIN aussi, et rien ne le dit.',
+    5,
+  ),
+  auSeuil(
+    SALLES_MONTEE[2],
+    'Le blanchiment — le théorème',
+    'Le creux veut la taille d’origine ET l’autre main. La navette au miroir ne peut ' +
+      'PAS marcher : un nombre impair de passages ne fait jamais une taille nulle. ' +
+      'Il faut trouver la seconde porte, ordinaire, derrière le mur de refend — et ' +
+      'on ne la voit qu’en étant grand. Défaut à guetter : ne jamais la trouver.',
+    10,
+  ),
+  auSeuil(
+    SALLES_MONTEE[3],
+    'L’escalier pour plus tard',
+    'On est ×4 en haut d’une falaise de 3,60. Quatre cubes de 0,80 traînent là : ' +
+      'dispose-les EN ESCALIER pour quelqu’un d’1,80, marches à moins d’un mètre ' +
+      'l’une de l’autre. Puis rapetisse et descends. L’erreur est automatique : ' +
+      'on les espace à son œil de géant, et l’on découvre quatre îlots.',
+    15,
+  ),
+  auSeuil(
+    SALLES_MONTEE[4],
+    'L’atelier du haut — la couleur, paliers 2 et 3',
+    'Deux familles, deux couleurs, deux tailles : il faut descendre peindre les pots ' +
+      'et remonter peindre les tuiles. Puis le point de vue : un tabouret quelque part, ' +
+      'et depuis lui seulement la composition du tableau se referme.',
+    20,
+  ),
+  auSeuil(
+    SALLES_MONTEE[5],
+    'La vallée en maquette — et l’or au bout',
+    'La côte rouge entière SOUS LES SEMELLES, traversée en huit enjambées. Le dernier ' +
+      'four, qui donnait le cap pendant deux cents mètres, arrive à mi-mollet. À ' +
+      'mi-chemin, une grue de papier passe une fois et ne revient pas. Au bout, l’or.',
+    25,
+  ),
 ];

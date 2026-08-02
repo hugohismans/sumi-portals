@@ -12,17 +12,16 @@ import type { SalleModule } from './contrat.js';
  * ═══════════════════════════════════════════════════════════════════════════
  * CE VILLAGE-CI EST L'AUTRE, ET C'EST LITTÉRAL
  *
- * Le générateur, la graine (20260801) et les vingt emplacements sont recopiés
- * de `src/levels/level01.ts`. Même suite de tirages, dans le même ordre : les
- * vingt maisons sortent aux mêmes places, avec les mêmes largeurs et les mêmes
- * faîtes, à la quatrième décimale près. La cour creusée est à l'est, sa margelle
- * rouge en retrait de six centimètres, la place est vide au milieu, le torii est
- * planté au nord.
+ * Le générateur, la graine (20260801) et les vingt emplacements sont recopiés de
+ * `src/levels/level01.ts` : les vingt maisons sortent aux mêmes places, avec les
+ * mêmes largeurs et les mêmes faîtes, à la quatrième décimale. La cour creusée
+ * est à l'est, sa margelle rouge en retrait de six centimètres, la place est vide
+ * au milieu, le torii est planté au nord.
  *
- * On recopie plutôt qu'on n'importe : une salle ne dépend d'aucun autre fichier,
- * c'est son contrat. Et la copie est ici la preuve — si un jour quelqu'un
- * retouche « la cour », ces deux villages divergeront, et il vaut mieux que ça
- * se voie dans un diff que dans la tête du joueur.
+ * On recopie plutôt qu'on n'importe — une salle ne dépend d'aucun autre fichier,
+ * c'est son contrat — et la copie est ici la preuve : si quelqu'un retouche « la
+ * cour », les deux villages divergeront, et mieux vaut que ça se voie dans un
+ * diff que dans la tête du joueur.
  *
  * L'ORDRE DES QUATRE TIRAGES EST PORTANT : largeur, profondeur, hauteur, encre.
  * Les intervertir donne un autre village, tout aussi plausible et complètement
@@ -31,46 +30,42 @@ import type { SalleModule } from './contrat.js';
  *
  * LA MAISON BASSE, et pourquoi elle vaut la salle entière.
  *
- * Son toit culmine à **3,40**. À taille d'homme — 1,80, une enjambée de 0,90, un
- * saut de 1,29 — elle était hors d'atteinte, et le joueur s'en souvient parce
- * qu'il a tourné autour. À ×4 c'est **une marche de 3,40 sous une enjambée de
- * 3,60** : on monte dessus sans y penser, sans sauter, sans même ralentir. Et
- * c'est en y étant qu'on comprend.
+ * Son toit culmine à **3,40**. À taille d'homme — 1,80, enjambée 0,90, saut 1,29
+ * — elle était hors d'atteinte, et le joueur s'en souvient parce qu'il a tourné
+ * autour. À ×4 c'est **une marche de 3,40 sous une enjambée de 3,60** : on monte
+ * dessus sans y penser, sans sauter, sans même ralentir. Et c'est en y étant
+ * qu'on comprend.
  *
  * Elle occupe l'emprise exacte de la tour de l'objectif de « la cour » — quatorze
  * mètres sur quatorze, au sud-ouest — et **la porte de sortie est plantée au
  * centre de son toit, à l'endroit précis où était le but du tout premier
  * niveau.** Le joueur a fini sa première partie debout là.
  *
- * Deux écarts assumés avec l'original : la tour culminait à 3,30, le texte de
- * conception dit 3,40 et c'est lui qui fait foi ; et elle prend ici la silhouette
- * des vingt autres (débord de 0,50 au lieu de 0,80), parce que le texte dit « la
- * maison basse » et qu'une maison doit ressembler aux maisons. Son toit reste
- * ROUGE comme celui de la tour l'était : depuis le toit d'arrivée, à soixante
- * mètres de là, c'est la seule tache de couleur du village, et c'est la sortie.
- * Personne n'a eu à le décider — « la cour » l'avait déjà peinte.
+ * Deux écarts assumés : la tour culminait à 3,30, le texte de conception dit 3,40
+ * et c'est lui qui fait foi ; et elle prend la silhouette des vingt autres (débord
+ * de 0,50 au lieu de 0,80), parce qu'une maison doit ressembler aux maisons. Son
+ * toit reste ROUGE comme l'était celui de la tour : depuis le toit d'arrivée, à
+ * soixante mètres de là, c'est la seule tache de couleur du village — et c'est la
+ * sortie. Personne n'a eu à le décider, « la cour » l'avait déjà peinte.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * LE VIDE, ET POURQUOI IL N'Y A PAS UNE SEULE BALUSTRADE
  *
- * On est sur des toits, entre quatre et seize mètres au-dessus de la rue. Border
- * seize toits serait laid et faux : un village n'a pas de garde-corps.
+ * On est sur des toits, entre quatre et seize mètres au-dessus de la rue, et un
+ * village n'a pas de garde-corps. La salle n'est pourtant pas un piège, et ce
+ * n'est pas une opinion : c'est CHRONOMÉTRÉ au banc, à ×4, jusqu'au toit rouge.
  *
- * La salle n'est pourtant pas un piège, et ça se compte. Tomber ne coûte rien —
- * **la remontée se fait par une marche, pas par un saut** :
+ *   sous le toit d'arrivée, d'où l'on tombera neuf fois sur dix   2,5 s  (1,5 en sprint)
+ *   sous la maison la plus éloignée du village                    4,6 s  (2,5)
+ *   au coin extrême du plateau, où l'on n'a rien à faire          9,1 s  (5,0)
  *
- *   • à ×4 on marche à 30,4 m/s, on sprinte au sol à 54,7 ;
- *   • le point du plateau le plus éloigné de la maison basse en est à 161 m ;
- *   • soit **5,3 secondes au pas**, 2,9 en sprintant. Sous les dix exigées.
- *   • et l'on y monte d'une enjambée : 3,40 sous 3,60, jamais un saut.
+ * Et la dernière marche est UNE MARCHE : 3,40 sous une enjambée de 3,60, jamais
+ * un saut. Tomber n'est donc pas une punition mais un autre chemin vers la
+ * porte — la salle voulait qu'on monte sur cette maison-là.
  *
- * Donc : d'où qu'on tombe, la porte de sortie est à cinq secondes et à une
- * marche. Ce n'est pas une consolation, c'est la salle : elle voulait qu'on
- * monte sur cette maison-là, et tomber n'est qu'un autre chemin pour y aller.
- *
- * ET POUR REMONTER SUR LES TOITS, l'escalier d'appentis (voir plus bas) : quatre
- * marches de 2,90 depuis le toit de la maison basse, dix-neuf pour cent sous
- * l'enjambée. On regagne le faîte du village sans sauter une seule fois.
+ * POUR REMONTER SUR LES TOITS, l'escalier d'appentis : quatre marches de 2,90
+ * depuis le toit rouge, dix-neuf pour cent sous l'enjambée. On regagne le faîte
+ * du village sans sauter une seule fois.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -157,17 +152,16 @@ interface Toit {
 /**
  * Les vingt maisons-témoins. Faîtes mesurés : de **4,21 à 16,09**.
  *
- * C'est l'échelle qui fait tout le tableau. Le joueur mesure 7,20 : la moitié
- * des toits lui arrivent sous le genou, l'autre moitié le dépasse encore de deux
+ * C'est l'échelle qui fait tout le tableau. Le joueur mesure 7,20 : la moitié des
+ * toits lui arrivent sous le genou, l'autre moitié le dépasse encore de deux
  * hauteurs. Le village n'est donc PAS une maquette — il n'est pas devenu petit,
- * il est devenu praticable, ce qui est exactement la nuance que la salle doit
- * faire passer sans un mot.
+ * il est devenu praticable, et c'est toute la nuance que la salle doit faire
+ * passer sans un mot.
  */
 const village = (): Toit[] => {
   const rng = makeRng(20260801);
   return SPOTS.map(([cx, cz]) => ({
-    cx,
-    cz,
+    cx, cz,
     demiX: 2.5 + rng() * 3.5,
     demiZ: 2.5 + rng() * 3.5,
     faite: 3 + rng() * 13 + 0.45,
@@ -181,7 +175,6 @@ const HAUTE = MAISONS[6];
 
 /** Demi-largeur du plateau. Le village tient dans 52,5 ; le reste est la plaine. */
 const LOIN = 100;
-
 // La cour creusée de « la cour », aux mêmes cotes. Elle piégeait un joueur de
 // 1,80 pour de bon ; à ×4, trois mètres de fond passent sous l'enjambée de 3,60
 // et l'on entre et ressort sans s'en apercevoir. C'est le rappel le plus muet de
@@ -189,7 +182,7 @@ const LOIN = 100;
 const COUR = { x0: 10, x1: 22, z0: -6, z1: 6, fond: -3.0 };
 const MARGELLE_H = 0.3;
 const MARGELLE_L = 1.0;
-/** Retrait de la margelle sur l'arête du trou. Six centimètres contre le grésillement. */
+/** Retrait de la margelle sur l'arête du trou : six centimètres, contre le grésillement. */
 const RETRAIT = 0.06;
 
 const plateau = (): BoxDef[] => [
@@ -237,20 +230,19 @@ const torii = (): BoxDef[] => [
  * L'ESCALIER D'APPENTIS — quatre remises adossées, dans la ruelle qui monte de
  * la maison basse vers l'ouest du village.
  *
- * À 1,80, quatre toits d'appentis à 6,30, 9,20, 12,10 et 15,00 : quatre choses
+ * À 1,80, c'étaient quatre toits à 6,30, 9,20, 12,10 et 15,00 : quatre choses
  * inatteignables, et personne n'a jamais pensé à les compter. À ×4, **c'est un
- * escalier** — quatre marches de 2,90 sous une enjambée de 3,60, soit dix-neuf
- * pour cent de marge. Cette salle n'invente rien : elle relit.
+ * escalier** — quatre marches de 2,90 sous une enjambée de 3,60, dix-neuf pour
+ * cent de marge. Cette salle n'invente rien : elle relit.
  *
- * Les blocs sont JOINTIFS en z (0,4 → 0,4) et non superposés : deux faces
- * opposées au même plan ne se disputent rien, alors qu'un chevauchement d'un
- * demi-mètre grésillerait. Le dernier déborde sur le toit de la maison (−24, 16)
- * — faîte 14,74, donc on en descend de 26 cm — pour qu'il n'y ait aucun trou à
- * la jonction.
- *
- * Un seul vide subsiste, 70 cm entre le toit rouge et le premier appentis. Le
- * corps du joueur en fait 2,72 à cette taille : il ne peut pas y tomber, sa
- * boîte porte sur les deux bords à la fois. C'est mesuré, pas espéré.
+ * Les blocs sont JOINTIFS en z et non superposés : deux faces opposées au même
+ * plan ne se disputent rien, là où un chevauchement d'un demi-mètre grésillerait.
+ * Le dernier déborde sur le toit de la maison (−24, 16) — faîte 14,74, dont on
+ * redescend de 26 cm — pour qu'il n'y ait aucun trou à la jonction. Le seul vide
+ * restant, 70 cm entre le toit rouge et le premier appentis, est plus étroit que
+ * le corps du joueur (2,72) : sa boîte porte sur les deux bords. Mesuré, et non
+ * espéré — au banc, un joueur monte les cinq niveaux sans toucher la touche de
+ * saut une seule fois.
  */
 const APPENTIS: [number, number, number][] = [
   [-1.0, 2.2, 6.3],
@@ -270,11 +262,9 @@ const ruelle = (): BoxDef[] =>
  * C'est la règle 9 : le joueur ne doit jamais estimer à l'œil ce qu'il ne peut
  * pas comparer. Un village vu d'en haut n'a aucune échelle — des blocs gris de
  * toutes les tailles — et sans un objet dont la mesure soit connue par cœur, la
- * salle ne dit rien du tout. Une porte d'homme lui arrive au genou : il n'y a
- * plus rien à expliquer.
- *
- * Il y en a deux, une à chaque bout du voyage : au pied de la maison où l'on
- * naît, et au pied de celle par où l'on s'en va.
+ * salle ne dit rien. Une porte d'homme arrive au genou : plus rien à expliquer.
+ * Il y en a deux, une à chaque bout du voyage — au pied de la maison où l'on
+ * naît, au pied de celle par où l'on s'en va.
  */
 const porteDHomme = (x: number, zFace: number): BoxDef =>
   b([x - 0.55, -0.1, zFace - 0.09], [x + 0.55, 2.05, zFace + 0.02], 3);

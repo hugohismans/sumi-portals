@@ -24,12 +24,26 @@ import { ATELIER } from '../levels/salles/atelier.js';
 import { CONDUIT } from '../levels/salles/conduit.js';
 import { BOL } from '../levels/salles/bol.js';
 import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
+import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
 
 /**
- * Les salles de la descente déjà bâties. On en ajoute une ligne par livraison ;
- * tout le reste des vérifications suit sans qu'on y touche.
+ * Les salles déjà bâties, les deux mouvements confondus. On en ajoute une ligne
+ * par livraison ; tout le reste des vérifications suit sans qu'on y touche.
+ *
+ * LES DEUX MOUVEMENTS PARTAGENT LE MÊME CONTRAT, donc les mêmes vérifications,
+ * et c'est ce qui rend la suite tenable : la montée n'a rien coûté de plus que
+ * six lignes ici. Le jour où il y aura quarante salles, elles seront toujours
+ * vérifiées par ce seul bloc.
  */
-const SALLES_LIVREES: SalleModule[] = [LAVOIR, CONDUIT, CREUX, ATELIER, BOL, PLUIE];
+const SALLES_LIVREES: SalleModule[] = [
+  LAVOIR,
+  CONDUIT,
+  CREUX,
+  ATELIER,
+  BOL,
+  PLUIE,
+  ...SALLES_MONTEE,
+];
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
 import {
@@ -2105,14 +2119,31 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // zéro cran n'est franchissable par aucune porte du tout. Sans cette
   // vérification, on découvrirait le défaut en jouant — devant une porte qui
   // refuse, sans aucune raison visible dans le monde.
-  for (const r of RACCORDS_DESCENTE) {
-    const a = SALLES_DESCENTE[r.depuis];
-    const b = SALLES_DESCENTE[r.vers];
-    const ecart = ecartDeRaccord(a, b);
+  for (const [salles, raccords] of [
+    [SALLES_DESCENTE, RACCORDS_DESCENTE],
+    [SALLES_MONTEE, RACCORDS_MONTEE],
+  ] as const) {
+    for (const r of raccords) {
+      const a = salles[r.depuis];
+      const b = salles[r.vers];
+      const ecart = ecartDeRaccord(a, b);
+      check(
+        `de ${a.nom} à ${b.nom}, une seule porte suffit`,
+        Math.abs(ecart) === 1 && ecart === r.cran,
+        `écart de ${ecart} cran(s), raccord déclaré à ${r.cran}`,
+      );
+    }
+
+    // ET AUCUNE SALLE ORPHELINE. Une salle bâtie, vérifiée, et que personne ne
+    // peut atteindre est le pire gaspillage possible — et rien d'autre ne le
+    // dirait : elle passe toutes les autres vérifications sans broncher.
+    const vues = new Set<number>([0]);
+    for (const r of raccords) vues.add(r.vers);
+    const perdues = salles.filter((_, i) => !vues.has(i)).map((s) => s.nom);
     check(
-      `de ${a.nom} à ${b.nom}, une seule porte suffit`,
-      Math.abs(ecart) === 1 && ecart === r.cran,
-      `écart de ${ecart} cran(s), raccord déclaré à ${r.cran}`,
+      `les ${salles.length} salles de « ${salles[0].nom}… » sont toutes atteignables`,
+      perdues.length === 0,
+      perdues.join(', '),
     );
   }
   // On ne réclame pas encore la chaîne complète : les dernières salles ne sont
@@ -2490,6 +2521,93 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   }
 }
 
+
+// =============================================================================
+{
+  console.log('\n— La montée : la main est une serrure qu’aucune taille n’ouvre —');
+
+  // ─── LE THÉORÈME DU BLANCHIMENT, ET IL EST VÉRIFIABLE ────────────────────
+  //
+  // Un creux qui exige l'AUTRE MAIN et la TAILLE D'ORIGINE ne s'ouvre par aucun
+  // nombre de passages au miroir. La démonstration tient en deux lignes :
+  //
+  //   la main    bascule à chaque passage miroir  → il en faut un nombre IMPAIR
+  //   la taille  se multiplie par 4 à chaque cran → il faut une somme NULLE
+  //
+  // Un nombre impair de ±1 ne fait jamais zéro. La salle est donc impossible si
+  // elle ne contient que des miroirs — mathématiquement, pas par difficulté.
+  // Il lui faut une SECONDE paire, ordinaire, qui change la taille sans toucher
+  // à la main : un passage de chaque, en sens contraires, et le compte tombe.
+  //
+  // C'est exactement la faute qu'un auteur de salle commettra un jour en toute
+  // bonne foi — il aura dessiné un beau lieu, posé un miroir, réglé son creux,
+  // et livré une salle que personne ne peut finir. Rien ne le dirait : elle
+  // passe toutes les autres vérifications sans broncher, et l'on ne s'en
+  // apercevrait qu'en jouant, après une demi-heure à faire la navette.
+  for (const salle of SALLES_LIVREES) {
+    for (const s of salle.sockets ?? []) {
+      if (s.main === undefined) continue;
+      const impossible = (salle.carryables ?? []).some(
+        (c) => c.main !== undefined && c.main !== s.main && Math.abs(c.size - s.size) < 1e-6,
+      );
+      if (!impossible) continue;
+
+      const portes = salle.portals ?? [];
+      check(
+        `${salle.nom} : « ${s.id} » veut l’autre main à taille égale, et la salle en donne le moyen`,
+        portes.some((p) => p.miroir) && portes.some((p) => !p.miroir),
+        `${portes.filter((p) => p.miroir).length} miroir(s), ${portes.filter((p) => !p.miroir).length} ordinaire(s) — il faut au moins un de chaque`,
+      );
+    }
+  }
+
+  // ET UNE PORTE À DESSINER NAÎT FERMÉE, ici comme dans la descente. Le
+  // scellement ne vivait que dans la remise à zéro, qui n'est jamais appelée au
+  // lancement : on commençait la partie avec toutes les portes déjà ouvertes,
+  // et une ligne écrite à la main dans `main.ts` masquait le défaut pour le
+  // monde central. C'est le genre de faute qui ne se voit que sur un niveau
+  // neuf, donc précisément quand plus personne ne la cherche.
+  {
+    const neuve = new Simulation(MONTEE);
+    const aDessiner = (MONTEE.portals ?? []).filter((p) => p.dessinee).map((p) => p.id);
+    check(
+      'les portes dessinées de la montée naissent fermées',
+      aDessiner.length > 0 && aDessiner.every((id) => neuve.portesFermees.has(id)),
+      `${aDessiner.join(', ') || 'aucune'} — fermées : ${[...neuve.portesFermees].join(', ') || 'aucune'}`,
+    );
+  }
+
+  // ET DEUX PORTES NE SE PLANTENT PAS AU MÊME ENDROIT. Trois salles de la
+  // montée déclarent une porte CHEZ ELLES, ce qu'aucune salle de la descente ne
+  // faisait : chacune a donc désormais deux faces à elle plus celles des
+  // raccords, et le risque de superposition a triplé d'un coup. Deux plans qui
+  // se disputent le même point font traverser celui qu'on ne voulait pas — ou
+  // rien du tout, et le monde n'en dit rien.
+  {
+    const vues = new Map<string, string>();
+    const doublons: string[] = [];
+    for (const f of new Simulation(MONTEE).faces) {
+      const clef = `${f.position.x.toFixed(2)},${f.position.y.toFixed(2)},${f.position.z.toFixed(2)}`;
+      const deja = vues.get(clef);
+      if (deja) doublons.push(`${deja} et ${f.pairId}/${f.kind} en ${clef}`);
+      else vues.set(clef, `${f.pairId}/${f.kind}`);
+    }
+    check('aucune porte de la montée n’en recouvre une autre', doublons.length === 0, doublons[0] ?? '');
+  }
+
+  // LE POINT DE DÉPART EST LIBRE. Une salle dont l'entrée est dans la roche est
+  // une partie qui ne commence pas — et ça s'est déjà produit, dans un lavoir
+  // dont la dalle de base passait sous tout le reste. Aucune vérification ne
+  // l'avait trouvé : il a fallu s'y téléporter.
+  {
+    const sim = new Simulation(MONTEE);
+    check(
+      'on ne naît pas dans la pierre, sur les toits',
+      sim.player.position.y > -50,
+      `y = ${sim.player.position.y.toFixed(2)}`,
+    );
+  }
+}
 
 // =============================================================================
 console.log('\n— Les trois tableaux du guide sont alignés —');
