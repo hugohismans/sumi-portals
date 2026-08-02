@@ -648,6 +648,15 @@ export interface TickEvents {
   /** On a tiré le levier de rappel : tout est retourné à sa place. */
   rappele?: boolean;
   /**
+   * ON EST TOMBÉ HORS DU MONDE, et le monde nous a rattrapé.
+   *
+   * Rien ne le faisait : on tombait indéfiniment. La règle « on ne piège jamais
+   * le joueur » était tenue salle par salle, à la main, par des rampes et des
+   * boucles de reprise écrites une par une — et elle ne couvrait pas le cas où
+   * l'on sort du décor par un trou que personne n'avait prévu.
+   */
+  rattrape?: boolean;
+  /**
    * Un trait vient d'être posé sur une toile. `u` et `v` vont de 0 à 1 sur la
    * toile, `rayon` est en fraction de sa largeur — donc proportionnel à la
    * taille de celui qui écrit, ce qui est tout l'intérêt.

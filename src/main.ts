@@ -1292,11 +1292,61 @@ function frame(now: number): void {
       const e = sim.eyePosition();
       if (socle) peintres.get(socle)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
       ambiance.pinceau();
-      flash('Il s’éveille, et il te suit. Ramène-le au monde gris.', 6);
+
+      // ─── LA LUCARNE : LA COULEUR SE POSE ICI, ET PAS DANS TROIS HEURES ───
+      //
+      // C'était le plus gros trou du jeu et il était invisible. On traversait
+      // six salles pour aller chercher le bleu, on le réveillait au fond du
+      // bol… et le niveau s'arrêtait. **La couleur ne se posait nulle part.**
+      // Douze salles pour une récompense qui n'arrivait jamais.
+      //
+      // Le village ne peut pas venir jusqu'ici : les mondes sont des poches
+      // séparées, et les fondre en un seul est un chantier d'architecture qu'on
+      // refuse. Mais rien n'interdit qu'un morceau du village soit DANS la
+      // salle, à une autre taille — une maquette derrière la porte du retour.
+      // On ne la traverse pas : on regarde, depuis la pièce encore grise, la
+      // couleur se poser là-bas.
+      //
+      // LE NOM DU PIGMENT SE LIT DANS CELUI DU VEILLEUR. `pinceau-bleu` rend le
+      // bleu, `pinceau-or` rend l'or. Pas de table de correspondance : deux
+      // tables parallèles décrivant la même chose ont déjà coûté une nuit à ce
+      // projet, quand le pinceau vert a été déplacé dans l'une et pas dans
+      // l'autre. Une convention de nom ne peut pas diverger d'elle-même.
+      //
+      // Et ça ne s'applique QUE si le niveau attend cette couleur quelque part.
+      // Dans le village, le pinceau se ramène à son socle et c'est le geste du
+      // retour qui peint — on ne veut surtout pas le doubler ici.
+      const pigment = events.eveil.id.startsWith('pinceau-')
+        ? events.eveil.id.slice('pinceau-'.length)
+        : null;
+      const attendu = pigment !== null && [...pigmentDe.values(), ...pigmentAccentDe.values()].includes(pigment);
+      if (attendu && !socle) {
+        pigments.rendre(
+          pigment,
+          worldView.parRegion,
+          pigmentDe,
+          pigmentAccentDe,
+          new THREE.Vector3(e.x, e.y, e.z),
+          bornesDeRegion,
+        );
+        portals.setCouleurCadres(1);
+        socketViews.setCouleur(1);
+        flash('Il s’éveille — et là-bas, quelque chose reprend sa couleur.', 7);
+      } else {
+        flash('Il s’éveille, et il te suit. Ramène-le au monde gris.', 6);
+      }
     }
     // Et le refus, qui est une leçon et non une panne : il faut ÊTRE de la
     // taille du monde où il dort. On le dit, parce qu'un pinceau qui frémit
     // sans se lever ressemblerait sinon à un bogue.
+    // ON A ÉTÉ RATTRAPÉ. La phrase parle du monde et pas du moteur : « hors
+    // limites » dirait qu'on a heurté une règle, alors qu'on veut dire qu'on
+    // est tombé du dessin. Et surtout elle ne gronde pas — se tromper coûte du
+    // temps, jamais une partie.
+    if (events.rattrape) {
+      flash('Tu es tombé hors du dessin. Le papier te repose où tu étais.', 5);
+      ambiance.portail();
+    }
     if (events.eveilRefuse) {
       flash(
         events.eveilRefuse.trop === 'grand'

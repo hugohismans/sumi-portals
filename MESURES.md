@@ -334,3 +334,62 @@ les onze mètres de roche pleine de l'escalier, et les parapets relevés à 9,40
 de l'atelier du haut. **On peut les redescendre**, et leurs autrices l'avaient
 demandé. Ce n'est pas urgent — la butte se raconte, le parapet cache une vue
 qu'il fallait cacher — mais ce n'est plus une dette.
+
+
+## TOMBER HORS DU MONDE — rattrapé le 3 août
+
+`World.plancher` n'existait pas, et rien ne rattrapait donc une chute hors du
+décor. Le joueur tombait indéfiniment : **mesuré à y = −208 221** la nuit où un
+correctif de collision avait ouvert un trou.
+
+### Ce qu'on croyait tenir
+
+« On ne piège jamais le joueur » était tenu **salle par salle, à la main**. Le
+conduit s'est payé une boucle de reprise ; l'escalier, un secours ; le creux, une
+rampe ; la vallée, un rebord de 34 m. À chaque fois de la géométrie écrite pour
+un cas qui ne devrait pas arriver, et à chaque fois la question reposée en entier
+à l'auteur suivant.
+
+Et malgré tout ce travail, le cas le plus simple n'était pas couvert : **sortir du
+décor**. On tenait la règle par habitude, pas par construction.
+
+### La règle
+
+> Vingt mètres sous la géométrie la plus basse du monde, **multipliés par la
+> taille du joueur**, on est reposé là où l'on se tenait la dernière fois debout.
+
+Pas de dégâts, pas d'écran, pas de compteur, et **on revient avec ce qu'on
+porte** — certaines salles n'ont qu'un exemplaire de la pièce qu'il leur faut, et
+perdre l'objet transformerait une chute en perte sèche.
+
+**Le seuil suit la taille, et il le faut.** Vingt mètres sous le décor, c'est une
+éternité pour un joueur de 45 cm et un clignement d'œil pour un géant de 28,80.
+Un seuil fixe aurait donné huit secondes de chute au minuscule et un rattrapage
+instantané au grand — c'est-à-dire deux jeux différents, ce qu'on refuse partout
+ailleurs.
+
+L'appui est échantillonné **toutes les douze images** : assez fin pour revenir à
+deux enjambées de là où l'on est tombé, assez lâche pour ne pas écrire trois
+positions par seconde. Et l'on retient **la taille en même temps que le lieu** —
+être reposé au bon endroit dans la mauvaise peau serait plus déroutant que la
+chute.
+
+### Ce qui a failli passer inaperçu
+
+Le banc balistique **mesure une portée en faisant tomber le joueur de trente
+mètres dans le vide**. Sa dalle s'arrêtait un mètre sous le sol, donc le
+rattrapage se déclenchait à −21 et deux mesures se sont mises à mentir dans la
+minute qui a suivi le branchement.
+
+On n'a pas désactivé le rattrapage pour le banc : **on lui a donné une dalle qui
+descend à quatre mille mètres.** C'est plus honnête — le banc mesure alors
+exactement le moteur qu'on joue, et non une version aménagée pour lui.
+
+### Le garde
+
+Sept vérifications, et **quatre d'entre elles servent à prouver qu'il ne se
+déclenche PAS** : dans le monde, la descente et la montée, personne n'est
+rattrapé en vingt secondes d'immobilité — et une chute de quarante mètres dans
+le puits du conduit reste une chute. Un rattrapage trop bavard téléporterait le
+joueur hors d'un gouffre qu'il descend exprès, ce qui serait pire que le défaut
+qu'on corrige.

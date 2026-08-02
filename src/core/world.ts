@@ -39,9 +39,24 @@ export class World {
    */
   readonly dynamic: Aabb[] = [];
 
+  /**
+   * Le dessous du monde : le point le plus bas de toute la géométrie solide.
+   *
+   * Il n'existait pas, et rien ne rattrapait donc une chute hors du décor. Le
+   * joueur tombait indéfiniment — mesuré à **y = −208 221** une nuit où un
+   * correctif de collision avait ouvert un trou. On croyait tenir la règle « on
+   * ne piège jamais le joueur » parce que chaque salle prévoyait sa remontée ;
+   * en réalité on la tenait salle par salle, à la main, et jamais une fois pour
+   * toutes.
+   */
+  readonly plancher: number;
+
   constructor(level: LevelDef) {
     this.level = level;
     this.solids = level.boxes.filter((b) => !b.ghost).map(aabbFromBox);
+    let bas = Infinity;
+    for (const s of this.solids) if (s.minY < bas) bas = s.minY;
+    this.plancher = Number.isFinite(bas) ? bas : 0;
   }
 
   /**

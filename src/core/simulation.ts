@@ -91,6 +91,19 @@ export class Simulation {
    * qui se chevauchent seraient deux phrases qui se coupent la parole.
    */
   private refusEnAttente: { id: string; ticks: number } | null = null;
+
+  /**
+   * Le dernier endroit où l'on se tenait debout, et la taille qu'on y faisait.
+   *
+   * On l'échantillonne toutes les douze images plutôt qu'à chaque pas : c'est
+   * assez fin pour qu'on revienne à deux enjambées de là où l'on est tombé, et
+   * ça évite d'écrire trois positions par seconde pour rien. La TAILLE compte
+   * autant que le lieu — être reposé au bon endroit dans la mauvaise peau
+   * rendrait le rattrapage plus déroutant que la chute.
+   */
+  private dernierAppui: { x: number; y: number; z: number } | null = null;
+  private appuiEchelle = 0;
+  private depuisAppui = 0;
   /** Pinceaux déjà réveillés : on ne les réveille pas deux fois. */
   readonly eveilles = new Set<string>();
   /**
@@ -161,6 +174,8 @@ export class Simulation {
   private scellerLesPortesADessiner(): void {
     this.portesFermees.clear();
     this.refusEnAttente = null;
+    this.dernierAppui = null;
+    this.depuisAppui = 0;
     for (const p of this.world.level.portals ?? []) {
       if (p.dessinee) this.portesFermees.add(p.id);
     }
@@ -286,6 +301,67 @@ export class Simulation {
       pl.grounded,
     );
     pl.grounded = move.grounded;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LE RATTRAPAGE — la règle « on ne piège jamais » cesse d'être une promesse
+    // que chaque auteur de salle doit tenir tout seul.
+    //
+    // Elle était vraie salle par salle, à la main : le conduit s'est payé une
+    // boucle de reprise, l'escalier un secours, le creux une rampe. À chaque
+    // fois de la géométrie écrite pour un cas qui ne devrait pas arriver, et à
+    // chaque fois la question reposée au suivant. Et malgré ça, **rien ne
+    // rattrapait une chute hors du décor** : le joueur tombait indéfiniment,
+    // mesuré à y = −208 221 la nuit où un correctif de collision avait ouvert
+    // un trou. La promesse ne tenait donc pas, elle tenait par habitude.
+    //
+    // CE N'EST PAS UNE PUNITION, ET C'EST TOUT LE SUJET. Pas de dégâts, pas
+    // d'écran, pas de compteur : on est reposé là où l'on se tenait la dernière
+    // fois debout, **avec ce qu'on porte**. « Se tromper coûte du temps et
+    // donne une image, jamais une partie » — la loi n° 5, appliquée par le
+    // moteur au lieu d'être redemandée à chaque salle.
+    //
+    // LE SEUIL SUIT LA TAILLE, et il le faut : vingt mètres sous le décor,
+    // c'est une éternité pour un joueur de 45 cm et un clignement d'œil pour un
+    // géant de 28,80. Un seuil fixe aurait donné une chute de huit secondes au
+    // minuscule et un rattrapage instantané au grand — c'est-à-dire deux jeux
+    // différents, ce qu'on refuse partout ailleurs.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (pl.grounded && ++this.depuisAppui > 12) {
+      this.depuisAppui = 0;
+      this.dernierAppui = { x: pl.position.x, y: pl.position.y, z: pl.position.z };
+      this.appuiEchelle = pl.scaleLevel;
+    }
+    if (pl.position.y < this.world.plancher - 20 * scale) {
+      const retour = this.dernierAppui;
+      if (retour) {
+        pl.position.x = retour.x;
+        pl.position.y = retour.y;
+        pl.position.z = retour.z;
+        pl.scaleLevel = this.appuiEchelle;
+      } else {
+        // Jamais posé le pied nulle part : on ne peut que revenir au départ.
+        const d = this.world.level.spawn;
+        pl.position.x = d[0];
+        pl.position.y = d[1];
+        pl.position.z = d[2];
+        pl.scaleLevel = this.world.level.spawnScale ?? 0;
+      }
+      pl.velocity.x = 0;
+      pl.velocity.y = 0;
+      pl.velocity.z = 0;
+      pl.grounded = false;
+      events.rattrape = true;
+      const porte = this.carryables.held;
+      if (porte) {
+        this.carryables.followCarrier(
+          porte,
+          pl.position,
+          pl.yaw,
+          pl.pitch,
+          scaleOfLevel(pl.scaleLevel),
+        );
+      }
+    }
 
     // --- Traversée de portail --------------------------------------------------
     const newEye = this.eyePosition();

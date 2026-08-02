@@ -2353,7 +2353,17 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     name: 'banc',
     spawn: [0, 0.2, -30],
     spawnYaw: 0,
-    boxes: [{ min: [-400, -1, -400], max: [400, 0, 0], ink: 0 }],
+    // LA DALLE DESCEND À QUATRE MILLE MÈTRES, et ce n'est pas un caprice : le
+    // moteur rattrape désormais un joueur tombé vingt mètres sous la géométrie
+    // la plus basse du monde. Or ce banc mesure une portée EN FAISANT TOMBER le
+    // joueur de trente mètres dans le vide — il se faisait donc rattraper avant
+    // d'avoir fini de tomber, et deux mesures balistiques se sont mises à
+    // mentir la minute où le rattrapage a été branché.
+    //
+    // On ne désactive pas le rattrapage pour le banc : on lui donne un monde
+    // qui descend assez bas pour que la chute mesurée y tienne. C'est plus
+    // honnête — le banc mesure alors le même moteur que celui qu'on joue.
+    boxes: [{ min: [-400, -4000, -400], max: [400, 0, 0], ink: 0 }],
     portals: [],
     goal: { position: [0, -900, 0], radius: 1 },
   };
@@ -2710,6 +2720,109 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la taille', piece(3, 'vrille', 'L', 2)],
   ] as const) {
     check(`et il refuse dès que ${quoi} manque`, !creux.fits(tout, p), '');
+  }
+}
+
+// =============================================================================
+{
+  console.log('\n— Tomber hors du monde ne coûte que du temps —');
+
+  // ─── « ON NE PIÈGE JAMAIS » ÉTAIT UNE PROMESSE, PAS UNE RÈGLE ───────────
+  //
+  // Elle était tenue salle par salle, à la main : le conduit s'est payé une
+  // boucle de reprise, l'escalier un secours, le creux une rampe. À chaque fois
+  // de la géométrie écrite pour un cas qui ne devrait pas arriver, à chaque fois
+  // la question reposée à l'auteur suivant. Et malgré tout ça, rien ne
+  // rattrapait une chute hors du décor : on tombait indéfiniment, mesuré à
+  // y = −208 221.
+  //
+  // Ce n'est pas une punition — pas de dégâts, pas d'écran, pas de compteur. On
+  // est reposé là où l'on se tenait la dernière fois debout, avec ce qu'on
+  // porte. « Se tromper coûte du temps et donne une image, jamais une partie. »
+  const ilot: LevelDef = {
+    name: 'ilot',
+    spawn: [0, 0.2, 0],
+    spawnYaw: 0,
+    boxes: [{ min: [-4, -1, -4], max: [4, 0, 4], ink: 0 }],
+    portals: [],
+    carryables: [{ id: 'caillou', position: [1, 0.05, 1], size: 0.3, ink: 3 }],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+  const immobile = {
+    forward: 0, strafe: 0, jump: false, sprint: false,
+    yaw: 0, pitch: 0, interact: false, throwIt: false,
+  };
+
+  {
+    const sim = new Simulation(ilot);
+    // On se tient debout un instant, le temps que le moteur retienne l'endroit.
+    for (let i = 0; i < 40; i++) sim.step(immobile, TICK_DT);
+    const appui = { ...sim.player.position };
+
+    // Puis on saute par-dessus bord.
+    sim.player.position = { x: 60, y: 0, z: 60 };
+    let rattrape = false;
+    for (let i = 0; i < 60 * 12 && !rattrape; i++) {
+      rattrape = sim.step(immobile, TICK_DT).rattrape === true;
+    }
+    check('une chute hors du décor est rattrapée', rattrape, `y = ${sim.player.position.y.toFixed(0)}`);
+    check(
+      'et l’on revient exactement là où l’on se tenait',
+      Math.hypot(sim.player.position.x - appui.x, sim.player.position.z - appui.z) < 0.01,
+      `(${sim.player.position.x.toFixed(2)}, ${sim.player.position.z.toFixed(2)})`,
+    );
+  }
+
+  // ON REVIENT AVEC CE QU'ON PORTE. C'est la différence entre un rattrapage et
+  // une punition : perdre l'objet transformerait une chute en perte sèche, et
+  // certaines salles n'ont qu'un exemplaire de la pièce qu'il leur faut.
+  {
+    const sim = new Simulation(ilot);
+    for (let i = 0; i < 40; i++) sim.step(immobile, TICK_DT);
+    const c = sim.carryables.items[0];
+    c.held = true;
+    sim.player.position = { x: 80, y: 0, z: 80 };
+    for (let i = 0; i < 60 * 12; i++) {
+      if (sim.step(immobile, TICK_DT).rattrape) break;
+    }
+    check(
+      'et l’on revient AVEC ce qu’on portait, posé dans les mains',
+      c.held && Math.hypot(c.position.x - sim.player.position.x, c.position.z - sim.player.position.z) < 4,
+      c.held ? 'mais loin du porteur' : 'la caisse a été perdue',
+    );
+  }
+
+  // ─── ET IL NE SE DÉCLENCHE JAMAIS QUAND IL NE FAUT PAS ──────────────────
+  //
+  // C'est la moitié qui compte. Un rattrapage trop bavard téléporterait le
+  // joueur au fond d'un puits qu'il descend exprès — et le conduit fait
+  // quarante-deux mètres de profondeur.
+  for (const [nom, niveau] of [
+    ['le monde', MONDE],
+    ['la descente', DESCENTE],
+    ['la montée', MONTEE],
+  ] as const) {
+    const sim = new Simulation(niveau);
+    let faux = false;
+    for (let i = 0; i < 60 * 20 && !faux; i++) {
+      faux = sim.step(immobile, TICK_DT).rattrape === true;
+    }
+    check(`dans ${nom}, personne n’est rattrapé sans être tombé`, !faux, 'rattrapage intempestif');
+  }
+
+  // Et le cas du conduit, nommément : quarante-deux mètres de descente voulue.
+  {
+    const sim = new Simulation(DESCENTE);
+    sim.player.position = { x: 186, y: 30, z: 1000 };
+    let faux = false;
+    for (let i = 0; i < 60 * 15 && !faux; i++) {
+      faux = sim.step(immobile, TICK_DT).rattrape === true;
+    }
+    check(
+      'et une chute de quarante mètres dans le puits reste une chute',
+      !faux,
+      `rattrapé à y = ${sim.player.position.y.toFixed(1)}`,
+    );
   }
 }
 
