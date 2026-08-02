@@ -8,7 +8,7 @@
  *
  *   npm run check
  */
-import { SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
+import { PLAYER_HEIGHT, SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
@@ -58,6 +58,9 @@ import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
 import { LOBBY } from '../levels/lobby.js';
 import { Sockets } from './sockets.js';
+import { World } from './world.js';
+import { isClear } from './physics.js';
+import { REACH } from './carryables.js';
 import { conditionsDe } from './portals.js';
 import { FORMES } from '../levels/formes.js';
 import {
@@ -2707,6 +2710,119 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la taille', piece(3, 'vrille', 'L', 2)],
   ] as const) {
     check(`et il refuse dès que ${quoi} manque`, !creux.fits(tout, p), '');
+  }
+}
+
+// =============================================================================
+{
+  console.log('\n— On ne ramasse plus à travers les murs —');
+
+  // ─── LA GÉOMÉTRIE D'ABORD, SUR UN CAS QU'ON PEUT LIRE ───────────────────
+  const cloison: LevelDef = {
+    name: 'cloison',
+    spawn: [0, 0.2, -3],
+    spawnYaw: 0,
+    boxes: [
+      { min: [-20, -1, -20], max: [20, 0, 20], ink: 0 },
+      // Un pan de mur étroit, de x −0,4 à +0,4, épais de 40 cm. Étroit exprès :
+      // il faut qu'un pas de côté suffise à le contourner SANS sortir des
+      // 2,88 m de portée, sinon le contre-essai échouerait pour une raison qui
+      // n'a rien à voir avec l'occultation.
+      { min: [-0.4, 0, -0.2], max: [0.4, 4, 0.2], ink: 1 },
+    ],
+    portals: [],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+  const w = new World(cloison);
+  check('un mur en travers coupe le segment', !w.segmentLibre({ x: 0, y: 1, z: -2 }, { x: 0, y: 1, z: 2 }), '');
+  check('à côté du mur, le segment passe', w.segmentLibre({ x: 6, y: 1, z: -2 }, { x: 6, y: 1, z: 2 }), '');
+  check('par-dessus le mur aussi', w.segmentLibre({ x: 0, y: 5, z: -2 }, { x: 0, y: 5, z: 2 }), '');
+  // Un segment qui s'arrête AVANT le mur ne le touche pas : le test porte bien
+  // sur un segment et non sur une demi-droite. Sans ça, tout objet aligné avec
+  // un mur lointain deviendrait insaisissable.
+  check('un segment qui s’arrête avant le mur est libre', w.segmentLibre({ x: 0, y: 1, z: -2 }, { x: 0, y: 1, z: -1 }), '');
+  // Et un segment parallèle au mur, DANS son plan, est bien bloqué : c'est le
+  // cas dégénéré de la division par zéro, celui qu'on écrit de travers.
+  check('parallèle et dans le mur : bloqué', !w.segmentLibre({ x: -3, y: 1, z: 0 }, { x: 3, y: 1, z: 0 }), '');
+  check('parallèle et à côté : libre', w.segmentLibre({ x: -3, y: 1, z: 1 }, { x: 3, y: 1, z: 1 }), '');
+
+  // ─── PUIS LE JEU, SUR UNE CAISSE DERRIÈRE UNE CLOISON ───────────────────
+  {
+    const derriere: LevelDef = {
+      ...cloison,
+      carryables: [{ id: 'cachee', position: [0, 0, 1.2], size: 0.3, ink: 3 }],
+    };
+    const sim = new Simulation(derriere);
+    // Le joueur est de l'autre côté du mur, à 2,4 m de la caisse : bien dans
+    // les 2,88 m de portée, et le nez sur la cloison.
+    const vise = (x: number) => {
+      sim.player.position = { x, y: 0, z: -1.2 };
+      sim.player.yaw = 0;
+      return sim.carryables.targeted(sim.player.position, 0, 1, sim.world)?.id ?? null;
+    };
+    check('la caisse derrière la cloison ne se prend plus', vise(0) === null, '');
+    // ET LE CONTRE-ESSAI, qui est la moitié qui compte : en se décalant au bout
+    // du mur, on la voit et on la reprend. Sans lui, une fonction qui refuse
+    // TOUT passerait la vérification précédente.
+    check('en contournant le mur, elle se reprend', vise(1.2) === 'cachee', vise(1.2) ?? 'rien');
+  }
+
+  // ─── ET LE GARDE PERMANENT : RIEN N'EST ENTERRÉ ─────────────────────────
+  //
+  // C'est la vérification qui protège l'avenir. Le correctif ne casse rien
+  // aujourd'hui — mesuré : 4 688 postes de prise balayés sur les cinq niveaux,
+  // 11,3 % traversaient de la pierre, et AUCUNE caisse ne devenait
+  // insaisissable. Mais rien n'empêche quelqu'un d'écrire demain une salle où
+  // l'objet est derrière un mur, de la vérifier à la main sans occultation, et
+  // de livrer une salle qu'on ne peut pas finir.
+  //
+  // On exige donc, pour chaque caisse : **il existe au moins un endroit d'où un
+  // joueur debout la voit et l'atteint.** Balayage grossier — huit directions,
+  // deux distances, les quatre paliers — parce qu'on ne cherche pas à mesurer
+  // le confort, seulement à prouver qu'il reste une prise.
+  for (const [nom, niveau] of [
+    ['le hall', LOBBY],
+    ['le monde', MONDE],
+    ['la descente', DESCENTE],
+    ['la montée', MONTEE],
+    ['la boîte à formes', FORMES],
+  ] as const) {
+    const monde = new World(niveau);
+    const sim = new Simulation(niveau);
+    const enterrees: string[] = [];
+
+    for (const c of sim.carryables.items) {
+      if (c.locked) continue;
+      let vue = false;
+      for (const palier of [-1, 0, 1, 2] as const) {
+        if (vue) break;
+        const s = scaleOfLevel(palier);
+        if (c.size > PLAYER_HEIGHT * s * 0.55) continue;
+        const reach = PLAYER_HEIGHT * s * REACH;
+        for (let d = 0; d < 8 && !vue; d++) {
+          const a = (d / 8) * Math.PI * 2;
+          for (const part of [0.4, 0.8]) {
+            const p = {
+              x: c.position.x + Math.sin(a) * reach * part,
+              y: c.position.y,
+              z: c.position.z + Math.cos(a) * reach * part,
+            };
+            if (!isClear(monde, p, s)) continue;
+            const yaw = Math.atan2(c.position.x - p.x, c.position.z - p.z);
+            if (sim.carryables.targeted(p, yaw, s, monde)?.id === c.id) {
+              vue = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!vue) enterrees.push(c.id);
+    }
+    check(
+      `dans ${nom}, chaque objet reste attrapable de quelque part`,
+      enterrees.length === 0,
+      enterrees.join(', '),
+    );
   }
 }
 

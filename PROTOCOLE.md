@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 398 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 411 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -355,6 +355,34 @@ l'écran. Le panneau du navigateur ne s'affichait pas au moment de la correction
 donc la boucle d'image ne tournait pas. Toute la logique est prouvée en
 simulation — l'événement part, avec la bonne raison, dans le bon ordre — mais
 l'affichage lui-même n'a pas été regardé une seule fois.
+
+---
+
+## 3 quinquies. On ne ramasse plus à travers les murs
+
+**Neuf, et c'est un défaut du moteur, pas d'une salle.** La prise ne testait
+qu'une distance et un angle — pas un mot sur ce qu'il y a entre l'œil et
+l'objet. Comme la portée de bras suit la taille (2,88 m à hauteur d'homme,
+11,52 m à ×4, **46 m à ×16**), on cueillait ce qui était dans la pièce voisine,
+sous le plancher, ou de l'autre côté d'une cloison.
+
+**Le geste :** mets-toi contre un mur, avec un objet connu juste derrière, et
+essaie de le prendre. À ×4 ou ×16 de préférence.
+→ *Rien ne se passe.* Fais un pas de côté pour le voir : *il se reprend.*
+
+**Ce qui trahirait un défaut, et c'est le vrai risque :** un objet que tu vois
+parfaitement et que tu ne peux plus prendre. Le test porte sur le **centre** de
+l'objet ; une caisse dont seule une arête dépasse d'un mur est donc refusée. Si
+ça t'arrive dans un endroit où ça semble injuste, note où — c'est le seul
+réglage possible.
+
+**Ce que la simulation garantit déjà :** dans les cinq mondes, chaque objet
+reste attrapable depuis au moins un endroit. Le balayage complet, fait avant de
+brancher, a compté 4 688 postes de prise : 11,3 % traversaient de la pierre, et
+**aucun objet n'est devenu insaisissable**. Les trois seuls fortement amoindris
+sont au fond de la fente du lavoir et dans le bol — ils perdent les angles qui
+passaient par le dallage, ce qui est précisément la leçon que ces salles
+voulaient donner.
 
 ---
 

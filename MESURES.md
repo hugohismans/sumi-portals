@@ -250,7 +250,7 @@ Les deux premières étaient **impossibles à écrire** avant le correctif, et l
 fichier de vérifications portait un commentaire disant pourquoi. Il est parti
 avec le défaut.
 
-## ON RAMASSE À TRAVERS LES MURS — défaut connu, contourné deux fois
+## ON RAMASSAIT À TRAVERS LES MURS — CORRIGÉ le 3 août
 
 Trouvé le 3 août par l'autrice de l'escalier, en essayant de comprendre pourquoi
 sa salle se résolvait sans qu'on ait rien fait.
@@ -290,21 +290,47 @@ qui se raconte mieux — mais qui ferme aussi la VUE sur la cour, un effet dont 
 salle avait besoin par ailleurs. On ne saura jamais lequel des deux motifs a
 décidé de la cote.
 
-### La correction, et pourquoi elle attend
+### La correction, et le banc qui l'a autorisée
 
-Un segment de l'œil à l'objet, testé contre les boîtes du monde ; on refuse la
-prise si quelque chose est franchement entre les deux. Le monde est fait de
-boîtes alignées sur les axes, donc c'est une intersection segment/AABB — vingt
-lignes, pas un chantier.
+Vingt lignes : la méthode des tranches, un segment de l'œil au CENTRE de
+l'objet, contre les boîtes du décor fixe. On ne teste jamais les caisses
+posées — l'objet qu'on vise en est une, il s'occulterait lui-même.
 
-Ce qui attend n'est pas l'écriture, c'est **l'épreuve**. Ça change le geste le
-plus fréquent du jeu, et les cas limites sont ceux qu'on ne devine pas : un
-objet posé dans un creux encastré, un galet derrière une balustrade qu'on doit
-pouvoir attraper par-dessus, une caisse à demi engagée sous une dalle. Chacun
-peut se mettre à refuser sans que rien ne l'annonce, et le joueur n'aura aucun
-moyen de comprendre pourquoi ce qu'il voit ne se prend plus.
+**Ce qui coûtait n'était pas l'écriture, c'était l'épreuve**, et ce fichier
+l'exigeait noir sur blanc : « un banc qui liste, dans les cinq niveaux, tout ce
+qui devient insaisissable — pas un correctif de vingt lignes et un essai de deux
+minutes. » Le banc a donc tourné AVANT le branchement.
 
-**À faire avec un banc qui liste, dans les cinq niveaux, tout ce qui devient
-insaisissable — pas avec un correctif de vingt lignes et un essai de deux
-minutes.** C'est exactement la leçon de la catapulte du linteau : un correctif
-juste au mauvais moment est un correctif faux.
+| | |
+|---|---|
+| postes de prise balayés | **4 688** — cinq niveaux, quatre paliers, seize directions, quatre distances |
+| postes qui traversaient de la pierre | **531**, soit 11,3 % |
+| caisses devenues insaisissables | **zéro** |
+| caisses fortement amoindries | **trois** |
+
+Les trois sont `perle-lavoir` (18 postes sur 104), `feuille-lavoir` (25 sur 112)
+et `bol-pierre-b` (36 sur 146). **Toutes les trois perdent exactement les angles
+qui passaient par le dallage** — c'est-à-dire ceux que la fente du lavoir et la
+paroi du bol étaient censées interdire. L'occultation ne casse pas leur leçon :
+elle la fait enfin respecter.
+
+### Le garde qui reste
+
+Le correctif ne casse rien aujourd'hui, mais rien n'empêche quelqu'un d'écrire
+demain une salle où l'objet est derrière un mur, de la vérifier à la main, et de
+livrer une salle infinissable. Une vérification permanente exige donc, pour
+chaque caisse des cinq niveaux : **il existe au moins un endroit d'où un joueur
+debout la voit et l'atteint.** Balayage grossier — on ne mesure pas le confort,
+on prouve qu'il reste une prise.
+
+Et le contre-essai compte autant que l'essai : *une caisse derrière une cloison
+ne se prend plus, et d'un pas de côté elle se reprend*. Sans la seconde ligne,
+une fonction qui refuserait TOUT passerait la première.
+
+### Ce que ça libère
+
+Deux salles portent une géométrie qui n'existe que pour contourner ce défaut :
+les onze mètres de roche pleine de l'escalier, et les parapets relevés à 9,40 m
+de l'atelier du haut. **On peut les redescendre**, et leurs autrices l'avaient
+demandé. Ce n'est pas urgent — la butte se raconte, le parapet cache une vue
+qu'il fallait cacher — mais ce n'est plus une dette.

@@ -199,11 +199,32 @@ export class Carryables {
   }
 
   /**
-   * Caisse visée : la plus proche devant soi, à portée. On renvoie même celles
-   * qui sont trop grosses, pour pouvoir le dire au joueur plutôt que de laisser
-   * la touche sans effet.
+   * Caisse visée : la plus proche devant soi, à portée, ET QU'ON VOIT. On
+   * renvoie même celles qui sont trop grosses, pour pouvoir le dire au joueur
+   * plutôt que de laisser la touche sans effet.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ON RAMASSAIT À TRAVERS LES MURS.
+   *
+   * Une distance et un angle, et pas un mot sur ce qu'il y a entre l'œil et
+   * l'objet. Comme le rayon de saisie suit la taille — 2,88 m à hauteur
+   * d'homme, 11,52 m à ×4, 46 m à ×16 — le défaut ne se voyait que dans les
+   * salles de géant, c'est-à-dire celles qu'on écrit maintenant. Deux d'entre
+   * elles s'en protègent déjà par de la géométrie qui n'existe que pour ça.
+   *
+   * `world` est facultatif, et c'est délibéré : les vérifications qui n'ont pas
+   * de monde sous la main testent la portée et l'angle sans avoir à fabriquer
+   * un décor. Le jeu, lui, le passe toujours.
+   *
+   * MESURÉ AVANT DE BRANCHER, comme `MESURES.md` l'exigeait — 4 688 postes de
+   * prise balayés sur les cinq niveaux, quatre paliers d'échelle, seize
+   * directions. **11,3 % traversaient de la pierre, et aucune caisse ne devient
+   * insaisissable.** Les trois seules fortement amoindries sont au fond de la
+   * fente du lavoir et dans le bol : elles perdent les angles qui passaient par
+   * le dallage, ce qui est exactement la leçon que ces salles voulaient donner.
+   * ═══════════════════════════════════════════════════════════════════════════
    */
-  targeted(playerPos: Vec3, yaw: number, playerScale: number): Carryable | null {
+  targeted(playerPos: Vec3, yaw: number, playerScale: number, world?: World): Carryable | null {
     const reach = PLAYER_HEIGHT * playerScale * REACH;
     const eyeY = playerPos.y + PLAYER_HEIGHT * playerScale * 0.6;
     const fwd = lookDirection(yaw, 0);
@@ -219,6 +240,15 @@ export class Carryables {
       if (dist > reach + c.size * 0.5) continue;
       const flat = Math.hypot(cx, cz) || 1;
       if ((cx / flat) * fwd.x + (cz / flat) * fwd.z < 0.25) continue;
+      // ET IL FAUT LA VOIR. On teste jusqu'à son CENTRE : viser un coin
+      // laisserait attraper une caisse dont on ne dépasse qu'une arête, et
+      // c'est précisément le genre de prise qui donne l'impression que le mur
+      // n'existe pas.
+      if (world) {
+        const oeil = { x: playerPos.x, y: eyeY, z: playerPos.z };
+        const centre = { x: c.position.x, y: c.position.y + c.size * 0.5, z: c.position.z };
+        if (!world.segmentLibre(oeil, centre)) continue;
+      }
       if (dist < bestDist) {
         bestDist = dist;
         best = c;

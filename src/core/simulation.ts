@@ -514,7 +514,7 @@ export class Simulation {
       return;
     }
 
-    const target = this.carryables.targeted(this.player.position, this.player.yaw, scale);
+    const target = this.carryables.targeted(this.player.position, this.player.yaw, scale, this.world);
     if (!target) {
       // ─── RIEN À PRENDRE : ALORS PEUT-ÊTRE À PEINDRE ───────────────────
       //
