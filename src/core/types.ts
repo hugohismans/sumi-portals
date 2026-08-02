@@ -324,6 +324,27 @@ export interface RegionDef {
  * texte, et c'est la raison pour laquelle ceci vit dans le niveau et non dans
  * une interface.
  */
+/**
+ * LE RAPPEL — un levier qui remet les objets où ils étaient.
+ *
+ * Le hall est un bac à sable : on y prend des choses, on les fait grossir, on
+ * les pose n'importe où. Au bout de dix minutes une bille est au fond d'un
+ * creux qui ne l'attendait pas, une autre a été jetée hors de portée, et il n'y
+ * a plus rien à faire — un logement ordinaire verrouille pour de bon.
+ *
+ * Ailleurs, c'est la bonne règle : un progrès qu'on défait par accident n'est
+ * pas un progrès. Mais dans un lieu où il n'y a RIEN À GAGNER, elle n'a aucun
+ * sens : elle transforme un terrain de jeu en salle qu'on peut abîmer.
+ *
+ * D'où ce levier. On appuie, tout retourne à sa place. Il ne coûte rien parce
+ * qu'il n'y a rien à perdre, et c'est précisément ce qui distingue le hall du
+ * reste du jeu.
+ */
+export interface RappelDef {
+  position: [number, number, number];
+  radius: number;
+}
+
 export interface SeuilDef {
   position: [number, number, number];
   radius: number;
@@ -374,6 +395,8 @@ export interface LevelDef {
   sockets?: SocketDef[];
   /** Les cadres accrochés aux murs des ateliers. Voir TableauDef. */
   tableaux?: TableauDef[];
+  /** Le levier qui remet le bac à sable en ordre. Voir RappelDef. */
+  rappel?: RappelDef;
   portals: PortalPairDef[];
   goal: { position: [number, number, number]; radius: number };
   /** Les sorties du hall. Absent partout ailleurs. */
@@ -488,6 +511,8 @@ export interface TickEvents {
   socketFilled?: { socketId: string; carryableId: string };
   /** Un chevalet vient de rendre sa feuille. Voir SocketDef.rend. */
   socketVide?: { socketId: string };
+  /** On a tiré le levier de rappel : tout est retourné à sa place. */
+  rappele?: boolean;
   /** Une famille vient de recevoir une couleur. */
   peinte?: { famille: string; pigment: string };
   /**

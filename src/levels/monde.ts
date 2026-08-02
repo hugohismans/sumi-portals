@@ -532,8 +532,18 @@ export const MONDE: LevelDef = {
     // Le jardin d'abord : sa parcelle est incluse dans celle des hauteurs, et
     // c'est la première trouvée qui gagne. Même papier de part et d'autre, donc
     // le passage de l'une à l'autre ne se voit pas — seuls les aplats changent.
-    TERRASSE.region,
-    BELVEDERE.region,
+    // LES HAUTEURS ATTENDENT LE ROUGE, TOUTES LES HAUTEURS.
+    //
+    // Ces deux régions n'avaient pas de pigment, donc elles naissaient en
+    // couleur pendant que le reste du monde était en lavis — et l'on voyait
+    // depuis la place du village deux taches colorées au sommet, sans raison.
+    // Signalé en jouant, et je croyais l'avoir corrigé : je n'avais traité que
+    // la région générique des hauteurs, pas les deux lieux qui l'occupent.
+    //
+    // Les mondes de POCHE, eux, gardent leur couleur : ce sont ceux où l'on VA
+    // la chercher, et ils l'ont forcément, sinon il n'y aurait rien à y prendre.
+    { ...TERRASSE.region, pigment: 'rouge' },
+    { ...BELVEDERE.region, pigment: 'rouge' },
     // Les deux poches rapprochent leur brouillard : un talus cache ce qui est
     // au sol, pas le belvédère qui flotte à cent vingt mètres et à deux cent
     // soixante-cinq d'ici. 230 le fait disparaître et laisse la poche entière

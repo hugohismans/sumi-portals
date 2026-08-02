@@ -1056,6 +1056,10 @@ function frame(now: number): void {
         portals.tracer(paire.id, 0);
       }
     }
+    if (events.rappele) {
+      ambiance.tache(0);
+      flash('Tout est remis en place.', 3);
+    }
     if (events.peinte) {
       peindreFamille(events.peinte.famille, events.peinte.pigment);
       ambiance.tache(0);

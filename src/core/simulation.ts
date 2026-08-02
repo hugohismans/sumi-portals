@@ -348,6 +348,24 @@ export class Simulation {
     // ramasser : c'est quelqu'un qu'on rencontre. S'il est là, il a la priorité
     // sur tout le reste — on ne veut pas qu'un caillou traînant à côté vole le
     // geste.
+    // ─── LE LEVIER DE RAPPEL, EN PREMIER ──────────────────────────────────
+    //
+    // Avant les pinceaux et avant les caisses : c'est le seul geste qui doit
+    // marcher même quand tout le reste est bloqué, puisque c'est justement ce
+    // qu'il sert à débloquer.
+    const rappel = this.world.level.rappel;
+    if (rappel) {
+      const dx = this.player.position.x - rappel.position[0];
+      const dy = this.player.position.y - rappel.position[1];
+      const dz = this.player.position.z - rappel.position[2];
+      if (dx * dx + dy * dy + dz * dz <= rappel.radius * rappel.radius) {
+        this.carryables.reset();
+        this.sockets.reset();
+        events.rappele = true;
+        return;
+      }
+    }
+
     for (const v of this.world.level.veilleurs ?? []) {
       if (this.eveilles.has(v.id)) continue;
       const dx = this.player.position.x - v.position[0];
