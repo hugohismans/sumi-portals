@@ -185,6 +185,22 @@ export interface TableauDef {
   hauteur: number;
   /** Ce que le tableau montre : à chaque famille, le pigment attendu. */
   attendu: Record<string, string>;
+  /**
+   * D'où le tableau a été peint. Par défaut, depuis son propre mur.
+   *
+   * Le préciser sert à une chose, et elle vaut une salle entière : le point de
+   * vue peut devenir l'énigme. Un tableau peint depuis l'intérieur d'un bassin,
+   * à ×1/4, montre une vue qu'on ne reconnaît pas — des masses molles, une
+   * paroi courbe, une lumière d'en dessous — et l'on cherche d'où quelqu'un
+   * regardait, ce qui est l'occupation d'un peintre.
+   */
+  oeil?: [number, number, number];
+  /**
+   * Ce que ce point de vue regarde. Obligatoire dès qu'on précise `oeil` :
+   * une position seule ne dit pas une vue, et deviner la direction produirait
+   * un tableau qui montre un mur.
+   */
+  regarde?: [number, number, number];
 }
 
 export interface SocketDef {

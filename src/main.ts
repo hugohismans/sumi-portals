@@ -17,6 +17,7 @@ import { REPERES_MONDE, changeDeMonde } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
+import { Tableaux } from './render/tableaux.js';
 import { AttenteDuo } from './net/attente.js';
 import { CaissesPartagees } from './net/caisses.js';
 import { Presence, type RemoteSnapshot } from './net/presence.js';
@@ -349,6 +350,13 @@ if (MODE === 'monde') {
     scene.add(p.group);
   }
 }
+
+// Les cadres accrochés aux murs des ateliers. Leur image est prise une seule
+// fois, juste après la construction du monde : c'est un vrai rendu de la scène
+// avec les familles déjà peintes, donc le tableau ne peut pas mentir sur ce
+// qu'il montre — et il ne coûte rien par image.
+const tableaux = new Tableaux(LEVEL.tableaux);
+scene.add(tableaux.group);
 
 // Quelques feuilles portées par le vent, qui laissent une traînée d'encre. Une
 // douzaine, pas davantage : une planche encrée tire sa force de ses vides.
@@ -1213,6 +1221,39 @@ function frame(now: number): void {
     },
   );
   if (trace !== null) portals.tracer(tracage.pairEnCours ?? PORTE_A_DESSINER, trace);
+  // L'image des tableaux, prise à la première image utile — pas avant, parce
+  // qu'il faut que le décor soit construit et ses uniformes posés.
+  if (LEVEL.tableaux && LEVEL.tableaux.length > 0) {
+    tableaux.capturer(
+      renderer,
+      scene,
+      (attendu) => {
+        for (const [famille, pigment] of Object.entries(attendu)) {
+          const mats = worldView.parFamille.get(famille);
+          const teinte = TEINTE_DU_PIGMENT[pigment];
+          if (!mats || !teinte) continue;
+          for (const m of mats) {
+            if (m.uniforms.uSolid) m.uniforms.uSolid.value.set(teinte);
+            if (m.uniforms.uUseSolid) m.uniforms.uUseSolid.value = 1;
+          }
+        }
+      },
+      () => {
+        // On remet les familles telles qu'elles étaient AVANT la prise : celles
+        // que le joueur a déjà peintes gardent leur teinte, les autres
+        // retrouvent le lavis. Sinon le tableau se peindrait lui-même la salle.
+        for (const [famille, mats] of worldView.parFamille) {
+          const teinte = TEINTE_DU_PIGMENT[sim.familles.teintes.get(famille) ?? ''];
+          for (const m of mats) {
+            if (m.uniforms.uUseSolid) m.uniforms.uUseSolid.value = teinte ? 1 : 0;
+            if (teinte && m.uniforms.uSolid) m.uniforms.uSolid.value.set(teinte);
+          }
+        }
+      },
+    );
+    tableaux.syncInk();
+  }
+
   feuilles.update(dt, camera, scale);
   pigments.update(dt, peintreEnCours?.group.position);
 
