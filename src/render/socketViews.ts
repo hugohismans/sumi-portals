@@ -22,6 +22,14 @@ interface View {
   filled: boolean;
   /** Avancement de l'animation de scellement, de 0 à 1. */
   bloom: number;
+  /**
+   * Avancement du REFUS, de 1 à 0.
+   *
+   * Le sceau récompense ce qui entre ; il n'y avait rien pour ce qui n'entre
+   * pas. Une pièce refusée restait posée à côté d'un trou parfaitement
+   * impassible, et le joueur ne savait même pas qu'il avait été entendu.
+   */
+  refus: number;
 }
 
 export class SocketViews {
@@ -99,14 +107,43 @@ export class SocketViews {
       group.add(seal);
 
       this.group.add(group);
-      this.views.set(s.id, { group, seal, filled: false, bloom: 0 });
+      this.views.set(s.id, { group, seal, filled: false, bloom: 0, refus: 0 });
     }
+  }
+
+  /**
+   * LE CREUX SE RÉTRACTE — un refus, et c'est tout ce qu'il fait.
+   *
+   * Il n'annonce PAS lequel des quatre attributs cloche : ça, c'est la phrase
+   * qui le dit. Il annonce qu'il a vu la pièce et qu'il l'a écartée, ce qui
+   * n'était dit nulle part — une pièce reposée à côté d'un trou impassible ne
+   * permettait même pas de savoir si le jeu avait remarqué le geste.
+   *
+   * Le mouvement est un tressaillement bref : le trait d'encre se contracte,
+   * puis revient. Pas de clignotement, pas de rouge — un cadre qui se rétracte
+   * une demi-seconde se lit comme un refus dans n'importe quelle langue, et
+   * l'on ne dépense pas la couleur, qui est le sujet du jeu.
+   */
+  refuser(id: string): void {
+    const v = this.views.get(id);
+    if (v) v.refus = 1;
   }
 
   update(sockets: Socket[], dt: number, time: number): void {
     for (const s of sockets) {
       const v = this.views.get(s.id);
       if (!v) continue;
+
+      // Le tressaillement du refus. Il décroît en un peu moins d'une seconde,
+      // et son amplitude reste faible : on veut que l'œil l'attrape, pas que le
+      // décor tremble.
+      if (v.refus > 0) {
+        v.refus = Math.max(0, v.refus - dt * 1.6);
+        const t = Math.sin(v.refus * Math.PI * 3) * v.refus;
+        v.group.scale.setScalar(1 - 0.11 * Math.abs(t));
+      } else if (v.group.scale.x !== 1) {
+        v.group.scale.setScalar(1);
+      }
 
       const filled = s.filledBy !== null;
       if (filled && !v.filled) v.filled = true;

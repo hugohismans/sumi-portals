@@ -23,6 +23,19 @@ import type { SocketDef } from './types.js';
 /** Écart de taille toléré, en proportion. Assez large pour rester agréable. */
 const DEFAULT_TOLERANCE = 0.12;
 
+/**
+ * CE QUI CLOCHE, quand un logement refuse.
+ *
+ * La taille se dédouble — « trop grand » et « trop petit » — parce que c'est la
+ * seule des quatre valeurs qui ait un SENS. Une forme n'est pas trop à gauche,
+ * une main n'est pas trop droite ; mais une pièce trop grosse et une pièce trop
+ * menue demandent des gestes opposés, et le joueur a besoin de savoir lequel.
+ * Le refus d'un pinceau endormi dit déjà « trop grand » ou « trop petit » pour
+ * exactement cette raison : on reprend son vocabulaire plutôt que d'en inventer
+ * un second.
+ */
+export type RaisonDuRefus = 'trop-grand' | 'trop-petit' | 'forme' | 'teinte' | 'main';
+
 export interface Socket {
   id: string;
   /** Centre du bas du logement. */
@@ -123,6 +136,80 @@ export class Sockets {
     // lisible qu'une tache de la couleur qu'on attend.
     if (socket.teinte !== undefined && c.ink !== socket.teinte) return false;
     return Math.abs(c.size - socket.size) <= socket.size * socket.tolerance;
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * POURQUOI CE LOGEMENT REFUSE — et c'est la seule chose qui manquait.
+   *
+   * `fits` rend un booléen. Un joueur qui présente une pièce et la voit refusée
+   * n'apprend donc RIEN : est-ce la taille ? la forme ? la teinte ? la main ?
+   * Il essaie au hasard au lieu de raisonner, et quatre inconnues font seize
+   * combinaisons.
+   *
+   * Trois modèles à qui l'on a décrit ce jeu ont buté là-dessus sans se
+   * concerter — « des formulaires déguisés », « l'invisible n'est jamais
+   * spectaculaire », « les serrures immatérielles ruinent la promesse
+   * géométrique » — et l'autrice de la boîte à formes avait écrit exactement la
+   * même phrase la veille en livrant sa salle. C'est le seul point du projet où
+   * une critique extérieure et une trouvaille interne se recouvrent mot pour
+   * mot, et c'est pour ça qu'il passe avant tout le reste.
+   *
+   * ─── L'ORDRE N'EST PAS CELUI DE `fits`, ET C'EST DÉLIBÉRÉ ─────────────────
+   *
+   * `fits` teste la main en premier : l'ordre y est sans importance, puisque
+   * seul le OUI/NON compte. Ici l'ordre EST la pédagogie, parce qu'on ne dit
+   * qu'une chose à la fois — en dire deux, c'est n'en dire aucune.
+   *
+   *   1. LA TAILLE, parce que le joueur la voit déjà. Commencer par ce qu'il
+   *      avait sous les yeux lui apprend que le signal dit vrai, et c'est à ce
+   *      prix qu'il croira les trois autres.
+   *   2. LA FORME, qui se voit aussi, mais demande d'y regarder.
+   *   3. LA TEINTE, qui se voit sans se comparer.
+   *   4. LA MAIN EN DERNIER, parce qu'elle est la seule invisible. On ne
+   *      l'entend donc que lorsque tout le reste est juste — c'est-à-dire au
+   *      moment exact où la leçon peut porter.
+   *
+   * Une pièce fausse sur deux points se voit corriger la première, puis se fait
+   * refuser une seconde fois. Ce n'est pas une lourdeur : c'est un escalier, et
+   * chaque marche enseigne une chose de plus.
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  raisonDuRefus(socket: Socket, c: Carryable): RaisonDuRefus | null {
+    if (Math.abs(c.size - socket.size) > socket.size * socket.tolerance) {
+      return c.size > socket.size ? 'trop-grand' : 'trop-petit';
+    }
+    if (socket.forme !== undefined && c.forme !== socket.forme) return 'forme';
+    if (socket.teinte !== undefined && c.ink !== socket.teinte) return 'teinte';
+    if (socket.main !== undefined && c.main !== socket.main) return 'main';
+    return null;
+  }
+
+  /**
+   * Le logement le plus proche qui REFUSERAIT cette pièce, et pourquoi.
+   *
+   * Chaque logement juge avec SA propre portée d'accueil — la même que celle
+   * qui lui sert à happer ce qu'il accepte. Un creux qui se donne un large
+   * rayon parce qu'un géant le garnit de quatorze mètres parle donc aussi de
+   * loin qu'il attrape, et les deux distances ne peuvent pas diverger.
+   *
+   * On ne parle jamais d'un logement déjà pourvu : il n'attend plus rien.
+   */
+  refusLePlusProche(c: Carryable): { socket: Socket; raison: RaisonDuRefus } | null {
+    let best: { socket: Socket; raison: RaisonDuRefus; d: number } | null = null;
+    for (const socket of this.items) {
+      if (socket.filledBy !== null) continue;
+      const d = Math.hypot(
+        c.position.x - socket.position.x,
+        c.position.y - socket.position.y,
+        c.position.z - socket.position.z,
+      );
+      if (d > socket.portee) continue;
+      const raison = this.raisonDuRefus(socket, c);
+      if (raison === null) continue;
+      if (!best || d < best.d) best = { socket, raison, d };
+    }
+    return best ? { socket: best.socket, raison: best.raison } : null;
   }
 
   /**

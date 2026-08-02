@@ -43,6 +43,15 @@ import type { Carryable } from './carryables.js';
  * rendent à sa forme d'origine — sans quoi le joueur ne pourrait pas défaire
  * son erreur.
  */
+/**
+ * Le délai, en pas de simulation, entre la dépose et la réponse du creux.
+ *
+ * Une demi-seconde. C'est le temps qu'il faut à une pièce lâchée à hauteur d'œil
+ * pour toucher le sol à taille d'homme, et c'est aussi la durée en dessous de
+ * laquelle une phrase ressemble à un clignotement plutôt qu'à une réponse.
+ */
+const REFUS_DELAI = 30;
+
 const retournerLaMain = (c: Carryable, face: PortalFace): void => {
   if (!face.miroir || c.main === undefined) return;
   c.main = c.main === 'L' ? 'D' : 'L';
@@ -74,6 +83,14 @@ export class Simulation {
    * étroite : le joueur n'a pas à connaître la différence.
    */
   readonly portesFermees = new Set<string>();
+
+  /**
+   * La pièce qu'on vient de poser, et le décompte avant que le creux ne réponde.
+   *
+   * Un seul en vol à la fois : on ne pose qu'un objet à la fois, et deux refus
+   * qui se chevauchent seraient deux phrases qui se coupent la parole.
+   */
+  private refusEnAttente: { id: string; ticks: number } | null = null;
   /** Pinceaux déjà réveillés : on ne les réveille pas deux fois. */
   readonly eveilles = new Set<string>();
   /**
@@ -143,6 +160,7 @@ export class Simulation {
    */
   private scellerLesPortesADessiner(): void {
     this.portesFermees.clear();
+    this.refusEnAttente = null;
     for (const p of this.world.level.portals ?? []) {
       if (p.dessinee) this.portesFermees.add(p.id);
     }
@@ -341,6 +359,32 @@ export class Simulation {
       if (!wasAllFilled && this.sockets.allFilled) events.allSocketsFilled = true;
     }
 
+    // ─── LE CREUX RÉPOND ──────────────────────────────────────────────────
+    //
+    // Une demi-seconde après la dépose, et pas avant : la pièce doit avoir fini
+    // de tomber, faute de quoi l'on parlerait d'un logement qu'elle est en
+    // train de dépasser. Le délai n'est pas qu'une précaution de physique — il
+    // fait du refus un événement au lieu d'un clignotement, et il empêche de
+    // marteler la touche pour balayer les quatre réponses en trois secondes.
+    //
+    // Si la pièce trouve son logement entre-temps, la question n'a plus lieu
+    // d'être posée : on l'oublie sans rien dire.
+    if (this.refusEnAttente) {
+      const attente = this.refusEnAttente;
+      if (logees.some((l) => l.carryableId === attente.id)) {
+        this.refusEnAttente = null;
+      } else if (--attente.ticks <= 0) {
+        this.refusEnAttente = null;
+        const c = this.carryables.items.find((x) => x.id === attente.id);
+        if (c && !c.held && !c.locked) {
+          const r = this.sockets.refusLePlusProche(c);
+          if (r) {
+            events.logementRefuse = { socketId: r.socket.id, carryableId: c.id, raison: r.raison };
+          }
+        }
+      }
+    }
+
     // --- Objectif --------------------------------------------------------------
     if (!this.goalReached) {
       const g = this.world.level.goal;
@@ -463,6 +507,10 @@ export class Simulation {
       held.velocity.y = 0;
       held.releasedAt = this.eyePosition();
       events.carry = { id: held.id, taken: false };
+      // ON POSE, DONC ON DEMANDE. Reposer une pièce à côté d'un creux est une
+      // question, et jusqu'ici elle restait sans réponse. On arme ici le délai
+      // au bout duquel le creux dira ce qui cloche — voir `REFUS_DELAI`.
+      this.refusEnAttente = { id: held.id, ticks: REFUS_DELAI };
       return;
     }
 

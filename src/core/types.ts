@@ -579,6 +579,8 @@ export interface InputCommand {
 }
 
 /** Événements émis par un tick, pour que le rendu et l'UI puissent réagir. */
+import type { RaisonDuRefus } from './sockets.js';
+
 export interface TickEvents {
   /** Le joueur a traversé un portail ce tick. */
   traversed?: { pairId: string; from: 'big' | 'small'; newLevel: number };
@@ -625,6 +627,24 @@ export interface TickEvents {
   socketFilled?: { socketId: string; carryableId: string };
   /** Un chevalet vient de rendre sa feuille. Voir SocketDef.rend. */
   socketVide?: { socketId: string };
+  /**
+   * UN LOGEMENT VIENT DE REFUSER, ET IL DIT POURQUOI.
+   *
+   * Il ne disait rien du tout : la pièce restait posée à côté du trou, et le
+   * joueur n'avait aucun moyen de savoir laquelle des quatre valeurs clochait.
+   * Quatre inconnues font seize combinaisons — on essayait au hasard au lieu de
+   * raisonner, et c'est le reproche que trois lecteurs extérieurs ont fait au
+   * jeu sans se concerter.
+   *
+   * L'événement part une demi-seconde APRÈS la dépose, jamais au moment du
+   * geste : la pièce doit avoir fini de tomber, sinon l'on parlerait d'un
+   * logement qu'elle est en train de quitter. Ce délai est aussi ce qui donne
+   * au refus le temps d'être un événement plutôt qu'un clignotement.
+   *
+   * Voir `Sockets.raisonDuRefus` pour l'ordre dans lequel les quatre valeurs
+   * sont annoncées — il est pédagogique, pas arbitraire.
+   */
+  logementRefuse?: { socketId: string; carryableId: string; raison: RaisonDuRefus };
   /** On a tiré le levier de rappel : tout est retourné à sa place. */
   rappele?: boolean;
   /**

@@ -1305,6 +1305,38 @@ function frame(now: number): void {
         4,
       );
     }
+    // ─── LE CREUX RÉPOND, ET IL NE DIT QU'UNE CHOSE ───────────────────────
+    //
+    // Il ne disait rien du tout. La pièce restait posée à côté du trou, et rien
+    // au monde ne permettait de savoir laquelle des quatre valeurs clochait —
+    // la taille, la forme, la teinte, la main. Quatre inconnues font seize
+    // combinaisons : on essayait au hasard au lieu de raisonner.
+    //
+    // Les phrases parlent du MONDE et jamais du moteur. « Teinte incorrecte »
+    // est du vocabulaire de machine et n'apprend rien ; « la forme est juste,
+    // la couleur non » dit la même chose et laisse le joueur conclure. C'est la
+    // règle qui gouvernait déjà le refus d'un pinceau endormi, deux blocs plus
+    // haut, et l'on reprend sa voix plutôt que d'en inventer une seconde.
+    //
+    // LA DERNIÈRE PHRASE EST LA PLUS IMPORTANTE DU JEU. Elle ne prononce ni
+    // « miroir » ni « chiralité » ni « symétrie » : elle constate que la pièce
+    // est juste en tout et n'entre pas, et que la tourner n'y changera rien.
+    // C'est exactement ce qu'il faut savoir, et pas un mot de plus — deux
+    // lecteurs extérieurs avaient prédit qu'on conclurait à un bug avant de
+    // conclure au miroir, et cette phrase est la réponse à cette prédiction.
+    if (events.logementRefuse) {
+      const dit: Record<string, string> = {
+        'trop-grand': 'Elle déborde. Le creux est taillé plus menu que ce que tu portes.',
+        'trop-petit': 'Elle danse dans le creux. Il la faudrait plus grande.',
+        forme: 'Ce n’est pas ce dessin-là. Le creux en attend un autre.',
+        teinte: 'La forme est juste, la couleur non.',
+        main: 'Bonne taille, bon dessin, et elle n’entre pas. La tourner n’y changera rien.',
+      };
+      const mot = dit[events.logementRefuse.raison];
+      if (mot) flash(mot, 5);
+      socketViews.refuser(events.logementRefuse.socketId);
+    }
+
     // ON A REPRIS LA FEUILLE : la porte qu'elle portait se rescelle, et son
     // dessin s'efface. Le joueur voit son choix se défaire, ce qui est
     // exactement ce qu'il faut — rien à expliquer, et rien d'irréversible.

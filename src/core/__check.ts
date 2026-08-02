@@ -2712,6 +2712,120 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
 // =============================================================================
 {
+  console.log('\n— Un creux qui refuse dit ce qui cloche —');
+
+  // ─── LE REFUS MUET, ET POURQUOI IL PASSAIT AVANT TOUT LE RESTE ──────────
+  //
+  // `fits` rendait un booléen. Le joueur présentait une pièce, elle était
+  // refusée, et il n'apprenait RIEN : la taille ? la forme ? la teinte ? la
+  // main ? Quatre inconnues font seize combinaisons, donc on essayait au hasard
+  // au lieu de raisonner.
+  //
+  // Trois lecteurs extérieurs ont buté là-dessus sans se concerter, et l'autrice
+  // de la boîte à formes avait écrit la même phrase la veille en livrant. C'est
+  // le seul point du projet où une critique du dehors et une trouvaille du
+  // dedans se recouvrent mot pour mot.
+  const creux = new Sockets([
+    { id: 'exigeant', position: [0, 0, 0], size: 0.5, forme: 'vrille', main: 'L', teinte: 3 },
+  ]);
+  const k = creux.items[0];
+  const piece = (o: { size?: number; ink?: number; forme?: string; main?: 'L' | 'D' }) =>
+    ({
+      id: 'p',
+      size: o.size ?? 0.5,
+      ink: o.ink ?? 3,
+      forme: o.forme ?? 'vrille',
+      main: o.main ?? 'L',
+    }) as unknown as Parameters<Sockets['raisonDuRefus']>[1];
+
+  check('une pièce juste n’a aucune raison d’être refusée', creux.raisonDuRefus(k, piece({})) === null, '');
+  check('trop grosse le dit', creux.raisonDuRefus(k, piece({ size: 2 })) === 'trop-grand', '');
+  check('trop menue aussi, et ce n’est pas la même chose', creux.raisonDuRefus(k, piece({ size: 0.1 })) === 'trop-petit', '');
+  check('la forme le dit', creux.raisonDuRefus(k, piece({ forme: 'te' })) === 'forme', '');
+  check('la teinte le dit', creux.raisonDuRefus(k, piece({ ink: 1 })) === 'teinte', '');
+  check('la main le dit', creux.raisonDuRefus(k, piece({ main: 'D' })) === 'main', '');
+
+  // ─── ET L'ORDRE EST LA PÉDAGOGIE ────────────────────────────────────────
+  //
+  // On ne dit qu'UNE chose à la fois : en dire deux, c'est n'en dire aucune. Il
+  // faut donc trancher quand une pièce est fausse sur plusieurs points, et
+  // l'ordre choisi n'est pas celui de `fits`.
+  //
+  // La taille d'abord, parce que le joueur la VOIT déjà : commencer par ce
+  // qu'il avait sous les yeux lui apprend que le signal dit vrai, et c'est à ce
+  // prix qu'il croira les trois autres. La main en dernier, parce qu'elle est
+  // la seule invisible : on ne l'entend donc que lorsque tout le reste est
+  // juste, c'est-à-dire au moment exact où la leçon peut porter.
+  check(
+    'fausse sur tout, c’est la taille qu’on entend — la seule qu’on voyait déjà',
+    creux.raisonDuRefus(k, piece({ size: 4, forme: 'te', ink: 1, main: 'D' })) === 'trop-grand',
+    '',
+  );
+  check(
+    'la bonne taille mais tout le reste faux : la forme',
+    creux.raisonDuRefus(k, piece({ forme: 'te', ink: 1, main: 'D' })) === 'forme',
+    '',
+  );
+  check(
+    'la forme juste : la teinte',
+    creux.raisonDuRefus(k, piece({ ink: 1, main: 'D' })) === 'teinte',
+    '',
+  );
+  check(
+    'et la main ne s’entend qu’en dernier, quand tout le reste est juste',
+    creux.raisonDuRefus(k, piece({ main: 'D' })) === 'main',
+    '',
+  );
+
+  // ─── UN CREUX QUI N'EXIGE RIEN NE REPROCHE RIEN ─────────────────────────
+  //
+  // Le pendant du refus qui parle : un creux muet sur un attribut doit rester
+  // muet. Sans ça, la boîte à formes n'aurait plus cinq leçons mais une seule.
+  const large = new Sockets([{ id: 'large', position: [0, 0, 0], size: 0.5 }]);
+  check(
+    'un creux qui n’exige que la taille se tait sur les trois autres',
+    large.raisonDuRefus(large.items[0], piece({ forme: 'te', ink: 0, main: 'D' })) === null,
+    '',
+  );
+
+  // ─── ET LE JEU L'ANNONCE VRAIMENT, EN SIMULATION ────────────────────────
+  //
+  // Tout ce qui précède teste une fonction. Ce qui suit teste le JEU : on prend
+  // une pièce de la boîte à formes, on la pose devant un creux qui n'est pas le
+  // sien, et l'on attend que l'événement sorte. Sans ça, la fonction pourrait
+  // être parfaite et n'être jamais appelée.
+  {
+    const sim = new Simulation(FORMES);
+    const perle = sim.carryables.items.find((c) => c.id === 'perle')!;
+    const cible = sim.sockets.items.find((s) => s.id === 'creux-taille')!;
+    perle.position.x = cible.position.x;
+    perle.position.y = cible.position.y;
+    perle.position.z = cible.position.z;
+    const immobile = {
+      forward: 0, strafe: 0, jump: false, sprint: false,
+      yaw: 0, pitch: 0, interact: false, throwIt: false,
+    };
+    // On simule la dépose : le décompte s'arme à la main, puisqu'on n'a pas de
+    // joueur pour appuyer sur la touche.
+    (sim as unknown as { refusEnAttente: { id: string; ticks: number } }).refusEnAttente = {
+      id: 'perle',
+      ticks: 2,
+    };
+    let dit: string | undefined;
+    for (let i = 0; i < 10 && !dit; i++) {
+      const e = sim.step(immobile, TICK_DT);
+      if (e.logementRefuse) dit = e.logementRefuse.raison;
+    }
+    check(
+      'posée dans le mauvais creux, la perle s’entend dire « trop petite »',
+      dit === 'trop-petit',
+      dit ?? 'rien du tout',
+    );
+  }
+}
+
+// =============================================================================
+{
   console.log('\n— La boîte à formes : une seule case par ligne et par colonne —');
 
   // ─── LA TABLE D'UNICITÉ, ET C'EST TOUTE LA SALLE ────────────────────────

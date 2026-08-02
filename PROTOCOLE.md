@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 386 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 398 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -311,6 +311,50 @@ pièce n'a qu'une seule destination possible, et chaque creux n'accepte qu'une
 seule pièce. C'est balayé sur sept crans d'échelle et les deux mains — trois cent
 cinquante cas — parce qu'un creux ordinaire **verrouille pour de bon** : une
 pièce logée au mauvais endroit serait perdue, et la salle morte sans retour.
+
+---
+
+## 3 quater. Le refus qui parle — partout où il y a un creux
+
+**Neuf.** Jusqu'ici, un creux qui refusait une pièce ne disait rien : elle
+restait posée à côté du trou, et rien au monde ne permettait de savoir laquelle
+des quatre valeurs clochait — la taille, la forme, la couleur, la main. Quatre
+inconnues font seize combinaisons, donc on essayait au hasard.
+
+**Le geste :** pose une pièce à côté d'un creux qui n'est pas le sien. Attends
+une demi-seconde.
+→ *Le cadre du creux se rétracte une fois*, et une phrase vient.
+
+Les cinq phrases, et il n'en vient **jamais deux à la fois** :
+
+| ce qui cloche | ce qu'on entend |
+|---|---|
+| trop grande | « Elle déborde. Le creux est taillé plus menu que ce que tu portes. » |
+| trop petite | « Elle danse dans le creux. Il la faudrait plus grande. » |
+| la forme | « Ce n'est pas ce dessin-là. Le creux en attend un autre. » |
+| la couleur | « La forme est juste, la couleur non. » |
+| **la main** | « Bonne taille, bon dessin, et elle n'entre pas. La tourner n'y changera rien. » |
+
+**L'ordre est la pédagogie, et il se teste.** Prends une pièce fausse sur tout et
+approche-la : tu dois entendre **la taille** d'abord, parce que c'est la seule
+que tu voyais déjà. Corrige, réessaie : la forme. Puis la couleur. **La main ne
+s'entend qu'en dernier**, quand tout le reste est juste — c'est-à-dire au moment
+exact où elle est la seule explication possible.
+
+**Le meilleur endroit pour l'éprouver :** la boîte à formes, `?niveau=formes`,
+qui a un creux pour chacune des quatre exigences.
+
+**Défaut à guetter :** deux phrases qui se coupent la parole, ou une phrase qui
+arrive avant que la pièce ait fini de tomber. Et surtout — **que la dernière
+phrase ne suffise pas.** Elle est censée faire comprendre le miroir sans jamais
+prononcer le mot. Si tu l'entends et que tu ne sais toujours pas quoi faire,
+c'est elle qu'il faut réécrire.
+
+**Ce que je n'ai PAS pu vérifier :** ces phrases n'ont jamais été vues à
+l'écran. Le panneau du navigateur ne s'affichait pas au moment de la correction,
+donc la boucle d'image ne tournait pas. Toute la logique est prouvée en
+simulation — l'événement part, avec la bonne raison, dans le bon ordre — mais
+l'affichage lui-même n'a pas été regardé une seule fois.
 
 ---
 
