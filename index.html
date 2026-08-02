@@ -149,6 +149,36 @@
       #debug button.fait b { text-decoration: line-through; }
       #debug button.fait .coche { opacity: 1; }
 
+      /* --- LE VERDICT, ET IL A TROIS ÉTATS ------------------------------
+         Une seule cible tactile qui tourne : rien → ça marche → ça cloche.
+         Deux boutons côte à côte seraient deux fois plus petits, et c'est au
+         pouce qu'on répondra. */
+      #debug button.marche .coche { opacity: 1; border-color: #47713c; color: #47713c; }
+      #debug button.cloche { opacity: 1; }
+      #debug button.cloche b { text-decoration: none; }
+      #debug button.cloche .coche { opacity: 1; border-color: #b5432a; color: #b5432a; }
+      #debug button.cloche { border-left-color: #b5432a; }
+      #debug .plume {
+        position: absolute; right: 5px; top: 3px;
+        width: 17px; height: 15px; line-height: 15px; text-align: center;
+        font-size: 11px; opacity: .4;
+      }
+      #debug .plume.pleine { opacity: 1; }
+      #debug .mot {
+        display: block; width: calc(100% - 26px); margin: 5px 0 1px 20px;
+        font: inherit; font-size: 11px; line-height: 1.4;
+        background: rgba(33, 28, 23, .05); color: var(--ink);
+        border: 1px solid rgba(33, 28, 23, .22); border-radius: 3px;
+        padding: 4px 5px; resize: vertical; min-height: 34px;
+      }
+      #debug .rapport {
+        display: block; width: 100%; margin: 2px 0 10px;
+        border: 1px solid var(--ink); border-left-width: 1px; border-radius: 3px;
+        padding: 6px 8px; font: inherit; font-size: 11px; font-weight: 600;
+        letter-spacing: .08em; text-transform: uppercase; text-align: center;
+        background: rgba(33, 28, 23, .06); cursor: pointer;
+      }
+
       /* --- Commandes tactiles ------------------------------------------- */
       /* Rien de tout ça n'existe au clavier : c'est `body.touch` qui l'ouvre. */
       #touch-surface, #touch-buttons { display: none; }

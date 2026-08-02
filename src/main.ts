@@ -999,19 +999,46 @@ const REPERES =
   // menant à l'endroit où on la fait, et qu'on coche en la faisant. Ce qui est
   // coché survit au rechargement — sans quoi on recommencerait la liste à chaque
   // fois qu'on recharge, ce qui arrive vingt fois par séance de test.
+  // ═══════════════════════════════════════════════════════════════════════
+  // LE PROTOCOLE EST DANS LE JEU, ET IL ÉCOUTE.
+  //
+  // Il vivait dans un fichier à la racine du dépôt. Parfait pour qui a le dépôt
+  // sous la main ; inutile pour qui teste sur un téléphone, c'est-à-dire dans
+  // les conditions réelles du jeu.
+  //
+  // Puis il n'a su qu'une chose : « fait » ou « pas fait ». Or ce n'est pas ce
+  // qu'on veut savoir. Ce qu'on veut savoir, c'est CE QUE LA PERSONNE A VU — et
+  // une case cochée ne le dit pas. Un test qui ne rend qu'un booléen a la même
+  // infirmité qu'un creux qui refuse sans dire pourquoi : il signale, il
+  // n'apprend rien.
+  //
+  // Chaque ligne porte donc un VERDICT à trois états et un MOT libre, et le
+  // panneau fabrique le rapport à recopier. Le verdict tourne sur une seule
+  // cible tactile — rien, ça marche, ça cloche — parce que deux boutons côte à
+  // côte seraient deux fois plus petits, et que c'est au pouce qu'on répondra.
+  // ═══════════════════════════════════════════════════════════════════════
+  type Avis = { v: '' | 'ok' | 'non'; c: string };
   const CLE_FAITS = `sumi.protocole.${MODE ?? 'hall'}`;
-  const faits = new Set<string>(
+  const avis = new Map<string, Avis>(
     (() => {
       try {
-        return JSON.parse(localStorage.getItem(CLE_FAITS) ?? '[]') as string[];
+        const brut = JSON.parse(localStorage.getItem(CLE_FAITS) ?? '{}') as unknown;
+        // L'ancienne mémoire était un tableau de titres cochés. On la relit
+        // plutôt que de la jeter : personne ne doit perdre une séance de test
+        // parce que le format a changé sous ses pieds.
+        if (Array.isArray(brut)) {
+          return brut.map((t) => [String(t), { v: 'ok', c: '' }] as [string, Avis]);
+        }
+        return Object.entries(brut as Record<string, Avis>);
       } catch {
         return [];
       }
     })(),
   );
+  const lire = (t: string): Avis => avis.get(t) ?? { v: '', c: '' };
   const noter = (): void => {
     try {
-      localStorage.setItem(CLE_FAITS, JSON.stringify([...faits]));
+      localStorage.setItem(CLE_FAITS, JSON.stringify(Object.fromEntries(avis)));
     } catch {
       /* sans mémoire, la liste vit le temps de la séance */
     }
@@ -1032,6 +1059,7 @@ const REPERES =
     ['descente', '?niveau=descente&debug=1'],
     ['montée', '?niveau=montee&debug=1'],
     ['formes', '?niveau=formes&debug=1'],
+    ['banc', '?niveau=banc&debug=1'],
     ['rêve', '?niveau=reve&graine=7&debug=1'],
   ] as const) {
     const a = document.createElement('a');
@@ -1042,31 +1070,97 @@ const REPERES =
   }
   panneau.appendChild(mondes);
 
+  // LE RAPPORT, EN HAUT. C'est ce qu'on vient chercher à la fin d'une séance, et
+  // le mettre en bas d'une liste de douze demanderait de la faire défiler une
+  // fois de plus — au pouce, sur un écran de téléphone, après une heure de jeu.
+  const rapport = document.createElement('button');
+  rapport.className = 'rapport';
+  const ETIQUETTE = 'Copier le rapport';
+  rapport.textContent = ETIQUETTE;
+  rapport.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const lignes: string[] = [`Séance de test — ${MODE ?? 'hall'}`, ''];
+    let repondu = 0;
+    for (const r of REPERES) {
+      const a = lire(r.titre);
+      if (a.v === '' && !a.c) continue;
+      repondu++;
+      const marque = a.v === 'ok' ? '[OK ]' : a.v === 'non' ? '[NON]' : '[ ? ]';
+      lignes.push(`${marque} ${r.titre}`);
+      if (a.c) lignes.push(`       ${a.c}`);
+    }
+    if (repondu === 0) lignes.push('(rien de renseigné)');
+    const texte = lignes.join('\n');
+    if (navigator.clipboard) void navigator.clipboard.writeText(texte).catch(() => {});
+    rapport.textContent = repondu
+      ? `Copié — ${repondu} réponse${repondu > 1 ? 's' : ''}`
+      : 'Rien à copier';
+    setTimeout(() => {
+      rapport.textContent = ETIQUETTE;
+    }, 1800);
+  });
+  panneau.appendChild(rapport);
+
   REPERES.forEach((r, i) => {
     const b = document.createElement('button');
-    if (faits.has(r.titre)) b.classList.add('fait');
 
-    // La coche, à gauche, et elle NE VOYAGE PAS : on la touche pour dire
-    // « celui-là je l'ai fait », sans quitter l'endroit où l'on est.
+    // LE VERDICT. Il ne voyage pas : on le touche pour dire ce qu'on a vu, sans
+    // quitter l'endroit où l'on est.
     const coche = document.createElement('span');
     coche.className = 'coche';
-    coche.textContent = faits.has(r.titre) ? '✓' : '';
+
+    // LE MOT. Il ne s'ouvre qu'à la demande : douze champs de texte dépliés
+    // rendraient la liste illisible, et l'on vient d'abord pour la liste.
+    const plume = document.createElement('span');
+    plume.className = 'plume';
+    plume.textContent = '\u270e';
+    const mot = document.createElement('textarea');
+    mot.className = 'mot';
+    mot.placeholder = 'ce que tu as vu…';
+    mot.value = lire(r.titre).c;
+    mot.style.display = 'none';
+
+    const peindre = (): void => {
+      const a = lire(r.titre);
+      b.classList.toggle('marche', a.v === 'ok');
+      b.classList.toggle('cloche', a.v === 'non');
+      b.classList.toggle('fait', a.v === 'ok');
+      coche.textContent = a.v === 'ok' ? '\u2713' : a.v === 'non' ? '\u2717' : '';
+      plume.classList.toggle('pleine', a.c.length > 0);
+    };
+
     coche.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (faits.has(r.titre)) faits.delete(r.titre);
-      else faits.add(r.titre);
-      b.classList.toggle('fait', faits.has(r.titre));
-      coche.textContent = faits.has(r.titre) ? '✓' : '';
+      const a = lire(r.titre);
+      a.v = a.v === '' ? 'ok' : a.v === 'ok' ? 'non' : '';
+      avis.set(r.titre, a);
+      peindre();
       noter();
+    });
+
+    mot.addEventListener('click', (e) => e.stopPropagation());
+    mot.addEventListener('input', () => {
+      const a = lire(r.titre);
+      a.c = mot.value;
+      avis.set(r.titre, a);
+      peindre();
+      noter();
+    });
+    plume.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ouvert = mot.style.display !== 'none';
+      mot.style.display = ouvert ? 'none' : 'block';
+      if (!ouvert) mot.focus();
     });
 
     const t = document.createElement('b');
     const k = document.createElement('kbd');
-    k.textContent = LEGENDES[i] ?? '·';
+    k.textContent = LEGENDES[i] ?? '\u00b7';
     t.append(k, r.titre);
-    const s = document.createElement('small');
-    s.textContent = r.verifier;
-    b.append(coche, t, s);
+    const s2 = document.createElement('small');
+    s2.textContent = r.verifier;
+    b.append(coche, plume, t, s2, mot);
+    peindre();
     b.addEventListener('click', () => {
       allerA(i);
       // Le bouton garde le clavier s'il garde le foyer : la barre d'espace le
