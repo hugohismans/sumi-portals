@@ -104,6 +104,25 @@ export interface SalleModule {
   stations: [number, number, number][];
 
   /**
+   * Porte INTERNE par laquelle le Pinceau doit passer pour rejoindre chaque
+   * station. Autant d'entrées que de stations ; `null` : il y va en droite
+   * ligne. Absent : aucune station n'exige de porte.
+   *
+   * Il en faut dès qu'une salle a des stations des deux côtés d'une paroi. Le
+   * Pinceau vole, lui — il n'a aucune raison de connaître les murs — et sans ça
+   * il traverse vingt mètres de maçonnerie en ligne droite. On ne lit alors pas
+   * « suis-moi », on lit « il s'est téléporté », et le joueur reste planté là
+   * sans savoir par où passer. C'est déjà arrivé dans le monde central, avec
+   * cinq cents mètres de vide au lieu de vingt de pierre.
+   *
+   * L'autrice de l'atelier du haut l'a signalé sans pouvoir le corriger : ses
+   * stations descendent dans la cour, la porte est à elle, mais le guide
+   * appartient à l'assemblage. Ce champ est la réponse — la salle nomme sa
+   * propre porte, et l'assemblage n'a plus rien à deviner.
+   */
+  stationsPorte?: (string | null)[];
+
+  /**
    * Le raccord, tenu au mètre près : où l'on arrive, où l'on repart, et à
    * quelle échelle. C'est le seul contrat avec le reste du monde, et le seul
    * endroit où une erreur coûte à quelqu'un d'autre que soi.

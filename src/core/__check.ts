@@ -2561,6 +2561,53 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     }
   }
 
+  // ─── LES FILS QUI PENDENT ENTRE DEUX FICHIERS ───────────────────────────
+  //
+  // Une salle déclare son logement et son tableau ; l'assemblage décide ce
+  // qu'ils descellent. Personne ne voit les deux à la fois, et c'est le seul
+  // endroit du projet où l'on peut écrire un nom qui ne désigne rien : la
+  // salle compile, l'assemblage compile, la porte reste scellée POUR TOUJOURS,
+  // et le joueur cherche pendant vingt minutes une clef qui n'existe pas.
+  //
+  // Deux salles de la montée y sont passées la même nuit — l'escalier, dont le
+  // dernier verrou n'appartenait pas à la salle, et l'atelier du haut, dont
+  // deux tableaux se ressemblent et dont un seul rend le voyage obligatoire.
+  {
+    const noms = new Set<string>();
+    for (const s of SALLES_MONTEE) {
+      for (const k of s.sockets ?? []) noms.add(k.id);
+      for (const t of s.tableaux ?? []) noms.add(t.id);
+    }
+    const fantomes = RACCORDS_MONTEE.map((r) => r.condition).filter(
+      (c): c is string => c !== undefined && !noms.has(c),
+    );
+    check(
+      'chaque porte scellée de la montée nomme un verrou qui existe',
+      fantomes.length === 0,
+      fantomes.join(', '),
+    );
+  }
+
+  // ET LE PINCEAU PASSE PAR DES PORTES QUI EXISTENT. Même famille de faute,
+  // même invisibilité : un `stationsPorte` mal orthographié fait voler le guide
+  // à travers vingt mètres de pierre, et l'on ne lit plus « suis-moi » mais
+  // « il s'est téléporté ».
+  {
+    const fautes: string[] = [];
+    for (const s of SALLES_MONTEE) {
+      if (!s.stationsPorte) continue;
+      if (s.stationsPorte.length !== s.stations.length) {
+        fautes.push(`${s.nom} : ${s.stationsPorte.length} portes pour ${s.stations.length} jalons`);
+        continue;
+      }
+      const siennes = new Set((s.portals ?? []).map((p) => p.id));
+      for (const id of s.stationsPorte) {
+        if (id !== null && !siennes.has(id)) fautes.push(`${s.nom} : « ${id} » n’est pas une de ses portes`);
+      }
+    }
+    check('le guide de la montée ne passe que par des portes réelles', fautes.length === 0, fautes[0] ?? '');
+  }
+
   // ET UNE PORTE À DESSINER NAÎT FERMÉE, ici comme dans la descente. Le
   // scellement ne vivait que dans la remise à zéro, qui n'est jamais appelée au
   // lancement : on commençait la partie avec toutes les portes déjà ouvertes,

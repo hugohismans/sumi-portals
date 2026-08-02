@@ -104,7 +104,19 @@ const RACCORDS: Raccord[] = [
   // rompre : la salle passe toutes ses vérifications, l'assemblage aussi, et
   // c'est l'ÉNIGME qui manque, pas le code.
   { depuis: 3, vers: 4, cran: +1, condition: 'creux-escalier' },
-  { depuis: 4, vers: 5, cran: +1 },
+  // ET CELUI-CI SE CONDITIONNE SUR LE TABLEAU DE LA COUR, PAS SUR CELUI DE
+  // L'ŒIL — c'est la seule chose qui rende le voyage obligatoire.
+  //
+  // L'atelier du haut porte deux tableaux. Celui de l'œil (palier 3) se
+  // satisfait sans jamais descendre : trois familles, toutes sur le toit. Celui
+  // de la cour (palier 2) demande les pots ET les tuiles, donc ×1 ET ×4, donc
+  // les deux étages. Sceller la sortie sur le mauvais des deux rendrait
+  // facultative la moitié de la salle, et personne ne le verrait : les deux
+  // tableaux existent, les deux se remplissent, et c'est la LEÇON qui manque.
+  //
+  // Son autrice l'a écrit en gras dans son en-tête sans pouvoir le corriger —
+  // un tableau appartient à la salle, la porte qu'il descelle appartient ici.
+  { depuis: 4, vers: 5, cran: +1, condition: 'haut-tableau-cour' },
 ];
 
 /** Écart d'échelle entre la sortie d'une salle et l'entrée de la suivante. */
@@ -182,6 +194,12 @@ const assembler = (): LevelDef => ({
    * taille du joueur qui le regardera.
    */
   guideEchelle: SALLES.flatMap((s) => s.stations.map(() => s.entree.echelle)),
+  /**
+   * Par où le Pinceau PASSE. Voir `SalleModule.stationsPorte` : une salle dont
+   * les stations sont des deux côtés d'une paroi doit nommer sa porte, sinon le
+   * guide traverse la pierre et cesse d'être un guide.
+   */
+  guidePorte: SALLES.flatMap((s) => s.stationsPorte ?? s.stations.map(() => null)),
   // LE BUT EST LÀ OÙ DORT L'OR, sur la corniche au bout de la vallée. Le rayon
   // suit l'échelle du lieu : six mètres à taille d'homme, quatre-vingt-seize à
   // ×16, où le joueur en fait vingt-huit — un but qu'on ne peut pas manquer en
