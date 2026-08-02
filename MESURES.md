@@ -249,3 +249,62 @@ d'une pénétration.
 Les deux premières étaient **impossibles à écrire** avant le correctif, et le
 fichier de vérifications portait un commentaire disant pourquoi. Il est parti
 avec le défaut.
+
+## ON RAMASSE À TRAVERS LES MURS — défaut connu, contourné deux fois
+
+Trouvé le 3 août par l'autrice de l'escalier, en essayant de comprendre pourquoi
+sa salle se résolvait sans qu'on ait rien fait.
+
+`Carryables.targeted` ne teste **aucune occultation**. Elle mesure une distance
+et un angle, rien de plus :
+
+```
+distance  ≤ 1,60 × sa taille    (11,52 m à ×4, 46,08 m à ×16)
+angle     produit scalaire ≥ 0,25 avec la direction du regard
+```
+
+Il n'y a pas un mot sur ce qu'il y a **entre** l'œil et l'objet. Un géant debout
+sur un toit plat cueille donc ce qui est rangé sous ses pieds, à travers un
+mètre de pierre, sans jamais rapetisser.
+
+### Pourquoi ça compte plus qu'il n'y paraît
+
+Le rayon de saisie suit la taille du joueur. À ×1 il vaut 2,88 m et l'on est
+rarement à moins de trois mètres d'un objet séparé de soi par un mur. **À ×4 il
+vaut 11,52 m, à ×16 il vaut 46 m** — et là, tout ce qui est dans la pièce
+voisine, ou dans la cave, ou sous le plancher, est à portée.
+
+C'est-à-dire que le défaut ne se manifeste QUE dans les salles fondées sur la
+grandeur, c'est-à-dire dans celles que ce jeu écrit maintenant. Il était
+invisible tant qu'on jouait entre ×1/4 et ×1.
+
+### Les deux contournements, et ce qu'ils coûtent
+
+**L'escalier** a planté onze mètres de roche pleine — la « butte » — pour mettre
+son jeton à 14,59 m d'un poste où le géant en fait 11,52. Son autrice le dit
+elle-même : c'est de la géométrie qui existe pour une raison que le joueur ne
+verra jamais, et ce genre de pièce vieillit mal.
+
+**L'atelier du haut** a relevé ses parapets à 9,40 m au-dessus du dallage, ce
+qui se raconte mieux — mais qui ferme aussi la VUE sur la cour, un effet dont la
+salle avait besoin par ailleurs. On ne saura jamais lequel des deux motifs a
+décidé de la cote.
+
+### La correction, et pourquoi elle attend
+
+Un segment de l'œil à l'objet, testé contre les boîtes du monde ; on refuse la
+prise si quelque chose est franchement entre les deux. Le monde est fait de
+boîtes alignées sur les axes, donc c'est une intersection segment/AABB — vingt
+lignes, pas un chantier.
+
+Ce qui attend n'est pas l'écriture, c'est **l'épreuve**. Ça change le geste le
+plus fréquent du jeu, et les cas limites sont ceux qu'on ne devine pas : un
+objet posé dans un creux encastré, un galet derrière une balustrade qu'on doit
+pouvoir attraper par-dessus, une caisse à demi engagée sous une dalle. Chacun
+peut se mettre à refuser sans que rien ne l'annonce, et le joueur n'aura aucun
+moyen de comprendre pourquoi ce qu'il voit ne se prend plus.
+
+**À faire avec un banc qui liste, dans les cinq niveaux, tout ce qui devient
+insaisissable — pas avec un correctif de vingt lignes et un essai de deux
+minutes.** C'est exactement la leçon de la catapulte du linteau : un correctif
+juste au mauvais moment est un correctif faux.
