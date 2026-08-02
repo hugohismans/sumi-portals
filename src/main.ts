@@ -175,6 +175,15 @@ for (const r of LEVEL.regions ?? []) {
 /** Boîte de chaque région : dit au front d'encre jusqu'où il doit courir. */
 const bornesDeRegion = new Map<string, { min: [number, number, number]; max: [number, number, number] }>();
 for (const r of LEVEL.regions ?? []) bornesDeRegion.set(r.name, { min: r.min, max: r.max });
+/**
+ * Les régions où l'affichage de l'échelle se tait. Voir `RegionDef.muet`.
+ *
+ * On garde les boîtes plutôt que les noms : la question posée soixante fois par
+ * seconde est « suis-je dedans », et elle ne demande rien d'autre.
+ */
+const REGIONS_MUETTES = (LEVEL.regions ?? [])
+  .filter((r) => r.muet)
+  .map((r) => ({ min: r.min, max: r.max }));
 pigments.appliquer(worldView.parRegion, pigmentDe, pigmentAccentDe);
 
 const goalMarker = buildGoalMarker(LEVEL);
@@ -801,6 +810,34 @@ function applyScale(force = false): void {
   const [value, sub] = SCALE_LABELS[level] ?? [`×${scale}`, ''];
   scaleValue.textContent = value;
   scaleSub.textContent = sub;
+}
+
+/**
+ * L'AFFICHAGE SE TAIT LÀ OÙ LE MONDE NE DOIT PLUS RIEN DIRE.
+ *
+ * Appelé à chaque image, parce que la réponse dépend d'où l'on se tient et non
+ * de la taille qu'on fait. Le silence est franc : voir l'affichage s'éteindre
+ * est une information — « à partir d'ici, tu es seul » — et c'est celle qu'on
+ * veut donner. Un fondu ressemblerait à une panne.
+ */
+let muetEnCours = false;
+function surveillerLeSilence(): void {
+  if (REGIONS_MUETTES.length === 0) return;
+  const p = sim.player.position;
+  const dedans = REGIONS_MUETTES.some(
+    (b) =>
+      p.x >= b.min[0] && p.x <= b.max[0] &&
+      p.y >= b.min[1] && p.y <= b.max[1] &&
+      p.z >= b.min[2] && p.z <= b.max[2],
+  );
+  if (dedans === muetEnCours) return;
+  muetEnCours = dedans;
+  if (dedans) {
+    scaleValue.textContent = '—';
+    scaleSub.textContent = '';
+  } else {
+    applyScale(false);
+  }
 }
 
 applyScale(true);
@@ -1539,6 +1576,7 @@ function frame(now: number): void {
   // entend donc une foulée par pas réel, et la cadence suit naturellement la
   // vitesse — marche, course, et toutes les tailles.
   ambiance.setEchelle(scale);
+  surveillerLeSilence();
   if (sim.player.grounded) {
     const parcouru = Math.hypot(sim.player.velocity.x, sim.player.velocity.z) * dt;
     stepPhase += parcouru / (scale * PLAYER_HEIGHT);

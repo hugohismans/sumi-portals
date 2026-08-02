@@ -349,6 +349,31 @@ export interface RegionDef {
   /** Boîte englobante : sert à savoir dans quelle région on se trouve. */
   min: [number, number, number];
   max: [number, number, number];
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ICI, LE MONDE NE DIT PLUS DE QUELLE TAILLE ON EST.
+   *
+   * Le coin supérieur gauche affiche en permanence « ×1 — taille normale ».
+   * C'est juste partout ailleurs : ce jeu n'a pas d'interface, mais il a un
+   * étalon, et cet étalon-là est écrit en toutes lettres.
+   *
+   * Or le troisième mouvement repose sur une salle où **on ne sait plus quelle
+   * taille on fait** — les parois sont du grain de papier, et le grain de
+   * papier a la même allure à toutes les échelles. Cette salle était
+   * impossible, et rien ne l'aurait signalé : on l'aurait bâtie, mesurée,
+   * vérifiée, et l'affichage l'aurait éventée dès la première seconde.
+   *
+   * Le silence est franc et non progressif. Voir l'affichage se taire EST une
+   * information — « à partir d'ici, tu es seul » — et c'est exactement celle
+   * qu'on veut donner. Un fondu laisserait croire à une panne.
+   *
+   * (Et l'on sait maintenant qu'il reste un second étalon involontaire : le
+   * brouillard, qui porte une distance fixe en mètres et donc de moins en moins
+   * de longueurs de corps à mesure qu'on grandit — 889 enjambées à ×1/4 contre
+   * 44 à ×16. Une salle vraiment sans étalon doit aussi mentir sur l'air.)
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  muet?: boolean;
   /** Le papier : fond du ciel et couleur du brouillard. */
   paper: string;
   /** Quatre aplats, du plus clair au plus soutenu, plus l'accent. */
