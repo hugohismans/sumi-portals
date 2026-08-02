@@ -1,324 +1,239 @@
 import type {
-  BoxDef,
-  CarryableDef,
-  LevelDef,
-  PortalPairDef,
-  RegionDef,
-  SocketDef,
-  VeilleurDef,
+  BoxDef, CarryableDef, LevelDef, PortalPairDef, RegionDef, SocketDef, VeilleurDef,
 } from '../core/types.js';
 import type { Repere } from '../debug/reperes.js';
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════
  * LE BANC D'ESSAI — douze stations, et un œil humain devant chacune.
  *
- * Quatre cent soixante vérifications tournent en simulation et personne n'a
- * jamais REGARDÉ la plupart de ce qu'elles prouvent. Une mesure dit qu'un
- * linteau ferme le passage ; elle ne dit pas si l'on comprend qu'on est arrêté.
- * Elle dit qu'un front d'encre met 4,6 s ; elle ne dit pas si on le voit courir.
- *
- * Ce fichier n'est pas un niveau. C'est un ATELIER : une dalle nue, douze
- * épreuves alignées, et rien d'autre. Pas d'énigme, pas d'ambiance, pas de
- * beauté — chaque station porte le minimum de géométrie que son épreuve exige,
- * et tout ce qu'on ajouterait ne servirait qu'à masquer un défaut.
- *
- * ─── CE QUI GARANTIT QU'ON NE PEUT PAS LE CASSER ──────────────────────────
- *
- * 1. TOUS LES LOGEMENTS SONT `rend: true`. Ailleurs un creux verrouille pour de
- *    bon, et c'est la bonne règle : un progrès qu'on défait par mégarde n'est
- *    pas un progrès. Ici il n'y a RIEN à gagner, donc rien à protéger — et un
- *    banc qu'on ne peut éprouver qu'une fois par chargement n'est pas un banc.
- *    Une pièce logée se reprend, et la station se rejoue.
- * 2. UN LEVIER DE RAPPEL au départ : tout retourne à sa place d'un coup.
- * 3. AUCUNE PIÈCE N'ENTRE DANS UN CREUX QU'ELLE NE VISE PAS — voir la table de
- *    la station 1. Ce n'est plus une sécurité vitale grâce à (1), mais un creux
- *    qui happe la mauvaise pièce ferait mentir l'épreuve d'à côté.
- *
- * `echelle` EST UN PALIER partout — −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16 — SAUF
- * `guideEchelle`, qui est un multiplicateur. C'est la seule exception du projet
- * et elle a déjà produit un guide de taille zéro, donc invisible.
- * ═══════════════════════════════════════════════════════════════════════════
+ * Quatre cent soixante vérifications tournent en simulation, et presque rien
+ * n'a jamais été REGARDÉ : une mesure dit qu'un linteau ferme le passage, pas
+ * si l'on comprend qu'on est arrêté ; qu'un front d'encre dure 4,6 s, pas si on
+ * le voit courir. Ce n'est donc pas un niveau mais un atelier — une dalle nue,
+ * douze épreuves alignées, le minimum de géométrie que chacune exige. ON NE
+ * PEUT PAS LE CASSER : tous les logements sont `rend: true` (ailleurs un creux
+ * verrouille pour de bon, mais ici il n'y a rien à gagner, et un banc qu'on
+ * n'éprouve qu'une fois par chargement n'est pas un banc), un levier de rappel
+ * remet tout en place, et malgré ces deux filets aucune pièce n'entre dans un
+ * creux qu'elle ne vise pas — voir la table de la station 1. Et `echelle` EST UN
+ * PALIER partout (−1 = ×1/4, 0 = ×1, 1 = ×4) SAUF `guideEchelle`, seul
+ * multiplicateur du projet, qui a déjà produit un guide de taille zéro.
  */
 
 type V3 = [number, number, number];
 
 /**
- * LE PAS DU BANC. Trente-quatre mètres : assez pour qu'une station n'empiète
- * jamais sur sa voisine (la plus large en occupe seize), assez peu pour qu'on
- * fasse le trajet à pied sans s'ennuyer. TOUT le fichier en dépend — décor et
- * repères — donc déplacer une station se fait ici et nulle part ailleurs.
+ * TRENTE-QUATRE MÈTRES entre deux stations : assez pour qu'aucune n'empiète sur
+ * sa voisine (la plus large en occupe seize), assez peu pour marcher sans
+ * s'ennuyer. Décor ET repères en dépendent — un repère n'écrit jamais une
+ * coordonnée, il l'emprunte à sa station, si bien qu'une station déplacée emmène
+ * son repère et qu'on ne juge jamais depuis l'intérieur d'un mur.
  */
-const PAS = 34;
-/** Abscisse de la station n, numérotée de 1 à 12 comme dans le protocole. */
-const X = (n: number): number => (n - 1) * PAS;
-
-// ─── LES CONSTANTES QUE LES REPÈRES RÉUTILISENT ─────────────────────────────
-// Un repère ne retape jamais une coordonnée : il la DEMANDE à la station. Une
-// station qu'on déplace emmène donc son repère, et l'on ne se retrouve jamais à
-// vérifier une épreuve depuis l'intérieur d'un mur.
+const X = (n: number): number => (n - 1) * 34;
+/** Le banc se parcourt vers l'est. `yawToForward(π/2)` vaut (1, 0, 0). */
+const EST = Math.PI / 2;
 /** Station 1 : la planche des cinq creux, et l'ordonnée de chacun. */
 const PLANCHE_Y = 0.6;
 const CREUX_Z = [-10, -5, 0, 5, 10];
-/** Station 4 : la dalle où l'on se tient, et l'objet derrière le muret. */
+/** Station 4 : le muret, et le cube posé deux mètres derrière lui. */
 const MURET_X = X(4) + 0.5;
-const OBJET_4 = X(4) + 2.0;
 /** Station 5 : la langue de dalle au-dessus du vide. */
 const LANGUE_Z0 = 2;
-/** Station 10 : la largeur du vide. MESURÉE, voir plus bas. */
-const VIDE = 4.8;
-/** Station 12 : la maquette, et le pinceau qui la peindra. */
-const MAQUETTE: V3 = [X(12), 0, 32];
-
 /**
- * LA PALETTE. Neutre, claire, sans caractère — c'est un banc, il doit
- * ressembler à un banc. Toute couleur qui ferait envie détournerait l'œil de ce
- * qu'on est venu juger. Brouillard large : on doit voir la station suivante
- * arriver, sinon on ne sait plus où l'on en est.
+ * STATION 10 : LA LARGEUR DU VIDE, MESURÉE ET NON DÉDUITE. Portée maximale d'un
+ * saut à ×1, relevée sur cette géométrie même : à l'arrêt 3,70 m · à l'arrêt +
+ * Maj 4,76 · élan de 3 m 4,81 · élan de 20 m 4,86 · élan de 20 m mais sauté
+ * 60 cm trop tôt 4,26 · élan de 20 m + Maj 6,36.
+ *
+ * 4,20 sépare donc l'élan du reste : cinquante centimètres de trop en sautant
+ * du bord, soixante-six de tolérance sur l'instant du décollage quand on s'est
+ * élancé. ET L'ON N'EXIGE SURTOUT PAS `Maj` : le sprint n'existe qu'au clavier.
+ * Un vide de 5,60 aurait séparé bien plus proprement la course de la marche, et
+ * aurait été la seule station qui n'existe pas sur téléphone — là où ceci se lit.
  */
-const BANC_REGION: RegionDef = {
-  name: 'banc',
-  min: [-40, -30, -30],
-  max: [420, 60, 56],
-  paper: '#f2f0ea',
-  colors: ['#e6e3da', '#cfcbc0', '#a9a49a', '#7b7f86'],
-  ink: '#2a2925',
-  brouillard: 340,
-};
+const VIDE = 4.2;
+/** Station 12 : la maquette, longue de vingt-trois mètres — voir `OR_REGION`. */
+const MAQ_X = X(12);
+const MAQ_Z0 = 26;
+const MAQ_Z1 = 49;
 
+/** Neutre : une couleur qui plairait détournerait l'œil. Brouillard large. */
+const BANC_REGION: RegionDef = {
+  name: 'banc', min: [-40, -30, -30], max: [420, 60, 58],
+  paper: '#f2f0ea', colors: ['#e6e3da', '#cfcbc0', '#a9a49a', '#7b7f86'],
+  ink: '#2a2925', brouillard: 340,
+};
 /**
- * STATION 6 : SA PROPRE RÉGION, et c'est toute l'épreuve. `muet: true` fait
- * taire l'affichage « ×1 · taille normale » du coin supérieur gauche. La zone
- * peinte au sol a EXACTEMENT l'empreinte de cette boîte : ce qu'on voit et ce
- * que le moteur teste sont la même chose, sans quoi le silence tomberait un pas
- * trop tôt ou trop tard et l'on croirait à une panne.
+ * STATION 6 : SA PROPRE RÉGION, et c'est toute l'épreuve. Le rectangle peint au
+ * sol a EXACTEMENT l'empreinte de cette boîte : ce qu'on voit et ce que le
+ * moteur teste sont la même chose, sans quoi le silence tomberait un pas trop
+ * tôt et l'on conclurait à une panne.
  */
 const SILENCE_REGION: RegionDef = {
-  name: 'silence',
-  min: [X(6) - 8, -3, -8],
-  max: [X(6) + 8, 30, 8],
-  muet: true,
-  paper: '#eeeeec',
-  colors: ['#e2e2df', '#c9c9c4', '#a3a39c', '#8b8b84'],
-  ink: '#2a2925',
-  brouillard: 340,
+  name: 'silence', min: [X(6) - 8, -3, -8], max: [X(6) + 8, 30, 8], muet: true,
+  paper: '#eeeeec', colors: ['#e2e2df', '#c9c9c4', '#a3a39c', '#8b8b84'],
+  ink: '#2a2925', brouillard: 340,
 };
-
 /**
- * STATION 12 : la région qui ATTEND une couleur. Tant que l'or n'est pas rendu
- * elle est en lavis gris ; le pinceau réveillé la repeint depuis l'endroit du
- * geste. Elle est petite et lointaine EXPRÈS : c'est le cas qui avait cassé —
- * le front partait du pinceau, mettait quatre secondes à traverser le vide qui
- * l'en séparait, puis basculait la maquette en un dixième de seconde.
+ * STATION 12 : LA RÉGION QUI ATTEND UNE COULEUR, ET SA BOÎTE EST L'ÉPREUVE. Le
+ * front est une SPHÈRE : sa course visible va de `debut`, point de la région le
+ * plus proche du pinceau, à `portee`, coin le plus éloigné × 1,14, en quatre
+ * cinquièmes des 4,6 s. Deux choses décident de ce qu'on voit. LA BOÎTE DOIT
+ * COLLER À LA MAQUETTE — le vide au-delà du dernier volume est du temps dépensé
+ * sur rien, et c'est la fin de course, donc la partie lente : première version,
+ * boîte de 16 × 27 × 18 pour une maquette de 8 × 8, elle se coloriait en 0,53 s.
+ * Et LA MAQUETTE DOIT ÊTRE LONGUE DANS L'AXE DU REGARD — la frange vaut ±16 % du
+ * rayon plus des gouttes 17 % devant, soit dix mètres de flou à trente mètres, et
+ * huit mètres de côté seraient avalés en une bouchée quelle que soit la durée
+ * réglée. D'où une bande de vingt-trois mètres commençant à vingt-six : rien
+ * pendant 0,48 s, puis l'encre la traverse de 0,48 à 2,14 s — une seconde
+ * soixante-six, plafond atteignable pour une région lointaine.
  */
 const OR_REGION: RegionDef = {
-  name: 'or',
-  min: [MAQUETTE[0] - 8, -3, MAQUETTE[2] - 9],
-  max: [MAQUETTE[0] + 8, 24, MAQUETTE[2] + 9],
-  pigment: 'or',
-  paper: '#f4efe2',
-  colors: ['#eee6cd', '#d9bc7a', '#a98b46', '#c8a13a'],
-  ink: '#2a2925',
-  brouillard: 340,
+  name: 'or', min: [MAQ_X - 4.5, -0.5, MAQ_Z0], max: [MAQ_X + 4.5, 3.2, MAQ_Z1],
+  pigment: 'or', paper: '#f4efe2', colors: ['#eee6cd', '#d9bc7a', '#a98b46', '#c8a13a'],
+  ink: '#2a2925', brouillard: 340,
 };
-
-const b = (min: V3, max: V3, ink = 0, opts: Partial<BoxDef> = {}): BoxDef => ({
-  min,
-  max,
-  ink,
-  region: 'banc',
-  ...opts,
-});
-
+const b = (min: V3, max: V3, ink = 0, opts: Partial<BoxDef> = {}): BoxDef =>
+  ({ min, max, ink, region: 'banc', ...opts });
 /**
- * LA DALLE. Découpée en huit pavés JOINTIFS pour ménager les trois trous des
- * stations 5 et 10. Jointifs et jamais chevauchants : `facesConfondues` ne
- * compare que deux `min` entre eux ou deux `max` entre eux — un `max` posé
- * contre un `min` ne se dispute rien. Deux pavés qui se recouvraient d'un
- * centimètre, eux, donneraient une couture grésillante de quatre cents mètres.
- *
- * `outline: false` : sinon chaque couture serait tracée à l'encre en plein
- * milieu du terrain, comme un trait de crayon oublié.
- *
- * Épaisseur 2,5 m, et rien du banc ne descend plus bas : le rattrapage se
- * déclenche à vingt mètres SOUS le point le plus bas du monde, et c'est ce
- * nombre-là qui fixe la durée de la chute de la station 5.
+ * LA DALLE, en huit pavés JOINTIFS qui ménagent les trois trous des stations 5
+ * et 10. `facesConfondues` compare deux `min` entre eux ou deux `max` entre eux,
+ * jamais un `max` contre un `min` : deux pavés bord à bord ne se disputent donc
+ * rien, quand deux pavés se recouvrant d'un centimètre donneraient une couture
+ * grésillante de quatre cents mètres — et `outline: false`, sinon cette couture
+ * serait tracée à l'encre. ÉPAISSEUR 2,5 M, RIEN PLUS BAS : le rattrapage se
+ * déclenche vingt mètres sous le point le plus bas du monde, et ce nombre fixe
+ * la chute de la station 5 (mesurée : 2,97 s).
  */
-const BAS = -2.5;
 const sol = (x0: number, x1: number, z0: number, z1: number): BoxDef =>
-  b([x0, BAS, z0], [x1, 0, z1], 0, { outline: false });
-
+  b([x0, -2.5, z0], [x1, 0, z1], 0, { outline: false });
 const T10 = X(10);
+const NORD = 54; // Le bord nord de la dalle : la maquette de la station 12 y court.
 const DALLE: BoxDef[] = [
-  sol(-24, X(5) - 7, -20, 44),
+  sol(-24, X(5) - 7, -20, NORD),
   sol(X(5) - 7, X(5) + 7, -20, LANGUE_Z0),
-  sol(X(5) - 7, X(5) + 7, 16, 44),
-  sol(X(5) + 7, T10, -20, 44),
+  sol(X(5) - 7, X(5) + 7, 16, NORD),
+  sol(X(5) + 7, T10, -20, NORD),
+  // Les deux vides de la station 10, séparés par la bande de trois mètres qui
+  // sert de chemin de retour : un saut raté coûte dix secondes, jamais la partie.
   sol(T10, T10 + VIDE, -20, -13),
   sol(T10, T10 + VIDE, -3, 3),
-  sol(T10, T10 + VIDE, 13, 44),
-  sol(T10 + VIDE, 400, -20, 44),
+  sol(T10, T10 + VIDE, 13, NORD),
+  sol(T10 + VIDE, 400, -20, NORD),
 ];
-
-/**
- * UNE BORNE PAR STATION, et sa hauteur donne son numéro. On se situe sans lire
- * et sans compter : la borne de la douzième fait trois fois celle de la
- * première. C'est le seul ornement du banc, et il est fonctionnel.
- */
+/** Une borne par station : sa hauteur donne son numéro, de 3,00 à 9,60 m. */
 const borne = (n: number): BoxDef =>
   b([X(n) - 0.4, 0, -17.4], [X(n) + 0.4, 2.4 + 0.6 * n, -16.6], 2);
-
 /**
- * UNE PORTE BASSE, telle qu'on l'a mesurée : deux jambages, un linteau, et un
- * mur qui continue de part et d'autre — sans quoi l'on contournerait sans rien
- * apprendre. Le linteau DÉBORDE de cinq centimètres en x et de dix en z : ses
- * faces se noient donc dans les jambages au lieu de leur être coplanaires, et
- * son dessus reste cinq centimètres au-dessus du leur.
- *
- * `seuil` à 0 pour la station 7, à 0,06 pour la station 8. C'est la seule
- * différence visible entre les deux, et c'est leur contraste qui est l'épreuve.
+ * UNE PORTE BASSE : deux jambages, un linteau, un mur qui continue seize mètres
+ * de part et d'autre — sans quoi l'on contournerait sans rien apprendre.
+ * LE LINTEAU EST À FLEUR DES JAMBAGES, ET CE N'EST PAS UN DÉTAIL. Débordant de
+ * cinq centimètres — pour écarter des faces coplanaires — il place un joueur
+ * plaqué contre le jambage À L'INTÉRIEUR de son emprise : le corps le pénètre en
+ * l'air, la descente suivante n'a pas d'appui sous elle et se résout sur son
+ * DESSUS, on est catapulté par-dessus le mur. Mesuré. À fleur il ne reste pas non
+ * plus une face coplanaire, chaque contact étant un `min` contre un `max`.
  */
 const porte = (x: number, linteau: number, seuil: number): BoxDef[] => {
-  const H = 3.0;
-  const OUV = 0.5;
-  const boites: BoxDef[] = [
-    b([x, 0, -8], [x + 0.4, H, -OUV], 2),
-    b([x, 0, OUV], [x + 0.4, H, 8], 2),
-    b([x, linteau, -OUV], [x + 0.4, H + 0.02, OUV], 2),
+  const H = 3.0;   // hauteur du mur
+  const O = 0.5;   // demi-largeur du passage
+  const boites = [
+    b([x, 0, -8], [x + 0.4, H, -O], 2),
+    b([x, 0, O], [x + 0.4, H, 8], 2),
+    b([x, linteau, -O], [x + 0.4, H + 0.02, O], 2),
   ];
-  if (seuil > 0) boites.push(b([x, 0, -OUV], [x + 0.4, seuil, OUV], 3));
+  if (seuil > 0) boites.push(b([x, 0, -O], [x + 0.4, seuil, O], 3));
   return boites;
 };
-
 /** Une marque au sol : un aplat fantôme, qui ne retient rien et ne dit qu'où. */
 const marque = (x0: number, x1: number, z0: number, z1: number, ink = 3): BoxDef =>
   b([x0, 0.005, z0], [x1, 0.02, z1], ink, { ghost: true });
-
+/**
+ * SEPT VOLUMES ÉCHELONNÉS. Ce n'est pas de la composition : une masse pleine se
+ * colorie sans qu'on sache où en est la vague, sept jalons s'allument l'un après
+ * l'autre et l'on compte les secondes. Deux volumes de même hauteur sont à dix
+ * mètres l'un de l'autre — aucune face n'en recouvre une autre.
+ */
+const maquette = (): BoxDef[] => [
+  b([MAQ_X - 4, 0, MAQ_Z0], [MAQ_X + 4, 0.3, MAQ_Z1 - 1], 1, { region: 'or' }),
+  ...[0, 1, 2, 3, 4, 5, 6].map((i) => {
+    const z = MAQ_Z0 + 2 + i * 3.2;
+    const x = MAQ_X + (i % 2 === 0 ? -1 : 1) * (1.2 + (i % 3) * 0.5);
+    return b([x - 0.8, 0.3, z], [x + 0.8, 1.5 + (i % 4) * 0.45, z + 1.6], 2 + (i % 2),
+      { region: 'or' });
+  }),
+];
 const DECOR: BoxDef[] = [
   ...DALLE,
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(borne),
-
-  // STATION 1 — la planche des cinq creux. Soixante centimètres, la hauteur
-  // d'un genou : l'étalon qu'on a dans le corps et qu'on n'a pas à calculer.
+  // STATION 1 — la planche des cinq creux. Soixante centimètres, un genou :
+  // l'étalon qu'on a dans le corps et qu'on n'a pas à calculer.
   b([X(1) - 1.5, 0, -12.5], [X(1) + 1.5, PLANCHE_Y, 12.5], 1),
-
-  // STATION 2 — le socle du creux qui attend la vrille retournée. Un mètre de
-  // haut : à ×4 il arrive à la cheville, et l'on voit qu'on a changé, pas lui.
+  // STATION 2 — le socle du creux de la vrille retournée. Un mètre : à ×4 il
+  // arrive à la cheville, et l'on voit que c'est soi qui a changé.
   b([X(2) - 1.8, 0, -1.8], [X(2) + 1.8, 1.0, 1.8], 1),
-
-  // STATION 3 — LE VERRE. `invisible` : il arrête le corps ET la main, il ne
-  // se dessine pas. C'est le seul solide du banc exempté de la vérification des
-  // faces confondues, puisqu'il n'a aucune face à dessiner. Dix mètres de long :
-  // on le contourne, on n'est jamais piégé.
+  // STATION 3 — LE VERRE. `invisible` : il arrête le corps ET la main sans se
+  // dessiner, donc exempté de la vérification des faces confondues. Dix mètres.
   b([X(3) - 0.1, 0, -5], [X(3) + 0.1, 3, 5], 0, { invisible: true }),
-
-  // STATION 4 — le muret à hauteur de poitrine, et la dalle d'où l'on essaie.
-  // 1,20 m : la caméra est à 1,656 m et voit par-dessus ; le bras, lui, part de
-  // 1,08 m et n'a rien à faire là. C'est cet écart-là qu'on vient regarder.
+  // STATION 4 — le muret et les deux dalles d'essai. 1,20 m : la caméra est à
+  // 1,656 m et voit par-dessus, le bras part de 1,08 m et n'a rien à faire là.
   b([MURET_X, 0, -0.8], [MURET_X + 0.2, 1.2, 0.8], 2),
   marque(X(4) - 0.5, X(4) + 0.5, -0.5, 0.5),
   marque(X(4) - 0.5, X(4) + 0.5, 1.1, 2.1, 2),
-
-  // STATION 5 — LA LANGUE. Trente centimètres d'épaisseur, et RIEN dessous
-  // jusqu'au bas du monde : c'est ce qui fait qu'on tombe pour de bon.
+  // STATION 5 — LA LANGUE, et RIEN dessous jusqu'au bas du monde.
   b([X(5) - 1.5, -0.3, LANGUE_Z0], [X(5) + 1.5, 0, LANGUE_Z0 + 10], 1),
-
-  // STATION 6 — la zone muette, et quatre bornes basses pour la voir de loin.
+  // STATION 6 — la zone muette, et quatre bornes pour la voir de loin.
   marque(X(6) - 8, X(6) + 8, -8, 8, 1),
-  b([X(6) - 8.2, 0, -8.2], [X(6) - 7.8, 1.6, -7.8], 2, { region: 'silence' }),
-  b([X(6) + 7.8, 0, -8.2], [X(6) + 8.2, 1.7, -7.8], 2, { region: 'silence' }),
-  b([X(6) - 8.2, 0, 7.8], [X(6) - 7.8, 1.8, 8.2], 2, { region: 'silence' }),
-  b([X(6) + 7.8, 0, 7.8], [X(6) + 8.2, 1.9, 8.2], 2, { region: 'silence' }),
-
+  b([X(6) - 8, 0, -8], [X(6) - 7.6, 1.6, -7.6], 2, { region: 'silence' }),
+  b([X(6) + 7.6, 0, -8], [X(6) + 8, 1.7, -7.6], 2, { region: 'silence' }),
+  b([X(6) - 8, 0, 7.6], [X(6) - 7.6, 1.8, 8], 2, { region: 'silence' }),
+  b([X(6) + 7.6, 0, 7.6], [X(6) + 8, 1.9, 8], 2, { region: 'silence' }),
   // STATIONS 7 et 8 — les deux portes. Elles doivent se ressembler.
   ...porte(X(7), 1.5, 0),
   ...porte(X(8), 1.95, 0.06),
-
-  // STATION 10 — les deux couloirs d'élan, peints au sol pour qu'on sache d'où
-  // partir. Vingt mètres : de quoi atteindre la vitesse de marche bien avant le
-  // bord, ce qui prend 0,6 s et non pas trois pas.
+  // STATION 10 — les couloirs d'élan. Vingt mètres : la vitesse de marche
+  // s'atteint en 0,6 s, bien avant le bord.
   marque(T10 - 20, T10, -13, -3, 1),
   marque(T10 - 20, T10, 3, 13, 1),
-
-  // STATION 11 — le mur que le Pinceau ne doit pas traverser. Quatorze mètres :
-  // plus haut que l'arc de son vol, sinon il passerait par-dessus et l'épreuve
-  // ne prouverait rien. Trente-deux de long, et l'on peut le contourner.
+  // STATION 11 — le mur que le Pinceau ne doit pas traverser. Quatorze mètres
+  // de haut, plus que l'arc de son vol, sinon il passerait par-dessus.
   b([X(11) - 0.3, 0, -16], [X(11) + 0.3, 14, 16], 2),
-
-  // STATION 12 — la maquette. Un socle et quatre volumes de hauteurs distinctes,
-  // décalés pour qu'aucune face n'en recouvre une autre.
-  b([MAQUETTE[0] - 4, 0, MAQUETTE[2] - 4], [MAQUETTE[0] + 4, 0.3, MAQUETTE[2] + 4], 1, {
-    region: 'or',
-  }),
-  b([MAQUETTE[0] - 3, 0.3, MAQUETTE[2] - 3], [MAQUETTE[0] - 1.6, 2.1, MAQUETTE[2] - 1.6], 2, {
-    region: 'or',
-  }),
-  b([MAQUETTE[0] - 0.9, 0.3, MAQUETTE[2] - 1.8], [MAQUETTE[0] + 0.7, 2.9, MAQUETTE[2] - 0.2], 3, {
-    region: 'or',
-  }),
-  b([MAQUETTE[0] + 1, 0.3, MAQUETTE[2] + 0.5], [MAQUETTE[0] + 2.2, 1.7, MAQUETTE[2] + 1.7], 2, {
-    region: 'or',
-  }),
-  b([MAQUETTE[0] - 2.4, 0.3, MAQUETTE[2] + 1], [MAQUETTE[0] - 1, 2.3, MAQUETTE[2] + 2.4], 3, {
-    region: 'or',
-  }),
+  ...maquette(),
 ];
-
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * STATION 1 — LA TABLE DES PIÈCES ET DES CREUX
  *
- * `Sockets.raisonDuRefus` n'annonce QU'UNE chose à la fois, dans cet ordre :
- * la taille (dédoublée en trop-grand / trop-petit), la forme, la teinte, la
- * main. Cinq raisons possibles, donc cinq phrases — et il faut que chaque creux
- * en produise une AUTRE, sinon on n'entend pas ce qu'on est venu entendre.
+ * `Sockets.raisonDuRefus` n'annonce QU'UNE chose à la fois, dans cet ordre : la
+ * taille (dédoublée en trop-grand / trop-petit), la forme, la teinte, la main.
+ * Cinq raisons, donc cinq phrases, et il faut que chaque creux en produise une
+ * AUTRE. D'où la contrainte qui gouverne tout : pour entendre « forme » il faut
+ * présenter une pièce de la BONNE TAILLE, sinon la taille parle en premier — donc
+ * une pièce par creux non dimensionnel, chacune sous 0,99 m, la charge d'un
+ * joueur à taille d'homme.
  *
- * D'où la contrainte qui gouverne tout le reste : pour entendre « forme », il
- * faut présenter une pièce de la BONNE TAILLE — sans quoi la taille parle en
- * premier et couvre le reste. Il faut donc une pièce par creux non-dimensionnel,
- * et les trois doivent rester sous 0,99 m, la charge d'un joueur à taille
- * d'homme.
+ *   pièce  \  creux           0,18   0,52   0,30   0,80   2,40
+ *                            TAILLE FORME  TEINTE  MAIN   TOUT
+ *   galet   0,52 · encre 1     TG     f      ·      ·      TP
+ *   perle   0,30 · encre 1     ·      ·      t      ·      ·
+ *   vrille  0,80 · encre 2 L   ·      ·      ·      m      ·
  *
- * ┌─────────────────────────┬──────┬──────┬──────┬──────┬──────┐
- * │  pièce  \  creux        │ 0,18 │ 0,52 │ 0,30 │ 0,80 │ 2,40 │
- * │                         │TAILLE│FORME │TEINTE│ MAIN │ TOUT │
- * ├─────────────────────────┼──────┼──────┼──────┼──────┼──────┤
- * │ galet   0,52 · encre 1  │ TG   │  f   │  ·   │  ·   │ TP   │
- * │ perle   0,30 · encre 1  │  ·   │  ·   │  t   │  ·   │  ·   │
- * │ vrille  0,80 · encre 2 L│  ·   │  ·   │  ·   │  m   │  ·   │
- * └─────────────────────────┴──────┴──────┴──────┴──────┴──────┘
- *   TG « trop-grand »   TP « trop-petit »   f forme   t teinte   m main
- *   ·  hors de portée du creux : la taille n'est même pas du même ordre
+ *   TG trop-grand · TP trop-petit · f forme · t teinte · m main · « · » hors
+ *   de portée du creux : la taille n'est même pas du même ordre
  *
- * AUCUNE CASE N'EST UN OUI. C'est voulu et c'est ce qui rend la station
- * rejouable à l'infini : le galet n'a pas de forme, donc le creux de la forme
- * le refuse ; la perle est encre 1 quand on lui demande 3 ; la vrille est
- * gauche quand on veut droite. Rien ne se loge, rien ne se perd.
- *
- * ET LES CINQ TAILLES SONT ÉTRANGÈRES LES UNES AUX AUTRES. Une porte multiplie
- * par quatre, jamais autre chose, et la tolérance vaut 12 % : le rapport le plus
- * serré du banc est 0,80/0,52 = 1,54, soit près de quatre fois la tolérance
- * cumulée. Aucun nombre de traversées ne fait passer une pièce d'une classe à
- * l'autre — c'est la seule forme de preuve qui survive à qui ajouterait une
- * porte demain.
- *
- * `portee` VAUT 1,2 m ET LES CREUX SONT À CINQ MÈTRES L'UN DE L'AUTRE. Un
- * joueur à taille d'homme repose ce qu'il porte à 0,34 + 2 × l'arête devant
- * lui, soit un mètre pour le galet : la portée l'attrape, et sa voisine est
- * quatre fois trop loin pour dire un mot. C'est ce qui garantit qu'on entend
- * le creux devant lequel on se tient, et pas un autre.
- * ═══════════════════════════════════════════════════════════════════════════
+ * AUCUNE CASE N'EST UN OUI, et c'est ce qui rend la station rejouable à l'infini :
+ * le galet n'a pas de forme, la perle est encre 1 quand on demande 3, la vrille
+ * est gauche quand on veut droite. LES CINQ TAILLES SONT ÉTRANGÈRES LES UNES AUX
+ * AUTRES : une porte multiplie par quatre et la tolérance vaut 12 %, or le rapport
+ * le plus serré, 0,80 / 0,52 = 1,54, en fait presque quatre — aucun nombre de
+ * traversées ne fait changer une pièce de classe, seule preuve qui survive à qui
+ * ajouterait une porte demain. Enfin `portee` VAUT 1,2 M QUAND LES CREUX SONT À
+ * CINQ MÈTRES : on repose le galet à un mètre devant soi, donc sa portée l'attrape
+ * et sa voisine est trop loin pour dire un mot — vérifié en neuf points autour.
  */
-const creux = (id: string, i: number, size: number, exige: Partial<SocketDef>): SocketDef => ({
-  id,
-  position: [X(1), PLANCHE_Y, CREUX_Z[i]],
-  size,
-  portee: 1.2,
-  ink: 2,
-  rend: true,
-  ...exige,
-});
-
+const creux = (id: string, i: number, size: number, exige: Partial<SocketDef>): SocketDef =>
+  ({ id, position: [X(1), PLANCHE_Y, CREUX_Z[i]], size, portee: 1.2, ink: 2, rend: true, ...exige });
 const SOCKETS: SocketDef[] = [
   creux('banc-taille', 0, 0.18, {}),
   creux('banc-forme', 1, 0.52, { forme: 'vrille' }),
@@ -326,183 +241,113 @@ const SOCKETS: SocketDef[] = [
   creux('banc-main', 3, 0.8, { main: 'D' }),
   creux('banc-tout', 4, 2.4, { forme: 'vrille', main: 'D', teinte: 3, portee: 2.4 }),
   /**
-   * STATION 2 — le creux qui accepte la vrille RETOURNÉE, et elle seule.
-   * 1,60 = 0,40 × 4 : le miroir corrige la main et la taille du même geste, et
-   * c'est le seul endroit du banc où un logement dit oui.
-   *
-   * `portee` vaut 7 et non 1,2 : celui qui vient garnir ce creux mesure 7,20 m
-   * et repose ce qu'il porte à 1,36 + 3,20 = 4,56 m devant lui. Viser un trou
-   * d'un mètre soixante à quatre mètres et demi, au doigt sur un téléphone,
-   * n'est pas une épreuve de moteur — c'est une épreuve d'adresse, et ce nombre
-   * a déjà rendu une salle entière infaisable sans que rien ne le laisse voir.
+   * STATION 2 — le seul creux du banc qui dise oui, et seulement à la vrille
+   * RETOURNÉE : 1,60 = 0,40 × 4, le miroir corrigeant main et taille du même
+   * geste. `portee` vaut 7 parce que celui qui le garnit mesure 7,20 m et
+   * repose ce qu'il porte à 4,56 m devant lui — viser un trou de 1,60 à quatre
+   * mètres et demi au doigt est une épreuve d'adresse, et ce nombre a déjà rendu
+   * une salle infaisable sans que rien ne le laisse voir.
    */
-  {
-    id: 'banc-miroir',
-    position: [X(2), 1.0, 0],
-    size: 1.6,
-    forme: 'vrille',
-    main: 'D',
-    portee: 7,
-    ink: 2,
-    rend: true,
-  },
+  { id: 'banc-miroir', position: [X(2), 1.0, 0], size: 1.6, forme: 'vrille', main: 'D',
+    portee: 7, ink: 2, rend: true },
 ];
-
-/** Les quatre cellules du tétracube « vis » : on part, on tourne, on monte. */
+/**
+ * LA VRILLE — le tétracube « vis », plus petite forme chirale faite de cubes
+ * collés : aucune rotation ne superpose la droite à la gauche. Les cellules se
+ * CHEVAUCHENT d'un centimètre, sinon deux faces confondues scintilleraient.
+ */
 const E = 0.01;
-const cel = (ink: number) => (i: number, j: number, k: number) => ({
-  min: [-0.5 + 0.5 * i - E, -0.5 + 0.5 * j - E, -0.5 + 0.5 * k - E] as V3,
-  max: [0.5 * i + E, 0.5 * j + E, 0.5 * k + E] as V3,
-  ink,
-});
-const vrille = (ink: number) => {
-  const c = cel(ink);
-  return [c(0, 0, 0), c(1, 0, 0), c(1, 1, 0), c(1, 1, 1)];
-};
+const vrille = (ink: number) =>
+  [[0, 0, 0], [1, 0, 0], [1, 1, 0], [1, 1, 1]].map(([i, j, k]) => ({
+    min: [-0.5 + 0.5 * i - E, -0.5 + 0.5 * j - E, -0.5 + 0.5 * k - E] as V3,
+    max: [0.5 * i + E, 0.5 * j + E, 0.5 * k + E] as V3,
+    ink,
+  }));
 
 const CARRYABLES: CarryableDef[] = [
-  // Station 1 : les trois pièces de la table ci-dessus, posées devant la
-  // planche, à trois mètres du bord des creux — donc hors de toute portée.
+  // Station 1 : les trois pièces de la table, à trois mètres du bord des creux,
+  // donc hors de toute portée tant qu'on ne les porte pas.
   { id: 'banc-galet', position: [X(1) - 4.5, 0.05, -7.5], size: 0.52, ink: 1 },
   { id: 'banc-perle', position: [X(1) - 4.5, 0.05, 0], size: 0.3, ink: 1 },
-  {
-    id: 'banc-vrille-gauche',
-    position: [X(1) - 4.5, 0.05, 7.5],
-    size: 0.8,
-    ink: 2,
-    forme: 'vrille',
-    main: 'L',
-    pieces: vrille(2),
-  },
+  { id: 'banc-vrille-gauche', position: [X(1) - 4.5, 0.05, 7.5], size: 0.8, ink: 2,
+    forme: 'vrille', main: 'L', pieces: vrille(2) },
   // Station 2 : la vrille du miroir. 0,40 à l'aller, 1,60 au retour.
-  {
-    id: 'banc-vrille-miroir',
-    position: [X(2) - 12, 0.05, -4],
-    size: 0.4,
-    ink: 3,
-    forme: 'vrille',
-    main: 'L',
-    pieces: vrille(3),
-  },
-  // Stations 3, 4, 5 : trois cubes ordinaires. 0,38 n'est la taille d'aucun
-  // creux du banc, à aucune puissance de quatre.
+  { id: 'banc-vrille-miroir', position: [X(2) - 12, 0.05, -4], size: 0.4, ink: 3,
+    forme: 'vrille', main: 'L', pieces: vrille(3) },
+  // Stations 3, 4, 5 : des cubes sans forme et sans main, donc qu'aucun creux
+  // exigeant ne peut accepter, à aucune taille.
   { id: 'banc-derriere-verre', position: [X(3) + 1.4, 0.05, 0], size: 0.38, ink: 3 },
-  { id: 'banc-derriere-muret', position: [OBJET_4, 0.05, 0], size: 0.38, ink: 3 },
+  { id: 'banc-derriere-muret', position: [X(4) + 2.0, 0.05, 0], size: 0.38, ink: 3 },
   { id: 'banc-en-poche', position: [X(5) - 1.2, 0.05, -3], size: 0.38, ink: 3 },
-  // Station 9 : ce qu'on jette pour entendre le bruit qu'il fait, à deux
-  // tailles. Il devient 2,64 de l'autre côté, et reste largement portable.
+  // Station 9 : ce qu'on jette pour entendre le bruit qu'il fait, aux deux
+  // tailles. Il vaut 2,64 de l'autre côté, et reste largement portable.
   { id: 'banc-sonnette', position: [X(9) - 10, 0.05, -6], size: 0.66, ink: 3 },
 ];
-
 /**
- * LES TROIS PORTES. Aucune n'a de `condition` : on les franchit dans les deux
- * sens autant qu'on veut, et tout geste se défait. Leurs six faces sont en six
- * points distincts — deux faces plantées au même endroit se disputent le plan,
- * et l'on traverse celle qu'on ne voulait pas.
- *
- * ON ENTRE CONTRE LA NORMALE ET L'ON RESSORT AVEC ELLE. Le banc se parcourt
- * vers l'est : les faces d'entrée ont donc `yaw: -π/2` (normale −x) et les
- * faces de sortie `yaw: +π/2` (normale +x), et l'on ne se retrouve jamais dos
- * au chemin en ressortant.
+ * LES TROIS PORTES, sans `condition` : on les franchit dans les deux sens et
+ * tout geste se défait. Leurs six faces sont en six points distincts — deux
+ * faces au même endroit se disputent le plan. ON ENTRE CONTRE LA NORMALE ET
+ * L'ON RESSORT AVEC ELLE : le banc allant vers l'est, les entrées regardent
+ * l'ouest (`−π/2`) et les sorties l'est (`+π/2`), donc jamais dos au chemin.
  */
 const PORTALS: PortalPairDef[] = [
-  {
-    // STATION 2 — LE MIROIR. On entre à l'est de la station, on ressort à
-    // l'ouest, dans le même décor et quatre fois plus grand : rien d'autre n'a
-    // bougé, donc c'est forcément soi. Et la vrille a changé de main en chemin.
-    id: 'banc-miroir-porte',
-    miroir: true,
-    colorBig: 0x7b7f86,
-    colorSmall: 0x2f4b7c,
-    small: { position: [X(2) + 6, 0.05, -6], yaw: -Math.PI / 2 },
-    big: { position: [X(2) - 6, 0.05, 6], yaw: Math.PI / 2 },
-  },
-  {
-    // STATION 9 — la paire ordinaire de l'épreuve du son. Aller et retour sur
-    // place : douze mètres séparent les deux faces, on fait la navette autant
-    // qu'il faut pour comparer un grave et un aigu.
-    id: 'banc-son',
-    colorBig: 0xa9a49a,
-    colorSmall: 0x7b7f86,
-    small: { position: [X(9) + 6, 0.05, -6], yaw: -Math.PI / 2 },
-    big: { position: [X(9) - 6, 0.05, 6], yaw: Math.PI / 2 },
-  },
-  {
-    // STATION 11 — la porte du mur, celle par où le Pinceau doit passer. Elle
-    // est plantée à 3,7 m du mur et non dedans : un corps d'un rayon de 0,34 m
-    // doit pouvoir atteindre le PLAN de la face, et il ne l'atteindrait pas si
-    // la maçonnerie commençait avant.
-    id: 'banc-guide-porte',
-    colorBig: 0xa9a49a,
-    colorSmall: 0x7b7f86,
-    small: { position: [X(11) - 4, 0.05, -5], yaw: -Math.PI / 2 },
-    big: { position: [X(11) + 4, 0.05, 5], yaw: Math.PI / 2 },
-  },
+  // STATION 2 — LE MIROIR. On entre à l'est de la station, on ressort à
+  // l'ouest, dans le même décor et quatre fois plus grand : rien d'autre n'a
+  // bougé, donc c'est soi. Et la vrille a changé de main en chemin.
+  { id: 'banc-miroir-porte', miroir: true, colorBig: 0x7b7f86, colorSmall: 0x2f4b7c,
+    small: { position: [X(2) + 6, 0.05, -6], yaw: -EST },
+    big: { position: [X(2) - 6, 0.05, 6], yaw: EST } },
+  // STATION 9 — la paire ordinaire de l'épreuve du son. Douze mètres entre les
+  // deux faces : on fait la navette autant qu'il faut pour comparer.
+  { id: 'banc-son', colorBig: 0xa9a49a, colorSmall: 0x7b7f86,
+    small: { position: [X(9) + 6, 0.05, -6], yaw: -EST },
+    big: { position: [X(9) - 6, 0.05, 6], yaw: EST } },
+  // STATION 11 — la porte du mur, celle par où le Pinceau doit passer. Plantée
+  // à 3,7 m de la maçonnerie : un corps de 0,34 m de rayon doit atteindre le
+  // PLAN de la face, et il ne l'atteindrait pas si le mur commençait avant.
+  { id: 'banc-guide-porte', colorBig: 0xa9a49a, colorSmall: 0x7b7f86,
+    small: { position: [X(11) - 4, 0.05, -5], yaw: -EST },
+    big: { position: [X(11) + 4, 0.05, 5], yaw: EST } },
 ];
-
 /**
  * STATION 12 — LE VEILLEUR. Son identifiant DOIT commencer par `pinceau-` : le
- * nom du pigment se lit dedans, et c'est ce qui relie ce réveil à la région
- * `or` sans table de correspondance — deux tables décrivant la même chose ont
- * déjà coûté une nuit à ce projet.
- *
- * `echelle: 0` est un PALIER. Trop grand ou trop petit, il frémit et refuse, ce
- * qui fait deux épreuves pour le prix d'une : viens à ×4 depuis la station 11
- * et tu verras le refus avant de voir la couleur.
+ * nom du pigment se lit dedans, ce qui le relie à la région `or` sans table de
+ * correspondance — deux tables disant la même chose ont déjà coûté une nuit à
+ * ce projet. `echelle: 0` est un PALIER : trop grand, il frémit et refuse.
  */
 const VEILLEURS: VeilleurDef[] = [
   { id: 'pinceau-or', position: [X(12), 0.05, 0], radius: 3, echelle: 0 },
 ];
-
 /**
- * LES JALONS DU PINCEAU — treize, et non douze.
- *
- * Douze suffiraient à poser un guide près de chaque station. Mais la station 11
- * a besoin de DEUX jalons, un de chaque côté du mur : le Pinceau part du
- * premier, entre dans la porte sous nos yeux, disparaît, et ressort de l'autre
- * face pour rejoindre le second. Sans ce doublet, il n'y aurait rien à voir —
- * un guide qui reste du même côté ne prouve rien.
- *
- * `guideEchelle` VAUT 1 PARTOUT, et c'est un MULTIPLICATEUR, jamais un palier.
- * Écrire 0 ici — le palier de la taille normale — donnerait un Pinceau de
- * taille zéro, donc invisible, et l'on chercherait le défaut ailleurs pendant
- * une heure. Le banc n'a qu'un seul étage : le joueur change de taille, le
- * monde non, donc le Pinceau non plus.
+ * LES JALONS — treize, et non douze : la station 11 en demande DEUX, un de
+ * chaque côté du mur. Le Pinceau part du premier, entre dans la porte sous nos
+ * yeux, disparaît, ressort de la face jumelle et rejoint le second ; sans ce
+ * doublet il n'y aurait rien à voir. `guideEchelle` VAUT 1 PARTOUT, ET C'EST UN
+ * MULTIPLICATEUR : y écrire 0, le palier de la taille normale, donnerait un
+ * Pinceau de taille nulle, donc invisible. Le banc n'a qu'un étage.
  */
 const JALONS: V3[] = [
-  [X(1), 3, 4],
-  [X(2), 3, 0],
-  [X(3), 3, 0],
-  [X(4), 3, 0],
-  [X(5), 3, -2],
-  [X(6), 3, 0],
-  [X(7), 3, -3],
-  [X(8), 3, -3],
-  [X(9), 3, 0],
-  [T10 - 3, 3, 0],
-  [X(11) - 8, 3, -5],
-  [X(11) + 8, 3, 5],
-  [X(12), 3, 6],
+  [X(1), 3, 4], [X(2), 3, 0], [X(3), 3, 0], [X(4), 3, 0], [X(5), 3, -2], [X(6), 3, 0],
+  [X(7), 3, -3], [X(8), 3, -3], [X(9), 3, 0], [T10 - 3, 3, 0],
+  [X(11) - 8, 3, -5], [X(11) + 8, 3, 5], [X(12), 3, 6],
 ];
 
 export const BANC: LevelDef = {
   name: 'Le banc d’essai',
-  // Quatorze mètres avant la première station, sur la dalle, face à l'est :
-  // on voit les douze bornes s'aligner et l'on sait où l'on est.
+  // Quatorze mètres avant la station 1, face à l'est : les douze bornes
+  // s'alignent, et l'on sait où l'on est.
   spawn: [-14, 0.05, 0],
-  spawnYaw: Math.PI / 2,
+  spawnYaw: EST,
   spawnScale: 0,
-  // L'ordre compte : la première région qui contient le joueur donne
-  // l'ambiance. Les deux poches d'abord, la dalle entière ensuite.
+  // L'ordre compte : la première région contenant le joueur donne l'ambiance.
   regions: [SILENCE_REGION, OR_REGION, BANC_REGION],
   boxes: DECOR,
   carryables: CARRYABLES,
   sockets: SOCKETS,
   portals: PORTALS,
   veilleurs: VEILLEURS,
-  // Le levier qui autorise tout le reste. Loin de tout creux et de tout objet :
-  // une bulle qui mordrait sur une station rappellerait le banc entier au lieu
-  // de reposer ce qu'on tient.
+  // Le levier qui autorise tout le reste, loin de tout creux : une bulle mordant
+  // sur une station rappellerait tout au lieu de reposer ce qu'on tient.
   rappel: { position: [-9, 0.2, -6], radius: 1.6 },
   guide: JALONS,
   guideEchelle: JALONS.map(() => 1),
@@ -510,184 +355,171 @@ export const BANC: LevelDef = {
   // Hors du terrain, et de neuf cents mètres : un banc ne se gagne pas.
   goal: { position: [0, -900, 0], radius: 1 },
 };
+/**
+ * LE PROTOCOLE — douze lignes qui disent LE GESTE puis LE RÉSULTAT, lisibles au
+ * téléphone par quelqu'un qui ne code pas. Chacune nomme aussi le MAUVAIS
+ * signe : une consigne qui n'annonce que le bon résultat laisse valider un
+ * défaut par indulgence. Toutes regardent l'est, sauf la cinquième.
+ */
+// `jalon` : un par station, sauf la douzième qui prend le treizième — le
+// douzième est de l'autre côté du mur de la station 11.
+const rep = (n: number, titre: string, verifier: string, position: V3, lacet = EST): Repere =>
+  ({ titre: `${n} · ${titre}`, verifier, position, echelle: 0, lacet, pigments: [],
+    jalon: n === 12 ? 12 : n - 1 });
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- * LE PROTOCOLE — douze lignes, et chacune dit LE GESTE puis LE RÉSULTAT.
+ * POURQUOI CHAQUE STATION EXISTE.
  *
- * Elles se lisent sur un téléphone, par quelqu'un qui ne code pas. Chacune
- * nomme aussi ce qui serait un MAUVAIS signe : une consigne qui ne dit que le
- * bon résultat laisse valider un défaut par indulgence.
- * ═══════════════════════════════════════════════════════════════════════════
+ * Une station qui dit seulement « fais ceci, tu dois voir cela » est une
+ * consigne à exécuter. Quelqu'un qui sait CE QU'ON CHERCHE remarque des choses
+ * qu'on ne lui a pas demandées — et sur ce banc, ce sont les seules qui vaillent
+ * le déplacement : tout le reste est déjà prouvé quatre cent soixante-dix fois.
+ *
+ * Chacune de ces raisons est un défaut réel, avec le symptôme qu'il donnait.
+ * Aucune n'est inventée.
  */
+const POURQUOI_BANC: Record<number, string> = {
+  1:
+    'Un creux rendait un simple oui ou non. On présentait une pièce, elle était refusée, et ' +
+    'on n’apprenait rien : la taille ? la forme ? la couleur ? le sens ? Quatre inconnues ' +
+    'font seize combinaisons, donc on essayait au hasard. Trois lecteurs extérieurs ont buté ' +
+    'là-dessus sans se concerter.',
+  2:
+    'Les portes miroirs existaient depuis des semaines sans se VOIR : on dessinait tout avec ' +
+    'des cubes, et un cube n’a pas de main gauche. C’est la première fois qu’on peut regarder ' +
+    'une pièce se retourner.',
+  3:
+    'Une boîte pouvait se voir sans rien retenir ; l’inverse n’existait pas. Ça débloque un ' +
+    'pont dont les dalles sont espacées de quatorze mètres — un chemin pour un géant, quatre ' +
+    'gratte-ciel séparés par le vide dès qu’on rapetisse dessus.',
+  4:
+    'On ramassait à travers les murs. La prise ne mesurait qu’une distance et un angle, et ' +
+    'comme le bras suit la taille — 46 m à ×16 — on cueillait ce qui était dans la pièce ' +
+    'voisine. Deux salles s’en protègent encore avec de la roche qui n’existe que pour ça.',
+  5:
+    'Rien ne rattrapait une chute hors du décor : on tombait indéfiniment, mesuré à moins deux ' +
+    'cent mille. « On ne piège jamais le joueur » était tenu salle par salle, à la main, par ' +
+    'des rampes écrites une par une — et le cas le plus simple n’était pas couvert.',
+  6:
+    'Le coin supérieur gauche annonce ta taille en toutes lettres. La salle-thèse du troisième ' +
+    'voyage repose sur le fait que tu ne la connaisses plus — elle était donc impossible, et ' +
+    'rien ne l’aurait signalé avant qu’on la livre.',
+  7:
+    'On franchissait n’importe quel mur en le longeant, du moment qu’il portait un linteau. Le ' +
+    'corps passait de 0 à 1,70 en une image puis marchait par-dessus. Six tentatives ont été ' +
+    'nécessaires, et la phrase qui a fini par résoudre était déjà dans mes notes de la ' +
+    'troisième, appliquée au mauvais endroit.',
+  8:
+    'L’autre moitié du même défaut : un seuil de six centimètres FERMAIT un passage, parce ' +
+    'qu’on sondait la marche à quatre-vingt-dix et que la tête entrait dans le linteau. Ça a ' +
+    'fermé les trois ouvertures d’une toise, avec des arrêts mesurés à neuf centimètres de ' +
+    'l’ouverture.',
+  9:
+    'Tu m’as dit que le son suivait déjà la taille et tu avais raison — je me trompais. Mais ' +
+    'la mesure a trouvé autre chose : les DURÉES suivaient aussi, et un géant posait ses ' +
+    'caisses dans un silence complet, la note tombant sous le seuil de l’audible.',
+  10:
+    'Le sprint multipliait la portée par 1,8 en l’air, quand un cran de taille ne la multiplie ' +
+    'que par deux : un joueur à ×1/4 qui sprintait récupérait 90 % de la portée d’un joueur ' +
+    'normal qui marche. Toute énigme fondée sur la taille tenait dans dix points d’écart.',
+  11:
+    'Le guide vole et ne connaît pas les murs. Sans qu’on lui dise par où passer, il traverse ' +
+    'la pierre en droite ligne — et l’on ne lit plus « suis-moi » mais « il s’est téléporté ». ' +
+    'C’est arrivé dans le village, avec cinq cents mètres de vide.',
+  12:
+    'Le front d’encre est une sphère centrée sur le pinceau. Quand la chose à peindre est ' +
+    'loin, il passait tout son temps à balayer le vide entre les deux puis rattrapait d’un ' +
+    'coup : mesuré, une salle basculait en 0,14 seconde. On ne regardait pas la couleur se ' +
+    'poser, on la découvrait posée.',
+};
+
 export const REPERES_BANC: Repere[] = [
-  {
-    titre: '1 · Le refus qui parle',
-    verifier:
-      'Cinq creux en enfilade. Porte le GALET devant le premier, pose-le ; recommence ' +
-      'devant le deuxième, puis le dernier. Fais la même chose avec la PERLE devant le ' +
-      'troisième et la VRILLE devant le quatrième. → Une demi-seconde après chaque ' +
-      'dépose, UNE phrase, et cinq phrases différentes en tout : trop grand · pas ce ' +
-      'dessin · la couleur non · elle est juste et n’entre pas · elle danse dans le ' +
-      'creux. Mauvais signe : deux phrases d’un coup, une phrase pour le creux d’à ' +
-      'côté, ou une pièce qui reste plantée dedans.',
-    position: [X(1) - 8, 0.05, 0],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 0,
-  },
-  {
-    titre: '2 · La main se voit',
-    verifier:
-      'Ramasse la petite vrille, marche vers l’est, franchis la porte bleue. → Tu ' +
-      'ressors quatre fois plus grand À L’AUTRE BOUT de la station, et la vrille dans ' +
-      'tes mains est son propre reflet : le bras qui montait à droite monte à gauche. ' +
-      'Reviens au socle et pose-la : elle entre. Mauvais signe : elle a la bonne taille ' +
-      'et refuse quand même, ou elle a la même allure qu’avant.',
-    position: [X(2) - 14, 0.05, -4],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 1,
-  },
-  {
-    titre: '3 · Le verre',
-    verifier:
-      'Avance droit vers l’est. → Tu es arrêté par RIEN : pas de mur, pas de trait, ' +
-      'rien à l’écran. Le cube est à deux pas derrière, tu le vois, et E ne le prend ' +
-      'pas. Contourne par le côté (la paroi fait dix mètres), reviens vers lui : E le ' +
-      'prend. Mauvais signe : le prendre à travers, ou ne plus pouvoir le prendre du ' +
-      'tout une fois contourné.',
-    position: [X(3) - 4, 0.05, 0],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 2,
-  },
-  {
-    titre: '4 · On ne ramasse plus à travers les murs',
-    verifier:
-      'Tu es sur la dalle marquée. Le cube est à deux mètres, derrière un muret qui ' +
-      't’arrive à la poitrine — tu le VOIS par-dessus. Appuie sur E. → Rien. Va sur la ' +
-      'seconde dalle marquée, à un pas sur ta gauche, regarde le cube : E le prend. ' +
-      'Mauvais signe : le prendre depuis la première dalle. Le bras porte 2,88 m et le ' +
-      'cube est à 2 : c’est bien le muret qui refuse, pas la distance.',
-    position: [X(4), 0.05, 0],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 3,
-  },
-  {
-    titre: '5 · Le rattrapage',
-    verifier:
-      'Prends le cube, avance sur la langue de dalle et saute dans le vide. → Tu tombes ' +
-      'une seconde ou deux, puis le monde te repose LÀ OÙ TU TE TENAIS, avec le cube ' +
-      'toujours dans les mains, et une phrase le dit. Mauvais signe : tomber sans fin, ' +
-      'renaître au départ du banc, perdre le cube, ou être reposé à une autre taille.',
-    position: [X(5), 0.05, LANGUE_Z0 - 8],
-    echelle: 0,
-    lacet: 0,
-    pigments: [],
-    jalon: 4,
-  },
-  {
-    titre: '6 · L’échelle se tait',
-    verifier:
-      'Regarde le coin en haut à gauche : « ×1 · taille normale ». Marche vers l’est et ' +
-      'entre dans le rectangle peint au sol. → L’affichage devient UN TIRET, net, sans ' +
-      'fondu. Ressors : il revient. Mauvais signe : un fondu (on croirait à une panne), ' +
-      'un silence qui commence avant ou après le trait peint, ou un affichage qui reste ' +
-      'muet une fois sorti.',
-    position: [X(6) - 14, 0.05, 0],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 5,
-  },
-  {
-    titre: '7 · Le linteau ne catapulte plus',
-    verifier:
-      'Le linteau est à 1,50 m et tu en fais 1,80. Marche dedans, colle-toi, appuie, ' +
-      'saute, longe le mur de gauche à droite en le poussant. → Tu es ARRÊTÉ, toujours, ' +
-      'et tu restes au sol. Mauvais signe, et c’est LE défaut qui a résisté à six ' +
-      'tentatives : te retrouver debout SUR le linteau, ou de l’autre côté du mur.',
-    position: [X(7) - 6, 0.05, 0],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 6,
-  },
-  {
-    titre: '8 · Le seuil bas se franchit',
-    verifier:
-      'La même porte, à un détail près : un seuil de six centimètres et un linteau à ' +
-      '1,95 m. Marche dedans. → Tu passes SANS T’EN APERCEVOIR, sans ralentir, sans ' +
-      'sauter. Mauvais signe : buter sur le seuil, ou être relevé d’un coup sec. ' +
-      'Compare avec la station 7 : c’est leur contraste qui est l’épreuve.',
-    position: [X(8) - 6, 0.05, 0],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 7,
-  },
-  {
-    titre: '9 · Le son suit la taille',
-    verifier:
-      'Écoute d’abord : tes pas, le vent, et le cube qu’on jette (clic gauche). ' +
-      'Franchis la porte vers l’est, tu deviens géant : refais les trois. → TOUT est ' +
-      'plus GRAVE, et le vent a glissé au lieu de sauter. Reviens par l’autre face : ' +
-      'tout redevient aigu. Mauvais signe : une seule des trois voix qui change, ou un ' +
-      'vent qui devient un sifflement au lieu d’un souffle.',
-    position: [X(9) - 12, 0.05, -6],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 8,
-  },
-  {
-    titre: '10 · Le sprint ne vole pas',
-    verifier:
-      'Deux vides identiques de 4,80 m, côte à côte. Sur le premier : prends tout ton ' +
-      'élan sur le couloir peint et saute au bord. → Tu passes. Sur le second : place-' +
-      'toi au bord À L’ARRÊT et saute en avançant. → Tu tombes, et le monde te repose ' +
-      'au bord. Mauvais signe : passer les deux (le vide est trop étroit) ou rater les ' +
-      'deux (trop large) — dans les deux cas l’élan ne raconte plus rien.',
-    position: [T10 - 18, 0.05, -8],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 9,
-  },
-  {
-    titre: '11 · Le guide passe par la porte',
-    verifier:
-      'Le Pinceau flotte devant toi, de ce côté-ci du mur. Avance vers lui. → Il ' +
-      's’envole À PLAT vers la porte, ENTRE dedans, disparaît, et ressort de la face ' +
-      'jumelle de l’autre côté avant de rejoindre son perchoir. Mauvais signe : le voir ' +
-      'traverser le mur, passer par-dessus, ou s’éteindre ici pour se rallumer là-bas ' +
-      'sans qu’on ait vu par où — on lirait « il s’est téléporté » au lieu de ' +
-      '« suis-moi ».',
-    position: [X(11) - 20, 0.05, -5],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 10,
-  },
-  {
-    titre: '12 · La couleur se pose, et lentement',
-    verifier:
-      'Un pinceau dort à trois pas, à l’est. Approche et appuie sur E — à taille ' +
-      'normale, pas autrement. Puis TOURNE-TOI vers le nord : la maquette est à trente ' +
-      'mètres. → Elle est grise, puis l’encre y court d’un bord à l’autre pendant ' +
-      'PLUSIEURS SECONDES. Mauvais signe, et c’est le défaut qui a failli tout ' +
-      'annuler : un long silence puis une bascule d’un dixième de seconde. Compte : si ' +
-      'tu n’as pas le temps de suivre le front des yeux, c’est raté.',
-    position: [X(12) - 6, 0.05, 0],
-    echelle: 0,
-    lacet: Math.PI / 2,
-    pigments: [],
-    jalon: 12,
-  },
+  rep(1, 'Le refus qui parle',
+    'Cinq creux en enfilade. Porte le GALET devant le premier et pose-le ; recommence devant le ' +
+    'deuxième, puis devant le dernier. Puis la PERLE devant le troisième, la VRILLE devant le ' +
+    'quatrième. → Une demi-seconde après chaque dépose, UNE phrase, et cinq phrases différentes en ' +
+    'tout : elle déborde · ce n’est pas ce dessin · la forme est juste, la couleur non · elle est ' +
+    'juste en tout et n’entre pas · elle danse dans le creux. Mauvais signe : deux phrases d’un coup, ' +
+    'la phrase du creux voisin, aucune phrase, ou une pièce qui reste plantée dedans.',
+    [X(1) - 8, 0.05, 0]),
+  rep(2, 'La main se voit',
+    'Ramasse la petite vrille, marche vers l’est, franchis la porte bleue. → Tu ressors quatre fois ' +
+    'plus grand À L’AUTRE BOUT de la station, et la vrille est son propre reflet : le bras qui ' +
+    'montait à droite monte à gauche. Reviens au socle et pose-la : elle entre. Mauvais signe : elle ' +
+    'a la bonne taille et refuse quand même, ou elle a exactement la même allure qu’avant — la ' +
+    'chiralité est écrite et vérifiée depuis des semaines, mais elle n’a jamais été REGARDÉE.',
+    [X(2) - 14, 0.05, -4]),
+  rep(3, 'Le verre',
+    'Avance droit vers l’est. → Tu es arrêté par RIEN : pas de mur, pas de trait, rien à l’écran. Le ' +
+    'cube est à deux pas derrière, tu le vois, et E ne le prend pas. Contourne (la paroi fait dix ' +
+    'mètres), reviens vers lui par l’est : E le prend. Mauvais signe : l’attraper à travers, ou ne ' +
+    'plus pouvoir le prendre une fois contourné.',
+    [X(3) - 4, 0.05, 0]),
+  rep(4, 'On ne ramasse plus à travers les murs',
+    'Tu es sur la première dalle peinte. Le cube est à deux mètres, derrière un muret qui t’arrive à ' +
+    'la poitrine — tu le VOIS par-dessus. Appuie sur E. → Rien. Va sur la seconde dalle peinte, un ' +
+    'pas et demi sur ta gauche, regarde le cube : E le prend. Mauvais signe : le prendre depuis la ' +
+    'première. Le bras porte 2,88 m et le cube est à 2,19 — c’est le muret, jamais la distance.',
+    [X(4), 0.05, 0]),
+  rep(5, 'Le rattrapage',
+    'Prends le cube, avance sur la langue de dalle et saute dans le vide. → Tu tombes trois secondes, ' +
+    'puis le monde te repose LÀ OÙ TU TE TENAIS, le cube toujours dans les mains, et une phrase le ' +
+    'dit sans gronder. Mauvais signe : tomber sans fin, renaître au départ du banc, lâcher le cube, ' +
+    'ou revenir à une autre taille.',
+    [X(5), 0.05, LANGUE_Z0 - 8], 0),
+  rep(6, 'L’échelle se tait',
+    'Regarde le coin en haut à gauche : « ×1 · taille normale ». Marche vers l’est et entre dans le ' +
+    'rectangle peint au sol. → L’affichage devient UN TIRET, net, sans fondu. Ressors : il revient. ' +
+    'Mauvais signe : un fondu (on croirait à une panne), un silence qui tombe avant ou après le trait ' +
+    'peint, ou un affichage qui reste muet une fois sorti.',
+    [X(6) - 14, 0.05, 0]),
+  rep(7, 'Le linteau ne catapulte plus',
+    'Le linteau est à 1,50 m et tu en fais 1,80. Marche dedans, colle-toi, insiste, saute sur place, ' +
+    'longe le mur en le poussant, entre dans l’ouverture par le côté en sautant. → Tu es ARRÊTÉ, ' +
+    'chaque fois, et tu restes au sol. Mauvais signe, et c’est LE défaut qui a résisté à six ' +
+    'tentatives : te retrouver debout SUR le linteau, ou de l’autre côté du mur.',
+    [X(7) - 6, 0.05, 0]),
+  rep(8, 'Le seuil bas se franchit',
+    'La même porte à deux détails près : un seuil de six centimètres, un linteau à 1,95 m. Marche ' +
+    'dedans. → Tu passes SANS T’EN APERCEVOIR — sans ralentir, sans sauter, sans être soulevé. ' +
+    'Mauvais signe : buter sur le seuil, ou être relevé d’un coup sec. Fais l’aller-retour avec la ' +
+    'station 7 : c’est leur contraste qui est l’épreuve, pas chacune prise à part.',
+    [X(8) - 6, 0.05, 0]),
+  rep(9, 'Le son suit la taille',
+    'Écoute trois choses : tes pas, le vent, et le cube quand tu le jettes (clic gauche). Franchis la ' +
+    'porte vers l’est — tu deviens géant — et refais les trois. → TOUT est plus grave, et le vent a ' +
+    'GLISSÉ jusque-là au lieu de sauter. Reviens par l’autre face : tout redevient aigu. Mauvais ' +
+    'signe : une seule des trois voix qui change, ou un vent qui vire au sifflement.',
+    [X(9) - 12, 0.05, -6]),
+  rep(10, 'Le sprint ne vole pas',
+    'Deux vides identiques de 4,20 m, côte à côte, et la bande du milieu passe entre les deux — on ' +
+    'n’est jamais coincé. Premier vide : tout ton élan sur le couloir peint, saute au bord. → Tu ' +
+    'passes, avec de la marge. Second vide : plante-toi au bord À L’ARRÊT, puis saute en avançant, ' +
+    'sans toucher à Maj. → Tu tombes cinquante centimètres trop court, et le monde te repose au ' +
+    'bord. Mauvais signe : passer les deux, ou rater celui d’élan — l’élan ne dirait plus rien.',
+    [T10 - 18, 0.05, -8]),
+  rep(11, 'Le guide passe par la porte',
+    'Le Pinceau flotte devant toi, de ce côté-ci du mur. Avance vers lui. → Il s’envole À PLAT vers ' +
+    'la porte, ENTRE dedans, disparaît, et ressort de la face jumelle de l’autre côté avant de ' +
+    'rejoindre son perchoir. Mauvais signe : le voir traverser le mur, le survoler, ou s’éteindre ' +
+    'ici pour se rallumer là-bas sans qu’on ait vu par où — on lirait « il s’est téléporté » au lieu ' +
+    'de « suis-moi ». Regarde aussi sa TAILLE : elle ne doit ni changer ni être nulle.',
+    [X(11) - 20, 0.05, -5]),
+  rep(12, 'La couleur se pose, et lentement',
+    'Un pinceau dort à trois pas, à l’est. Approche et appuie sur E — à taille normale, pas autrement ' +
+    '(reviens géant pour l’entendre refuser). Puis TOURNE-TOI vers le nord : la maquette part à ' +
+    'vingt-six mètres et file sur vingt-trois. → Un demi-temps où rien ne bouge, puis l’encre remonte ' +
+    'la bande volume par volume, les proches d’abord, en ralentissant. Compte : UNE BONNE SECONDE ET ' +
+    'DEMIE doit séparer le premier volume coloré du dernier. Mauvais signe, et c’est le défaut qui a ' +
+    'failli tout annuler : un silence, puis les sept d’un seul coup.',
+    [X(12) - 6, 0.05, 0]),
 ];
+
+// Et l'on colle chaque raison à sa station, PAR RANG et non par titre : un
+// titre se renomme, un rang non. La table des raisons de la montée est indexée
+// par titre et il a fallu lui ajouter un compte des clefs orphelines, parce
+// qu'une raison qui vise une station disparue s'évapore en silence.
+REPERES_BANC.forEach((r, i) => {
+  const p = POURQUOI_BANC[i + 1];
+  if (p) r.pourquoi = p;
+});
