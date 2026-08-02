@@ -36,6 +36,15 @@ import { FORMES } from '../levels/formes.js';
 export interface Repere {
   /** Ce qu'on va voir. Court : c'est une ligne de liste. */
   titre: string;
+  /**
+   * POURQUOI ON TESTE ÇA. Ce qu'on a corrigé, ou ce que ça prouverait.
+   *
+   * Il manquait, et son absence faisait de chaque station une consigne à
+   * exécuter au lieu d'une question à instruire. Quelqu'un qui sait CE QU'ON
+   * CHERCHE remarque des choses qu'on ne lui a pas demandées — et ce sont
+   * précisément celles-là qui valent le déplacement.
+   */
+  pourquoi?: string;
   /** CE QU'IL FAUT VÉRIFIER ICI. C'est la seule raison d'être du repère. */
   verifier: string;
   position: [number, number, number];
@@ -402,6 +411,47 @@ const auSeuil = (
   jalon,
 });
 
+/**
+ * POURQUOI ON TESTE CHACUNE, et ce n'est pas un ornement.
+ *
+ * Une station qui dit seulement « fais ceci, tu dois voir cela » est une
+ * consigne à exécuter. Quelqu'un qui sait CE QU'ON CHERCHE remarque des choses
+ * qu'on ne lui a pas demandées — et ce sont précisément celles-là qui valent le
+ * déplacement, puisque tout le reste est déjà prouvé en simulation.
+ *
+ * On les greffe par le titre plutôt que de les passer à `auSeuil` : la fonction
+ * a déjà cinq paramètres positionnels, un sixième se serait mis de travers un
+ * jour ou l'autre.
+ */
+const POURQUOI_MONTEE: Record<string, string> = {
+  'Les toits — on connaît cet endroit':
+    'Toute la salle repose sur une seule chose : reconnaître un lieu qu’on a arpenté ' +
+    'des heures, vu d’une taille qu’on n’avait jamais eue. Si la reconnaissance ne se ' +
+    'fait pas, la salle ne vaut rien — et aucune vérification ne peut me le dire.',
+  'Le creux qui refuse — la vrille':
+    'Les portes miroirs existaient depuis des semaines sans se voir : on dessinait tout ' +
+    'avec des cubes, et un cube n’a pas de main gauche. C’est la première fois que la ' +
+    'chiralité a un corps. Deux lecteurs extérieurs ont prédit qu’on conclurait à un ' +
+    'bug avant de conclure au miroir.',
+  'Le blanchiment — le théorème':
+    'La meilleure sensation que ce jeu puisse produire, si elle passe : comprendre ' +
+    'qu’un système a des lois et qu’on peut les DÉDUIRE au lieu de les subir. Le risque ' +
+    'est qu’on force au hasard sans jamais comprendre.',
+  'L’escalier pour plus tard':
+    'La salle a été retournée après qu’on a mesuré que rien ne blesse une chute : on la ' +
+    'gravit maintenant au lieu de la descendre. On vérifie que le verrou est réel et que ' +
+    'l’erreur reste réparable.',
+  'L’atelier du haut — la couleur, paliers 2 et 3':
+    'La couleur doit devenir un motif de VOYAGE et non un bouton : il faut descendre ' +
+    'puis remonter. Et le point de vue devient l’énigme — on cherche d’où quelqu’un ' +
+    'regardait, ce qui est l’occupation d’un peintre.',
+  'La vallée en maquette — et l’or au bout':
+    'Le plus grand plan du jeu, et le seul endroit où l’on domine physiquement un lieu ' +
+    'qu’on a traversé à pied. Son autrice a dû écraser les hauteurs quatre fois plus que ' +
+    'le plan pour tenir deux nombres incompatibles : c’est le seul réglage qu’un œil ' +
+    'peut juger.',
+};
+
 export const REPERES_MONTEE: Repere[] = [
   auSeuil(
     SALLES_MONTEE[0],
@@ -454,6 +504,14 @@ export const REPERES_MONTEE: Repere[] = [
     25,
   ),
 ];
+
+// Et l'on colle chaque raison à sa station. Une station sans raison reste
+// valide : le champ est facultatif, et les quarante repères écrits avant ce
+// jour n'ont pas à être réécrits pour que celui-ci fonctionne.
+for (const r of REPERES_MONTEE) {
+  const p = POURQUOI_MONTEE[r.titre];
+  if (p) r.pourquoi = p;
+}
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════

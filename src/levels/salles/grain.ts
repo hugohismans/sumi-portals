@@ -19,50 +19,43 @@ import type { SalleModule } from './contrat.js';
  * au palier 0 : ON NE CHANGE JAMAIS DE TAILLE, et rien ne permet de le savoir.
  *
  * LE CHIASME, QUI EST L'ÉNIGME. Chaque lobe porte, à la MÊME PLACE de sa
- * grille, un creux et une graine, et les tailles sont croisées :
+ * grille, un creux et une graine, tailles croisées — VASTE (grain ×4) : creux
+ * 2,88, graine 0,72 ; MENU (grain ×1) : creux 0,72, graine 2,88. Serrure et
+ * clef côte à côte, jamais assorties, d'un facteur quatre en sens contraires.
+ * La seule graine qu'on soulève est celle du vaste, le seul creux qu'elle
+ * remplisse est dans le menu : on la porte, et c'est tout.
  *
- *     VASTE (grain ×4)   creux 2,88 · graine 0,72
- *     MENU  (grain ×1)   creux 0,72 · graine 2,88
+ * ET C'EST L'INSTRUMENT DE MESURE, car on ne soulève que 0,55 fois sa hauteur :
+ * 0,72 se soulève → h ≥ 1,31 ; 2,88 refuse → h < 5,24 ; et comme les tailles
+ * vivent sur un réseau de puissances de quatre — 0,45 · 1,80 · 7,20 · 28,80 —
+ * cet intervalle n'en contient qu'UNE. Deux gestes, dont un qui échoue, et l'on
+ * connaît sa taille sans avoir vu un seul étalon. La règle 9 n'est pas
+ * enfreinte mais déplacée : l'étalon est la graine, et il faut la porter pour
+ * s'en servir. L'erreur est universelle (règle 10) — on présente d'abord la
+ * graine au creux d'à côté, il refuse en disant « trop petite », et l'on relève
+ * la tête sur un creux quatre fois soi.
  *
- * Serrure et clef côte à côte, jamais assorties, d'un facteur quatre en sens
- * contraires. La seule graine qu'on soulève est celle du vaste, le seul creux
- * qu'elle remplisse est dans le menu : on la porte, et c'est tout.
+ * LES ÉTALONS, ÉTEINTS UN PAR UN. (1) L'affichage : `muet: true`. (2) Le
+ * brouillard : repoussé hors de la salle au lieu d'être rapproché, voir plus
+ * bas. (3) La porte d'entrée : ON ARRIVE EN TOMBANT de 31,20 m et l'on ne
+ * remonte plus — mesuré, une minute de sauts et de sprint contre les parois ne
+ * fait jamais dépasser 1,22 m. Ça coûte que LA SALLE EST À SENS UNIQUE : pas un
+ * piège, l'avant reste ouvert, mais c'est la première porte du voyage qui se
+ * ferme derrière soi, et un pli de décor n'y suffisait pas puisque `raccorder`
+ * plante toujours une face À `entree.position`. (4) Et la porte de SORTIE,
+ * 2,80 elle aussi : elle n'existe pas tant que le creux est vide, À CONDITION
+ * que l'assemblage lui donne `condition: 'creux-grain'`.
  *
- * ET C'EST L'INSTRUMENT DE MESURE, car on ne soulève que 0,55 fois sa hauteur.
- * 0,72 se soulève → h ≥ 1,31 ; 2,88 refuse → h < 5,24. Les tailles vivent sur
- * un réseau de puissances de quatre — 0,45 · 1,80 · 7,20 · 28,80 — et cet
- * intervalle n'en contient qu'UNE. Deux gestes, dont un qui échoue, et l'on
- * connaît sa taille exactement sans avoir vu un seul étalon. La règle 9 n'est
- * pas enfreinte, elle est déplacée : l'étalon est la graine qu'on porte, et il
- * faut la porter pour s'en servir.
- *
- * L'ERREUR ET SON IMAGE (règle 10) : tout le monde présente d'abord la graine
- * au creux d'à côté. Il refuse et DIT pourquoi — « trop petite » — et l'on
- * relève la tête sur un creux quatre fois soi, une bille à ses pieds.
- *
- * LES ÉTALONS, ÉTEINTS UN PAR UN. (1) L'affichage : `muet: true`, gratuit.
- * (2) Le brouillard : voir plus bas, on le repousse hors de la salle au lieu
- * de le rapprocher. (3) La porte d'entrée : ON ARRIVE EN TOMBANT de 31,20 m,
- * et l'on ne remonte plus — mesuré, une minute de sauts et de sprint contre
- * les parois ne fait jamais dépasser 1,22 m. Ça coûte que LA SALLE EST À SENS
- * UNIQUE ; ce n'est pas un piège, l'avant reste ouvert, mais c'est la première
- * porte du voyage qui se ferme derrière soi. Les deux autres pistes ne
- * tenaient pas : `raccorder` plante toujours une face À `entree.position`,
- * donc aucun pli de décor ne la cache. (4) Et la porte de SORTIE, 2,80 elle
- * aussi : elle n'existe pas tant que le creux est vide, À CONDITION que
- * l'assemblage lui donne `condition: 'creux-grain'`.
- *
- * PAS UNE COURBE, ET PAS UNE ARÊTE À COMPARER. Une salle ronde est impossible
- * en boîtes alignées ; on ne fait pas semblant, on retire les arêtes du champ
- * de mesure. La paroi qui arrête n'est pas celle qu'on voit — les lobes sont
- * une coque de VERRE et tout leur grain est derrière : on ne peut ni le
- * toucher ni se coincer entre deux blocs, et « ne jamais piéger » devient une
- * propriété au lieu d'une vigilance. Le grain n'a pas de taille moyenne : loi
- * LOG-UNIFORME, la seule invariante par changement d'échelle, quand une loi
- * uniforme a une moyenne, donc une longueur, donc un étalon. Rien ne se répète,
- * puisqu'on compte les répétitions et que compter c'est mesurer. Le sol est nu
- * et plat, ses bords enterrés sous le grain. Et la palette est sourde : le
- * contraste rendrait les blocs dénombrables.
+ * PAS UNE ARÊTE À COMPARER — une salle ronde étant impossible en boîtes
+ * alignées, on retire plutôt les arêtes du champ de mesure. La paroi qui arrête
+ * n'est pas celle qu'on voit : les lobes sont une coque de VERRE et tout leur
+ * grain est derrière, donc on ne peut ni le toucher ni se coincer entre deux
+ * blocs, et « ne jamais piéger » devient une propriété au lieu d'une vigilance.
+ * Le grain n'a pas de taille moyenne : loi LOG-UNIFORME, seule invariante par
+ * changement d'échelle, quand une loi uniforme a une moyenne, donc une
+ * longueur, donc un étalon. Rien ne se répète, puisque compter des répétitions
+ * c'est mesurer. Le sol est nu et plat, ses bords enterrés sous le grain. Et la
+ * palette est sourde : le contraste rendrait les blocs dénombrables.
  */
 
 const NOM = 'grain';
@@ -72,22 +65,19 @@ const NOM = 'grain';
  *
  * `RegionDef.brouillard` ne déplace que le plan LOINTAIN. Le plan PROCHE est
  * écrit en dur — `new THREE.Fog(PAPER, 34, …)` dans `main.ts` — et vaut 34 m
- * partout, à toutes les tailles, sans qu'aucune région y puisse rien. Le vrai
- * étalon involontaire n'est donc pas la portée du brouillard : c'est l'endroit
- * où il COMMENCE. D'où un réglage à l'envers de celui qu'on attend — le
- * brouillard est linéaire de 34 m à sa portée, et à cent fois la plus longue
- * ligne de vue le blanchiment le plus lointain vaut UN CENTIÈME du papier.
- * Plus de mur blanc, plus de bord, rien à atteindre donc rien à compter.
- * Il porte ici 10 704 enjambées à ×1 et 2 676 à ×4 : des nombres qui ne
- * veulent rien dire, puisque la plus longue vue de la salle fait 130 m.
- *
- * ET NON, IL NE FAUT PAS QU'IL SUIVE LE JOUEUR : ce chantier a déjà été fait
- * puis DÉFAIT, et la raison est écrite dans `main.ts` juste au-dessus de cette
- * ligne — quand l'air suivait la taille, les mêmes bâtiments changeaient de
- * couleur à l'instant de la traversée, une même distance ne contenant pas plus
- * d'air selon qui la regarde. Le rebrancher rendrait ce défaut-là pour
- * corriger celui-ci. Ce qui manquerait vraiment, le jour où une salle
- * changerait de palier chez elle, c'est de pouvoir déplacer le plan PROCHE.
+ * partout, à toutes les tailles, sans qu'aucune région y puisse rien : le vrai
+ * étalon involontaire n'est pas la portée du brouillard, c'est l'endroit où il
+ * COMMENCE. D'où un réglage à l'envers de celui qu'on attend. Le brouillard est
+ * linéaire de 34 m à sa portée ; à cent fois la plus longue ligne de vue, le
+ * blanchiment le plus lointain vaut UN CENTIÈME du papier — plus de mur blanc,
+ * plus de bord, rien à atteindre donc rien à compter. Il porte 10 704 enjambées
+ * à ×1 et 2 676 à ×4 : des nombres vides de sens, la plus longue vue de la
+ * salle faisant 130 m. Et NON, il ne faut pas qu'il suive le joueur — ce
+ * chantier a déjà été fait puis DÉFAIT, et la raison est dans `main.ts` juste
+ * au-dessus de cette ligne : l'air qui suit la taille fait changer de couleur
+ * les mêmes bâtiments à l'instant de la traversée, une même distance ne
+ * contenant pas plus d'air selon qui la regarde. Ce qui manquerait, le jour où
+ * une salle changerait de palier chez elle, c'est le plan PROCHE.
  */
 const VUE_LA_PLUS_LONGUE = 130;
 const BROUILLARD = Math.round(34 + (VUE_LA_PLUS_LONGUE - 34) * 100);
@@ -155,23 +145,15 @@ const trouer = (u0: number, u1: number, v0: number, v1: number, t: Rect | null):
 
 /**
  * LE GRAIN D'UNE PAROI. `plan` est la face intérieure, `sens` dit de quel côté
- * est la matière, et rien n'est jamais posé du côté habitable. Le retrait est
- * tiré EN CUBE : la plupart des blocs affleurent, quelques-uns s'enfoncent — du
- * relief, sans jamais donner l'impression de flotter à un mètre d'une paroi
- * qu'on ne peut pas toucher. Les sept tirages précèdent le rejet du masque,
- * c'est ce qui garde le même grain aux deux lobes malgré leurs percements.
+ * est la matière : rien n'est jamais posé du côté habitable. Le retrait est
+ * tiré EN CUBE — la plupart des blocs affleurent, quelques-uns s'enfoncent —
+ * pour du relief sans avoir l'air de flotter loin d'une paroi qu'on ne peut pas
+ * toucher. Les tirages précèdent le rejet du masque : c'est ce qui garde le
+ * même grain aux deux lobes malgré leurs percements.
  */
 const grain = (
-  alea: () => number,
-  m: number,
-  axe: 0 | 1 | 2,
-  plan: number,
-  sens: 1 | -1,
-  u0: number,
-  u1: number,
-  v0: number,
-  v1: number,
-  trou: Rect | null = null,
+  alea: () => number, m: number, axe: 0 | 1 | 2, plan: number, sens: 1 | -1,
+  u0: number, u1: number, v0: number, v1: number, trou: Rect | null = null,
 ): BoxDef[] => {
   const out: BoxDef[] = [];
   // Un bloc par (2,4 · module)² de paroi : le même compte dans les deux lobes.
@@ -179,21 +161,17 @@ const grain = (
   for (let i = 0; i < n; i++) {
     const cu = u0 + alea() * (u1 - u0);
     const cv = v0 + alea() * (v1 - v0);
-    const lu = logu(alea(), 0.55 * m, 2.4 * m);
-    const lv = logu(alea(), 0.55 * m, 2.4 * m);
+    const lu = logu(alea(), 0.55 * m, 2.4 * m) / 2;
+    const lv = logu(alea(), 0.55 * m, 2.4 * m) / 2;
     const r = alea();
     const p = 0.55 * m * r * r * r;
     const e = logu(alea(), 0.7 * m, 2.0 * m);
     const t = teinte(alea());
-    const a0 = cu - lu / 2;
-    const a1 = cu + lu / 2;
-    const c0 = cv - lv / 2;
-    const c1 = cv + lv / 2;
-    if (trou && a0 < trou[1] && a1 > trou[0] && c0 < trou[3] && c1 > trou[2]) continue;
+    if (trou && cu - lu < trou[1] && cu + lu > trou[0] && cv - lv < trou[3] && cv + lv > trou[2]) continue;
     out.push(
       b(
-        monter(axe, a0, c0, sens < 0 ? plan - p - e : plan + p),
-        monter(axe, a1, c1, sens < 0 ? plan - p : plan + p + e),
+        monter(axe, cu - lu, cv - lv, sens < 0 ? plan - p - e : plan + p),
+        monter(axe, cu + lu, cv + lv, sens < 0 ? plan - p : plan + p + e),
         t,
       ),
     );
@@ -202,17 +180,12 @@ const grain = (
 };
 
 /**
- * Le fond de teint derrière le grain : il bouche les interstices, rien de plus.
- * Chaque dalle reçoit une ÉPAISSEUR PROPRE — six dalles de même cote se
- * recouvriraient aux coins, et c'est le défaut le plus fréquent du projet.
+ * Le fond de teint : il bouche les interstices du grain, rien de plus. Chaque
+ * dalle reçoit une ÉPAISSEUR PROPRE — six dalles de même cote se recouvriraient
+ * aux coins, et c'est le défaut le plus fréquent du projet.
  */
 const fond = (
-  axe: 0 | 1 | 2,
-  plan: number,
-  sens: 1 | -1,
-  d0: number,
-  d1: number,
-  rects: Rect[],
+  axe: 0 | 1 | 2, plan: number, sens: 1 | -1, d0: number, d1: number, rects: Rect[],
 ): BoxDef[] =>
   rects.map((r) =>
     b(
@@ -226,10 +199,9 @@ const fond = (
 // ─── LE LOBE, EN UNITÉS DE LOBE ────────────────────────────────────────────
 //
 // Tout ce qui suit est écrit dans une grille de 22 × 22 × 7,5, puis POSÉ deux
-// fois : au module 1, puis au module 4. C'est ce qui fait des deux lobes le
-// même lieu — pas « qui se ressemblent », LE MÊME, au bloc près. Vérifié : 223
-// des 235 boîtes du petit se retrouvent à l'identique dans le grand, les douze
-// autres étant les ouvertures, qui diffèrent.
+// fois : au module 1, puis au module 4. Les deux lobes sont donc le même lieu —
+// pas « qui se ressemblent », LE MÊME. Vérifié : 223 des 235 boîtes du petit se
+// retrouvent à l'identique dans le grand, les douze autres étant les percements.
 
 const COTE = 22;
 const HAUT = 7.5;
@@ -268,9 +240,9 @@ const coque = (est: Rect | null, nord: Rect | null): BoxDef[] => {
     out.push(verre([r[0], r[2], COTE], [r[1], r[3], COTE + 0.7]));
   }
   // Le plafond, percé du puits — DANS LES DEUX LOBES. Celui du grand se
-  // traverse en tombant, celui du petit ne mène nulle part : la cheminée par
-  // où l'on est arrivé est aussi au plafond de la chambre d'après, quatre fois
-  // plus petite. C'est là toute la salle, et ça ne coûte rien.
+  // traverse en tombant, celui du petit ne mène nulle part : la cheminée par où
+  // l'on est arrivé est au plafond de la chambre d'après, quatre fois plus
+  // petite. C'est là toute la salle, et ça ne coûte rien.
   for (const r of trouer(-0.7, COTE + 0.7, -0.7, COTE + 0.7, CH)) {
     out.push(verre([r[2], HAUT, r[0]], [r[3], HAUT + 0.7, r[1]]));
   }
@@ -287,20 +259,15 @@ const puits = (): BoxDef[] => [
 ];
 
 /**
- * LES MASSIFS : six blocs isolés, aux mêmes places dans les deux lobes. Ce ne
- * sont pas des ornements — ce sont eux qui cassent les lignes de vue du grand
- * lobe, dont la diagonale ferait sinon 124 m d'un trait, et le brouillard
- * redeviendrait mesurable. Deux massifs laissent toujours 1,15 unité de
- * passage au moins — 4,60 m dans le vaste — donc personne ne s'y coince.
- * En x, z, largeur, profondeur, hauteur.
+ * LES MASSIFS : six blocs isolés (x, z, largeur, profondeur, hauteur), aux
+ * mêmes places dans les deux lobes. Ce ne sont pas des ornements — ce sont eux
+ * qui cassent les lignes de vue du grand lobe, dont la diagonale ferait sinon
+ * 124 m d'un trait. Deux d'entre eux laissent toujours 1,15 unité de passage au
+ * moins — 4,60 m dans le vaste — donc personne ne s'y coince.
  */
 const MASSIFS: [number, number, number, number, number][] = [
-  [4.3, 5.1, 3.4, 2.7, 2.5],
-  [16.9, 5.6, 2.6, 3.9, 3.2],
-  [19.6, 11.4, 2.2, 3.1, 1.8],
-  [5.2, 14.8, 4.1, 3.4, 2.9],
-  [12.7, 18.9, 2.3, 2.6, 3.6],
-  [8.1, 9.3, 1.9, 2.4, 1.6],
+  [4.3, 5.1, 3.4, 2.7, 2.5], [16.9, 5.6, 2.6, 3.9, 3.2], [19.6, 11.4, 2.2, 3.1, 1.8],
+  [5.2, 14.8, 4.1, 3.4, 2.9], [12.7, 18.9, 2.3, 2.6, 3.6], [8.1, 9.3, 1.9, 2.4, 1.6],
 ];
 
 const massifs = (): BoxDef[] =>
@@ -337,47 +304,41 @@ const lobe = (l: Lobe): BoxDef[] => {
 // MENU  : x  −65…−43, z 3444…3466, plafond à 7,5. On en sort.
 //
 // Le goulet ouvre la paroi EST du vaste (z 3497…3503, haut de 5,20) et la paroi
-// NORD du menu (x −60…−54, même hauteur). Vu du grand lobe c'est une fente au
-// pied d'un mur de trente mètres ; vu du petit, c'est une porte. Même fente.
+// NORD du menu (x −60…−54, même hauteur) : vu du grand lobe, une fente au pied
+// d'un mur de trente mètres ; vu du petit, une porte. Même fente.
 //
-// LES ONZE MÈTRES QUI SÉPARENT LES DEUX LOBES NE SONT PAS UN CHOIX DE
-// COMPOSITION : le grain de la paroi est du vaste saille jusqu'à 10,20 m
-// (retrait 2,20 + épaisseur 8,00, tous deux multipliés par le module). Plus
-// près, c'étaient des rochers de six mètres au milieu de la petite chambre —
-// et ça ne se serait vu qu'en jouant.
-//
+// LES ONZE MÈTRES ENTRE LES LOBES NE SONT PAS UN CHOIX DE COMPOSITION : le
+// grain de la paroi est du vaste saille jusqu'à 10,20 m (retrait 2,20 +
+// épaisseur 8,00, multipliés par le module), et plus près c'étaient des rochers
+// de six mètres au milieu de la petite chambre — visible en jouant seulement.
 // Les ouvertures descendent sous le sol (−0,6) et montent plus haut que le
-// passage (1,35) : une ouverture calée pile sur une cote employée ailleurs
-// laisse un liseré de fond de teint exactement coplanaire, et l'on obtient
-// douze mètres carrés de faces qui grésillent.
+// passage (1,35) : calée pile sur une cote employée ailleurs, une ouverture
+// laisse un liseré de fond de teint coplanaire, soit douze mètres carrés de
+// faces qui grésillent.
 const VASTE: Lobe = { ox: -164, oz: 3436, m: 4, est: [-0.6, 1.35, 15.2, 16.8], nord: null };
 const MENU: Lobe = { ox: -65, oz: 3444, m: 1, est: null, nord: [4.9, 11.1, -0.6, 5.35] };
 
 /**
- * LE GOULET, coudé une fois, ET DÉLIBÉRÉMENT NU.
- *
- * Un angle droit : on ne voit jamais les deux lobes dans le même regard, et
- * c'est la condition de tout — deux grains d'échelles différentes dans une
- * seule image, et la salle est morte.
+ * LE GOULET, coudé une fois, ET DÉLIBÉRÉMENT NU. L'angle droit est la condition
+ * de tout : deux grains d'échelles différentes dans une seule image, et la
+ * salle est morte.
  *
  * PAS UN GRAIN DEDANS, et c'est un renoncement instructif. J'ai voulu le
  * ligner, blocs ×4 côté vaste et ×1 côté menu, le raccord caché dans le coude.
  * Ça ne tient pas : UN GRAIN ×4 NE RENTRE PAS DANS UN COULOIR DE SIX MÈTRES.
  * Les blocs vont de deux mètres à neuf et demi ; le long d'une paroi de douze
- * ils débordent dans l'autre branche, et l'on se coince contre un rocher
- * flottant au milieu du passage. Aucun rognage ne rattrape ça sans faire
+ * ils débordent dans l'autre branche et l'on se coince contre un rocher
+ * flottant au milieu du passage — et aucun rognage ne rattrape ça sans faire
  * coïncider vingt faces sur la ligne de coupe.
  *
- * Le goulet est donc du papier lisse : six dalles, pas une arête encrée — et
- * c'est mieux. ON TRAVERSE VINGT-HUIT MÈTRES DE RIEN. Dernière chose vue, un
- * grain ×4 ; première au sortir, un grain ×1 ; entre les deux, aucune image à
- * comparer. Le couloir est l'amnésie de la salle. Ses dix premiers mètres sont
- * malgré tout du rocher ×4, gratuitement : le grain du vaste saille jusque-là
- * et son masque exclut exactement la section du passage, si bien qu'il borde
- * l'ouverture sans jamais pouvoir y entrer.
- *
- * Les parois s'arrêtent à 5,20 et les plafonds y commencent : les faces qui se
- * touchent franchement sont enterrées l'une dans l'autre, jamais exposées.
+ * Papier lisse, donc : six dalles sans une arête encrée, et c'est mieux — ON
+ * TRAVERSE VINGT-HUIT MÈTRES DE RIEN, dernière image un grain ×4, première au
+ * sortir un grain ×1, et entre les deux rien à comparer. Le couloir est
+ * l'amnésie de la salle. Ses dix premiers mètres restent du rocher ×4,
+ * gratuitement : le grain du vaste saille jusque-là et son masque exclut
+ * exactement la section du passage, si bien qu'il borde l'ouverture sans
+ * pouvoir y entrer. Les parois s'arrêtent à 5,20 et les plafonds y commencent :
+ * deux faces qui se touchent franchement sont enterrées, jamais exposées.
  */
 const goulet = (): BoxDef[] => {
   const p = { outline: false };
@@ -398,9 +359,8 @@ const goulet = (): BoxDef[] => {
  * encrée en plein sol serait la seule ligne droite de la salle, et l'on
  * compterait ses pas dessus. Leurs emprises se touchent et ne se chevauchent
  * JAMAIS : seule façon d'avoir trois dalles à la même cote sans faces
- * confondues. Et pas un caillou, ce qu'on peut regretter — mais un caillou a
- * une hauteur, on l'enjambe ou non, et c'est un étalon de plus doublé d'un
- * risque de coincement là où l'on marche le plus.
+ * confondues. Et pas un caillou : un caillou a une hauteur, on l'enjambe ou
+ * non, donc c'est un étalon de plus doublé d'un risque de coincement.
  */
 const sols = (): BoxDef[] => [
   b([-176, -3, 3424], [-76, 0, 3536], 0, { outline: false }),
@@ -417,12 +377,12 @@ const GRAINE = 0.72;
 const BLOC = GRAINE * 4;
 
 /**
- * LES DEUX GRAINES. Même forme, même encre : SEULE LA TAILLE DIFFÈRE — un
- * refus venu de la forme ou de la main brouillerait la seule leçon de la salle,
- * et `Sockets.raisonDuRefus` juge la taille EN PREMIER, donc c'est bien « trop
+ * LES DEUX GRAINES. Même forme, même encre : SEULE LA TAILLE DIFFÈRE — un refus
+ * venu de la forme ou de la main brouillerait la seule leçon de la salle, et
+ * `Sockets.raisonDuRefus` juge la taille EN PREMIER, donc c'est bien « trop
  * petite » qu'on s'entend dire. 0,72 contre une limite de 0,99 à ×1 : 27 % de
  * marge, quand une salle voisine est morte pour deux millimètres et demi sur ce
- * seuil-là. 2,88 contre la même limite : presque le triple. Aucun des deux
+ * seuil. 2,88 contre la même limite : presque le triple. Aucun des deux
  * verdicts n'est douteux, et c'est ce qui rend l'encadrement lisible.
  */
 const CARRYABLES: CarryableDef[] = [
@@ -432,12 +392,12 @@ const CARRYABLES: CarryableDef[] = [
 
 /**
  * LES DEUX CREUX. `portee` est large parce qu'on repose ce qu'on porte à DEUX
- * FOIS SA TAILLE devant soi — 3,60 m à ×1. Un creux de 0,72 avec sa portée par
- * défaut (0,54 m) serait impossible à garnir : on viserait juste, on raterait
- * toujours, et rien ne le dirait. Ce nombre a déjà tué une salle entière.
- * `creux-sourd`, lui, ne sera jamais pourvu, et c'est voulu : une serrure et sa
- * clef côte à côte, et l'on est trop petit pour lever la clef. C'est la phrase
- * « cette salle n'a pas été bâtie pour toi », sans un mot.
+ * FOIS SA TAILLE devant soi — 3,60 m à ×1. Un creux de 0,72 gardant sa portée
+ * par défaut (0,54 m) serait impossible à garnir : on viserait juste, on
+ * raterait toujours, et rien ne le dirait. Ce nombre a déjà tué une salle.
+ * `creux-sourd` ne sera jamais pourvu, et c'est voulu : une serrure et sa clef
+ * côte à côte, et l'on est trop petit pour lever la clef — « cette salle n'a
+ * pas été bâtie pour toi », sans un mot.
  */
 const SOCKETS: SocketDef[] = [
   { id: 'creux-grain', forme: 'graine', position: [-54, 0.02, 3455], size: GRAINE, portee: 5.5, ink: 3 },
@@ -454,42 +414,31 @@ export const GRAIN: SalleModule = {
 
   /**
    * LE PINCEAU, ET LE SEUL ÉTALON QUE JE N'AIE PAS PU ÉTEINDRE. `montee.ts`
-   * donne à chaque jalon d'une salle la taille de son ENTRÉE : ici un mètre,
-   * dans les deux lobes. Or la loi du guide veut que sa taille soit celle de
-   * l'ÉTAGE où il se perche, jamais celle du joueur — et le lobe vaste EST un
-   * étage ×4, où il devrait mesurer quatre mètres. Tel quel, un Pinceau d'un
-   * mètre au pied d'un rocher de douze annonce la taille du rocher, donc la
-   * mienne. Il faudrait `guideEchelle` par jalon et non par salle : une ligne
-   * dans l'assemblage, que je ne peux pas écrire d'ici.
-   *
-   * Les stations restent en vue les unes des autres, coude compris : le guide
-   * vole et ne connaît pas les murs ; sans le jalon du virage, il traverserait
-   * douze mètres de roche.
+   * donne à chaque jalon la taille d'ENTRÉE de sa salle : ici un mètre, dans
+   * les deux lobes. Or la loi du guide veut que sa taille soit celle de l'ÉTAGE
+   * où il se perche — le lobe vaste EST un étage ×4, il devrait y mesurer
+   * quatre mètres — et tel quel, un Pinceau d'un mètre au pied d'un rocher de
+   * douze annonce la taille du rocher, donc la mienne. Il faudrait
+   * `guideEchelle` par jalon : une ligne dans l'assemblage, hors de ma portée.
+   * Les stations, elles, restent en vue les unes des autres, coude compris —
+   * sans le jalon du virage, le guide traverserait douze mètres de roche.
    */
   stations: [
-    [-97.5, 27, 3502.5],
-    [-95, 2.5, 3505],
-    [-118, 4, 3481],
-    [-80, 3, 3500],
-    [-68, 2.4, 3500],
-    [-57, 2.4, 3500],
-    [-57, 2.4, 3472],
-    [-54, 2.2, 3455],
-    [-54, 1.6, 3446],
+    [-97.5, 27, 3502.5], [-95, 2.5, 3505], [-118, 4, 3481],
+    [-80, 3, 3500], [-68, 2.4, 3500], [-57, 2.4, 3500],
+    [-57, 2.4, 3472], [-54, 2.2, 3455], [-54, 1.6, 3446],
   ],
 
   /**
    * ON ENTRE PAR LE HAUT, DANS LE VIDE, ET L'ON TOMBE 31,20 m EN 1,55 s.
    *
-   * `echelle` EST UN PALIER : −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16. Entrée et
-   * sortie au même palier — on ne change jamais de taille ici, et l'on n'a
-   * jamais aucun moyen de s'en assurer.
-   *
-   * La face est plantée au milieu du puits, trois mètres et demi de vide de
-   * chaque côté : de quelque côté du plan qu'on ressorte, il n'y a rien sous
-   * les pieds. `teleport` met `grounded = false`, la gravité fait le reste.
-   * La sortie est adossée au mur sud du petit lobe : on marche vers elle en
-   * allant vers les z décroissants, sens que `raccorder` lui donne (lacet nul).
+   * `echelle` EST UN PALIER : −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16. Même palier
+   * des deux côtés — on ne change jamais de taille ici, et l'on n'a aucun moyen
+   * de s'en assurer. La face est au milieu du puits, trois mètres et demi de
+   * vide de chaque côté : de quelque côté du plan qu'on ressorte, il n'y a rien
+   * sous les pieds, et `teleport` met déjà `grounded = false`. La sortie est
+   * adossée au mur sud du petit lobe, où l'on marche vers les z décroissants —
+   * le sens que `raccorder` lui donne.
    */
   entree: { position: [-97.5, 31.2, 3502.5], echelle: 0 },
   sortie: { position: [-54, 0.02, 3445], echelle: 0 },

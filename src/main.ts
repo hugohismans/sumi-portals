@@ -1017,7 +1017,7 @@ const REPERES =
   // cible tactile — rien, ça marche, ça cloche — parce que deux boutons côte à
   // côte seraient deux fois plus petits, et que c'est au pouce qu'on répondra.
   // ═══════════════════════════════════════════════════════════════════════
-  type Avis = { v: '' | 'ok' | 'non'; c: string };
+  type Avis = { v: '' | 'ok' | 'non'; n: number; c: string };
   const CLE_FAITS = `sumi.protocole.${MODE ?? 'hall'}`;
   const avis = new Map<string, Avis>(
     (() => {
@@ -1027,7 +1027,7 @@ const REPERES =
         // plutôt que de la jeter : personne ne doit perdre une séance de test
         // parce que le format a changé sous ses pieds.
         if (Array.isArray(brut)) {
-          return brut.map((t) => [String(t), { v: 'ok', c: '' }] as [string, Avis]);
+          return brut.map((t) => [String(t), { v: 'ok', n: 0, c: '' }] as [string, Avis]);
         }
         return Object.entries(brut as Record<string, Avis>);
       } catch {
@@ -1035,7 +1035,13 @@ const REPERES =
       }
     })(),
   );
-  const lire = (t: string): Avis => avis.get(t) ?? { v: '', c: '' };
+  const lire = (t: string): Avis => {
+    const a = avis.get(t);
+    // Les séances d'avant n'avaient pas de note : on la complète au lieu de
+    // jeter ce qui a été écrit.
+    if (a && typeof a.n !== 'number') a.n = 0;
+    return a ?? { v: '', n: 0, c: '' };
+  };
   const noter = (): void => {
     try {
       localStorage.setItem(CLE_FAITS, JSON.stringify(Object.fromEntries(avis)));
@@ -1079,17 +1085,39 @@ const REPERES =
   rapport.textContent = ETIQUETTE;
   rapport.addEventListener('click', (e) => {
     e.stopPropagation();
-    const lignes: string[] = [`Séance de test — ${MODE ?? 'hall'}`, ''];
+    // LE RAPPORT EST UN PROMPT, pas un tableau. Il part tel quel dans une
+    // conversation, donc il commence par dire ce qu'il est et ce qu'on en
+    // attend — sans quoi il faudrait le réexpliquer à chaque fois.
+    const lignes: string[] = [
+      `Voici mon retour de test sur « ${MODE ?? 'le hall'} ».`,
+      '',
+      'Format : [OK] ça marche · [NON] ça cloche · [?] pas tranché.',
+      'La note va de 1 à 5 et juge la SENSATION, pas la correction.',
+      '',
+    ];
     let repondu = 0;
+    let cloches = 0;
     for (const r of REPERES) {
       const a = lire(r.titre);
-      if (a.v === '' && !a.c) continue;
+      if (a.v === '' && !a.c && !a.n) continue;
       repondu++;
-      const marque = a.v === 'ok' ? '[OK ]' : a.v === 'non' ? '[NON]' : '[ ? ]';
-      lignes.push(`${marque} ${r.titre}`);
-      if (a.c) lignes.push(`       ${a.c}`);
+      if (a.v === 'non') cloches++;
+      const marque = a.v === 'ok' ? '[OK ]' : a.v === 'non' ? '[NON]' : '[ ?  ]';
+      const note = a.n ? ` ${a.n}/5` : '';
+      lignes.push(`${marque}${note}  ${r.titre}`);
+      if (a.c) lignes.push(`         « ${a.c} »`);
     }
-    if (repondu === 0) lignes.push('(rien de renseigné)');
+    if (repondu === 0) {
+      lignes.push('(rien de renseigné)');
+    } else {
+      lignes.push('');
+      lignes.push(
+        cloches > 0
+          ? `Commence par ${cloches > 1 ? `les ${cloches} points marqués` : 'le point marqué'} NON. Pour chacun, dis-moi si tu ` +
+            'reproduis le défaut avant de le corriger, et si tu ne le reproduis pas, dis-le.'
+          : 'Rien ne cloche. Dis-moi ce que tu en tires et ce que tu proposes ensuite.',
+      );
+    }
     const texte = lignes.join('\n');
     if (navigator.clipboard) void navigator.clipboard.writeText(texte).catch(() => {});
     rapport.textContent = repondu
@@ -1127,6 +1155,7 @@ const REPERES =
       b.classList.toggle('fait', a.v === 'ok');
       coche.textContent = a.v === 'ok' ? '\u2713' : a.v === 'non' ? '\u2717' : '';
       plume.classList.toggle('pleine', a.c.length > 0);
+      points.forEach((pt, k) => pt.classList.toggle('mise', k < a.n));
     };
 
     coche.addEventListener('click', (e) => {
@@ -1153,13 +1182,47 @@ const REPERES =
       if (!ouvert) mot.focus();
     });
 
+    // LES CINQ POINTS : la note, de 1 à 5, et elle ne juge pas la CORRECTION
+    // mais la SENSATION. Un défaut se dit par le verdict ; « ça marche mais
+    // c'est mou » n'a aucun autre endroit où se dire, et c'est pourtant le
+    // genre de chose qui décide si un jeu vaut quelque chose.
+    //
+    // Cinq points côte à côte plutôt qu'un chiffre qui tourne : au pouce, on
+    // veut pouvoir viser le 4 sans passer par le 1, le 2 et le 3.
+    const notes = document.createElement('span');
+    notes.className = 'notes';
+    const points: HTMLElement[] = [];
+    for (let v = 1; v <= 5; v++) {
+      const pt = document.createElement('i');
+      pt.textContent = String(v);
+      pt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const a = lire(r.titre);
+        a.n = a.n === v ? 0 : v;
+        avis.set(r.titre, a);
+        peindre();
+        noter();
+      });
+      points.push(pt);
+      notes.appendChild(pt);
+    }
+
     const t = document.createElement('b');
     const k = document.createElement('kbd');
     k.textContent = LEGENDES[i] ?? '\u00b7';
     t.append(k, r.titre);
+
+    // POURQUOI ON TESTE ÇA, au-dessus de ce qu'il faut voir. Quelqu'un qui sait
+    // ce qu'on cherche remarque des choses qu'on ne lui a pas demandées, et ce
+    // sont celles-là qui valent le déplacement.
+    const pourquoi = document.createElement('em');
+    pourquoi.className = 'pourquoi';
+    if (r.pourquoi) pourquoi.textContent = r.pourquoi;
+    else pourquoi.style.display = 'none';
+
     const s2 = document.createElement('small');
     s2.textContent = r.verifier;
-    b.append(coche, plume, t, s2, mot);
+    b.append(coche, plume, t, pourquoi, s2, notes, mot);
     peindre();
     b.addEventListener('click', () => {
       allerA(i);

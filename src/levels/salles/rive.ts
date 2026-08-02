@@ -50,13 +50,12 @@ import type { SalleModule } from './contrat.js';
  *      et au fond une serrure qui attend une arête de 3,60. Six mètres, c'est-
  *      à-dire un mètre dix au-dessus des 4,90 qu'on escalade.
  *   3. Sur le quai traînent trois galets de 0,90. On en prend un, on tend le
- *      bras : il se pose à 3,16 m, tombe dans la passe, et l'on va le repêcher à
- *      la main sans bouger les pieds. **Première leçon, et gratuite.**
+ *      bras : il se pose à 3,16 m, tombe dans la passe, et l'on va le repêcher
+ *      à la main sans bouger les pieds. **Première leçon, et gratuite.**
  *   4. Quarante mètres à l'ouest, une grande porte. On la franchit — c'est
- *      L'ERREUR, et c'est aussi la solution : on ressort à ×1, de l'autre côté
- *      du quai, et la rive est devenue un océan. Le galet, lui, est devenu un
- *      coffre : 0,90 contre 1,80, tout juste sous ce qu'on soulève à cette
- *      taille (0,99).
+ *      L'ERREUR, et c'est aussi la solution : on ressort à ×1 à l'autre bout du
+ *      quai, la rive est devenue un océan, et le galet un coffre (0,90 contre
+ *      1,80, tout juste sous les 0,99 qu'on soulève à cette taille).
  *   5. On le prend et l'on RENTRE PAR LA PETITE FACE. Elle multiplie par quatre
  *      ce qu'on porte : on ressort géant, un bloc de 3,60 dans les bras.
  *   6. On revient à la lèvre, on lève les yeux de vingt-trois degrés, on lâche.
@@ -65,21 +64,19 @@ import type { SalleModule } from './contrat.js';
  *
  * CE QUE LA SALLE REVISITE (règle 8) : LE CONDUIT. Là-bas, « ×4 ne rentre pas :
  * il lui faut 2,74 de large, l'ouverture en fait 2,40 », et le géant héritait
- * d'une terrasse d'où contempler une porte trop petite pour lui. Ici la même loi
- * est retournée d'un quart de tour : l'ouverture est trop BASSE, le géant est
- * encore sur sa terrasse — et cette fois **il fait quand même ce qu'il y avait à
- * faire dedans**, parce que sa main y va sans lui.
+ * d'une terrasse d'où contempler une porte trop petite pour lui. La même loi est
+ * ici retournée d'un quart de tour — l'ouverture est trop BASSE — et cette fois
+ * **il fait quand même ce qu'il y avait à faire dedans**, sa main y allant sans
+ * lui.
  *
  * « LES TROIS PRISES » : SA PHRASE OUI, SES COTES NON. Les fusionner telles
  * quelles était impossible par arithmétique — la portée de dépose vaut 2 ×
  * l'arête, donc **atteindre loin exige une grosse pièce, et une grosse pièce ne
  * passe pas par une petite fenêtre** : les deux moitiés de l'idée se mangent.
  * J'ai gardé *seul l'objet devait passer* et jeté les 2,40 : la baie fait 9,60
- * de large (la largeur ne sert qu'à viser — mesuré, elle donne au joueur cinq
- * mètres et demi de quai au lieu de trois) et 4,80 de HAUT, ce qui n'arrête rien
- * de ce qu'on porte et arrête le porteur, qui en fait 7,20. Le refus est
- * vertical, pas latéral. C'est la seule version qui tienne avec les vrais
- * nombres.
+ * de large (la largeur ne sert qu'à viser — mesuré, elle donne cinq mètres et
+ * demi de quai au lieu de trois) et 4,80 de HAUT, ce qui n'arrête rien de ce
+ * qu'on porte et arrête le porteur. Le refus est vertical, pas latéral.
  */
 
 type V3 = [number, number, number];
@@ -90,15 +87,14 @@ type V3 = [number, number, number];
  * Z_LEVRE → Z_EPERON : LA PASSE, 2,40 m. Le corps d'un ×4 fait 2,72 (MESURES) ;
  * il ne peut donc pas y descendre, et c'est le seul verrou qui compte. Sans lui,
  * un géant se planterait AU PIED de la serrure et la garnirait de tout près :
- * `placeForDrop` ne teste aucune occultation, elle ne teste que si le point
- * d'arrivée est libre — on ne peut donc jamais interdire une pose par un mur,
- * seulement par l'impossibilité de se tenir là.
+ * `placeForDrop` ne teste aucune occultation, seulement si le point d'arrivée
+ * est libre — une pose ne s'interdit jamais par un mur, seulement par
+ * l'impossibilité de se tenir là.
  *
- * Z_LEVRE → Z_FALAISE : LE CHENAL, 30 m. Au-dessus des 22,28 m d'un sprint-saut
- * à ×4 : le grand ne le franchit pas non plus. Ce n'est pourtant PAS ce qui
- * garde la salle — la falaise fait quatre-vingts mètres, il n'y aurait rien où
- * se poser. Les trente mètres sont là pour l'œil du petit, à qui ils font
- * seize longueurs de corps.
+ * Z_LEVRE → Z_FALAISE : LE CHENAL, 30 m — au-dessus des 22,28 m d'un sprint-saut
+ * à ×4. Ce n'est pourtant PAS ce qui garde la salle : la falaise fait
+ * quatre-vingts mètres, il n'y aurait de toute façon rien où se poser. Les
+ * trente mètres sont là pour l'œil du petit, à qui ils font seize corps.
  *
  * Y_TABLETTE = 6,00 EST UN COMPROMIS, PAS UN OPTIMUM. Il faut être au-dessus de
  * 4,90, la plus haute marche qu'un ×4 escalade (mesuré, élan et sprint compris),
@@ -117,9 +113,9 @@ type V3 = [number, number, number];
  * 5,40 de profondeur au lieu de 6,80 ramène la fenêtre de visée de cinq angles à
  * UN SEUL et supprime toute latitude en travers. La profondeur ne se négocie pas.
  *
- * Y_FOND = −4,00. On ressort d'une fosse à parois droites jusqu'à 4,90 à ×4
- * (mesuré) : un géant tombé dans le chenal en remonte partout, tout seul. À ×1
- * on n'en remonte pas — d'où la grève.
+ * Y_FOND = −4,00 : on ressort d'une fosse à parois droites jusqu'à 4,90 à ×4
+ * (mesuré), donc un géant tombé au chenal en remonte partout tout seul. À ×1 on
+ * n'en remonte pas — d'où la grève.
  */
 const Z_LEVRE = 3480;
 const Z_EPERON = 3482.4;
@@ -161,8 +157,7 @@ const b = (min: V3, max: V3, ink = 0, opts: { outline?: boolean } = {}): BoxDef 
 });
 
 /**
- * LE QUAI, LE FOND, ET LA FALAISE — trois nappes, et pas une de plus.
- *
+ * LE QUAI, LE CHENAL, LA PASSE ET LA FALAISE — quatre nappes, pas une de plus.
  * Leurs DESSOUS sont échelonnés au centième : au même plan, ils feraient des
  * milliers de mètres carrés de faces confondues sous le monde — la leçon de
  * l'escalier, reprise telle quelle.
@@ -176,19 +171,18 @@ const b = (min: V3, max: V3, ink = 0, opts: { outline?: boolean } = {}): BoxDef 
  * sont à 6,62. Une ligne partie de si bas vers un objet quatre mètres sous le
  * quai replonge sous le sol AVANT d'avoir dépassé la lèvre. Mesuré sur la
  * première version : trente postes au fond de la passe, **neuf invisibles**, une
- * bande de soixante-dix centimètres collée au mur — exactement là où tombe un
- * galet lâché d'un pas en arrière. Or à ×4 on n'entre pas dans la passe : ce
- * galet-là était perdu pour de bon, et la salle avec lui.
+ * bande de soixante-dix centimètres collée au mur — là même où tombe un galet
+ * lâché d'un pas en arrière. Or à ×4 on n'entre pas dans la passe : ce galet-là
+ * était perdu pour de bon, et la salle avec lui.
  *
  * J'ai d'abord posé une banquette d'amarrage de 1,20 le long du mur. Le banc a
  * répondu **0 poste sur 30** : en dépassant, elle masquait à son tour tout le
- * fond derrière elle — un rattrapage qui recrée le défaut un mètre plus loin.
- *
- * Le fond REMONTÉ règle les deux d'un coup : 100 postes sur 100 saisissables
- * depuis la lèvre. Elle se remonte à ×1 (1,225 mesuré) et, à ×1/4, on en sort
- * par ses deux bouts en tombant dans le chenal, d'où la grève ramène. Et elle
- * reste infranchissable à ×4 pour la seule raison qui compte : 2,40 de large
- * contre un corps de 2,72.
+ * fond derrière elle — un rattrapage qui recrée le défaut un mètre plus loin. Le
+ * fond REMONTÉ règle les deux d'un coup : 100 postes sur 100 saisissables depuis
+ * la lèvre. Elle se remonte à ×1 (1,225 mesuré) et, à ×1/4, on en sort par ses
+ * deux bouts en tombant dans le chenal, d'où la grève ramène. Elle reste
+ * infranchissable à ×4 pour la seule raison qui compte : 2,40 de large contre un
+ * corps de 2,72.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 const terrain = (): BoxDef[] => [
@@ -203,9 +197,8 @@ const terrain = (): BoxDef[] => [
  *
  * Elle existe pour une seule raison : **un ×1 ne remonte pas quatre mètres**, il
  * n'en monte que 1,225 (mesuré). Un ×4 tombé dans le chenal en ressort partout
- * tout seul ; un ×1 venu regarder l'eau de trop près serait enfermé.
- *
- * 0,20 et pas 0,80 : on PEUT descendre à ×1/4 ici — il suffit d'entrer dans la
+ * tout seul ; un ×1 venu regarder l'eau de trop près serait enfermé. Et 0,20
+ * plutôt que 0,80 : on PEUT descendre à ×1/4 ici — il suffit d'entrer dans la
  * grande porte en étant déjà petit — et l'on n'y escalade que 0,306. Une marche
  * de 0,20 se monte EN MARCHANT à toutes les tailles du jeu, l'enjambée valant
  * 0,225 même au plus bas ; vérifié aux deux, 3,1 s à ×1 et 12,4 s à ×1/4. Vingt
@@ -248,12 +241,11 @@ const greve = (): BoxDef[] =>
 const eperon = (): BoxDef[] => [
   b([EP_O, -40.03, Z_EPERON], [BAIE_O, Y_CIEL, Z_FALAISE], 2),
   b([BAIE_E, -40.031, Z_EPERON], [EP_E, Y_CIEL, Z_FALAISE], 2),
-  // Sous la baie : la lèvre de pierre sur laquelle la pièce se pose.
+  // Sous la baie, la tablette où la pièce se pose ; au-dessus, le linteau et les
+  // soixante-neuf mètres qui l'écrasent ; puis le fond — la pièce lâchée depuis
+  // la lèvre occupe 3485,4→3489,0, il reste vingt centimètres, et c'est assez.
   b([BAIE_O, -40.032, Z_EPERON], [BAIE_E, Y_TABLETTE, Z_FALAISE], 1),
-  // Au-dessus : le linteau, et les soixante-neuf mètres qui l'écrasent.
   b([BAIE_O, Y_LINTEAU, Z_EPERON], [BAIE_E, Y_CIEL, Z_FALAISE], 2),
-  // Le fond de la baie. La pièce lâchée depuis la lèvre occupe 3485,4→3489,0 ;
-  // il reste vingt centimètres derrière elle, et c'est tout ce qu'il faut.
   b([BAIE_O, Y_TABLETTE, Z_BAIE], [BAIE_E, Y_LINTEAU, Z_FALAISE], 1),
 ];
 
@@ -284,11 +276,10 @@ const bornes = (): BoxDef[] => [
  * pas** : le fond de la baie. C'est le défaut connu de cette salle, et il est
  * mesuré — passé z = 3484,9, un galet sort du champ de `targeted`, dont l'œil à
  * 4,32 m rase le seuil de la baie. Partout ailleurs tout se rattrape : la passe
- * se repêche du bout des doigts depuis la lèvre (100 postes sur 100 ; et 154
- * lâchers sur 154 se reprennent), le chenal se descend par la grève, et rien ne
- * se pose sur la falaise. Il faut donc rater trois lancers dans un trou de neuf
- * mètres sur quatre, à cinq mètres, pour casser la salle. L'escalier donne
- * quatre cubes pour le même raisonnement.
+ * se repêche du bout des doigts depuis la lèvre (100 postes sur 100, et 154
+ * lâchers sur 154), le chenal se descend par la grève, rien ne se pose sur la
+ * falaise. Il faut donc rater trois lancers dans un trou de neuf mètres sur
+ * quatre pour casser la salle. L'escalier donne quatre cubes pour la même raison.
  *
  * 0,90 EST UN VERROU À DEUX BOUTS. Sous les 0,99 qu'on soulève à ×1, donc un
  * homme l'emporte ; quatre fois trop petit pour la serrure, donc un géant n'en
@@ -300,11 +291,7 @@ const bornes = (): BoxDef[] => [
  * et un rapport de quatre qui se voit d'un coup d'œil.
  */
 const galets = (): CarryableDef[] =>
-  ([
-    [232, 0.01, 3456],
-    [229.2, 0.01, 3453.4],
-    [234.8, 0.01, 3454.2],
-  ] as V3[]).map((position, i) => ({
+  ([[232, 0.01, 3456], [229.2, 0.01, 3453.4], [234.8, 0.01, 3454.2]] as V3[]).map((position, i) => ({
     id: `galet-rive-${i + 1}`,
     position,
     size: GALET,

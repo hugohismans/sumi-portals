@@ -171,6 +171,19 @@
         border: 1px solid rgba(33, 28, 23, .22); border-radius: 3px;
         padding: 4px 5px; resize: vertical; min-height: 34px;
       }
+      #debug .pourquoi {
+        display: block; padding-left: 20px; margin: 1px 0 2px;
+        font-style: italic; opacity: .5; font-size: 10.5px; line-height: 1.35;
+      }
+      /* Cinq points de 20 px : au pouce, on veut viser le 4 sans passer par
+         le 1, le 2 et le 3. */
+      #debug .notes { display: flex; gap: 3px; margin: 5px 0 0 20px; }
+      #debug .notes i {
+        width: 20px; height: 18px; line-height: 17px; text-align: center;
+        font-style: normal; font-size: 10px; cursor: pointer;
+        border: 1px solid rgba(33, 28, 23, .3); border-radius: 2px; opacity: .45;
+      }
+      #debug .notes i.mise { opacity: 1; background: rgba(33, 28, 23, .16); font-weight: 600; }
       #debug .rapport {
         display: block; width: 100%; margin: 2px 0 10px;
         border: 1px solid var(--ink); border-left-width: 1px; border-radius: 3px;
