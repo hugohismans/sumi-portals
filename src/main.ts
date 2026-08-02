@@ -14,7 +14,7 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
-import { REPERES_MONDE, changeDeMonde } from './debug/reperes.js';
+import { REPERES_DESCENTE, REPERES_MONDE, changeDeMonde } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
 import { SceauFinal } from './render/sceauFinal.js';
 import { Tracage } from './render/tracage.js';
@@ -727,7 +727,13 @@ applyScale(true);
 //
 // Rien de tout ça ne s'active en partie normale : le panneau reste `hidden` et
 // aucune touche n'est écoutée.
-if (PARAMS.get('debug') && MODE === 'monde') {
+/**
+ * Chaque monde a ses repères. Le tableau est choisi une fois pour toutes ici, et
+ * tout le panneau suit — ajouter un monde, c'est ajouter une ligne.
+ */
+const REPERES = MODE === 'descente' ? REPERES_DESCENTE : REPERES_MONDE;
+
+if (PARAMS.get('debug') && (MODE === 'monde' || MODE === 'descente')) {
   const panneau = el('debug');
   panneau.hidden = false;
 
@@ -738,7 +744,7 @@ if (PARAMS.get('debug') && MODE === 'monde') {
    * partie honnête ne produit.
    */
   const allerA = (i: number): void => {
-    const r = REPERES_MONDE[i];
+    const r = REPERES[i];
     if (!r) return;
 
     if (changeDeMonde(r.pigments, Pigments.lire())) {
@@ -747,7 +753,7 @@ if (PARAMS.get('debug') && MODE === 'monde') {
       } catch {
         /* sans mémoire, le repère arrive dans l'état courant : tant pis */
       }
-      location.search = `?niveau=monde&debug=1&repere=${i}`;
+      location.search = `?niveau=${MODE}&debug=1&repere=${i}`;
       return;
     }
 
@@ -806,7 +812,7 @@ if (PARAMS.get('debug') && MODE === 'monde') {
   const LEGENDES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '[', ']'];
 
   panneau.innerHTML = '<h3>Repères — ?debug=1</h3>';
-  REPERES_MONDE.forEach((r, i) => {
+  REPERES.forEach((r, i) => {
     const b = document.createElement('button');
     const t = document.createElement('b');
     const k = document.createElement('kbd');
@@ -837,7 +843,7 @@ if (PARAMS.get('debug') && MODE === 'monde') {
   window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyH') replier();
     const i = TOUCHES.indexOf(e.code);
-    if (i >= 0 && i < REPERES_MONDE.length) allerA(i);
+    if (i >= 0 && i < REPERES.length) allerA(i);
   });
 
   // Arrivée par rechargement : le saut a été demandé dans la page précédente,
@@ -852,7 +858,7 @@ if (PARAMS.get('debug') && MODE === 'monde') {
   //
   // Elle s'affiche donc dans sa forme courte, celle d'une reprise.
   const demande = Number(PARAMS.get('repere'));
-  if (PARAMS.has('repere') && demande >= 0 && demande < REPERES_MONDE.length) {
+  if (PARAMS.has('repere') && demande >= 0 && demande < REPERES.length) {
     overlay.classList.add('resumed');
     allerA(demande);
   }

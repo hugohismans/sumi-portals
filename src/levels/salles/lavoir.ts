@@ -115,9 +115,32 @@ const FENTE_Z = Z0 + 1.5;
 /** Le dallage : des pavés séparés par des joints, dont un s'est ouvert. */
 const dallage = (): BoxDef[] => {
   const out: BoxDef[] = [];
-  // Le socle plein, sous tout. Sans contour : sa silhouette entière serait
-  // tracée à l'encre à l'horizon, ce qui n'a aucun sens pour un sol.
-  out.push(b([X0 - 14, -FENTE_FOND - 0.6, Z0 - 10], [X0 + 14, -0.02, Z0 + 12], 0, { outline: false }));
+  // ─── LE SOCLE EST FENDU, LUI AUSSI ────────────────────────────────────
+  //
+  // Il était d'un seul tenant, de −1,80 à −0,02, sous toute la cour. La fente
+  // était donc CREUSÉE DANS DU PLEIN : elle n'existait pas du tout. On se
+  // téléportait dedans et l'on se retrouvait debout sur le socle, à la surface,
+  // sans comprendre pourquoi.
+  //
+  // Rien ne pouvait le dire — ni les faces confondues, ni la parcelle, ni les
+  // tailles : toutes ces vérifications regardent les boîtes une à une, et
+  // aucune ne demande « y a-t-il du vide là où j'ai dessiné un vide ». C'est en
+  // s'y rendant que ça se voit, et c'est la première fois de la nuit qu'un
+  // défaut n'a été trouvé qu'à l'œil.
+  //
+  // Sans contour : la silhouette entière d'un sol tracée à l'encre à l'horizon
+  // n'a aucun sens.
+  for (const [z0, z1] of [
+    [Z0 - 10, FENTE_Z - FENTE_LARGE * 0.5 - 0.4],
+    [FENTE_Z + FENTE_LARGE * 0.5 + 0.4, Z0 + 12],
+  ] as const) {
+    out.push(b([X0 - 14, -FENTE_FOND - 0.6, z0], [X0 + 14, -0.02, z1], 0, { outline: false }));
+  }
+  // Et sous la fente, la roche qui la porte — plus bas que son sol de deux
+  // centimètres, pour ne pas confondre leurs faces.
+  // Son dessous est un rien PLUS HAUT que celui des deux nappes : à l'identique,
+  // leurs faces inférieures se confondaient sur quatre mètres carrés.
+  out.push(b([X0 - 14, -FENTE_FOND - 0.55, FENTE_Z - 0.7], [X0 + 14, -FENTE_FOND - 0.01, FENTE_Z + 0.7], 0, { outline: false }));
 
   // Les pavés, en deux nappes que la fente sépare. Ils MORDENT sur le socle de
   // deux centimètres : posés pile dessus, leurs faces inférieures se

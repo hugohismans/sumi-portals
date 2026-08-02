@@ -27,9 +27,11 @@ import type { SalleModule } from './contrat.js';
  *
  * ELLE N'ENSEIGNE RIEN, ET C'EST SA FONCTION. Le mouvement a appris trois
  * choses : compter les portes (« les trois creux »), vivre à quarante-cinq
- * centimètres (« la pluie »), et qu'une caisse portée change de taille avec son
- * porteur (le hall). Le bol ne demande que ça, toutes ensemble, et ne montre
- * aucune mécanique neuve. C'est une salle de bravoure : elle vérifie l'acquis.
+ * centimètres (« la pluie », et l'atelier juste avant), et qu'une caisse portée
+ * change de taille avec son porteur (le hall). Le bol ne demande que ça, toutes
+ * ensemble, et ne montre aucune mécanique neuve. C'est une salle de bravoure :
+ * elle vérifie l'acquis. C'est aussi la DERNIÈRE de la file — l'assemblage n'en
+ * fait repartir aucune porte — donc la seule qui ait le droit de finir.
  *
  * CE QU'ON DEMANDE, EN UNE PHRASE : comprendre que la solution était sous les
  * yeux depuis l'entrée, et qu'il fallait la regarder d'ailleurs.
@@ -103,7 +105,10 @@ import type { SalleModule } from './contrat.js';
  *   tailles différentes, et la seule question « combien de portes ». Ici
  *   l'établi est devenu une étagère, les billes deux pierres, et le creux est
  *   au fond d'un récipient dans lequel il faut entrer.
- *   LE FOND revisite LA COUR DE PLUIE : c'est là que va toute cette eau. Le
+ *   LE FOND revisite LA COUR DE PLUIE — que l'assemblage a mise en détour, donc
+ *   que le joueur a peut-être manquée ; le rappel se tient tout seul pour qui
+ *   l'a vue, et n'est qu'une grève pour les autres. C'est là que va toute cette
+ *   eau. Le
  *   caniveau y arrive en ruisseau, la flaque de quatre mètres y est devenue la
  *   mer, et la pluie a cessé. Même taille de joueur, même averse — l'autre
  *   bout du même orage.
@@ -221,9 +226,10 @@ const ETAGERE_NEZ = -339.0;
  *
  * La règle 6 demande de border le vide. Le vide, ici, c'est 0,92 m, soit deux
  * fois la taille du joueur ×1/4 : de quoi tomber et se retrouver dans une pièce
- * dont on ne remontera pas. La cote canonique s'applique donc : 0,38 au-dessus
- * du tablier, c'est-à-dire AU-DESSUS DE SON SAUT (0,323) et SOUS SES YEUX
- * (0,414) — il ne le franchit pas, il voit par-dessus.
+ * dont on ne remontera pas. La cote canonique s'applique donc : 0,40 au-dessus
+ * du tablier — 0,89 fois sa taille — c'est-à-dire AU-DESSUS DE SON SAUT (0,323
+ * annoncé, 0,306 mesuré) et SOUS SES YEUX (0,414) : il ne le franchit pas, il
+ * voit par-dessus.
  *
  * Il est PLEIN et non ajouré, à l'inverse des grilles des « trois creux », et
  * pour une raison mesurée : le joueur ×1 doit voir le fond du bol depuis le sol
@@ -788,8 +794,9 @@ const laGreve = (): BoxDef[] => {
 /**
  * LE PINCEAU BLEU.
  *
- * `echelle: -1`, c'est-à-dire ×1/4 : la taille où l'on vit depuis « la pluie »,
- * trois salles plus haut. Il n'y a rien à devenir pour lui — et c'est la seule
+ * `echelle: -1`, c'est-à-dire ×1/4 : la taille qu'on vient de reprendre en
+ * franchissant la porte du fond, et celle qu'on quittait l'atelier en ayant.
+ * Il n'y a rien à devenir pour lui — et c'est la seule
  * fois du jeu où le veilleur ne demande rien, parce que le mouvement entier a
  * déjà été la condition.
  *
@@ -922,7 +929,7 @@ export const BOL: SalleModule = {
       '#a8724c', // 3 — LE BOIS, et il ne dit qu'une chose : une main est passée
     ],
     ink: '#16212a',
-    // Les deux salles sont à cent treize mètres l'une de l'autre. Le brouillard
+    // Les deux salles sont à cent dix-huit mètres l'une de l'autre. Le brouillard
     // est posé à quatre-vingt-dix : on ne voit donc jamais la pièce depuis la
     // grève, ni la grève depuis la pièce, et la brume ferme l'anse à l'est
     // exactement là où il faut qu'elle se ferme.
@@ -967,10 +974,11 @@ export const BOL: SalleModule = {
 
   // ─── LE RACCORD ────────────────────────────────────────────────────────────
   //
-  // ON ARRIVE À TAILLE D'HOMME, palier 0, par le mur sud — et c'est le seul
-  // changement de régime du mouvement : on vivait à ×1/4 depuis « la pluie »,
-  // l'assemblage devra donc poser ici la GRANDE face de sa paire de raccord.
-  // La position est le milieu du seuil, au niveau de la pierre.
+  // ON ARRIVE À TAILLE D'HOMME, palier 0, par le mur sud. La salle d'avant se
+  // quitte à ×1/4 : l'assemblage pose donc ici la GRANDE face de sa paire de
+  // raccord, et l'on redevient grand en entrant — ce qui est le contraire de
+  // tout le mouvement, et exactement ce qu'il faut pour que la pièce paraisse
+  // banale. La position est le milieu du seuil, au niveau de la pierre.
   //
   // ON REPART DE LA VASQUE, palier −1. Ce n'est pas une porte : c'est le but,
   // et c'est le seul endroit du module qui n'ouvre sur rien. Le mouvement ne

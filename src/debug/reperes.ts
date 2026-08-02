@@ -238,3 +238,129 @@ export const changeDeMonde = (voulu: string[], courant: string[]): boolean => {
   const b = [...courant].sort();
   return a.some((p, i) => p !== b[i]);
 };
+
+/**
+ * LA DESCENTE — un repère par salle, dans l'ordre du voyage.
+ *
+ * Six salles bâties par cinq mains différentes, en une nuit, chacune sans voir
+ * les autres. Aucune n'a jamais été REGARDÉE : tout ce qu'on sait d'elles est
+ * mesuré, simulé, prouvé — et rien de tout cela ne dit si c'est beau, ni si
+ * l'on comprend ce qu'on doit faire.
+ *
+ * C'est à ça que servent ces touches. Elles ne rechargent pas la page : la
+ * descente n'a pas de couleur à rapporter, donc son état tient tout entier dans
+ * la position et l'échelle.
+ */
+export const REPERES_DESCENTE: Repere[] = [
+  {
+    titre: 'Le lavoir, à hauteur d’homme',
+    verifier:
+      'Un bassin, des dalles, un mur avec un creux vide, un chevalet. Entre deux ' +
+      "pavés, un TRAIT au sol qu'on ne peut pas regarder : c'est là qu'on ira.",
+    position: [-200, 0.05, 692],
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'Le trait devient un ravin',
+    verifier:
+      "À quarante-cinq centimètres, la fente est un lieu : un sol, des parois, une " +
+      'ombre. Au fond, une perle et une feuille. Une rampe en gradins pour ressortir.',
+    position: [-200, -1.1, 701.5],
+    echelle: -1,
+    lacet: Math.PI * 0.5,
+    pigments: [],
+    jalon: 1,
+  },
+  {
+    titre: 'Le chevalet, et la porte qui se dessine',
+    verifier:
+      'On pose la feuille, le Pinceau vient et trace la porte tache par tache. ' +
+      'Reprendre la feuille doit RESCELLER la porte et effacer son dessin.',
+    position: [-205, 0.05, 694],
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 3,
+  },
+  {
+    titre: 'Le conduit — quarante mètres de vide',
+    verifier:
+      "Sauter, rater, recommencer. À ×1/4 on manque de portée ; à ×4 on ne rentre " +
+      "pas ; à ×1 il faut prendre son élan. Rater doit coûter dix secondes, pas une partie.",
+    position: [186, 0.4, 1000],
+    echelle: 0,
+    lacet: Math.PI * 0.5,
+    pigments: [],
+    jalon: 4,
+  },
+  {
+    titre: 'Le fond du puits, vu d’en dessous',
+    verifier:
+      "Le plus beau plan du mouvement, et il est réservé à qui s'est trompé : " +
+      'quarante mètres de paroi et un rond de ciel. Puis une remontée sous dix secondes.',
+    position: [200, -41.5, 1000],
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 5,
+  },
+  {
+    titre: 'Les trois creux',
+    verifier:
+      'Trois perles identiques, trois creux de tailles différentes. Une reste, une ' +
+      "monte d'une porte, une de deux. Rien à deviner : à compter.",
+    position: [200, 0.4, 682],
+    echelle: 1,
+    lacet: 0,
+    pigments: [],
+    jalon: 8,
+  },
+  {
+    titre: 'L’atelier de lavis — le tableau',
+    verifier:
+      "Le cadre montre la pièce avec les claies EN ROUGE. On s'approche d'une claie, " +
+      'on appuie : elles se peignent une par une. Le mur, lui, refuse — il est trop grand.',
+    position: [-1.9, 0.12, 1298.65],
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 12,
+  },
+  {
+    titre: 'Le bol — la même pièce, vue d’ailleurs',
+    verifier:
+      "Les deux faces d'une même porte, dans une seule pièce. On traverse, on se " +
+      "retourne : c'est le même endroit et l'on est quatre fois plus petit. L'étagère " +
+      'est un viaduc, le bol une citerne.',
+    position: [-340.6, 0.03, 1237],
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 17,
+  },
+  {
+    titre: 'Le fond — le pinceau bleu',
+    verifier:
+      "Une grève sous une pluie qui a cessé. Le bleu dort dans une vasque, et " +
+      "n'accepte que ×1/4. E le réveille ; à toute autre taille il frémit et refuse.",
+    position: [-267.5, 0.2, 1335],
+    echelle: -1,
+    lacet: 0,
+    pigments: [],
+    jalon: 19,
+  },
+  {
+    titre: 'La cour de pluie — le détour',
+    verifier:
+      "Rien à résoudre, une seule sortie. De grosses gouttes s'écrasent et laissent " +
+      "un anneau d'encre qui sèche. À cette taille, tout ce qui tombe tombe vite.",
+    position: [-212.5, 0.03, 1000],
+    echelle: -1,
+    lacet: Math.PI * 0.5,
+    pigments: [],
+    jalon: 24,
+  },
+];
