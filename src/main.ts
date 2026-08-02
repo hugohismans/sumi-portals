@@ -479,6 +479,15 @@ let stepPhase = 0;
 let lissageMarche = 0;
 /** Vrai pendant le plan de fin, où l'on voit beaucoup plus loin que d'habitude. */
 let sacreLarge = false;
+/**
+ * Le plan de fin a-t-il eu lieu ?
+ *
+ * On ne peut pas se servir de `sacreLarge` pour le savoir : il est remis à faux
+ * à l'instant même où le plan s'achève, et quelques lignes AVANT l'endroit qui
+ * s'en servirait. Un drapeau qui dit « c'est en cours » ne peut jamais dire
+ * « c'était en cours ».
+ */
+let sacreEuLieu = false;
 
 // --- Entrées ------------------------------------------------------------------
 const input = new InputManager(renderer.domElement, LEVEL.spawnYaw);
@@ -780,11 +789,37 @@ applyScale(true);
  * Chaque monde a ses repères. Le tableau est choisi une fois pour toutes ici, et
  * tout le panneau suit — ajouter un monde, c'est ajouter une ligne.
  */
-const REPERES = MODE === 'descente' ? REPERES_DESCENTE : REPERES_MONDE;
+const REPERES =
+  MODE === 'descente' ? REPERES_DESCENTE : MODE === 'monde' ? REPERES_MONDE : [];
 
-if (PARAMS.get('debug') && (MODE === 'monde' || MODE === 'descente')) {
+{
   const panneau = el('debug');
-  panneau.hidden = false;
+
+  // ─── ON L'OUVRE SANS TAPER D'ADRESSE ──────────────────────────────────────
+  //
+  // Il ne s'ouvrait qu'avec `?debug=1`. Sur un ordinateur, c'est trois
+  // caractères ; sur un téléphone, c'est ce qui fait qu'on ne teste pas — il
+  // faut sortir du plein écran, trouver la barre d'adresse, taper sans se
+  // tromper, recharger.
+  //
+  // Trois touchers sur l'affichage de l'échelle, en moins d'une seconde et
+  // demie. C'est un geste que personne ne fait par hasard et que personne n'a
+  // besoin d'apprendre : on le dit une fois, et il ne s'oublie pas. Le jeu
+  // livré à quelqu'un d'autre reste donc rigoureusement propre.
+  panneau.hidden = !PARAMS.get('debug');
+  {
+    let coups = 0;
+    let dernier = 0;
+    el('scale-readout').addEventListener('pointerdown', () => {
+      const t = performance.now();
+      coups = t - dernier < 1500 ? coups + 1 : 1;
+      dernier = t;
+      if (coups < 3) return;
+      coups = 0;
+      panneau.hidden = !panneau.hidden;
+      if (!panneau.hidden) document.exitPointerLock();
+    });
+  }
 
   /**
    * Y va. Deux chemins, et le second n'est pas un pis-aller : voir l'en-tête de
@@ -860,16 +895,82 @@ if (PARAMS.get('debug') && (MODE === 'monde' || MODE === 'descente')) {
   ];
   const LEGENDES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '[', ']'];
 
-  panneau.innerHTML = '<h3>Repères — ?debug=1</h3>';
+  // ─── LE PROTOCOLE EST DANS LE JEU, PAS DANS UN FICHIER ───────────────────
+  //
+  // Il vivait dans `PROTOCOLE.md`, à la racine du dépôt. Parfait pour qui a le
+  // dépôt sous la main ; inutile pour qui teste sur un téléphone, c'est-à-dire
+  // dans les conditions réelles du jeu.
+  //
+  // Le voici donc jouable : une liste de choses à faire, dans l'ordre, chacune
+  // menant à l'endroit où on la fait, et qu'on coche en la faisant. Ce qui est
+  // coché survit au rechargement — sans quoi on recommencerait la liste à chaque
+  // fois qu'on recharge, ce qui arrive vingt fois par séance de test.
+  const CLE_FAITS = `sumi.protocole.${MODE ?? 'hall'}`;
+  const faits = new Set<string>(
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem(CLE_FAITS) ?? '[]') as string[];
+      } catch {
+        return [];
+      }
+    })(),
+  );
+  const noter = (): void => {
+    try {
+      localStorage.setItem(CLE_FAITS, JSON.stringify([...faits]));
+    } catch {
+      /* sans mémoire, la liste vit le temps de la séance */
+    }
+  };
+
+  panneau.innerHTML = '';
+  const titre = document.createElement('h3');
+  titre.textContent = 'Protocole';
+  panneau.appendChild(titre);
+
+  // Les autres mondes, en une ligne : sur un téléphone, taper une adresse à la
+  // main est le geste qui fait qu'on ne teste pas.
+  const mondes = document.createElement('div');
+  mondes.className = 'mondes';
+  for (const [nom, url] of [
+    ['hall', './?debug=1'],
+    ['monde', '?niveau=monde&debug=1'],
+    ['descente', '?niveau=descente&debug=1'],
+    ['rêve', '?niveau=reve&graine=7&debug=1'],
+  ] as const) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.textContent = nom;
+    if (nom === (MODE ?? 'hall') || (nom === 'hall' && MODE === null)) a.className = 'ici';
+    mondes.appendChild(a);
+  }
+  panneau.appendChild(mondes);
+
   REPERES.forEach((r, i) => {
     const b = document.createElement('button');
+    if (faits.has(r.titre)) b.classList.add('fait');
+
+    // La coche, à gauche, et elle NE VOYAGE PAS : on la touche pour dire
+    // « celui-là je l'ai fait », sans quitter l'endroit où l'on est.
+    const coche = document.createElement('span');
+    coche.className = 'coche';
+    coche.textContent = faits.has(r.titre) ? '✓' : '';
+    coche.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (faits.has(r.titre)) faits.delete(r.titre);
+      else faits.add(r.titre);
+      b.classList.toggle('fait', faits.has(r.titre));
+      coche.textContent = faits.has(r.titre) ? '✓' : '';
+      noter();
+    });
+
     const t = document.createElement('b');
     const k = document.createElement('kbd');
     k.textContent = LEGENDES[i] ?? '·';
     t.append(k, r.titre);
     const s = document.createElement('small');
     s.textContent = r.verifier;
-    b.append(t, s);
+    b.append(coche, t, s);
     b.addEventListener('click', () => {
       allerA(i);
       // Le bouton garde le clavier s'il garde le foyer : la barre d'espace le
@@ -1254,6 +1355,22 @@ function frame(now: number): void {
   // pendant les deux tiers de sa durée, et le mot ne vient qu'ensuite — quand
   // on a déjà vu, et qu'on n'a plus qu'à lire.
   if (sacre.actif && sacre.avancement > 0.62) finPanel.classList.add('show');
+
+  // ─── LE PLAN S'ACHÈVE, ET LA SUITE S'OUVRE ────────────────────────────────
+  //
+  // Signalé en jouant : « la vue drone se termine, le titre reste, et je suis
+  // bloqué dans le monde. » C'était exact — rien ne retirait le titre, et rien
+  // n'ouvrait quoi que ce soit. On finissait le jeu et l'on se retrouvait
+  // enfermé dedans, ce qui est une drôle de récompense.
+  //
+  // On rend donc la souris et l'on montre où aller. Pas avant : proposer de
+  // partir à quelqu'un qui est en train de regarder son plan de fin, c'est le
+  // lui gâcher.
+  if (sacre.actif) sacreEuLieu = true;
+  if (sacreEuLieu && !sacre.actif && !finPanel.classList.contains('acheve')) {
+    finPanel.classList.add('acheve');
+    document.exitPointerLock();
+  }
 
   if (!sacre.update(dt, camera)) {
     const eye = sim.eyePosition();

@@ -11,6 +11,24 @@ la mauvaise chose.
 
 ---
 
+## LE PROTOCOLE EST DANS LE JEU
+
+Ce fichier est la version longue. **La version qu'on suit est dans le jeu**, et
+elle s'ouvre sans taper d'adresse :
+
+> **Trois touchers sur l'affichage de l'échelle**, en haut à gauche, en moins
+> d'une seconde et demie.
+
+Un panneau s'ouvre : les quatre mondes en une ligne, puis la liste des choses à
+faire, dans l'ordre. **Touche le titre** d'une ligne pour aller à l'endroit où on
+la fait ; **touche la case** à gauche pour la cocher. Ce qui est coché survit au
+rechargement — sans quoi on recommencerait la liste vingt fois par séance.
+
+C'est un geste que personne ne fait par hasard : le jeu envoyé à quelqu'un
+d'autre reste propre.
+
+---
+
 ## Comment lancer
 
 ```bash
