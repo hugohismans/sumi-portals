@@ -54,6 +54,26 @@ const moveAxis = (
   const minKey = axis === 'x' ? 'minX' : axis === 'y' ? 'minY' : 'minZ';
   const maxKey = axis === 'x' ? 'maxX' : axis === 'y' ? 'maxY' : 'maxZ';
 
+  // ─── ON NE SE POSE QUE SUR CE QU'ON AVAIT SOUS LES PIEDS ─────────────────
+  //
+  // En descendant, on résolvait sur le DESSUS de toute boîte pénétrée. C'est
+  // juste pour un sol : on tombe dessus, on s'y pose. C'est catastrophique pour
+  // un linteau.
+  //
+  // Un joueur de 1,80 debout au ras d'une porte basse pénètre son linteau — sa
+  // tête est dedans. L'accroche au sol résolvait alors sur le dessus du
+  // linteau, et le joueur était CATAPULTÉ par-dessus la porte : mesuré, il
+  // passait de 0 à 1,70 en une image, puis marchait tranquillement sur le
+  // linteau et par-dessus le mur.
+  //
+  // C'est l'autre moitié du même défaut que la marche sondée trop haut, et
+  // c'est la pire des deux : la première refusait un passage qui aurait dû
+  // s'ouvrir, celle-ci ouvre un passage qui aurait dû être fermé — au-dessus
+  // du décor, là où aucune salle n'est dessinée.
+  //
+  // On ne retient donc, pour une descente, que les boîtes dont le dessus était
+  // DÉJÀ sous les pieds avant le mouvement. Les autres, on ne les touche pas :
+  // on annule simplement la descente, et le corps reste où il était.
   // On prend la résolution la plus extrême : gère plusieurs boîtes en une passe.
   let resolved = p[axis];
   if (amount > 0) {
@@ -78,6 +98,15 @@ export interface MoveResult {
  * joueur : un géant enjambe un immeuble, un nain bute sur un pavé. C'est le
  * cœur du level design — chaque obstacle devient un verrou d'échelle.
  */
+/**
+ * Les hauteurs qu'on essaie pour franchir une marche, en fraction de la marche
+ * maximale, de la plus petite à la plus grande.
+ *
+ * L'ordre est tout : on retient la PREMIÈRE qui passe, donc la plus basse, donc
+ * celle qui laisse le plus de place au-dessus de la tête.
+ */
+const ESSAIS_DE_MARCHE = [0.08, 0.25, 0.5, 1] as const;
+
 export const moveAndCollide = (
   world: World,
   p: Vec3,
@@ -109,29 +138,54 @@ export const moveAndCollide = (
   const blockedZ = moveAxis(world, p, scale, 'z', dz);
 
   if ((blockedX || blockedZ) && (wasGrounded || result.grounded)) {
-    // On rejoue le déplacement une marche plus haut. Si ça passe, c'était une
-    // marche ; sinon on garde le résultat bloqué d'origine.
-    const liftedX = beforeX;
-    const liftedY = beforeY + stepHeight;
-    const liftedZ = beforeZ;
-    const probe = { x: liftedX, y: liftedY, z: liftedZ };
+    // ─── ON SONDE À LA HAUTEUR DE L'OBSTACLE, PAS AU MAXIMUM ───────────────
+    //
+    // On ne relevait le joueur QUE d'une marche entière — 0,90 m à ×1, 3,60 m à
+    // ×4 — et l'on exigeait que son corps soit libre à cette hauteur-là.
+    //
+    // Sous un linteau, la tête entrait dans le linteau : la marche était
+    // refusée, alors que l'obstacle réel faisait six centimètres. Le joueur
+    // butait sur un seuil qu'il aurait dû enjamber sans même le voir, et rien
+    // au monde ne pouvait le lui expliquer. Ça a fermé les trois ouvertures
+    // d'une toise dans le hall, avec des arrêts mesurés à 9 cm, 34 cm et
+    // 1,36 m de l'ouverture selon la taille — et personne ne l'aurait trouvé
+    // sans aller mesurer.
+    //
+    // On essaie donc plusieurs hauteurs, de la plus petite à la plus grande, et
+    // l'on retient LA PREMIÈRE qui passe. Un seuil bas se franchit maintenant
+    // sous un linteau bas, ce qui est la seule chose qu'on demandait.
+    //
+    // Quatre paliers et pas une recherche dichotomique : le gain de précision
+    // serait invisible — les marches d'un décor de boîtes sont des nombres
+    // ronds — et l'on paierait deux fois plus de tests de collision à chaque
+    // pas de chaque joueur.
+    for (const part of ESSAIS_DE_MARCHE) {
+      const levee = stepHeight * part;
+      const probe = { x: beforeX, y: beforeY + levee, z: beforeZ };
+      if (!isClear(world, probe, scale)) continue;
 
-    if (isClear(world, probe, scale)) {
       const stepBlockedX = moveAxis(world, probe, scale, 'x', dx);
       const stepBlockedZ = moveAxis(world, probe, scale, 'z', dz);
       const improved =
         (blockedX && !stepBlockedX) || (blockedZ && !stepBlockedZ);
+      if (!improved) continue;
 
-      if (improved) {
-        // On repose le joueur sur la marche.
-        moveAxis(world, probe, scale, 'y', -stepHeight);
-        p.x = probe.x;
-        p.y = probe.y;
-        p.z = probe.z;
-        result.grounded = true;
-        result.hitWall = false;
-        return result;
-      }
+      // On repose le joueur sur la marche. Et REPOSER NE PEUT PAS FAIRE MONTER :
+      // la descente se résout sur le dessus de ce qu'on pénètre, ce qui est
+      // juste pour un sol et catastrophique pour un linteau. Le corps, avancé
+      // sous une porte basse, avait la tête dans le linteau et se retrouvait
+      // POSÉ DESSUS — mesuré : de 0 à 1,70 en une image, puis on marchait sur
+      // le linteau et par-dessus le mur, là où aucune salle n'est dessinée.
+      //
+      // Si ce repli remonte, ce n'était pas une marche : on essaie la suivante.
+      moveAxis(world, probe, scale, 'y', -levee);
+      if (probe.y > beforeY + levee + 1e-6) continue;
+      p.x = probe.x;
+      p.y = probe.y;
+      p.z = probe.z;
+      result.grounded = true;
+      result.hitWall = false;
+      return result;
     }
   }
 
@@ -144,7 +198,22 @@ export const moveAndCollide = (
   // caméra sautille. On sonde vers le bas d'une demi-marche.
   if (!result.grounded && wasGrounded && velocity.y <= 0) {
     const snap = { x: p.x, y: p.y, z: p.z };
-    if (moveAxis(world, snap, scale, 'y', -stepHeight * 0.5)) {
+    // ─── S'ACCROCHER AU SOL NE PEUT PAS FAIRE MONTER ───────────────────────
+    //
+    // La résolution d'une descente pose le corps sur le DESSUS de ce qu'il
+    // pénètre. Juste pour un sol ; catastrophique pour un linteau — un joueur
+    // de 1,80 debout au ras d'une porte basse a la tête DANS le linteau, et
+    // l'accroche le résolvait sur son dessus. Mesuré : il passait de 0 à 1,70
+    // en une image, puis marchait sur le linteau et par-dessus le mur, là où
+    // aucune salle n'est dessinée.
+    //
+    // On refuse donc simplement une accroche qui remonte. C'est la formulation
+    // la plus étroite du correctif, et c'est ce qui compte ici : la première
+    // version filtrait à l'intérieur de la résolution elle-même et retirait du
+    // même coup le rattrapage des chutes — on tombait alors à l'infini dès
+    // qu'un pas de temps traversait une dalle. Un correctif juste au mauvais
+    // endroit est un correctif faux.
+    if (moveAxis(world, snap, scale, 'y', -stepHeight * 0.5) && snap.y <= p.y + 1e-6) {
       p.y = snap.y;
       result.grounded = true;
       velocity.y = 0;

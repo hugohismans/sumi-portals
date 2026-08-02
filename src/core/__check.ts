@@ -2221,6 +2221,81 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 }
 
 
+{
+  console.log('\n— Un seuil bas se franchit sous un linteau bas —');
+
+  // LE DÉFAUT : on ne relevait le joueur que d'une marche ENTIÈRE — 0,90 m à
+  // ×1 — et l'on exigeait que son corps soit libre à cette hauteur-là. Sous un
+  // linteau, la tête entrait dans le linteau, la marche était refusée, et
+  // l'obstacle réel faisait six centimètres.
+  //
+  // Le joueur butait sur un seuil qu'il aurait dû enjamber sans le voir. Rien
+  // au monde ne pouvait le lui expliquer, et c'est exactement le genre de faute
+  // qu'un auteur de salle ne peut pas soupçonner : sa géométrie est juste.
+  const passage = (hauteurSeuil: number, hauteurLibre: number): LevelDef => ({
+    name: 'seuil',
+    spawn: [0, 0.2, -3],
+    spawnYaw: 0,
+    boxes: [
+      { min: [-8, -1, -8], max: [8, 0, 8], ink: 0 },
+      // Le seuil, en travers du passage.
+      { min: [-2, 0, -0.15], max: [2, hauteurSeuil, 0.15], ink: 1 },
+      // Le linteau, juste au-dessus de la tête.
+      { min: [-2, hauteurLibre, -0.6], max: [2, hauteurLibre + 0.5, 0.6], ink: 2 },
+      // Les deux jambages, pour que ce soit une porte et non un obstacle isolé —
+      // et ils vont jusqu'au bout du terrain. Au premier essai ils s'arrêtaient
+      // à deux mètres cinquante : le marcheur passait tranquillement à côté, et
+      // le test disait qu'un mur d'un mètre se franchissait. Un obstacle qu'on
+      // peut contourner ne mesure rien du tout.
+      { min: [-8, 0, -0.6], max: [-1.2, hauteurLibre + 0.5, 0.6], ink: 2 },
+      { min: [1.2, 0, -0.6], max: [8, hauteurLibre + 0.5, 0.6], ink: 2 },
+    ],
+    portals: [],
+    goal: { position: [0, -900, 0], radius: 1 },
+  });
+
+  const franchit = (niveau: LevelDef): boolean => {
+    const sim = new Simulation(niveau);
+    walkTo(sim, [0, 0, 3], 60 * 20);
+    return sim.player.position.z > 1;
+  };
+
+  // Un seuil de six centimètres sous un linteau à 1,95 : un joueur de 1,80 doit
+  // passer, et il ne doit même pas s'en rendre compte.
+  check(
+    'un seuil de 6 cm se franchit sous un linteau de 1,95',
+    franchit(passage(0.06, 1.95)),
+    'la marche se sondait à 0,90 : la tête entrait dans le linteau',
+  );
+
+  // Et vingt centimètres aussi, qui est la hauteur d'une vraie marche de porte.
+  // Le linteau monte à 2,20 : sous 1,95, un seuil de 0,20 ne laisse que 1,75 de
+  // jour pour un corps d'1,80, et le passage est RÉELLEMENT fermé. Le premier
+  // essai le croyait ouvert — il ne passait que par la catapulte du linteau.
+  check(
+    'et un seuil de 20 cm également',
+    franchit(passage(0.2, 2.2)),
+    '',
+  );
+
+  // CE QU'ON NE VÉRIFIE PAS ENCORE, ET POURQUOI.
+  //
+  // Un mur trop haut devrait rester un mur, et un linteau trop bas devrait
+  // fermer. Les deux échouent aujourd'hui, pour une raison qui n'a rien à voir
+  // avec la marche : la résolution d'une descente pose le corps sur le DESSUS
+  // de tout ce qu'il pénètre. Un joueur arrêté au ras d'une porte basse TOUCHE
+  // son linteau ; la gravité de l'image suivante le pose donc dessus, et il
+  // marche par-dessus le mur.
+  //
+  // C'est un défaut réel, reproductible et documenté dans `MESURES.md`. Il
+  // demande une passe à lui : trois corrections différentes ont été essayées
+  // ici, et chacune retirait le rattrapage des chutes — on tombait à l'infini
+  // dès qu'un pas de temps traversait une dalle. Un correctif juste au mauvais
+  // endroit est un correctif faux, et mieux vaut un défaut connu qu'un monde
+  // sans sol.
+}
+
+
 // =============================================================================
 console.log('\n— Les trois tableaux du guide sont alignés —');
 {

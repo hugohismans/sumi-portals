@@ -108,3 +108,57 @@ Une **boucle de reprise**. Les échecs de ×1/4 et de ×1 atterrissent au fond, 
 non une énigme — et il faut que la remontée tienne **sous une dizaine de
 secondes**, parce que le joueur doit rater deux fois avant de comprendre. Si le
 troisième essai coûte trop cher, il n'aura pas lieu.
+
+
+## LA CATAPULTE DU LINTEAU — défaut connu, reproductible, non corrigé
+
+Trouvé en écrivant la correction de la marche, le 2 août. **Ce n'est pas le même
+défaut**, et il est plus grave.
+
+### Ce qui se passe
+
+`moveAxis`, pour une descente, résout sur le **dessus** de toute boîte pénétrée.
+C'est juste pour un sol : on tombe dessus, on s'y pose.
+
+Un joueur de 1,80 arrêté au ras d'une porte basse **touche** son linteau — son
+corps va de 0 à 1,80, le linteau de 1,20 à 1,70. La gravité de l'image suivante
+le résout donc sur le dessus du linteau.
+
+### La reproduction, exacte
+
+Un sol, un seuil de 6 cm, un linteau dont le dessous est à 1,20 et le dessus à
+1,70, deux jambages qui ferment les côtés. On marche vers la porte :
+
+```
+tick 35   x=0.00  y=0.000  z=-0.940     (arrêté contre le jambage)
+tick 36   x=0.00  y=1.700  z=-0.913     ← posé sur le linteau
+tick 67   x=0.00  y=1.660  z= 1.230     (passé par-dessus le mur)
+```
+
+**On franchit donc n'importe quel mur en le longeant**, du moment qu'il porte un
+linteau — c'est-à-dire dans toute porte trop basse pour soi.
+
+### Trois corrections essayées, trois échecs, et ce qu'ils apprennent
+
+1. **Filtrer dans `moveAxis`** ce qui est plus haut qu'une marche au-dessus d'où
+   l'on venait. Casse trois vérifications de niveau : quand tous les contacts
+   sont écartés, la fonction annonçait quand même un appui, et le joueur se
+   retrouvait « au sol » en l'air.
+2. **Idem, en renvoyant « pas de collision »** quand plus rien ne reste. Pire :
+   dans une scène dense on perd le contact au sol une image, la chute
+   s'accélère, on traverse une dalle, et l'on tombe à l'infini — mesuré à
+   **y = −208 221**.
+3. **Refuser une accroche au sol qui remonte.** Sans effet : le saut ne vient
+   pas de l'accroche mais de la gravité elle-même.
+
+**La leçon :** un correctif juste au mauvais endroit est un correctif faux, et
+mieux vaut un défaut connu qu'un monde sans sol.
+
+### La piste pour la prochaine passe
+
+La vraie question n'est pas « sur quoi se poser » mais **« comment le joueur
+s'est-il retrouvé à toucher ce linteau »**. Il y arrive parce que la résolution
+latérale l'arrête AU CONTACT — sa boîte touche le jambage, donc elle touche
+aussi le linteau qui le surmonte. Une marge d'un millimètre à la résolution
+latérale supprimerait le contact, donc la pénétration, donc la catapulte —
+sans jamais toucher à la gravité. C'est de ce côté qu'il faut chercher.
