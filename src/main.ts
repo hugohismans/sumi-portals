@@ -1020,11 +1020,24 @@ function frame(now: number): void {
       // l'ancienne échelle, autour de la porte qu'on venait de quitter.
       feuilles.traverser(camera.position, scaleOfLevel(sim.player.scaleLevel));
     }
+    // ─── UN REFUS DOIT RACONTER LE MONDE, PAS LE MOTEUR ────────────────────
+    //
+    // « Échelle extrême atteinte » était du vocabulaire de programme : ça
+    // n'apprenait rien, et l'on restait devant une porte manifestement ouverte
+    // qui disait non sans raison. Signalé en jouant, à ×1/16 dans le hall, où
+    // TOUTES les grandes portes refusent d'un coup.
+    //
+    // Or la raison est belle et elle était là : à cette taille, il n'y a plus
+    // rien de plus petit. La porte ne refuse pas le joueur — elle n'a nulle
+    // part où le mener. Il suffisait de le dire.
     if (events.refused) {
       flash(
         events.refused.reason === 'tooBig'
           ? 'Trop grand pour cette porte. Il faudrait rapetisser.'
-          : 'Le portail refuse : échelle extrême atteinte.',
+          : events.refused.versLePetit
+            ? 'Plus petit, il n’y a plus rien. Cette porte ne mène nulle part.'
+            : 'Plus grand, il n’y a plus rien. Cette porte ne mène nulle part.',
+        3.4,
       );
     }
     if (events.carry && !events.carry.taken) ambiance.caisse();

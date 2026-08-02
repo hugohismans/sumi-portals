@@ -280,7 +280,12 @@ export class Simulation {
           pl.velocity.y -= n.y * along;
           pl.velocity.z -= n.z * along;
         }
-        events.refused = { pairId: face.pairId, face: face.kind, reason };
+        events.refused = {
+          pairId: face.pairId,
+          face: face.kind,
+          reason,
+          versLePetit: nextLevel < SCALE_MIN_LEVEL,
+        };
       } else {
         this.teleport(face, newEye, nextLevel);
         events.traversed = { pairId: face.pairId, from: face.kind, newLevel: nextLevel };

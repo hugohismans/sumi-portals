@@ -8,11 +8,11 @@
  *
  *   npm run check
  */
-import { TICK_DT, scaleOfLevel } from './constants.js';
+import { SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
-import { buildFaces, estScelle, transformPoint, transformVector } from './portals.js';
+import { buildFaces, estScelle, transformPoint, transformVector, traversalLevelDelta } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
@@ -2172,6 +2172,40 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       );
       check(`${a.nom} et ${b.nom} ne se chevauchent pas`, separees, '');
     }
+  }
+}
+
+
+{
+  console.log('\n— Aucune porte ne refuse sans que le monde le dise —');
+
+  // Signalé en jouant : « il y a des portails que je n’arrive pas à traverser,
+  // ça me dit que ma taille est trop extrême alors que je devrais pouvoir ».
+  //
+  // C'était vrai, et le message était du vocabulaire de moteur. La cause tient
+  // en une ligne : à ×1/16, TOUTE grande face du hall mènerait à ×1/64, qui
+  // n'existe pas. Trois portes refusaient donc d'un coup, sans qu'aucune ne
+  // porte la moindre marque.
+  //
+  // On ne supprime pas ce refus — il est vrai, et il dit quelque chose de beau
+  // sur le monde. On vérifie seulement qu'il n'arrive QUE là où on l'attend :
+  // aux deux bouts de l'échelle, et nulle part ailleurs.
+  for (const [nom, niveau] of [['le hall', LOBBY], ['le monde', MONDE], ['la descente', DESCENTE]] as const) {
+    const sim = new Simulation(niveau);
+    const fautes: string[] = [];
+    for (const f of sim.faces) {
+      for (const palier of [-1, 0, 1]) {
+        const suivant = palier + traversalLevelDelta(f);
+        if (suivant < SCALE_MIN_LEVEL || suivant > SCALE_MAX_LEVEL) {
+          fautes.push(`${f.pairId}/${f.kind} à ×${scaleOfLevel(palier)}`);
+        }
+      }
+    }
+    check(
+      `dans ${nom}, aucune porte ne bute sur la limite aux tailles ordinaires`,
+      fautes.length === 0,
+      fautes.slice(0, 3).join(', '),
+    );
   }
 }
 

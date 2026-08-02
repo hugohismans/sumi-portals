@@ -539,6 +539,16 @@ export interface TickEvents {
      * `scelle` : le logement qui l'ouvre est encore vide.
      */
     reason: 'tooBig' | 'scaleLimit' | 'scelle';
+    /**
+     * Pour un refus d'échelle : le monde n'a plus de cran de ce côté-là.
+     *
+     * Le message ne le disait pas, et il fallait bien qu'il le dise. « Échelle
+     * extrême atteinte » est du vocabulaire de moteur : ça ne raconte rien du
+     * monde, et le joueur reste devant une porte manifestement ouverte qui
+     * refuse sans raison. Or la raison EST intéressante — il n'y a rien de plus
+     * petit que ce qu'on est — et il suffisait de la dire.
+     */
+    versLePetit?: boolean;
   };
   /** L'objectif vient d'être atteint. */
   reachedGoal?: boolean;
