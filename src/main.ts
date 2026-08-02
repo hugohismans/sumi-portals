@@ -11,12 +11,14 @@ import { MONDE } from './levels/monde.js';
 import { DESCENTE } from './levels/descente.js';
 import { MONTEE } from './levels/montee.js';
 import { FORMES } from './levels/formes.js';
+import { BANC, REPERES_BANC } from './levels/banc.js';
 import { reve } from './levels/reve.js';
 import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
+import type { Repere } from './debug/reperes.js';
 import {
   REPERES_DESCENTE,
   REPERES_FORMES,
@@ -78,6 +80,7 @@ const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   descente: () => DESCENTE,
   montee: () => MONTEE,
   formes: () => FORMES,
+  banc: () => BANC,
   cour: () => LEVEL_01,
   caisse: () => LEVEL_02,
   duo: () => construireDuo(ROLE),
@@ -854,25 +857,32 @@ applyScale(true);
  * Chaque monde a ses repères. Le tableau est choisi une fois pour toutes ici, et
  * tout le panneau suit — ajouter un monde, c'est ajouter une ligne.
  */
-const REPERES =
-  MODE === 'descente'
-    ? REPERES_DESCENTE
-    : MODE === 'montee'
-      ? REPERES_MONTEE
-      : MODE === 'formes'
-        ? REPERES_FORMES
-        : MODE === 'monde'
-          ? REPERES_MONDE
-        // LE HALL, ET LUI SEUL. Il était le défaut sans avoir une seule ligne —
-        // un protocole qui ne couvre pas la première chose qu'on voit est une
-        // annexe. Mais le défaut doit être TESTÉ, pas supposé : écrit sans le
-        // `MODE === null`, il donnait les repères du hall à tout monde qui n'a
-        // pas encore les siens, et l'on se téléportait dans un décor à des
-        // coordonnées prises dans un autre. La boîte à formes l'a montré la
-        // minute où elle a été branchée.
-          : MODE === null
-            ? REPERES_LOBBY
-            : [];
+/**
+ * Chaque monde a ses repères. Le tableau est choisi une fois pour toutes ici, et
+ * tout le panneau suit — ajouter un monde, c'est ajouter une ligne.
+ *
+ * LE HALL EST LE DÉFAUT, ET LUI SEUL. Il l'était sans avoir une seule ligne, ce
+ * qui faisait du protocole une annexe : il ne couvrait pas la première chose
+ * qu'on voit. Mais le repli doit être TESTÉ et non supposé — écrit sans le
+ * `MODE === null`, il donnait les repères du hall à tout monde qui n'a pas
+ * encore les siens, et l'on se téléportait dans un décor à des coordonnées
+ * prises dans un autre. La boîte à formes l'a montré la minute où elle a été
+ * branchée.
+ */
+const REPERES: Repere[] =
+  MODE === 'banc'
+    ? REPERES_BANC
+    : MODE === 'descente'
+      ? REPERES_DESCENTE
+      : MODE === 'montee'
+        ? REPERES_MONTEE
+        : MODE === 'formes'
+          ? REPERES_FORMES
+          : MODE === 'monde'
+            ? REPERES_MONDE
+            : MODE === null
+              ? REPERES_LOBBY
+              : [];
 
 {
   const panneau = el('debug');

@@ -180,12 +180,13 @@ const borne = (n: number): BoxDef =>
  */
 const porte = (x: number, linteau: number, seuil: number): BoxDef[] => {
   const H = 3.0;
+  const OUV = 0.5;
   const boites: BoxDef[] = [
-    b([x, 0, -8], [x + 0.4, H, -0.5], 2),
-    b([x, 0, 0.5], [x + 0.4, H, 8], 2),
-    b([x - 0.05, linteau, -0.6], [x + 0.45, H + 0.02, 0.6], 2),
+    b([x, 0, -8], [x + 0.4, H, -OUV], 2),
+    b([x, 0, OUV], [x + 0.4, H, 8], 2),
+    b([x, linteau, -OUV], [x + 0.4, H + 0.02, OUV], 2),
   ];
-  if (seuil > 0) boites.push(b([x - 0.05, 0, -0.6], [x + 0.45, seuil, 0.6], 3));
+  if (seuil > 0) boites.push(b([x, 0, -OUV], [x + 0.4, seuil, OUV], 3));
   return boites;
 };
 
