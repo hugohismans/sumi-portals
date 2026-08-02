@@ -39,7 +39,11 @@ const dedans = (b: BoxDef, p: readonly number[]): boolean =>
  * écrire pour rien.
  */
 export const facesConfondues = (boxes: BoxDef[], seuil = 4): string[] => {
-  const solides = boxes.filter((b) => !b.ghost);
+  // Ni les fantômes ni le verre : les premiers n'arrêtent rien, les seconds ne
+  // se dessinent pas. Une face confondue ne gêne que si DEUX surfaces
+  // visibles se disputent la profondeur — c'est un défaut de rendu, pas de
+  // collision.
+  const solides = boxes.filter((b) => !b.ghost && !b.invisible);
   const trouvailles: [number, string][] = [];
 
   for (let axe = 0; axe < 3; axe++) {

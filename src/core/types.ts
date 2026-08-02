@@ -8,6 +8,30 @@ export interface BoxDef {
   max: [number, number, number];
   /** Teinte d'aplat, index dans la palette d'encre. */
   ink?: number;
+  /**
+   * LE VERRE : ON S'Y COGNE, ON NE LE VOIT PAS.
+   *
+   * L'exact contraire de `ghost`, qui se voit et ne retient rien. Les deux
+   * moitiés d'une même idée : découpler ce qui arrête le corps de ce qui arrête
+   * l'œil.
+   *
+   * Elle coûte un mot parce que ce jeu est fait de lavis : **une boîte qui n'a
+   * ni contour ni aplat n'a rien à dessiner du tout.** Ailleurs il faudrait une
+   * matière transparente, un tri de profondeur et des ennuis ; ici il suffit de
+   * ne pas la mettre dans le maillage.
+   *
+   * Ce qu'elle rend possible, et qu'aucune autre pièce ne rendait possible :
+   * un pont dont les dalles sont espacées de quatorze mètres — un chemin pour
+   * un géant, et quatre gratte-ciel séparés par le vide absolu dès qu'on
+   * rapetisse dessus. La portée d'un pas devient la seule chose qui distingue
+   * un sol d'un précipice.
+   *
+   * ELLE ARRÊTE AUSSI LA MAIN, et c'est voulu : le test d'occultation regarde
+   * les solides, pas le maillage. On ne prend donc pas ce qui est derrière une
+   * vitre, exactement comme on ne le prendrait pas derrière un mur. Le bras ne
+   * passe pas là où le corps ne passe pas.
+   */
+  invisible?: boolean;
   /** Purement décoratif : pas de collision. */
   ghost?: boolean;
   /**

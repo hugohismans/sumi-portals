@@ -53,7 +53,7 @@ import {
   construireDuo,
 } from '../levels/duo.js';
 import { Simulation } from './simulation.js';
-import type { LevelDef, TickEvents } from './types.js';
+import type { BoxDef, LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
 import { LOBBY } from '../levels/lobby.js';
@@ -2736,6 +2736,84 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la taille', piece(3, 'vrille', 'L', 2)],
   ] as const) {
     check(`et il refuse dès que ${quoi} manque`, !creux.fits(tout, p), '');
+  }
+}
+
+// =============================================================================
+{
+  console.log('\n— Le verre : on s’y cogne, on ne le voit pas —');
+
+  // L'EXACT CONTRAIRE DE `ghost`, qui se voit et ne retient rien. Les deux
+  // moitiés d'une même idée : découpler ce qui arrête le corps de ce qui arrête
+  // l'œil. Elle ne coûte qu'un mot parce que ce jeu est fait de lavis — une
+  // boîte absente du maillage EST transparente, sans matière ni tri de
+  // profondeur.
+  const vitre: LevelDef = {
+    name: 'vitre',
+    spawn: [0, 0.2, -3],
+    spawnYaw: 0,
+    boxes: [
+      { min: [-20, -1, -20], max: [20, 0, 20], ink: 0 },
+      // Une paroi de verre en travers, invisible et bien présente.
+      { min: [-6, 0, -0.2], max: [6, 4, 0.2], ink: 1, invisible: true },
+    ],
+    portals: [],
+    carryables: [{ id: 'derriere', position: [0, 0, 1.2], size: 0.3, ink: 3 }],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+
+  {
+    const sim = new Simulation(vitre);
+    const immobile = {
+      forward: 0, strafe: 0, jump: false, sprint: false,
+      yaw: 0, pitch: 0, interact: false, throwIt: false,
+    };
+    // On marche droit dedans pendant quatre secondes.
+    for (let i = 0; i < 240; i++) sim.step({ ...immobile, forward: 1 }, TICK_DT);
+    check(
+      'une vitre arrête le corps comme un mur',
+      sim.player.position.z < -0.2,
+      `z = ${sim.player.position.z.toFixed(2)}`,
+    );
+
+    // ET ELLE ARRÊTE LA MAIN. Le test d'occultation regarde les solides, pas le
+    // maillage : le bras ne passe pas là où le corps ne passe pas. C'est ce qui
+    // rend possible l'étagère qu'on voit et qu'on n'atteint pas.
+    check(
+      'et elle arrête la main : on ne prend pas ce qui est derrière',
+      sim.carryables.targeted({ x: 0, y: 0, z: -1.2 }, 0, 1, sim.world) === null,
+      '',
+    );
+  }
+
+  // MAIS ELLE NE SE DESSINE PAS, et c'est la moitié qui compte. On ne peut pas
+  // regarder l'écran d'ici : on vérifie donc ce qui en tient lieu — le verre
+  // est exclu du décor visible, et il ne participe donc pas non plus aux faces
+  // confondues, puisqu'une face confondue est un défaut de rendu et non de
+  // collision.
+  {
+    // DEUX DALLES QUI SE CHEVAUCHENT, dessus à la même hauteur : leurs faces
+    // supérieures se disputent la profondeur sur toute la zone commune, et
+    // toutes deux sont EXPOSÉES. C'est le vrai cas du scintillement.
+    //
+    // Ma première version mettait deux boîtes côte à côte et s'étonnait qu'on
+    // ne signale rien : leurs faces communes sont enfouies entre elles, donc
+    // invisibles, donc parfaitement légitimes. Un contre-essai qui teste la
+    // mauvaise chose est pire qu'aucun contre-essai — il rassure à tort.
+    const dalles = (verre: boolean): BoxDef[] => [
+      { min: [0, 0, 0], max: [2, 1, 2], ink: 0 },
+      { min: [1, 0, 0], max: [3, 1, 2], ink: 1, invisible: verre || undefined },
+    ];
+    check(
+      'deux dessus confondus ne comptent pas si l’un est en verre',
+      facesConfondues(dalles(true), 0.25).length === 0,
+      '',
+    );
+    check(
+      'et ils comptent toujours quand les deux se voient',
+      facesConfondues(dalles(false), 0.25).length > 0,
+      'la vérification du z-fighting ne mord plus',
+    );
   }
 }
 
