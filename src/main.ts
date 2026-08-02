@@ -511,6 +511,45 @@ const flash = (text: string, seconds = 2.4): void => {
 // plus rien ne permettait de reprendre la main : le jeu semblait figé.
 overlay.addEventListener('click', () => input.requestLock());
 
+// ─── LA CARTE DE TITRE DIT OÙ L'ON EN EST ───────────────────────────────────
+//
+// Les cinq pinceaux du dessin étaient décoratifs : l'un encré, les autres gris,
+// toujours les mêmes. Ils disent maintenant la vérité — un pinceau est encré si
+// et seulement si l'on a rapporté sa couleur.
+//
+// C'est la seule chose qu'on doive à quelqu'un qui revient : voir en une image
+// où il en était. Et c'est aussi ce qui explique, avant même d'entrer, pourquoi
+// le monde qu'il va retrouver n'est plus tout à fait gris.
+{
+  const acquis = new Set(Pigments.lire());
+  for (const brosse of document.querySelectorAll<SVGElement>('#pinceaux svg')) {
+    const pigment = brosse.dataset.pigment;
+    brosse.classList.toggle('encre', pigment !== undefined && acquis.has(pigment));
+  }
+
+  // ET L'ON PEUT REPARTIR DU LAVIS.
+  //
+  // Les couleurs rapportées se gardent d'une partie à l'autre, et c'est la
+  // bonne règle : on ne refait pas un voyage qu'on a fait. Mais rien ne
+  // permettait de recommencer — il fallait connaître une adresse. Quelqu'un qui
+  // revenait voyait les deux pinceaux déjà posés sur leurs socles, un monde en
+  // couleur, et n'avait plus rien à aller chercher. Signalé en jouant.
+  //
+  // Le bouton n'apparaît QUE s'il y a quelque chose à effacer : sur une partie
+  // neuve, il n'a rien à dire et il se tait.
+  const recommencer = el<HTMLButtonElement>('recommencer');
+  if (acquis.size > 0) {
+    recommencer.hidden = false;
+    recommencer.addEventListener('click', (e) => {
+      // Sans ça, le clic remonte jusqu'au panneau, qui reprend la souris — et
+      // l'on repartirait dans la partie qu'on vient justement d'effacer.
+      e.stopPropagation();
+      pigments.effacer();
+      location.reload();
+    });
+  }
+}
+
 // --- Tactile ---------------------------------------------------------------
 // Sur téléphone, il n'y a pas de capture de souris : le pouce gauche déplace,
 // le côté droit fait pivoter le regard, et trois boutons font le reste.
