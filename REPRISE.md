@@ -27,10 +27,12 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
   rapportées : sans ça, on recharge, on voit des couleurs dans un monde censé
   être en lavis, et l'on croit qu'un correctif n'est pas passé.
 - `?niveau=reve&graine=7` — le rêve génératif
+- `?niveau=descente` — **LA SUITE**, six salles neuves qui s'enchaînent, où le
+  Pinceau dessine lui-même la porte suivante. Voir `PROTOCOLE.md`.
 - `?niveau=duo&salon=…&role=…` — l'aventure à deux (jamais essayée à deux vraies
   machines : c'est le premier essai à mener)
 
-**`?niveau=monde&debug=1` — LES REPÈRES.** Douze moments du voyage, une touche
+**`?debug=1` — LES REPÈRES.** Sur `monde` comme sur `descente`. Douze moments du voyage, une touche
 chacun, et chaque ligne dit ce qu'il faut regarder là. `=` déclenche le sacre
 tout de suite. `H` replie la liste. À lire avant de vérifier quoi que ce soit :
 vérifier la teinte du pinceau vert demandait sinon quatre minutes de trajet,
