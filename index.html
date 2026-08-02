@@ -176,12 +176,6 @@
       #overlay .ligne { font-size: 15px; line-height: 1.7; opacity: .78; margin-bottom: 26px; }
       #overlay .go { margin-top: 4px; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; opacity: .62; }
       #overlay .son { margin-top: 16px; font-size: 12px; opacity: .42; }
-      #overlay #recommencer {
-        margin-top: 14px; padding: 0; align-self: flex-start;
-        background: none; border: none; border-bottom: 1px solid currentColor;
-        font: inherit; font-size: 12px; color: inherit; opacity: .5; cursor: pointer;
-      }
-      #overlay #recommencer:hover, #overlay #recommencer:focus { opacity: .85; }
       /* Une seule fois : à la reprise, le joueur a déjà lu. */
       #overlay.resumed .son { display: none; }
 
@@ -350,16 +344,6 @@
         -->
         <p class="ligne son">Il y a du son. Coupe le silencieux, ou mets un casque.</p>
 
-        <!--
-          RECOMMENCER, et pourquoi ça manquait.
-          Les couleurs rapportées sont gardées d'une partie à l'autre — c'est la
-          bonne règle, on ne refait pas un voyage qu'on a fait. Mais rien ne
-          permettait de repartir du lavis : il fallait connaître une adresse.
-          Quelqu'un qui revient voit donc les deux pinceaux déjà posés, un monde
-          en couleur, et il n'a plus rien à aller chercher.
-          Le lien n'apparaît QUE s'il y a quelque chose à effacer.
-        -->
-        <button type="button" id="recommencer" hidden>Recommencer depuis le lavis</button>
       </div>
     </div>
 

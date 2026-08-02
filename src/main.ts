@@ -124,17 +124,27 @@ scene.add(worldView.group);
 // du monde qui l'attendait. On garde la trace d'une partie à l'autre : rendre
 // une couleur est un acquis, pas un état de session.
 const pigments = new Pigments();
-// ─── REPARTIR DE ZÉRO ────────────────────────────────────────────────────────
+// ─── ENTRER DANS L'AVENTURE, C'EST REPARTIR DU LAVIS ────────────────────────
 //
-// Les couleurs rapportées sont gardées d'une partie à l'autre, ce qui est le
-// bon comportement — rendre une couleur au monde est un acquis, pas un état de
-// session. Mais c'est un piège pour qui teste : on recharge, on s'étonne de
-// voir des couleurs dans un monde censé être en lavis, et l'on croit que le
-// correctif n'est pas passé.
+// Les couleurs rapportées étaient gardées d'une partie à l'autre. Ça paraissait
+// juste — rendre une couleur au monde est un acquis, pas un état de session —
+// et c'était faux pour ce jeu-ci.
 //
-// D'où `?neuf=1` : on oublie tout et l'on revoit le début du jeu tel qu'il est
-// vraiment. Ça ne coûte rien et ça évite de douter de ses yeux.
-if (PARAMS.get('neuf')) pigments.effacer();
+// Signalé en jouant : on entre dans le monde, les deux pinceaux sont DÉJÀ posés
+// sur leurs stèles, tout est en couleur, et il n'y a plus rien à aller
+// chercher. La première minute d'un jeu dont le sujet est de rendre ses
+// couleurs à un monde gris ne peut pas être un monde déjà peint.
+//
+// Une mémoire n'a de sens que s'il existe un moyen de choisir où reprendre. Le
+// jour où il y aura un menu de niveaux, elle en aura un ; aujourd'hui elle n'a
+// qu'un effet, et c'est de gâcher l'entrée. On efface donc à chaque arrivée.
+//
+// Le mode débug garde la sienne : il écrit dans sa propre case (voir
+// `src/render/pigments.ts`) et il en a besoin pour se poser au milieu du
+// voyage.
+if (PARAMS.get('neuf') || (MODE === 'monde' && !PARAMS.get('debug'))) {
+  pigments.effacer();
+}
 const pigmentDe = new Map<string, string>();
 for (const r of LEVEL.regions ?? []) if (r.pigment) pigmentDe.set(r.name, r.pigment);
 /**
@@ -527,27 +537,6 @@ overlay.addEventListener('click', () => input.requestLock());
     brosse.classList.toggle('encre', pigment !== undefined && acquis.has(pigment));
   }
 
-  // ET L'ON PEUT REPARTIR DU LAVIS.
-  //
-  // Les couleurs rapportées se gardent d'une partie à l'autre, et c'est la
-  // bonne règle : on ne refait pas un voyage qu'on a fait. Mais rien ne
-  // permettait de recommencer — il fallait connaître une adresse. Quelqu'un qui
-  // revenait voyait les deux pinceaux déjà posés sur leurs socles, un monde en
-  // couleur, et n'avait plus rien à aller chercher. Signalé en jouant.
-  //
-  // Le bouton n'apparaît QUE s'il y a quelque chose à effacer : sur une partie
-  // neuve, il n'a rien à dire et il se tait.
-  const recommencer = el<HTMLButtonElement>('recommencer');
-  if (acquis.size > 0) {
-    recommencer.hidden = false;
-    recommencer.addEventListener('click', (e) => {
-      // Sans ça, le clic remonte jusqu'au panneau, qui reprend la souris — et
-      // l'on repartirait dans la partie qu'on vient justement d'effacer.
-      e.stopPropagation();
-      pigments.effacer();
-      location.reload();
-    });
-  }
 }
 
 // --- Tactile ---------------------------------------------------------------
@@ -577,6 +566,27 @@ input.onLockChange = (locked) => {
     ambiance.demarrer();
   }
 };
+
+// ─── LE SON REPART QUAND ON REVIENT DANS L'APPLICATION ──────────────────────
+//
+// Signalé sur iPhone : on quitte le jeu, on y revient, et le son ne repart pas —
+// parfois. Mettre une page en arrière-plan SUSPEND son AudioContext sur mobile,
+// et rien ne le réveille de soi-même : le graphe est intact, les horloges
+// avancent, et plus un son ne sort.
+//
+// Le « parfois » vient de la durée de l'absence : c'est le pire genre de défaut,
+// celui qu'on ne reproduit pas à volonté. On branche donc la reprise sur TOUT ce
+// qui ressemble à un retour, et l'appel ne coûte rien si le son tourne déjà.
+for (const evenement of ['visibilitychange', 'focus', 'pageshow'] as const) {
+  window.addEventListener(evenement, () => {
+    if (document.visibilityState === 'visible') ambiance.reprendre();
+  });
+}
+// Et sur le premier contact, parce que sur iOS c'est parfois le seul geste que
+// le système accepte comme une vraie reprise.
+for (const evenement of ['pointerdown', 'touchstart', 'keydown'] as const) {
+  window.addEventListener(evenement, () => ambiance.reprendre(), { passive: true });
+}
 
 /**
  * Touche C : copie le point de vue exact dans le presse-papiers.

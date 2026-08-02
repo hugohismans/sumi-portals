@@ -165,6 +165,29 @@ export class Ambiance {
   }
 
   /**
+   * REPRENDRE APRÈS UN RETOUR DANS L'APPLICATION.
+   *
+   * Signalé sur iPhone : on quitte le jeu, on y revient, et le son ne repart
+   * pas — parfois. C'est le comportement documenté des navigateurs mobiles :
+   * mettre la page en arrière-plan SUSPEND l'AudioContext, et rien ne le réveille
+   * de lui-même. Le contexte est toujours là, le graphe aussi, la musique
+   * continue même d'avancer dans ses horloges — mais plus un son ne sort.
+   *
+   * Le « parfois » vient de là : selon la durée de l'absence et l'humeur du
+   * système, la suspension arrive ou non. C'est le pire genre de défaut, celui
+   * qu'on ne reproduit pas à volonté.
+   *
+   * On la branche donc sur tout ce qui ressemble à un retour — le retour de
+   * visibilité, la reprise du focus, un toucher — et l'appel est inoffensif si
+   * le contexte tourne déjà.
+   */
+  reprendre(): void {
+    if (this.mort || !this.ctx) return;
+    if (this.ctx.state === 'running') return;
+    void this.ctx.resume().catch(() => undefined);
+  }
+
+  /**
    * L'échelle du joueur : 1 = normal, 4 = quatre fois plus grand.
    *
    * Le vent se transpose ici même, en glissant plutôt qu'en sautant : la
