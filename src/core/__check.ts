@@ -58,8 +58,11 @@ import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
 import { LOBBY } from '../levels/lobby.js';
 import { Sockets } from './sockets.js';
+import { conditionsDe } from './portals.js';
+import { FORMES } from '../levels/formes.js';
 import {
   REPERES_DESCENTE,
+  REPERES_FORMES,
   REPERES_LOBBY,
   REPERES_MONDE,
   REPERES_MONTEE,
@@ -2709,6 +2712,92 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
 // =============================================================================
 {
+  console.log('\n— La boîte à formes : une seule case par ligne et par colonne —');
+
+  // ─── LA TABLE D'UNICITÉ, ET C'EST TOUTE LA SALLE ────────────────────────
+  //
+  // Cinq pièces, cinq creux, une contrainte chacun et les quatre sur le
+  // dernier. Pour que la salle enseigne quoi que ce soit, il faut que **chaque
+  // pièce n'ait qu'une seule destination possible** — et « possible » veut dire
+  // : à toutes les tailles qu'elle peut prendre en franchissant des portes, et
+  // dans les deux mains.
+  //
+  // Sans ça, deux désastres. Le petit : le joueur loge une pièce dans un creux
+  // qui n'était pas le sien, la salle se résout par accident, et il n'a rien
+  // appris. Le grand : **un creux ordinaire verrouille pour de bon**, donc la
+  // pièce est perdue, donc la salle est morte sans retour — et « ne jamais
+  // piéger » est le seul défaut que ce jeu ne se pardonne pas.
+  //
+  // On balaie donc sept crans d'échelle et les deux mains, et l'on exige un
+  // seul creux atteignable par pièce. C'est une vérification qu'aucune relecture
+  // humaine ne remplace : elle compte 5 × 5 × 7 × 2 = 350 cas.
+  {
+    const creux = new Sockets(FORMES.sockets ?? []);
+    const pieces = FORMES.carryables ?? [];
+    const accueils = new Map<string, Set<string>>();
+
+    for (const def of pieces) {
+      const atteints = new Set<string>();
+      for (let k = -3; k <= 3; k++) {
+        for (const main of ['L', 'D'] as const) {
+          // Une pièce sans main déclarée n'en prend jamais : on ne teste alors
+          // que son état réel, sinon on inventerait des cas impossibles.
+          if (def.main === undefined && main === 'D') continue;
+          const c = {
+            id: def.id,
+            size: def.size * Math.pow(4, k),
+            ink: def.ink ?? 3,
+            forme: def.forme,
+            main: def.main === undefined ? undefined : main,
+          } as unknown as Parameters<Sockets['fits']>[1];
+          for (const s of creux.items) if (creux.fits(s, c)) atteints.add(s.id);
+        }
+      }
+      accueils.set(def.id, atteints);
+      check(
+        `« ${def.id} » n’a qu’une seule destination possible`,
+        atteints.size === 1,
+        atteints.size === 0 ? 'aucune — elle ne sert à rien' : `${[...atteints].join(', ')}`,
+      );
+    }
+
+    // ET RÉCIPROQUEMENT : chaque creux a exactement un client. Un creux que deux
+    // pièces peuvent remplir laisserait la cinquième sans logement — la salle
+    // serait infaisable, et l'on ne le découvrirait qu'à la dernière pièce.
+    for (const s of creux.items) {
+      const clients = [...accueils].filter(([, v]) => v.has(s.id)).map(([k]) => k);
+      check(`« ${s.id} » n’accepte qu’une seule pièce`, clients.length === 1, clients.join(', '));
+    }
+  }
+
+  // LA SORTIE ATTEND LES CINQ. `condition` ne savait nommer qu'un verrou, et
+  // l'autrice de la salle l'a signalé en livrant plutôt que de faire semblant :
+  // avec un verrou unique, un joueur qui remplit le bon en premier sort en
+  // laissant quatre trous béants. Le coffre attend maintenant ses cinq creux —
+  // on ne rentre dans la boîte que lorsque tout y est rentré, ce qui est à la
+  // lettre la règle du jouet.
+  {
+    const sortie = (FORMES.portals ?? []).find((p) => p.id === 'porte-coffre');
+    const verrous = sortie ? conditionsDe(sortie) : undefined;
+    const tous = (FORMES.sockets ?? []).map((s) => s.id);
+    check(
+      'le coffre n’accepte de s’ouvrir que sur les cinq creux',
+      verrous !== undefined && tous.every((id) => verrous.includes(id)),
+      `${verrous?.length ?? 0} verrou(s) pour ${tous.length} creux`,
+    );
+  }
+
+  const confondues = facesConfondues(FORMES.boxes, 0.25);
+  check('la boîte à formes n’a aucune face confondue', confondues.length === 0, confondues[0] ?? '');
+  check(
+    'et l’on n’y naît pas dans la pierre',
+    new Simulation(FORMES).player.position.y > -50,
+    '',
+  );
+}
+
+// =============================================================================
+{
   console.log('\n— Aucun repère ne laisse le joueur coincé —');
 
   // ─── LE DÉFAUT DES COORDONNÉES ÉCRITES À LA MAIN ────────────────────────
@@ -2727,6 +2816,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE, REPERES_MONDE],
     ['la descente', DESCENTE, REPERES_DESCENTE],
     ['la montée', MONTEE, REPERES_MONTEE],
+    ['la boîte à formes', FORMES, REPERES_FORMES],
   ] as const) {
     // ON NE DEMANDE PAS D'ÊTRE À L'AIR LIBRE, ON DEMANDE DE POUVOIR MARCHER.
     //
@@ -2792,6 +2882,35 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
     const e = niveau.guideEchelle?.length ?? g;
     const p = niveau.guidePorte?.length ?? g;
     check(`dans ${nom}, autant d’échelles et de portes que de jalons`, e === g && p === g, `${g} jalons, ${e} échelles, ${p} portes`);
+  }
+
+  // ─── ET `guideEchelle` EST UNE TAILLE, PAS UN PALIER ────────────────────
+  //
+  // C'est la seule exception de tout le projet : partout ailleurs une échelle
+  // s'écrit en paliers — −1, 0, 1, 2 — et ici en multiplicateurs : 0,25 · 1 · 4
+  // · 16. J'ai rempli la montée avec des paliers, et la faute était silencieuse
+  // et grave : **une salle à ×1 donnait un Pinceau de taille zéro**, donc
+  // invisible, donc pas de guide du tout, dans trois des six salles. Rien ne
+  // l'aurait dit — un guide absent ressemble à un guide qu'on n'a pas rejoint.
+  //
+  // C'est la même confusion que celle qui a fait écrire `0.25` à un auteur de
+  // salle là où il fallait `−1`, dans l'autre sens. Une seule vérification
+  // attrape les deux : une taille est strictement positive, et un palier vaut
+  // zéro une fois sur quatre.
+  for (const [nom, niveau] of [
+    ['le monde', MONDE],
+    ['le hall', LOBBY],
+    ['la descente', DESCENTE],
+    ['la montée', MONTEE],
+  ] as const) {
+    const e = niveau.guideEchelle;
+    if (!e) continue;
+    const fautives = e.filter((v) => !(v > 0));
+    check(
+      `dans ${nom}, les tailles du guide sont des multiplicateurs et non des paliers`,
+      fautives.length === 0,
+      `${fautives.length} valeur(s) nulle(s) ou négative(s) sur ${e.length}`,
+    );
   }
 
   // ET LE GUIDE PASSE PAR OÙ DORT CHAQUE PINCEAU.

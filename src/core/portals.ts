@@ -25,10 +25,14 @@ export interface PortalFace {
   /** L'autre face de la paire. */
   twin: PortalFace;
   /**
-   * Identifiant du logement qui descelle cette paire. Tant qu'il est vide, on
-   * ne passe pas. Absent : la porte est toujours ouverte.
+   * Les logements qui descellent cette paire. Tant qu'UN SEUL reste vide, on ne
+   * passe pas. Absent : la porte est toujours ouverte.
+   *
+   * Toujours une liste ici, même quand la donnée n'en déclare qu'un : le reste
+   * du moteur n'a plus qu'un cas à traiter, et c'est la seule façon de rendre
+   * une généralisation gratuite au lieu de la semer partout.
    */
-  condition?: string;
+  condition?: string[];
   /** Elle doit être dessinée avant de s'ouvrir. Voir PortalPairDef.dessinee. */
   dessinee?: boolean;
   /** Cette paire échange la gauche et la droite. Voir `mainDe`. */
@@ -59,7 +63,25 @@ const makeFace = (
  * derrière soi, et rester enfermé de l'autre côté.
  */
 export const estScelle = (face: PortalFace, logementsPourvus: ReadonlySet<string>): boolean =>
-  face.condition !== undefined && !logementsPourvus.has(face.condition);
+  face.condition !== undefined && !face.condition.every((c) => logementsPourvus.has(c));
+
+/**
+ * Les verrous d'une paire, toujours sous forme de liste.
+ *
+ * `condition` s'écrit indifféremment `'creux-a'` ou `['creux-a', 'creux-b']` —
+ * un seul verrou est le cas de loin le plus fréquent et ne doit pas coûter des
+ * crochets. La normalisation se fait ICI, une fois, et le reste du moteur
+ * n'a plus qu'un cas.
+ *
+ * La boîte à formes l'a rendue nécessaire : sa porte de sortie doit attendre
+ * SES CINQ creux. Son autrice l'a signalé — avec un verrou unique, un joueur
+ * qui remplit le bon en premier sort en laissant quatre trous béants, et le
+ * niveau se termine sans avoir été joué.
+ */
+export const conditionsDe = (pair: PortalPairDef): string[] | undefined => {
+  if (pair.condition === undefined) return undefined;
+  return typeof pair.condition === 'string' ? [pair.condition] : pair.condition;
+};
 
 export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
   const faces: PortalFace[] = [];
@@ -72,8 +94,9 @@ export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
     const small = makeFace(pair.id, 'small', pair.small, w, h) as PortalFace;
     big.twin = small;
     small.twin = big;
-    big.condition = pair.condition;
-    small.condition = pair.condition;
+    const verrous = conditionsDe(pair);
+    big.condition = verrous;
+    small.condition = verrous;
     big.dessinee = pair.dessinee;
     small.dessinee = pair.dessinee;
     big.miroir = pair.miroir;

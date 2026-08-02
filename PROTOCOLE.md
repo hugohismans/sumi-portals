@@ -1,6 +1,6 @@
 # Protocole de test — la nuit du 2 août
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 369 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 385 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -40,6 +40,7 @@ start "https://hugohismans.github.io/sumi-portals/"
   couleurs déjà rapportées.
 - **la descente** (six salles, on y cherche le bleu) — `?niveau=descente`
 - **la montée** (six salles neuves, on y cherche l'or) — `?niveau=montee`
+- **la boîte à formes** (une seule pièce, cinq creux) — `?niveau=formes`
 - **les repères** — ajoute `&debug=1` à l'un ou l'autre. Une touche par moment ;
   `H` replie la liste. Le mode débug a sa propre sauvegarde : il n'abîme plus ta
   partie.
@@ -254,6 +255,41 @@ fosse.
 
 **3. Les toits se reconnaissent-ils ?** C'est la seule question qui décide de la
 première salle. Rien de ce que j'ai vérifié ne peut y répondre.
+
+---
+
+## 3 ter. La boîte à formes — `?niveau=formes&debug=1`
+
+Le jouet d'enfant, et sa règle n'a pas besoin d'être expliquée : tout le monde y
+a joué à trois ans. **Elle n'enseigne rien, elle vérifie.**
+
+Cinq pièces, cinq creux, de gauche à droite : la **teinte**, la **forme**, la
+**taille** seule, **les quatre à la fois**, la **main**.
+
+**`1` — La planche.** → *Chaque creux ne refuse que pour SA raison.* C'est cette
+séparation qui fait l'énigme : un creux qui refuserait pour deux raisons
+n'apprendrait rien, et l'on tirerait au sort — quatre inconnues simultanées font
+seize combinaisons.
+**Défaut à guetter, et c'est le seul qui compte :** ne pas voir lequel des cinq
+refuse pourquoi. Si le retour n'est pas immédiat et lisible, la salle est morte.
+
+**`2` — Le bloc.** Trois mètres. À taille d'homme on soulève 0,99. → *Il faut
+devenir géant pour le prendre, puis redescendre EN LE PORTANT* : il tombe à 0,75
+et entre. La porte ordinaire ne touche ni à sa forme ni à sa main.
+
+**`3` — Le miroir.** Les deux vrilles y passent. → *Elles changent de main ET de
+taille d'un seul franchissement.* Refaire l'aller-retour rend tout à l'état
+d'origine : rien n'est jamais perdu, et c'est ce qui autorise à essayer.
+
+**`4` — Le coffre.** → *Il n'attend pas un creux, il les attend tous les cinq.*
+Sa petite face fait 70 cm : le jouet rentre dans sa boîte, et nous avec.
+**Défaut à guetter :** qu'il s'ouvre trop tôt, ou qu'il ne se dessine jamais.
+
+**Ce que la simulation garantit déjà, et qu'il est inutile de chercher :** chaque
+pièce n'a qu'une seule destination possible, et chaque creux n'accepte qu'une
+seule pièce. C'est balayé sur sept crans d'échelle et les deux mains — trois cent
+cinquante cas — parce qu'un creux ordinaire **verrouille pour de bon** : une
+pièce logée au mauvais endroit serait perdue, et la salle morte sans retour.
 
 ---
 

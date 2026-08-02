@@ -75,7 +75,7 @@ export interface PortalPairDef {
    * la porte de l'autre s'ouvre. Aucune géométrie mobile, aucune physique
    * nouvelle — donc aucun des ennuis habituels du jeu à plusieurs.
    */
-  condition?: string;
+  condition?: string | string[];
   /**
    * CETTE PORTE SE DESSINE AVANT DE S'OUVRIR.
    *

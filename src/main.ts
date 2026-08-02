@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './core/constants.js';
 import { Simulation } from './core/simulation.js';
+import { conditionsDe } from './core/portals.js';
 import { InputManager } from './input/input.js';
 import { LEVEL_01 } from './levels/level01.js';
 import { LEVEL_02 } from './levels/level02.js';
@@ -9,6 +10,7 @@ import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
 import { DESCENTE } from './levels/descente.js';
 import { MONTEE } from './levels/montee.js';
+import { FORMES } from './levels/formes.js';
 import { reve } from './levels/reve.js';
 import { Ambiance } from './audio/ambiance.js';
 import { retrouvailles, type Dalle } from './core/retrouvailles.js';
@@ -17,6 +19,7 @@ import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
 import {
   REPERES_DESCENTE,
+  REPERES_FORMES,
   REPERES_LOBBY,
   REPERES_MONDE,
   REPERES_MONTEE,
@@ -74,6 +77,7 @@ const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   monde: () => MONDE,
   descente: () => DESCENTE,
   montee: () => MONTEE,
+  formes: () => FORMES,
   cour: () => LEVEL_01,
   caisse: () => LEVEL_02,
   duo: () => construireDuo(ROLE),
@@ -818,12 +822,20 @@ const REPERES =
     ? REPERES_DESCENTE
     : MODE === 'montee'
       ? REPERES_MONTEE
-      : MODE === 'monde'
-        ? REPERES_MONDE
-        // LE HALL EST LE DÉFAUT, et il l'était sans avoir une seule ligne. Un
-        // protocole qui ne couvre pas la première chose qu'on voit n'est pas un
-        // protocole, c'est une annexe.
-        : REPERES_LOBBY;
+      : MODE === 'formes'
+        ? REPERES_FORMES
+        : MODE === 'monde'
+          ? REPERES_MONDE
+        // LE HALL, ET LUI SEUL. Il était le défaut sans avoir une seule ligne —
+        // un protocole qui ne couvre pas la première chose qu'on voit est une
+        // annexe. Mais le défaut doit être TESTÉ, pas supposé : écrit sans le
+        // `MODE === null`, il donnait les repères du hall à tout monde qui n'a
+        // pas encore les siens, et l'on se téléportait dans un décor à des
+        // coordonnées prises dans un autre. La boîte à formes l'a montré la
+        // minute où elle a été branchée.
+          : MODE === null
+            ? REPERES_LOBBY
+            : [];
 
 {
   const panneau = el('debug');
@@ -982,6 +994,7 @@ const REPERES =
     ['monde', '?niveau=monde&debug=1'],
     ['descente', '?niveau=descente&debug=1'],
     ['montée', '?niveau=montee&debug=1'],
+    ['formes', '?niveau=formes&debug=1'],
     ['rêve', '?niveau=reve&graine=7&debug=1'],
   ] as const) {
     const a = document.createElement('a');
@@ -1297,7 +1310,8 @@ function frame(now: number): void {
     // exactement ce qu'il faut — rien à expliquer, et rien d'irréversible.
     if (events.socketVide) {
       for (const paire of LEVEL.portals) {
-        if (!paire.dessinee || paire.condition !== events.socketVide.socketId) continue;
+        const verrous = conditionsDe(paire);
+        if (!paire.dessinee || !verrous?.includes(events.socketVide.socketId)) continue;
         sim.portesFermees.add(paire.id);
         tracage.annuler();
         portals.tracer(paire.id, 0);
@@ -1479,9 +1493,10 @@ function frame(now: number): void {
   // en dur d'une seule porte du monde.
   if (!tracage.enCours) {
     for (const paire of LEVEL.portals) {
-      if (!paire.dessinee || !paire.condition) continue;
+      const verrous = conditionsDe(paire);
+      if (!paire.dessinee || !verrous) continue;
       if (!sim.portesFermees.has(paire.id)) continue;
-      if (!sim.conditionsRemplies.has(paire.condition)) continue;
+      if (!verrous.every((c: string) => sim.conditionsRemplies.has(c))) continue;
       tracage.commencer(paire.id);
       flash('Le pinceau se met à écrire. Regarde la porte.', 4);
       break;

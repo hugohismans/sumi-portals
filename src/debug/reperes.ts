@@ -1,4 +1,5 @@
 import { SALLES_MONTEE } from '../levels/montee.js';
+import { FORMES } from '../levels/formes.js';
 
 /**
  * LES REPÈRES — un raccourci vers chaque moment qui mérite d'être regardé.
@@ -572,5 +573,76 @@ export const REPERES_LOBBY: Repere[] = [
     lacet: Math.PI,
     pigments: [],
     jalon: 5,
+  },
+];
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA BOÎTE À FORMES — quatre lignes, et elles suivent la salle.
+ *
+ * Les positions viennent des LOGEMENTS eux-mêmes, comme celles de la montée
+ * viennent des salles. Une planche qu'on décale emmène ses repères avec elle,
+ * et la question de la dérive ne se pose plus jamais.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const devantLeCreux = (id: string, recul: number): [number, number, number] => {
+  const s = (FORMES.sockets ?? []).find((k) => k.id === id);
+  if (!s) return [0, 0.05, 2484];
+  return [s.position[0], 0.05, s.position[2] - recul];
+};
+
+export const REPERES_FORMES: Repere[] = [
+  {
+    titre: 'La planche — cinq creux, cinq exigences',
+    verifier:
+      'De gauche à droite : la TEINTE, la FORME, la TAILLE seule, LES QUATRE À ' +
+      'LA FOIS, la MAIN. Chaque creux ne refuse que pour SA raison, et c’est cette ' +
+      'séparation qui fait l’énigme — un creux qui refuserait pour deux raisons ' +
+      'n’apprendrait rien. Défaut à guetter : ne pas voir lequel des cinq refuse ' +
+      'pourquoi. Le retour doit être immédiat et lisible.',
+    position: devantLeCreux('creux-taille', 14),
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'Le bloc — trois mètres, et on ne le soulève pas',
+    verifier:
+      'À taille d’homme on soulève 0,99 m ; le bloc en fait 3,00. → Il faut ' +
+      'devenir géant pour le prendre, puis redescendre EN LE PORTANT : il tombe à ' +
+      '0,75 et entre dans le creux de la taille. La porte lisse ne touche ni à sa ' +
+      'forme ni à sa main.',
+    position: devantLeCreux('creux-taille', 6),
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'Le miroir — la main et la taille du même geste',
+    verifier:
+      'Les deux vrilles y passent. → Elles changent de main ET de taille en un ' +
+      'seul franchissement. L’une va au creux de la main, l’autre au creux qui ' +
+      'exige les quatre. Refaire l’aller-retour rend tout à l’état d’origine : ' +
+      'rien n’est jamais perdu, et c’est ce qui autorise à essayer.',
+    position: devantLeCreux('creux-main', 10),
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'Le coffre — il n’attend pas un creux, il les attend tous',
+    verifier:
+      'La porte de sortie ne se dessine que lorsque LES CINQ creux sont pourvus. ' +
+      '→ Le jouet rentre dans sa boîte, et nous avec : sa petite face fait 70 cm, ' +
+      'donc on n’y entre qu’en rapetissant. Défaut à guetter : qu’elle s’ouvre ' +
+      'trop tôt, ou qu’elle ne se dessine jamais.',
+    position: devantLeCreux('creux-tout', 4),
+    echelle: 0,
+    lacet: 0,
+    pigments: [],
+    jalon: 0,
   },
 ];

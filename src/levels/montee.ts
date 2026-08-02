@@ -1,3 +1,4 @@
+import { scaleOfLevel } from '../core/constants.js';
 import type { LevelDef, PortalPairDef } from '../core/types.js';
 import type { SalleModule } from './salles/contrat.js';
 import { TOITS } from './salles/toits.js';
@@ -190,10 +191,28 @@ const assembler = (): LevelDef => ({
    *
    * L'autrice de la vallée l'a signalé sans pouvoir le corriger : la taille du
    * guide ne se décide pas depuis une salle, elle se décide ici. Chaque jalon
-   * prend donc le palier de la salle qui le porte — c'est-à-dire exactement la
-   * taille du joueur qui le regardera.
+   * prend donc la taille du joueur qui le regardera.
+   *
+   * ═══════════════════════════════════════════════════════════════════════
+   * ET CE CHAMP ATTEND UN MULTIPLICATEUR, PAS UN PALIER.
+   *
+   * Je l'ai d'abord rempli avec `echelle` — le palier, −1 / 0 / 1 / 2 — parce
+   * que c'est la convention de tout le reste du contrat. `guideEchelle` est la
+   * seule exception du projet : le hall y écrit `[1, 1, 4, 0.25, 0.25, 1]`,
+   * c'est-à-dire des tailles.
+   *
+   * La faute était silencieuse et grave : **toute salle à ×1 donnait un Pinceau
+   * de taille zéro**, donc invisible, donc pas de guide du tout — dans trois
+   * des six salles. Rien ne l'aurait dit, puisqu'un guide absent ressemble à un
+   * guide qu'on n'a pas encore rejoint. Trouvée par l'autrice de la boîte à
+   * formes, qui lisait ce fichier pour en copier la forme.
+   *
+   * C'est exactement la faute que le contrat des salles documente en gras
+   * depuis qu'un auteur a écrit `0.25` là où il fallait `−1` — la même
+   * confusion, dans l'autre sens, à quinze lignes de l'avertissement.
+   * ═══════════════════════════════════════════════════════════════════════
    */
-  guideEchelle: SALLES.flatMap((s) => s.stations.map(() => s.entree.echelle)),
+  guideEchelle: SALLES.flatMap((s) => s.stations.map(() => scaleOfLevel(s.entree.echelle))),
   /**
    * Par où le Pinceau PASSE. Voir `SalleModule.stationsPorte` : une salle dont
    * les stations sont des deux côtés d'une paroi doit nommer sa porte, sinon le
