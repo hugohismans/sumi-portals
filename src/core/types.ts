@@ -257,6 +257,21 @@ export interface SocketDef {
   position: [number, number, number];
   /** Arête attendue. */
   size: number;
+  /**
+   * TEINTE EXIGÉE de la pièce — l'index de palette qu'elle doit porter.
+   *
+   * Quatrième et dernière comparaison d'un logement, après la main, la forme et
+   * la taille. Elle existe pour la boîte à formes, où cinq creux n'exigent
+   * chacun qu'une seule chose et le cinquième les exige toutes.
+   *
+   * À NE PAS CONFONDRE AVEC `ink`, juste en dessous, qui dit de quelle couleur
+   * le creux est DESSINÉ. Les réunir paraissait économique et aurait été un
+   * piège : un creux qui n'exige rien doit pouvoir se peindre comme il veut, et
+   * un creux qui exige le rouge n'est pas forcément rouge lui-même — il peut
+   * être un simple trait d'encre autour d'un vide, ce qui se lit mieux qu'une
+   * tache de la couleur attendue.
+   */
+  teinte?: number;
   /** Écart toléré sur la TAILLE, en proportion. Par défaut 12 %. */
   tolerance?: number;
   /**

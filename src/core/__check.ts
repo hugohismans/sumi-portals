@@ -57,6 +57,7 @@ import type { LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
 import { LOBBY } from '../levels/lobby.js';
+import { Sockets } from './sockets.js';
 import {
   REPERES_DESCENTE,
   REPERES_LOBBY,
@@ -2664,7 +2665,51 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
 // =============================================================================
 {
-  console.log('\n— Aucun repère ne dépose dans la pierre —');
+  console.log('\n— Un logement compare quatre valeurs, jamais une géométrie —');
+
+  // LA QUATRIÈME COMPARAISON. La main, la forme et la taille existaient ; la
+  // teinte était annoncée « le jour venu » dans un commentaire de `sockets.ts`
+  // depuis des semaines. La boîte à formes l'exige — cinq creux dont chacun ne
+  // demande qu'une seule chose, et un cinquième qui les demande toutes.
+  //
+  // On vérifie les quatre SÉPARÉMENT, parce que c'est la séparation qui fait
+  // l'énigme : un creux qui refuserait pour deux raisons à la fois n'apprendrait
+  // rien, et le joueur tirerait au sort au lieu de raisonner.
+  const creux = new Sockets([
+    { id: 'la-teinte', position: [0, 0, 0], size: 0.5, teinte: 3 },
+    { id: 'tout', position: [9, 0, 0], size: 0.5, teinte: 3, forme: 'vrille', main: 'L' },
+  ]);
+  const piece = (ink: number, forme?: string, main?: 'L' | 'D', size = 0.5) =>
+    ({ id: 'p', size, ink, forme, main }) as unknown as Parameters<Sockets['fits']>[1];
+
+  const teinte = creux.items[0];
+  const tout = creux.items[1];
+
+  check('le creux de la teinte accepte la pièce rouge', creux.fits(teinte, piece(3)), '');
+  check('et refuse exactement la même pièce en gris', !creux.fits(teinte, piece(1)), '');
+  // ET IL NE REGARDE QUE ÇA. Un creux qui n'exige ni forme ni main doit accepter
+  // n'importe quelle forme et n'importe quelle main — sinon la boîte à formes
+  // n'a plus cinq leçons mais une seule, répétée cinq fois.
+  check(
+    'et il se moque de la forme et de la main',
+    creux.fits(teinte, piece(3, 'vrille', 'D')) && creux.fits(teinte, piece(3, 'coude', 'L')),
+    '',
+  );
+
+  check('le cinquième creux exige les quatre à la fois', creux.fits(tout, piece(3, 'vrille', 'L')), '');
+  for (const [quoi, p] of [
+    ['la teinte', piece(1, 'vrille', 'L')],
+    ['la forme', piece(3, 'coude', 'L')],
+    ['la main', piece(3, 'vrille', 'D')],
+    ['la taille', piece(3, 'vrille', 'L', 2)],
+  ] as const) {
+    check(`et il refuse dès que ${quoi} manque`, !creux.fits(tout, p), '');
+  }
+}
+
+// =============================================================================
+{
+  console.log('\n— Aucun repère ne laisse le joueur coincé —');
 
   // ─── LE DÉFAUT DES COORDONNÉES ÉCRITES À LA MAIN ────────────────────────
   //

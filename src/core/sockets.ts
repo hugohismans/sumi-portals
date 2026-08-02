@@ -33,6 +33,8 @@ export interface Socket {
   main?: 'L' | 'D';
   /** Forme exigée, s'il y en a une. Voir SocketDef.forme. */
   forme?: string;
+  /** Teinte EXIGÉE de la pièce, s'il y en a une. Voir `fits`. */
+  teinte?: number;
   tolerance: number;
   /** Rayon d'accueil. Voir SocketDef.portee. */
   portee: number;
@@ -61,6 +63,7 @@ export class Sockets {
         size: d.size,
         main: d.main,
         forme: d.forme,
+        teinte: d.teinte,
         tolerance: d.tolerance ?? DEFAULT_TOLERANCE,
         portee: d.portee ?? d.size * 0.75,
         rend: d.rend ?? false,
@@ -107,6 +110,18 @@ export class Sockets {
     // taille, la main, et la teinte le jour venu. C'est ce qui rend la boîte à
     // formes possible en données pures, sans une ligne de calcul.
     if (socket.forme !== undefined && c.forme !== socket.forme) return false;
+    // LA TEINTE — « le jour venu » était écrit juste au-dessus depuis des
+    // semaines, et le jour est arrivé avec la boîte à formes. Quatrième et
+    // dernière comparaison, du même genre que les trois autres : une valeur
+    // contre une valeur, jamais une géométrie.
+    //
+    // Elle est SÉPARÉE de `SocketDef.ink`, qui dit de quelle couleur le creux
+    // est DESSINÉ. Les confondre paraissait économique et aurait été un piège :
+    // un creux qui n'exige rien doit pouvoir se peindre comme il veut, et un
+    // creux qui exige le rouge n'est pas forcément rouge lui-même — il peut
+    // être un trait d'encre autour d'un vide, ce qui est plus joli et plus
+    // lisible qu'une tache de la couleur qu'on attend.
+    if (socket.teinte !== undefined && c.ink !== socket.teinte) return false;
     return Math.abs(c.size - socket.size) <= socket.size * socket.tolerance;
   }
 
