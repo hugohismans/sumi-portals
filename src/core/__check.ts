@@ -2222,6 +2222,84 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
 
 {
+  console.log('\n— Le sprint court, il ne vole pas —');
+
+  // LE NOMBRE LE PLUS DANGEREUX DU JEU POUR LA CONCEPTION.
+  //
+  // Un cran d'échelle multiplie la portée par 2. Le sprint la multipliait par
+  // 1,8, en l'air comme au sol : un joueur à ×1/4 qui sprinte récupérait donc
+  // 90 % de la portée d'un joueur à ×1 qui marche, et toute fenêtre d'énigme
+  // fondée sur la taille tenait dans dix pour cent.
+  //
+  // Le sprint garde tout au sol, où il ne sert qu'à traverser un lieu sans
+  // s'ennuyer, et presque rien en l'air, où il décidait de ce qu'on peut
+  // franchir.
+  const banc: LevelDef = {
+    name: 'banc',
+    spawn: [0, 0.2, -30],
+    spawnYaw: 0,
+    boxes: [{ min: [-400, -1, -400], max: [400, 0, 0], ink: 0 }],
+    portals: [],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+
+  /** Portée d'un saut lancé, pour une chute donnée en unités du monde. */
+  const portee = (niveau: number, sprint: boolean, chute: number): number => {
+    const sim = new Simulation(banc);
+    sim.player.scaleLevel = niveau;
+    sim.player.position = { x: 0, y: 0, z: -30 };
+    const cmd = {
+      forward: 1, strafe: 0, jump: false, sprint,
+      interact: false, throwIt: false, yaw: 0, pitch: 0,
+    };
+    // Trois secondes d'élan, puis le saut au bord.
+    for (let i = 0; i < 180; i++) sim.step(cmd, TICK_DT);
+    sim.player.position = { x: 0, y: 0, z: -0.05 };
+    sim.step({ ...cmd, jump: true }, TICK_DT);
+    const depart = sim.player.position.y;
+    let n = 0;
+    while (sim.player.position.y > depart - chute && n++ < 6000) sim.step(cmd, TICK_DT);
+    return sim.player.position.z + 0.05;
+  };
+
+  const CHUTE = 30;
+  const marcheNormale = portee(0, false, CHUTE);
+  const sprintPetit = portee(-1, true, CHUTE);
+
+  // LA MESURE QUI COMPTE. Sous la même chute, un joueur quatre fois plus petit
+  // qui sprinte doit rester très en deçà d'un joueur normal qui marche —
+  // sinon l'échelle ne décide plus de rien.
+  check(
+    'un ×1/4 qui sprinte n’atteint pas un ×1 qui marche',
+    sprintPetit < marcheNormale * 0.7,
+    `${sprintPetit.toFixed(2)} contre ${marcheNormale.toFixed(2)} — ` +
+      `${((sprintPetit / marcheNormale) * 100).toFixed(0)} %`,
+  );
+
+  // Et le sprint garde un sens : il ne doit pas devenir décoratif.
+  const gain = portee(0, true, CHUTE) / marcheNormale;
+  check(
+    'mais sauter en courant vaut toujours mieux que sauter à l’arrêt',
+    gain > 1.1 && gain < 1.35,
+    `×${gain.toFixed(2)} en l’air`,
+  );
+
+  // LA LOI D'ÉCHELLE, et elle vaut DEUX et non quatre — je l'avais écrite à
+  // quatre, la mesure m'a corrigé. Sous une même chute du monde, le grand a
+  // plus de temps ET plus de vitesse, mais le temps varie comme la racine :
+  // la portée double par cran, elle ne quadruple pas. C'est exactement pour ça
+  // que le sprint était dangereux — il multipliait par 1,8 ce qu'un cran ne
+  // multipliait que par 2.
+  const rapport = portee(0, false, CHUTE) / portee(-1, false, CHUTE);
+  check(
+    'et un cran d’échelle vaut toujours le double de portée',
+    Math.abs(rapport - 2) < 0.35,
+    `×${rapport.toFixed(2)} pour la même chute du monde`,
+  );
+}
+
+
+{
   console.log('\n— Un seuil bas se franchit sous un linteau bas —');
 
   // LE DÉFAUT : on ne relevait le joueur que d'une marche ENTIÈRE — 0,90 m à

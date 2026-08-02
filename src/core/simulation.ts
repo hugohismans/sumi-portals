@@ -8,6 +8,7 @@ import {
   PLAYER_HEIGHT,
   SCALE_MAX_LEVEL,
   SCALE_MIN_LEVEL,
+  SPRINT_EN_L_AIR,
   SPRINT_MULTIPLIER,
   scaleOfLevel,
 } from './constants.js';
@@ -206,7 +207,27 @@ export class Simulation {
     // Vitesse, gravité et saut sont TOUS multipliés par l'échelle. Résultat :
     // le ressenti du déplacement est identique à toutes les tailles, seul le
     // monde paraît changer de dimension.
-    const sprint = input.sprint ? SPRINT_MULTIPLIER : 1;
+    // ─── LE SPRINT COURT, IL NE VOLE PAS ─────────────────────────────────
+    //
+    // Il multipliait tout par 1,8, y compris en l'air. Or un cran d'échelle ne
+    // multiplie la portée que par 2 : un joueur à ×1/4 qui sprintait récupérait
+    // donc **90 % de la portée d'un joueur à ×1 qui marche**, et toute fenêtre
+    // d'énigme fondée sur la taille tenait dans cet écart de dix pour cent.
+    //
+    // C'est ce qui rendait le conduit facile, et ça aurait rendu impossible
+    // toute la montée — « l'escalier pour plus tard » et « le blanchiment » se
+    // calibrent sur des écarts d'échelle, et il n'y en avait plus.
+    //
+    // Le sprint garde donc toute sa valeur AU SOL, où il ne sert qu'à traverser
+    // un lieu sans s'ennuyer, et il n'en garde presque rien EN L'AIR, où il
+    // décidait de ce qu'on peut franchir. Un saut redevient une affaire de
+    // taille et non de touche tenue.
+    //
+    // 1,15 et non 1 : sauter en courant doit valoir un peu mieux que sauter à
+    // l'arrêt, sans quoi l'élan ne raconterait plus rien. Un ×1/4 qui sprinte
+    // atteint maintenant 58 % de la portée d'un ×1 qui marche, au lieu de 90.
+    // La fenêtre passe de dix points à quarante.
+    const sprint = input.sprint ? (pl.grounded ? SPRINT_MULTIPLIER : SPRINT_EN_L_AIR) : 1;
     const targetSpeed = MOVE_SPEED * sprint * scale * Math.min(1, wishLen);
 
     if (pl.grounded) {

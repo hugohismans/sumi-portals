@@ -24,10 +24,30 @@ alors **dans les deux sens** : à ×1, une chute de 30 m donne 11,5 m en théori
 courant, **16,50 m en courant ET en sautant**. Une salle de saut se conçoit donc
 en décidant d'abord si elle exige l'élan — c'est un enseignement, pas un détail.
 
-**Le sprint est le vrai danger d'équilibre.** Il multiplie la portée par 1,8 ;
-un cran d'échelle la multiplie par 2. Un joueur à ×1/4 qui sprinte récupère donc
-**90 % de la portée d'un joueur à ×1 qui marche**. Toute fenêtre de conception
-fondée sur l'échelle tient dans cet écart de 10 %.
+### LE SPRINT COURT, IL NE VOLE PAS — corrigé le 2 août
+
+Il multipliait la portée par 1,8, en l'air comme au sol, quand un cran d'échelle
+ne la multiplie que par 2. Un joueur à ×1/4 qui sprintait récupérait donc **90 %
+de la portée d'un joueur à ×1 qui marche** : toute fenêtre de conception fondée
+sur la taille tenait dans dix points, et l'échelle ne décidait plus de rien.
+
+Le sprint garde **tout au sol** — traverser un lieu sans s'ennuyer, ce pour quoi
+il existe — et **1,15 en l'air**, où il décidait de ce qu'on peut franchir.
+
+| sous 30 m de chute | marche | sprint | rapport |
+|---|---|---|---|
+| ×1/4 | 4,21 | 5,02 | ×1,19 |
+| ×1 | 16,83 | 20,08 | ×1,19 |
+| ×4 | 57,01 | 67,48 | ×1,18 |
+
+**Le ×1/4 qui sprinte atteint désormais 54 % du ×1 qui marche, au lieu de 90.**
+La fenêtre passe de dix points à quarante-six.
+
+**Et la loi d'échelle vaut DEUX, pas quatre** — je l'avais écrite à quatre, la
+mesure a corrigé : sous une même chute du monde, le grand a plus de temps ET
+plus de vitesse, mais le temps varie comme la racine. Mesuré : ×2,17 par cran.
+C'est précisément pour ça que 1,8 était dangereux — il fallait le comparer à 2,
+pas à 4.
 
 ## Passer par un trou
 

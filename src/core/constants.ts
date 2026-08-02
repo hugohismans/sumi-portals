@@ -22,6 +22,23 @@ export const MOVE_SPEED = 7.6;
 /** Sprint (Maj). Multiplie la vitesse, jamais le saut ni la gravité — sinon
  *  les hauteurs franchissables changeraient et l'énigme partirait en morceaux. */
 export const SPRINT_MULTIPLIER = 1.8;
+/**
+ * CE QUE VAUT LE SPRINT UNE FOIS EN L'AIR.
+ *
+ * Il valait 1,8 partout, et c'était le nombre le plus dangereux du jeu pour la
+ * conception. Un cran d'échelle multiplie la portée par 2 ; sprinter la
+ * multipliait par 1,8. Un joueur à ×1/4 qui sprinte récupérait donc **90 % de
+ * la portée d'un joueur à ×1 qui marche**, et toute fenêtre d'énigme fondée sur
+ * la taille tenait dans cet écart de dix pour cent.
+ *
+ * Le sprint garde tout au sol — traverser un lieu sans s'ennuyer, ce pour quoi
+ * il existe — et presque rien en l'air, où il décidait de ce qu'on peut
+ * franchir. Un saut redevient une affaire de taille et non de touche tenue.
+ *
+ * 1,15 et non 1 : sauter en courant doit valoir un peu mieux que sauter à
+ * l'arrêt, sinon l'élan ne raconte plus rien.
+ */
+export const SPRINT_EN_L_AIR = 1.15;
 export const JUMP_SPEED = 8.2;
 export const AIR_CONTROL = 0.35;
 export const GROUND_FRICTION = 13;
