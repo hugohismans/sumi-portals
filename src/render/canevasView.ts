@@ -30,6 +30,24 @@ import { buildWorldGeometry } from './worldMesh.js';
 /** Définition de la toile, en pixels. Assez pour un trait fin de très près. */
 const PIXELS = 1024;
 
+/**
+ * LA TOILE SE SOUVIENT D'UNE VISITE À L'AUTRE.
+ *
+ * Sans ça, « vos deux dessins restent là côte à côte » est faux : c'est un
+ * carnet privé qu'un rechargement efface. Or le hall est le seul lieu du jeu où
+ * l'on se croise, et une trace qui survit est **la meilleure raison d'y
+ * revenir** — on repasse voir ce qu'on avait écrit, et ce que quelqu'un a écrit
+ * à côté.
+ *
+ * On garde l'image elle-même, encodée, et non la liste des traits : c'est plus
+ * simple, c'est borné, et l'on retrouve exactement ce qu'on avait laissé, y
+ * compris ce qu'un autre a dessiné par-dessus.
+ */
+const CLE = 'sumi.canevas.';
+
+/** Au-delà, on n'écrit plus : un dessin ne vaut pas de remplir un navigateur. */
+const POIDS_MAX = 700_000;
+
 interface Toile {
   def: CanevasDef;
   ctx: CanvasRenderingContext2D;
@@ -67,6 +85,7 @@ export class CanevasView {
     const toile: Toile = { def, ctx, texture, dernier: null, sale: true };
     this.toiles.set(def.id, toile);
     this.effacer(def.id);
+    this.relire(def.id);
 
     const [x, y, z] = def.position;
     const surface = new THREE.Mesh(
@@ -160,6 +179,11 @@ export class CanevasView {
 
     t.dernier = null;
     t.sale = true;
+    try {
+      localStorage.removeItem(CLE + id);
+    } catch {
+      /* rien à faire */
+    }
   }
 
   /**
@@ -176,12 +200,54 @@ export class CanevasView {
         this.repos.set(id, n);
         // Deux images de battement : le trait survit à un pas de simulation
         // sauté, mais pas à un vrai relâchement.
-        if (n > 2) t.dernier = null;
+        if (n === 3 && t.dernier) {
+          // On vient de relâcher : c'est le moment d'écrire, et le seul.
+          t.dernier = null;
+          this.ecrire(id);
+        } else if (n > 2) {
+          t.dernier = null;
+        }
       }
       if (t.sale) {
         t.texture.needsUpdate = true;
         t.sale = false;
       }
+    }
+  }
+
+  /** Relit ce qu'on avait laissé. Silencieux si rien, ou si le stockage refuse. */
+  private relire(id: string): void {
+    const t = this.toiles.get(id);
+    if (!t) return;
+    try {
+      const brut = localStorage.getItem(CLE + id);
+      if (!brut) return;
+      const img = new Image();
+      img.onload = () => {
+        t.ctx.drawImage(img, 0, 0, t.ctx.canvas.width, t.ctx.canvas.height);
+        t.sale = true;
+      };
+      img.src = brut;
+    } catch {
+      // Navigation privée, quota plein, stockage refusé : on dessine sur une
+      // toile neuve plutôt que de ne pas dessiner du tout.
+    }
+  }
+
+  /**
+   * Écrit la toile. Appelé quand on relâche, pas à chaque trait : encoder une
+   * image d'un mégapixel soixante fois par seconde coûterait bien plus cher que
+   * tout le reste du jeu réuni.
+   */
+  private ecrire(id: string): void {
+    const t = this.toiles.get(id);
+    if (!t) return;
+    try {
+      const url = t.ctx.canvas.toDataURL('image/webp', 0.7);
+      if (url.length > POIDS_MAX) return;
+      localStorage.setItem(CLE + id, url);
+    } catch {
+      /* sans mémoire, mais la toile de la partie en cours reste intacte */
     }
   }
 

@@ -1035,10 +1035,16 @@ function frame(now: number): void {
     // La couleur ne se rend plus en posant un objet : c'est le PINCEAU qui la
     // rend, en vol, quand on rentre au village avec lui. Voir la boucle des
     // peintres plus bas — ce bloc n'a plus à décider de rien.
-    if (events.socketFilled) {
+    // ─── ON NE COMPTE PAS DANS UN BAC À SABLE ─────────────────────────────
+    //
+    // « Emboîté. 2 sur 3 » fabrique un score, donc un but, donc une façon de
+    // rater — dans la seule salle du jeu qui n'en doit avoir aucun. Un niveau
+    // qui déclare un levier de rappel dit précisément qu'il n'y a rien à
+    // gagner ; on se tait alors, et le socle qui s'allume suffit.
+    if (events.socketFilled && !LEVEL.rappel) {
       flash(`Emboîté. ${sim.sockets.filled} sur ${sim.sockets.total}.`, 2.4);
     }
-    if (events.tooHeavy) {
+    if (events.tooHeavy && !LEVEL.rappel) {
       flash('Bien trop grosse à cette taille. Il faudrait grandir.', 2.6);
     }
     if (events.seuil) {
@@ -1359,7 +1365,17 @@ function frame(now: number): void {
     // On renseigne ses caisses AVANT de publier : sans quoi le paquet partirait
     // avec l'état de l'image précédente, et une caisse posée arriverait chez
     // l'autre un dixième de seconde en retard sur le bruit qu'elle fait.
-    if (EN_DUO) caisses.brancher(presence, sim.carryables);
+    // ─── LE HALL PARTAGE SES OBJETS, LUI AUSSI ────────────────────────────
+    //
+    // La synchronisation n'existait que pour l'aventure à deux, et dans le hall
+    // chacun avait donc sa copie privée de tout : deux joueurs se voyaient
+    // marcher et rapetisser, mais l'un ne voyait pas l'autre déplacer une
+    // bille. Le seul lieu du jeu où l'on se croise était aussi le seul où l'on
+    // ne pouvait rien se montrer.
+    //
+    // C'est un `||` de plus, et c'est ce qui fait du hall un endroit où être à
+    // deux veut dire quelque chose.
+    if (EN_DUO || !EN_AVENTURE) caisses.brancher(presence, sim.carryables);
     presence.publish(sim.player, dt, speedInBodies);
 
     // Le hall et le duo partagent le même chemin dans la base — c'est ce qui
@@ -1373,10 +1389,8 @@ function frame(now: number): void {
     }
     remotePlayers.sync(visibles);
 
-    if (EN_DUO) {
-      caisses.appliquer(visibles, sim.carryables);
-      surveillerRetrouvailles(visibles);
-    }
+    if (EN_DUO || !EN_AVENTURE) caisses.appliquer(visibles, sim.carryables);
+    if (EN_DUO) surveillerRetrouvailles(visibles);
 
     // --- Le rendez-vous à deux ------------------------------------------------
     if (attenteDuo.actif && !transitionEnCours) {
