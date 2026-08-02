@@ -37,6 +37,13 @@ const moveAxis = (
   scale: number,
   axis: Axis,
   amount: number,
+  /**
+   * Hauteur au-dessus de laquelle une DESCENTE refuse de reposer le corps —
+   * voir la longue note de `moveAndCollide`. N'a de sens que pour un `amount`
+   * négatif sur l'axe y, et seulement s'il existe par ailleurs de quoi
+   * s'appuyer plus bas : sans ça, on refuserait le seul secours disponible.
+   */
+  plafond?: number,
 ): boolean => {
   if (amount === 0) return false;
   p[axis] += amount;
@@ -79,7 +86,28 @@ const moveAxis = (
   if (amount > 0) {
     for (const h of hits) resolved = Math.min(resolved, h[minKey] - posExtent);
   } else {
-    for (const h of hits) resolved = Math.max(resolved, h[maxKey] + negExtent);
+    // ─── DEUX CANDIDATS, ET L'ON PRÉFÈRE LE PLUS BAS QUI SUFFISE ────────────
+    //
+    // `haut` est l'ancienne réponse : la plus extrême, celle qui garantit de ne
+    // plus rien chevaucher. `bas` ne retient que les appuis situés SOUS le
+    // plafond, c'est-à-dire ceux qui ne remontent pas le corps.
+    //
+    // On prend `bas` dès qu'il existe. Le corps peut alors rester en
+    // chevauchement avec ce qui est au-dessus — mais il l'était DÉJÀ avant de
+    // tomber, et une chute n'a jamais eu pour métier de réparer ça.
+    //
+    // Et l'on retombe sur `haut` quand `bas` n'existe pas : quelqu'un déposé
+    // dans la roche par une porte n'a que cette sortie-là, et la lui retirer,
+    // c'est le faire tomber jusqu'à moins deux cent mille. Mesuré, cette
+    // nuit-là comme les précédentes.
+    let haut = resolved;
+    let bas = -Infinity;
+    for (const h of hits) {
+      const r = h[maxKey] + negExtent;
+      haut = Math.max(haut, r);
+      if (plafond !== undefined && r <= plafond + 1e-6) bas = Math.max(bas, r);
+    }
+    resolved = bas > -Infinity ? Math.max(resolved, bas) : haut;
   }
   p[axis] = resolved;
   return true;
@@ -118,8 +146,62 @@ export const moveAndCollide = (
   const result: MoveResult = { grounded: false, hitCeiling: false, hitWall: false };
 
   // --- Vertical ---
+  //
+  // ─── UNE CHUTE NE PEUT PAS FAIRE MONTER, ET C'EST LA CATAPULTE DU LINTEAU ──
+  //
+  // Le défaut le plus grave du moteur, reproductible, documenté dans
+  // `MESURES.md`, et resté ouvert cinq tentatives durant.
+  //
+  // Un joueur de 1,80 arrêté au ras d'une porte basse TOUCHE son linteau : la
+  // résolution latérale le pose exactement au bord de ce qu'il heurte, et le
+  // dernier bit de la virgule flottante décide de quel côté. Quand il tombe du
+  // mauvais côté, la tête est DANS le linteau. La gravité de l'image suivante
+  // résout alors sur le DESSUS de tout ce qu'elle pénètre — juste pour un sol,
+  // catastrophique ici — et le corps passait de 0 à 1,70 en une image, puis
+  // marchait sur le linteau et par-dessus le mur. **On franchissait n'importe
+  // quel mur en le longeant**, du moment qu'il portait un linteau.
+  //
+  // Les cinq corrections essayées cherchaient toutes à écarter les mauvaises
+  // boîtes — par leur hauteur, ou en donnant du jeu au corps. Trois retiraient
+  // le rattrapage des chutes (mesuré : y = −208 221) ; deux ouvraient un
+  // passage entre les montants d'une balustrade. Tout ce coin du moteur est en
+  // équilibre sur le contact EXACT, et le moindre jeu ouvre un trou ailleurs.
+  //
+  // LA BONNE FORMULATION NE PARLE PAS DE BOÎTES DU TOUT :
+  //
+  //     une descente PRÉFÈRE l'appui le plus bas qui ne remonte pas le corps,
+  //     et ne remonte le corps que si aucun appui ne le tient.
+  //
+  // La première moitié est vraie sans exception : tomber ne rend jamais plus
+  // haut que d'où l'on part, donc une résolution qui REMONTE ne peut venir que
+  // d'une boîte qu'on pénétrait déjà — un corps étranger, pas un sol. Sous le
+  // linteau, le sol est là, à zéro, et il suffit ; on le prend, la tête reste
+  // dans le linteau d'un milliardième de millimètre, et personne ne le saura
+  // jamais.
+  //
+  // ET LA SECONDE MOITIÉ EST CE QUI A MANQUÉ À TOUTES LES TENTATIVES, LA
+  // MIENNE COMPRISE. Écrite sans elle, la règle a d'abord semblé parfaite : le
+  // linteau tombait, les deux vérifications passaient. Puis trois traversées de
+  // portail se sont mises à échouer, dont une **à y = −208 221** — exactement
+  // le nombre des nuits précédentes, ce qui aurait dû me mettre la puce à
+  // l'oreille plus tôt.
+  //
+  // La cause : une porte dépose parfois le corps LÉGÈREMENT DANS le sol
+  // d'arrivée. L'éjection vers le haut, qu'on venait d'interdire, était sa
+  // seule issue. Un joueur qui n'a rien sous les pieds doit pouvoir remonter —
+  // même par le dessus de ce qui le contient, même si c'est laid.
+  //
+  // D'où la règle sous sa forme complète : on cherche d'abord un appui qui ne
+  // remonte pas ; à défaut seulement, on reprend l'ancienne réponse.
+  //
+  // Deux tentatives portaient déjà la première moitié de cette phrase, aux deux
+  // mauvais endroits — le repli de la marche et l'accroche au sol. Les notes de
+  // l'époque disaient pourtant noir sur blanc : « le saut ne vient pas de
+  // l'accroche mais de la gravité elle-même ». C'est ici, et nulle part
+  // ailleurs.
+  const departY = p.y;
   const dy = velocity.y * dt;
-  if (moveAxis(world, p, scale, 'y', dy)) {
+  if (moveAxis(world, p, scale, 'y', dy, dy < 0 ? departY : undefined)) {
     if (dy < 0) result.grounded = true;
     else result.hitCeiling = true;
     velocity.y = 0;

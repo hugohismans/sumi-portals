@@ -130,7 +130,7 @@ secondes**, parce que le joueur doit rater deux fois avant de comprendre. Si le
 troisième essai coûte trop cher, il n'aura pas lieu.
 
 
-## LA CATAPULTE DU LINTEAU — défaut connu, reproductible, non corrigé
+## LA CATAPULTE DU LINTEAU — CORRIGÉE, à la sixième tentative
 
 Trouvé en écrivant la correction de la marche, le 2 août. **Ce n'est pas le même
 défaut**, et il est plus grave.
@@ -199,19 +199,53 @@ linteau — et la gravité de l'image suivante le pose dessus.
 **La leçon :** un correctif juste au mauvais endroit est un correctif faux, et
 mieux vaut un défaut connu qu'un monde sans sol.
 
-### La piste pour la prochaine passe
+### LA CORRECTION, et pourquoi elle a fini par tenir
 
-Les cinq échecs disent tous la même chose : **on ne peut pas donner du jeu à la
-collision** sans ouvrir un passage ailleurs, parce que les balustrades du jeu
-sont calibrées au diamètre du corps.
+Elle tient en une phrase, et la phrase ne parle **pas de boîtes du tout** :
 
-Il reste donc une seule direction : **traiter la pénétration comme une
-pénétration**, et non comme un appui. Quand une descente ne peut se résoudre que
-sur une boîte dont le dessus est plus haut que la tête du joueur, ce n'est pas
-un sol — c'est un corps étranger. La bonne réponse est de repousser
-LATÉRALEMENT, sur l'axe par lequel on y est entré, et non de poser le joueur
-dessus.
+> Une descente préfère l'appui le plus bas qui ne remonte pas le corps, et ne
+> remonte le corps que si aucun appui ne le tient.
 
-Cela demande de savoir par quel axe la pénétration est arrivée, donc de garder
-la position d'avant le pas complet — pas seulement celle d'avant l'axe courant.
-C'est un vrai petit chantier, pas un réglage, et c'est pour ça qu'il attend.
+Les cinq tentatives cherchaient toutes à **écarter les mauvaises boîtes** — par
+leur hauteur, ou en donnant du jeu au corps. C'était la mauvaise question. Le
+critère juste ne regarde pas ce qu'on heurte, il regarde **où l'on part** :
+tomber ne rend jamais plus haut que d'où l'on part, donc une résolution qui
+remonte ne peut venir que d'une boîte qu'on pénétrait déjà.
+
+Sous le linteau, le sol est là, à zéro, et il suffit. On le prend. La tête reste
+dans le linteau d'un milliardième de millimètre, et personne ne le saura jamais.
+
+**Et l'endroit comptait autant que la règle.** Les tentatives 3 et 5 portaient
+déjà la moitié de cette phrase, mais sur le repli de la marche et sur l'accroche
+au sol. Les notes de l'époque disaient pourtant noir sur blanc : « *le saut ne
+vient pas de l'accroche mais de la gravité elle-même* ». Le correctif est sur la
+passe de gravité, et nulle part ailleurs.
+
+### La seconde moitié, qui a manqué à ma propre tentative
+
+Écrite sans elle, la règle a semblé parfaite pendant dix minutes : le linteau
+tombait, les deux vérifications passaient. Puis trois traversées de portail ont
+échoué, dont une **à y = −208 221** — exactement le nombre des nuits
+précédentes.
+
+La cause : **une porte dépose parfois le corps légèrement DANS le sol
+d'arrivée.** L'éjection vers le haut, qu'on venait d'interdire, était sa seule
+issue. Un joueur qui n'a rien sous les pieds doit pouvoir remonter, même par le
+dessus de ce qui le contient, même si c'est laid.
+
+D'où la règle en deux temps : on cherche d'abord un appui qui ne remonte pas ;
+**à défaut seulement**, on reprend l'ancienne réponse. Le rattrapage des chutes
+et les balustrades ne sont jamais touchés, puisque ni l'un ni l'autre ne part
+d'une pénétration.
+
+### Ce qui le prouve désormais, à chaque `npm run check`
+
+| vérification | ce qu'elle attrape |
+|---|---|
+| un linteau de 1,50 ferme le passage à un joueur de 1,80 | la catapulte elle-même |
+| un seuil de 20 cm sous un linteau de 1,90 reste fermé | le cas réel des salles |
+| on se pose sur la dalle après 40 m de chute | ce qui a tué trois tentatives sur cinq |
+
+Les deux premières étaient **impossibles à écrire** avant le correctif, et le
+fichier de vérifications portait un commentaire disant pourquoi. Il est parti
+avec le défaut.

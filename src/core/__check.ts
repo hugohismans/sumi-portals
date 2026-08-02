@@ -2427,21 +2427,67 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     '',
   );
 
-  // CE QU'ON NE VÉRIFIE PAS ENCORE, ET POURQUOI.
+  // ─── LA CATAPULTE DU LINTEAU, enfin vérifiée ────────────────────────────
   //
-  // Un mur trop haut devrait rester un mur, et un linteau trop bas devrait
-  // fermer. Les deux échouent aujourd'hui, pour une raison qui n'a rien à voir
-  // avec la marche : la résolution d'une descente pose le corps sur le DESSUS
-  // de tout ce qu'il pénètre. Un joueur arrêté au ras d'une porte basse TOUCHE
-  // son linteau ; la gravité de l'image suivante le pose donc dessus, et il
-  // marche par-dessus le mur.
+  // Ces deux lignes étaient impossibles à écrire hier, et le commentaire qu'elles
+  // remplacent expliquait pourquoi : la résolution d'une descente posait le
+  // corps sur le DESSUS de tout ce qu'il pénétrait, et un joueur arrêté au ras
+  // d'une porte basse touche son linteau. Il se retrouvait posé dessus, puis
+  // marchait par-dessus le mur.
   //
-  // C'est un défaut réel, reproductible et documenté dans `MESURES.md`. Il
-  // demande une passe à lui : trois corrections différentes ont été essayées
-  // ici, et chacune retirait le rattrapage des chutes — on tombait à l'infini
-  // dès qu'un pas de temps traversait une dalle. Un correctif juste au mauvais
-  // endroit est un correctif faux, et mieux vaut un défaut connu qu'un monde
-  // sans sol.
+  // La correction tient en une phrase — une descente ne peut pas faire monter —
+  // et elle est dans `physics.ts`, sur la passe de gravité elle-même. Ce qui se
+  // vérifie ici est donc ce que le joueur voit : **un mur reste un mur.**
+
+  // Un linteau à 1,50 ne laisse pas passer un corps d'1,80. Sans seuil du tout,
+  // pour qu'aucune marche ne vienne brouiller la mesure : c'est le jour sous le
+  // linteau, et lui seul, qui doit fermer.
+  check(
+    'un linteau de 1,50 ferme le passage à un joueur de 1,80',
+    !franchit(passage(0, 1.5)),
+    'la catapulte du linteau : on se posait dessus et on passait par-dessus',
+  );
+
+  // ET LE CAS QUI COMPTE POUR LES SALLES : un seuil de vingt centimètres sous
+  // un linteau à 1,90 ne laisse que 1,70 de jour à un corps d'1,80. C'est
+  // FERMÉ, et ça doit se sentir comme un mur — pas comme un tremplin.
+  check(
+    'un seuil de 20 cm sous un linteau de 1,90 reste fermé',
+    !franchit(passage(0.2, 1.9)),
+    'on montait sur le linteau et on passait par-dessus',
+  );
+
+  // LE RATTRAPAGE DES CHUTES SURVIT, et c'est ce qui a tué trois des cinq
+  // tentatives précédentes. Un pas de temps qui traverse une dalle doit poser le
+  // joueur dessus ; s'il ne le fait pas, on tombe à l'infini — mesuré à
+  // y = −208 221 la nuit où l'on filtrait par la hauteur.
+  {
+    const dalle: LevelDef = {
+      name: 'dalle',
+      spawn: [0, 40, 0],
+      spawnYaw: 0,
+      boxes: [{ min: [-8, 0, -8], max: [8, 1, 8], ink: 0 }],
+      portals: [],
+      goal: { position: [0, -900, 0], radius: 1 },
+    };
+    const sim = new Simulation(dalle);
+    const immobile = {
+      forward: 0,
+      strafe: 0,
+      jump: false,
+      sprint: false,
+      yaw: 0,
+      pitch: 0,
+      interact: false,
+      throwIt: false,
+    };
+    for (let i = 0; i < 60 * 8; i++) sim.step(immobile, 1 / 60);
+    check(
+      'on se pose sur la dalle après quarante mètres de chute',
+      Math.abs(sim.player.position.y - 1) < 0.05,
+      `y = ${sim.player.position.y.toFixed(1)}`,
+    );
+  }
 }
 
 
