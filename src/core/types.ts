@@ -133,6 +133,37 @@ export interface CarryableDef {
   size: number;
   ink?: number;
   /**
+   * LA FORME, quand l'objet n'est pas un cube.
+   *
+   * ═══════════════════════════════════════════════════════════════════════
+   * UN CUBE N'A PAS DE MAIN GAUCHE, ET C'EST TOUT LE PROBLÈME.
+   *
+   * Les portails miroirs existent, sont écrits et sont vérifiés : ce qui les
+   * traverse revient en image miroir, et un logement peut exiger une main. Rien
+   * de tout cela ne se VOIT, parce qu'on dessine chaque objet avec un cube —
+   * `main: 'L'` et `main: 'D'` sont rigoureusement identiques à l'écran.
+   *
+   * Un creux refusant un bloc de la bonne taille sans raison visible est la
+   * pire chose qu'une énigme puisse faire. La mécanique restait donc morte.
+   *
+   * Une pièce composite est une LISTE DE BOÎTES, en coordonnées de −0,5 à +0,5,
+   * mises à l'échelle par `size`. C'est exactement ce que le décor du monde est
+   * déjà, et `buildWorldGeometry` sait le bâtir sans une ligne de plus.
+   *
+   * LA FORME EST POUR L'ŒIL ET POUR LA SERRURE, JAMAIS POUR LA PHYSIQUE. La
+   * collision reste la boîte englobante, droite, toujours. Une pièce en L se
+   * cogne comme un cube et personne ne s'en plaindra ; le jour où l'on voudrait
+   * mieux, on aurait des coques tournantes à écrire et un jeu instable.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  pieces?: { min: [number, number, number]; max: [number, number, number]; ink?: number }[];
+  /**
+   * Nom de la forme. Un logement compare des VALEURS, jamais des géométries :
+   * quatre comparaisons — la forme, la taille, la main, et bientôt la teinte —
+   * et pas un test d'intersection.
+   */
+  forme?: string;
+  /**
    * CE QUE CET OBJET ÉCRIT. Un stylo, et la couleur de son encre.
    *
    * Tant qu'on le tient, le clic ne LANCE plus : il TRACE. C'est le seul objet
@@ -216,6 +247,12 @@ export interface SocketDef {
   id: string;
   /** Main exigée. Le logement refuse l'autre, comme une serrure biologique. */
   main?: 'L' | 'D';
+  /**
+   * Forme exigée, s'il y en a une. Le creux dessine ce qu'il attend : une pièce
+   * de la bonne taille et de la mauvaise forme se voit refuser, et l'on voit
+   * pourquoi — ce qui est la seule chose qui compte.
+   */
+  forme?: string;
   /** Centre du bas du logement. */
   position: [number, number, number];
   /** Arête attendue. */

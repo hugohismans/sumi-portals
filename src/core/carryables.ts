@@ -65,6 +65,10 @@ export interface Carryable {
   main?: 'L' | 'D';
   /** Ce qu'il écrit, si c'est un stylo. Voir CarryableDef.encre. */
   encre?: string;
+  /** Les blocs qui le composent, en unités de −0,5 à +0,5. Voir CarryableDef.pieces. */
+  pieces?: { min: [number, number, number]; max: [number, number, number]; ink?: number }[];
+  /** Nom de sa forme. Un logement compare des valeurs, jamais des géométries. */
+  forme?: string;
   ink: number;
   held: boolean;
   grounded: boolean;
@@ -166,6 +170,8 @@ export class Carryables {
         size: d.size,
         main: d.main,
         encre: d.encre,
+        pieces: d.pieces,
+        forme: d.forme,
         ink: d.ink ?? 3,
         held: false,
         grounded: false,

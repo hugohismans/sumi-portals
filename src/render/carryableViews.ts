@@ -40,6 +40,8 @@ interface View {
 
   size: number;
   ghostSize: number;
+  /** Main dessinée en ce moment. Voir `update`. */
+  main?: 'L' | 'D';
   /** Masquée : elle existe et se comporte, mais on ne la dessine jamais. */
   masque?: boolean;
 }
@@ -86,7 +88,7 @@ export class CarryableViews {
         return { cel, outline };
       };
 
-      const geo = cubeGeometry(item.size);
+      const geo = carryableGeometry(item);
       const real = make();
       const group = new THREE.Group();
       const outlineMesh = new THREE.Mesh(geo, real.outline);
@@ -101,7 +103,7 @@ export class CarryableViews {
       // côté, trait fin de l'autre.
       const spectre = make();
       const ghost = new THREE.Group();
-      const ghostGeo = cubeGeometry(item.size);
+      const ghostGeo = carryableGeometry(item);
       const ghostOutlineMesh = new THREE.Mesh(ghostGeo, spectre.outline);
       const ghostMesh = new THREE.Mesh(ghostGeo, spectre.cel);
       ghostOutlineMesh.frustumCulled = false;
@@ -122,6 +124,7 @@ export class CarryableViews {
         ghostOutline: spectre.outline,
         size: item.size,
         ghostSize: item.size,
+        main: item.main,
       });
     }
   }
@@ -134,8 +137,12 @@ export class CarryableViews {
       // simplement jamais. C'est un pinceau de couleur qui la représente.
       if (view.masque) continue;
 
-      if (view.size !== item.size) {
-        const geo = cubeGeometry(item.size);
+      // On rebâtit quand la taille change, mais aussi quand la MAIN bascule :
+      // c'est ce passage-là qui rend la chiralité visible, et il arrive au
+      // moment précis où l'objet franchit un portail miroir.
+      if (view.size !== item.size || view.main !== item.main) {
+        view.main = item.main;
+        const geo = carryableGeometry(item);
         view.mesh.geometry.dispose();
         view.mesh.geometry = geo;
         view.outlineMesh.geometry = geo;
@@ -191,7 +198,15 @@ export class CarryableViews {
       // double exactement la même épaisseur de trait que la moitié restée ici.
       const wanted = item.size * s;
       if (Math.abs(view.ghostSize - wanted) > 1e-6) {
-        const geo = cubeGeometry(wanted);
+        // Le double porte la MAIN QU'IL AURA DE L'AUTRE CÔTÉ. Sur un portail
+        // miroir, ce n'est pas la même que celle d'ici — et c'est exactement ce
+        // qu'on veut montrer : la moitié qui a franchi le plan est déjà
+        // retournée, l'autre pas encore. On voit la chiralité s'opérer au
+        // milieu de l'objet.
+        const mainLa = face.miroir && item.main !== undefined
+          ? item.main === 'L' ? 'D' : 'L'
+          : item.main;
+        const geo = carryableGeometry({ ...item, size: wanted, main: mainLa });
         view.ghostMeshes[0].geometry.dispose();
         for (const m of view.ghostMeshes) m.geometry = geo;
         view.ghostSize = wanted;
@@ -243,7 +258,43 @@ const setPlanes = (
 };
 
 /** Cube centré sur son origine, pour que la rotation se fasse autour du milieu. */
-const cubeGeometry = (size: number): THREE.BufferGeometry => {
-  const h = size * 0.5;
-  return buildWorldGeometry([{ min: [-h, -h, -h], max: [h, h, h], ink: 0 }]);
+/**
+ * La géométrie d'un objet portable — un cube, ou la forme qu'il déclare.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `main` REFLÈTE LA GÉOMÉTRIE, ET C'EST TOUTE LA CHIRALITÉ
+ *
+ * Une forme chirale ne peut pas être superposée à son reflet — comme une main
+ * gauche et une main droite. Aucune rotation ne transforme l'une en l'autre :
+ * il faut un miroir.
+ *
+ * Les portails miroirs faisaient déjà basculer `main` à chaque passage. Ça ne
+ * se voyait pas, parce que tous les objets étaient des cubes. Il suffisait de
+ * refléter la liste de boîtes sur un axe — `x → −x` — pour que la mécanique
+ * devienne visible, et donc jouable.
+ *
+ * On reflète les COORDONNÉES et non la matrice du modèle : une échelle négative
+ * inverserait l'orientation des faces, et l'objet se retrouverait retourné à
+ * l'envers, éclairé par l'intérieur, cerné d'un contour qui disparaît. C'est le
+ * même piège que dans la vue à travers un portail miroir, où il a déjà coûté
+ * une soirée.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const carryableGeometry = (item: Carryable): THREE.BufferGeometry => {
+  const h = item.size * 0.5;
+  if (!item.pieces || item.pieces.length === 0) {
+    return buildWorldGeometry([{ min: [-h, -h, -h], max: [h, h, h], ink: 0 }]);
+  }
+  const miroir = item.main === 'D';
+  return buildWorldGeometry(
+    item.pieces.map((b) => {
+      const x0 = b.min[0] * item.size;
+      const x1 = b.max[0] * item.size;
+      return {
+        min: [miroir ? -x1 : x0, b.min[1] * item.size, b.min[2] * item.size],
+        max: [miroir ? -x0 : x1, b.max[1] * item.size, b.max[2] * item.size],
+        ink: b.ink ?? 0,
+      };
+    }),
+  );
 };

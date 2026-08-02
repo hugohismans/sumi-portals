@@ -31,6 +31,8 @@ export interface Socket {
   size: number;
   /** Main exigée, s'il y en a une. */
   main?: 'L' | 'D';
+  /** Forme exigée, s'il y en a une. Voir SocketDef.forme. */
+  forme?: string;
   tolerance: number;
   /** Rayon d'accueil. Voir SocketDef.portee. */
   portee: number;
@@ -58,6 +60,7 @@ export class Sockets {
         position: vec3(d.position[0], d.position[1], d.position[2]),
         size: d.size,
         main: d.main,
+        forme: d.forme,
         tolerance: d.tolerance ?? DEFAULT_TOLERANCE,
         portee: d.portee ?? d.size * 0.75,
         rend: d.rend ?? false,
@@ -99,6 +102,11 @@ export class Sockets {
     // pas. Il n'y a qu'une façon de la retourner, et ce n'est pas en la
     // tournant.
     if (socket.main !== undefined && c.main !== socket.main) return false;
+    // LA FORME, et elle se compare par son NOM. Un creux ne teste jamais une
+    // géométrie : quatre comparaisons de valeurs suffisent — la forme, la
+    // taille, la main, et la teinte le jour venu. C'est ce qui rend la boîte à
+    // formes possible en données pures, sans une ligne de calcul.
+    if (socket.forme !== undefined && c.forme !== socket.forme) return false;
     return Math.abs(c.size - socket.size) <= socket.size * socket.tolerance;
   }
 

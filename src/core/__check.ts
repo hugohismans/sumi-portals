@@ -2222,6 +2222,77 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
 
 {
+  console.log('\n— Une forme se compare par son NOM, jamais par sa géométrie —');
+
+  // LES OBJETS COMPOSITES. Une pièce est une liste de boîtes, comme le décor,
+  // et `buildWorldGeometry` la bâtit sans une ligne de plus. Mais un logement,
+  // lui, ne teste JAMAIS une géométrie : il compare quatre valeurs — la forme,
+  // la taille, la main, et la teinte le jour venu.
+  //
+  // C'est ce qui rend la boîte à formes possible en données pures. Et c'est
+  // aussi ce qui garantit qu'un refus est explicable : le creux dessine ce
+  // qu'il attend, la pièce a un nom, et les deux se lisent.
+  const enL = [
+    { min: [-0.5, -0.5, -0.2] as [number, number, number], max: [0.1, 0.1, 0.2] as [number, number, number] },
+    { min: [-0.5, 0.1, -0.2] as [number, number, number], max: [-0.1, 0.5, 0.2] as [number, number, number] },
+  ];
+
+  const salle: LevelDef = {
+    name: 'formes',
+    spawn: [0, 0.2, -3],
+    spawnYaw: 0,
+    boxes: [{ min: [-8, -1, -8], max: [8, 0, 8], ink: 0 }],
+    portals: [],
+    carryables: [
+      { id: 'equerre-g', position: [-1, 0.1, 0], size: 0.5, forme: 'equerre', main: 'L', pieces: enL },
+      { id: 'equerre-d', position: [1, 0.1, 0], size: 0.5, forme: 'equerre', main: 'D', pieces: enL },
+      { id: 'cube', position: [0, 0.1, 1], size: 0.5 },
+    ],
+    sockets: [
+      { id: 'creux-equerre-g', position: [0, 0, 3], size: 0.5, forme: 'equerre', main: 'L' },
+    ],
+    goal: { position: [0, -900, 0], radius: 1 },
+  };
+
+  const sim = new Simulation(salle);
+  const creux = sim.sockets.items[0];
+  const par = (id: string) => sim.carryables.items.find((c) => c.id === id)!;
+
+  check('le creux accepte l’équerre gauche', sim.sockets.fits(creux, par('equerre-g')), '');
+  check(
+    'et refuse la même équerre en main droite',
+    !sim.sockets.fits(creux, par('equerre-d')),
+    'aucune rotation ne transforme une main en l’autre : il faut un miroir',
+  );
+  check(
+    'et refuse un cube de la bonne taille',
+    !sim.sockets.fits(creux, par('cube')),
+    'même taille, même main, mauvaise forme',
+  );
+
+  // LA COLLISION RESTE LA BOÎTE ENGLOBANTE. La forme est pour l'œil et pour la
+  // serrure, jamais pour la physique — une pièce en L se cogne comme un cube.
+  // Le jour où l'on voudrait mieux, on aurait des coques tournantes à écrire et
+  // un jeu instable.
+  check(
+    'une pièce composite garde la taille d’un cube pour la physique',
+    par('equerre-g').size === 0.5 && par('cube').size === 0.5,
+    'la forme ne change pas la boîte de collision',
+  );
+
+  // ET LA MAIN BASCULE AU MIROIR, ce qui est déjà vérifié ailleurs — mais
+  // désormais ça se VOIT, puisque la géométrie se reflète avec elle.
+  const g = par('equerre-g');
+  g.main = g.main === 'L' ? 'D' : 'L';
+  check(
+    'une fois passée au miroir, l’équerre gauche ne rentre plus',
+    !sim.sockets.fits(creux, g),
+    'et c’est la même pièce, retournée',
+  );
+}
+
+
+{
   console.log('\n— Le sprint court, il ne vole pas —');
 
   // LE NOMBRE LE PLUS DANGEREUX DU JEU POUR LA CONCEPTION.
