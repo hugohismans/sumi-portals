@@ -16,6 +16,15 @@ import { buildFaces, estScelle, transformPoint, transformVector } from './portal
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
+import { verifierParcelleSalle, verifierTaillesDistinctes, type SalleModule } from '../levels/salles/contrat.js';
+import { CREUX } from '../levels/salles/creux.js';
+import { PLUIE } from '../levels/salles/pluie.js';
+
+/**
+ * Les salles de la descente déjà bâties. On en ajoute une ligne par livraison ;
+ * tout le reste des vérifications suit sans qu'on y touche.
+ */
+const SALLES_LIVREES: SalleModule[] = [CREUX, PLUIE];
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
 import {
@@ -2024,6 +2033,67 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     !estScelle(hall.faces.find((f) => f.pairId === 'cabinet')!, hall.conditionsRemplies),
     '',
   );
+}
+
+
+{
+  console.log('\n— Les salles de la descente tiennent leur contrat —');
+
+  // Chaque salle est écrite seule, par une main qui ne voit pas les autres.
+  // C'est ce qui permet d'en bâtir plusieurs en même temps — et c'est aussi ce
+  // qui rend ces vérifications-ci indispensables : personne ne relit tout.
+  //
+  // Les auteurs les font passer eux-mêmes avec un banc jetable ; celles-ci sont
+  // PERMANENTES. Une salle correcte le jour de sa livraison ne le reste pas
+  // toute seule : on déplacera un mur, on ajoutera un logement, et il n'y aura
+  // plus personne pour s'en souvenir.
+  for (const salle of SALLES_LIVREES) {
+    const parcelle = verifierParcelleSalle(salle);
+    check(`${salle.nom} : tout tient dans sa parcelle`, parcelle.length === 0, parcelle[0] ?? '');
+
+    // Deux faces exactement dans le même plan se disputent la profondeur et
+    // grésillent. C'est le défaut le plus fréquent du projet — il a mordu six
+    // fois — et le seul qu'on ne voie pas en lisant le code.
+    const confondues = facesConfondues(salle.boxes, 0.25);
+    check(
+      `${salle.nom} : aucune face n’en recouvre une autre`,
+      confondues.length === 0,
+      confondues[0] ?? `${salle.boxes.length} boîtes`,
+    );
+
+    // Un logement ordinaire verrouille pour de bon : deux logements qui
+    // accepteraient la même taille rendraient possible une faute irréparable.
+    const tailles = verifierTaillesDistinctes(salle);
+    check(`${salle.nom} : deux creux n’acceptent jamais la même taille`, tailles.length === 0, tailles[0] ?? '');
+
+    // L'échelle est un PALIER, pas un multiplicateur. Le contrat était muet
+    // là-dessus et une salle a été livrée avec `0.25` là où il fallait `−1`.
+    // Un contrat ambigu produit autant de versions qu'il a de lecteurs.
+    const paliers = [salle.entree.echelle, salle.sortie.echelle];
+    check(
+      `${salle.nom} : les échelles de raccord sont des paliers entiers`,
+      paliers.every((e) => Number.isInteger(e) && e >= -2 && e <= 2),
+      `entrée ${paliers[0]}, sortie ${paliers[1]}`,
+    );
+
+    // Une salle sans station est une salle où le Pinceau ne passe pas, donc
+    // une salle où le joueur n'a aucune raison d'aller.
+    check(`${salle.nom} : le Pinceau la traverse`, salle.stations.length > 0, `${salle.stations.length} jalons`);
+  }
+
+  // ET LES PARCELLES NE SE CHEVAUCHENT PAS. C'est la garantie qui rend le
+  // travail en parallèle possible : deux salles bâties le même soir par deux
+  // mains différentes ne peuvent pas se percuter, quoi qu'elles contiennent.
+  for (let i = 0; i < SALLES_LIVREES.length; i++) {
+    for (let j = i + 1; j < SALLES_LIVREES.length; j++) {
+      const a = SALLES_LIVREES[i];
+      const b = SALLES_LIVREES[j];
+      const separees = [0, 1, 2].some(
+        (k) => a.bounds.max[k] <= b.bounds.min[k] || b.bounds.max[k] <= a.bounds.min[k],
+      );
+      check(`${a.nom} et ${b.nom} ne se chevauchent pas`, separees, '');
+    }
+  }
 }
 
 
