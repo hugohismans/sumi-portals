@@ -151,6 +151,9 @@
       }
       #overlay .ligne { font-size: 15px; line-height: 1.7; opacity: .78; margin-bottom: 26px; }
       #overlay .go { margin-top: 4px; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; opacity: .62; }
+      #overlay .son { margin-top: 16px; font-size: 12px; opacity: .42; }
+      /* Une seule fois : à la reprise, le joueur a déjà lu. */
+      #overlay.resumed .son { display: none; }
 
       /* LES CINQ PINCEAUX. Ils sont gris, sauf un — celui qu'on tient déjà.
          C'est toute la partie résumée en une image : il en manque quatre, et
@@ -305,6 +308,17 @@
           <span class="enter">Tremper le pinceau</span>
           <span class="resume">Reprendre le trait</span>
         </div>
+
+        <!--
+          LE SON EXISTE, ET PERSONNE NE LE SAIT.
+          Signalé après une partie sur téléphone : aucun son, et l'appareil était
+          en silencieux. Sur mobile, le petit interrupteur latéral coupe le son
+          d'une page web sans qu'aucun réglage du jeu n'y puisse rien — donc ce
+          n'est pas un défaut à corriger, c'est une chose à DIRE.
+          Une ligne discrète, sous l'appel, et une seule fois : au premier
+          lancement. Rappeler le son à chaque reprise serait un nag.
+        -->
+        <p class="ligne son">Il y a du son. Coupe le silencieux, ou mets un casque.</p>
       </div>
     </div>
 

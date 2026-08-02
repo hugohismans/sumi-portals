@@ -58,7 +58,7 @@ export const clePigments = (): string => CLE;
  * de l'encre qui prend d'un coup et s'étale ensuite. C'est ce départ franc
  * qu'on lit comme un coup de pinceau, et non comme un réglage qui monte.
  */
-const DUREE = 2.4;
+const DUREE = 4.6;
 
 /**
  * Au-delà, le brouillard a tout mangé : le front peut y courir aussi vite qu'il
@@ -72,6 +72,14 @@ const VUE = 300;
  * cinquième rattrape tout le reste de la région, dans la brume.
  */
 const LISIBLE = 0.8;
+
+/**
+ * Le temps d'arrêt avant que l'encre parte. Un dixième du geste.
+ *
+ * Assez pour qu'on ait le temps de voir le pinceau frapper et de tourner la
+ * tête ; trop peu pour qu'on croie à une panne.
+ */
+const REPOS = 0.1;
 
 interface Chantier {
   materiaux: THREE.ShaderMaterial[];
@@ -250,10 +258,24 @@ export class Pigments {
       // Décélération douce sur la part visible : l'encre part fort et s'épuise
       // en rencontrant la fibre. En cube elle était trop brutale ; au carré on
       // suit encore le front à l'œil pendant toute sa course.
+      // ─── ET LA COURSE COMMENCE PAR UN TEMPS D'ARRÊT ────────────────────
+      //
+      // Signalé en jouant : « la transition fonctionne, mais ça se passe un
+      // peu vite, on n'a pas le temps de s'en rendre compte. »
+      //
+      // C'était vrai deux fois. Le geste durait 2,4 secondes ; il en dure 4,6.
+      // Mais surtout il DÉMARRAIT à l'instant même où le pinceau donnait son
+      // coup, si bien que le joueur voyait le mouvement du pinceau et le front
+      // d'encre en même temps, et qu'il ne pouvait regarder que l'un des deux.
+      //
+      // Un dixième du temps, maintenant, ne sert à rien : le pinceau frappe, et
+      // rien ne bouge. C'est ce silence-là qui fait qu'on tourne la tête, et
+      // qu'on regarde la couleur partir au lieu de la découvrir arrivée.
+      const b = Math.max(0, (a - REPOS) / (1 - REPOS));
       const rayon =
-        a < LISIBLE
-          ? visible * (1 - Math.pow(1 - a / LISIBLE, 2))
-          : visible + (c.portee - visible) * ((a - LISIBLE) / (1 - LISIBLE));
+        b < LISIBLE
+          ? visible * (1 - Math.pow(1 - b / LISIBLE, 2))
+          : visible + (c.portee - visible) * ((b - LISIBLE) / (1 - LISIBLE));
       const fini = a >= 1;
       for (const m of c.materiaux) {
         if (pinceau && m.uniforms.uCentre) m.uniforms.uCentre.value.copy(pinceau);

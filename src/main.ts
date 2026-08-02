@@ -974,6 +974,22 @@ function frame(now: number): void {
       if (montee > 0.01 && montee <= marcheMax * 1.05) {
         lissageMarche = Math.max(-marcheMax, lissageMarche - montee);
       }
+      // ─── ET LA DESCENTE AUSSI ────────────────────────────────────────────
+      //
+      // Signalé en jouant : « quand tu montes un escalier la tête monte
+      // doucement, mais quand tu le descends ça fait clac clac clac ».
+      //
+      // C'était exact, et c'est moi qui n'avais traité qu'un sens. En
+      // descendant une marche, le corps tombe de la hauteur entière en une
+      // image, et l'œil avec lui : on lit une saccade, pas un pas.
+      //
+      // Le retard est simplement de signe inverse — l'œil reste EN HAUT et
+      // redescend, au lieu de rester en bas et de remonter. Une seule
+      // constante gouverne les deux, donc monter et descendre ont exactement
+      // la même douceur, ce qui est la seule chose qui compte ici.
+      if (montee < -0.01 && montee >= -marcheMax * 1.05) {
+        lissageMarche = Math.min(marcheMax, lissageMarche - montee);
+      }
     }
 
     if (events.traversed) {
@@ -1101,8 +1117,14 @@ function frame(now: number): void {
   // Le retard de l'œil se résorbe en un dixième de seconde, proportionnellement
   // à la taille du joueur : un géant monte de grandes marches, et le rattrapage
   // doit se sentir pareil à toutes les échelles.
-  if (lissageMarche < 0) {
-    lissageMarche = Math.min(0, lissageMarche + dt * 9 * sim.scale);
+  // Il se résorbe DANS LES DEUX SENS, à la même vitesse : monter une marche et
+  // la descendre doivent se sentir pareil, et c'est la seule chose qui compte.
+  if (lissageMarche !== 0) {
+    const pas = dt * 9 * sim.scale;
+    lissageMarche =
+      lissageMarche < 0
+        ? Math.min(0, lissageMarche + pas)
+        : Math.max(0, lissageMarche - pas);
   }
 
   // ─── LE PLAN DE FIN VOIT PLUS LOIN QUE LE JEU ────────────────────────────
