@@ -563,6 +563,38 @@ export class PortalRenderer {
       // recomposition automatique. C'est aussi la raison pour laquelle ce
       // chemin est séparé : le cas ordinaire, lui, marche depuis longtemps et
       // n'avait aucune raison d'être touché.
+      // ─── MAIS ON LUI RETIRE SON ÉCHELLE, ET C'EST INDISPENSABLE ─────────
+      //
+      // Le chemin ordinaire décompose puis remet l'échelle à 1 : la caméra
+      // virtuelle voit donc des profondeurs en unités du monde, comme la vraie.
+      // Le chemin du miroir installait la matrice TELLE QUELLE — facteur de
+      // franchissement compris. Les profondeurs vues à travers étaient donc
+      // multipliées par quatre.
+      //
+      // Ça ne se voit pas sur les formes, qui restent justes : la projection
+      // compense. Ça se voit sur le TRAIT D'ENCRE, dont l'épaisseur est
+      // délibérément proportionnelle à la profondeur pour rester constante à
+      // l'écran. Quatre fois la profondeur, quatre fois le trait — puis retour
+      // à la normale une fois passé.
+      //
+      // Signalé en jouant : « le trait est trop épais, et puis hop il devient
+      // moins épais, c'est bizarre ». C'est le même défaut que celui des
+      // pinceaux au tout début du projet, arrivé par l'autre bout : là on
+      // gonflait un objet mis à l'échelle, ici on met la CAMÉRA à l'échelle.
+      //
+      // On normalise donc les trois colonnes de la base à la longueur 1. La
+      // réflexion est préservée — on ne touche pas aux signes, seulement aux
+      // longueurs — et le déterminant reste négatif, ce qui est le sujet même
+      // de ce chemin.
+      const e = this.tmpMatrix.elements;
+      for (let c = 0; c < 3; c++) {
+        const i = c * 4;
+        const l = Math.hypot(e[i], e[i + 1], e[i + 2]) || 1;
+        e[i] /= l;
+        e[i + 1] /= l;
+        e[i + 2] /= l;
+      }
+
       out.matrixAutoUpdate = false;
       out.matrix.copy(this.tmpMatrix);
       out.matrixWorld.copy(this.tmpMatrix);
