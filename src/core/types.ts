@@ -609,6 +609,29 @@ export interface PlayerState {
   /** Palier d'échelle entier. 0 = taille normale. */
   scaleLevel: number;
   grounded: boolean;
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * DE QUELLE MAIN ON EST, ET C'EST TOUT LE SUJET DES PORTES MIROIRS.
+   *
+   * `false` : le monde se lit comme d'habitude. `true` : on a franchi un
+   * nombre IMPAIR de miroirs, et tout est inversé gauche-droite — le décor
+   * comme soi-même.
+   *
+   * POURQUOI IL A FALLU L'INVENTER. Sans elle, franchir un miroir n'inversait
+   * que l'objet porté, jamais le monde. Or si le monde ne bascule pas, la
+   * réflexion ne s'applique qu'à une moitié des choses, et le jeu ment : il
+   * prétend qu'un aller-retour au miroir « corrige » une pièce alors que rien
+   * n'a bougé dans le repère où on la regarde.
+   *
+   * ET ELLE CHANGE L'ÉNIGME, ce qui est le meilleur signe qu'elle est juste.
+   * Si le monde bascule avec soi, **porter** une pièce à travers un miroir ne
+   * peut plus rien résoudre : on subit la même réflexion qu'elle, et leur écart
+   * reste nul. La seule façon de retourner une pièce est donc de **la lancer à
+   * travers et de la rattraper de l'autre côté**. Le geste devient un vrai
+   * geste, et il se voit.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  gauchere: boolean;
 }
 
 /** Entrée d'un tick. Ce sont des COMMANDES, pas des mutations directes. */

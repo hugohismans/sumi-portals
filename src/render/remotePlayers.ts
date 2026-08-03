@@ -56,6 +56,9 @@ export class RemotePlayers {
             yaw: snap.yaw,
             pitch: 0,
             scaleLevel: snap.lvl,
+            // La main d'un autre joueur ne nous regarde pas : on ne dessine que
+            // son corps, jamais son point de vue.
+            gauchere: false,
             grounded: snap.sol === 1,
           },
           target: { x: snap.x, y: snap.y, z: snap.z, yaw: snap.yaw },

@@ -145,6 +145,7 @@ export class Simulation {
       pitch: 0,
       scaleLevel: this.world.level.spawnScale ?? 0,
       grounded: false,
+      gauchere: false,
     };
   }
 
@@ -740,6 +741,8 @@ export class Simulation {
     const newScale = scaleOfLevel(nextLevel);
 
     pl.scaleLevel = nextLevel;
+    // UN MIROIR CHANGE LA MAIN DU MONDE. Voir `PlayerState.gauchere`.
+    if (face.miroir === true) pl.gauchere = !pl.gauchere;
     // On repasse des yeux aux pieds, avec la NOUVELLE taille. Comme la hauteur
     // d'œil est proportionnelle à la taille, un joueur posé au sol devant une
     // face ressort exactement posé au sol devant l'autre.
@@ -766,7 +769,26 @@ export class Simulation {
     const held = this.carryables.held;
     if (held) {
       held.size *= traversalScale(face);
-      retournerLaMain(held, face);
+      // ═══════════════════════════════════════════════════════════════════
+      // CE QU'ON PORTE NE SE RETOURNE PAS, ET C'EST LA RÈGLE JUSTE.
+      //
+      // Il se retournait, et c'était un mensonge — mis au jour par le joueur en
+      // une phrase : « si le monde change de forme, la serrure a changé de
+      // forme aussi ; donc porter la pièce à travers ne change rien. »
+      //
+      // Il a raison, et c'est de la physique élémentaire : depuis qu'un miroir
+      // bascule le MONDE et pas seulement l'objet, celui qu'on tient subit
+      // exactement la même réflexion que soi. Leur écart reste nul. Prétendre
+      // qu'il a tourné serait faire dire au jeu le contraire de ce qu'il montre.
+      //
+      // LA SEULE FAÇON DE RETOURNER UNE PIÈCE EST DONC DE LA LANCER À TRAVERS
+      // ET DE LA RATTRAPER DE L'AUTRE CÔTÉ. Elle se réfléchit, on ne se
+      // réfléchit pas, et l'écart devient réel — et visible, ce qui n'était
+      // jamais le cas avant. Le lancer, qui n'avait qu'un usage décoratif,
+      // devient le geste central de la chiralité.
+      //
+      // La bascule d'un objet LANCÉ est intacte : voir `carryTraversal`.
+      // ═══════════════════════════════════════════════════════════════════
       this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale);
     }
   }

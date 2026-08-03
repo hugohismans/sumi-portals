@@ -132,7 +132,7 @@ export class InputManager {
         return;
       }
 
-      this.yaw -= e.movementX * LOOK_SENSITIVITY;
+      this.yaw -= e.movementX * LOOK_SENSITIVITY * this.sensLateral;
       this.pitch -= e.movementY * LOOK_SENSITIVITY;
       const limit = Math.PI / 2 - 0.02;
       this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
@@ -219,7 +219,7 @@ export class InputManager {
           this.moveX = (dx / len) * amp;
           this.moveY = (-dy / len) * amp;
         } else if (t.identifier === this.lookTouch) {
-          this.yaw -= (t.clientX - origin.x) * TOUCH_LOOK_SENSITIVITY;
+          this.yaw -= (t.clientX - origin.x) * TOUCH_LOOK_SENSITIVITY * this.sensLateral;
           this.pitch -= (t.clientY - origin.y) * TOUCH_LOOK_SENSITIVITY;
           const limit = Math.PI / 2 - 0.02;
           this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
@@ -326,10 +326,34 @@ export class InputManager {
     return Math.max(-1, Math.min(1, v));
   }
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * DE QUEL CÔTÉ EST LA DROITE, ET CE N'EST PAS TOUJOURS LE MÊME.
+   *
+   * Vaut −1 quand le joueur a franchi un nombre impair de portes miroirs : le
+   * monde lui apparaît alors inversé gauche-droite.
+   *
+   * Sans ça, tout se retourne SAUF les commandes : on pousse la souris à
+   * droite et l'image part à gauche, on appuie sur D et l'on va vers la
+   * gauche. Le joueur n'y lit pas une réflexion, il y lit une manette cassée —
+   * et c'est le genre de détail qui fait abandonner une mécanique avant de
+   * l'avoir comprise.
+   *
+   * L'inclinaison, elle, ne bouge jamais : un miroir vertical échange la
+   * gauche et la droite, il ne met pas le ciel en bas.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  private sensLateral = 1;
+  setGauchere(v: boolean): void {
+    this.sensLateral = v ? -1 : 1;
+  }
+
   sample(): InputCommand {
     return {
       forward: this.moveY || this.axis(['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']),
-      strafe: this.moveX || this.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight']),
+      strafe:
+        (this.moveX || this.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight'])) *
+        this.sensLateral,
       jump: this.keys.has('Space'),
       sprint: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'),
       // Maintenue telle quelle : c'est la simulation qui détecte le front, pour

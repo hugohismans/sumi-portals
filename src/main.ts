@@ -2129,7 +2129,39 @@ function frame(now: number): void {
   applyAmbience(camera.position);
   renderer.setRenderTarget(paper.target);
   renderer.clear();
+  // ═══════════════════════════════════════════════════════════════════════
+  // LE MONDE SE LIT DE LA MAIN DU JOUEUR.
+  //
+  // Après un nombre IMPAIR de miroirs franchis, tout est inversé gauche-droite
+  // — le décor comme soi-même. On l'obtient en niant l'échelle latérale de la
+  // caméra : son déterminant devient négatif, et l'image se retourne sans
+  // qu'aucune géométrie ne bouge.
+  //
+  // Il faut alors retourner les matériaux, exactement comme pour une vue à
+  // travers un miroir : c'est la MÊME règle, appliquée à la même question — la
+  // caméra employée est-elle gauchère. Sans quoi l'on verrait l'intérieur des
+  // volumes, et ils se rendraient en aplats noirs.
+  //
+  // POURQUOI LE MONDE ET PAS SEULEMENT L'OBJET. Parce qu'une réflexion qui ne
+  // s'appliquerait qu'à une moitié des choses serait un mensonge : le jeu
+  // prétendrait qu'un aller-retour au miroir corrige une pièce, alors que rien
+  // n'aurait bougé dans le repère où on la regarde. En basculant tout, on rend
+  // la règle honnête — et l'on rend du même coup son sens au LANCER, seule
+  // façon de retourner une pièce sans se retourner avec elle.
+  // ═══════════════════════════════════════════════════════════════════════
+  const gauchere = sim.player.gauchere;
+  // Les commandes suivent la main du monde : voir `InputManager.setGauchere`.
+  input.setGauchere(gauchere);
+  camera.scale.x = gauchere ? -1 : 1;
+  camera.updateMatrixWorld(true);
+  const retournes = gauchere ? PortalRenderer.materiauxDe(scene) : [];
+  for (const m of retournes) {
+    m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
+  }
   renderer.render(scene, camera);
+  for (const m of retournes) {
+    m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
+  }
   paper.render(renderer);
 }
 
@@ -2199,6 +2231,7 @@ function frame(now: number): void {
         pitch: 0,
         scaleLevel: 0,
         grounded: true,
+        gauchere: false,
       },
       1,
       0,

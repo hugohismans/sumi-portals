@@ -444,13 +444,65 @@ export class PortalRenderer {
       // compenser. Le meilleur correctif est celui qui supprime le problème au
       // lieu de le rattraper.
       // ═══════════════════════════════════════════════════════════════════
+      // ═══════════════════════════════════════════════════════════════════
+      // UNE SEULE RÈGLE, ICI COMME POUR LA VUE PRINCIPALE.
+      //
+      // On retourne les matériaux dès que la caméra employée est GAUCHÈRE, et
+      // c'est tout. Une caméra devient gauchère en passant par une réflexion —
+      // donc à travers une porte miroir, ou parce que le joueur en a déjà
+      // franchi un nombre impair.
+      //
+      // Ce bloc a contenu, tour à tour : un appel direct à `gl.frontFace` qui
+      // n'a jamais rien fait (Three.js le réécrit pour chaque matériau), puis un
+      // redressement de la caméra qui supprimait le miroir au lieu de le rendre.
+      // La bonne réponse ne compense rien : elle constate la main de la caméra
+      // et en tire la conséquence.
+      // ═══════════════════════════════════════════════════════════════════
+      const gauchere = renderCamera.matrixWorld.determinant() < 0;
+      const retournes = gauchere ? PortalRenderer.materiauxDe(scene) : [];
+      for (const m of retournes) {
+        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
+      }
+
       renderer.setRenderTarget(level === 'deep' ? view.rtDeep : view.rt);
       renderer.clear();
       renderer.render(scene, renderCamera);
 
+      for (const m of retournes) {
+        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
+      }
+
       renderer.clippingPlanes = [];
       view.twin.surface.visible = true;
     }
+  }
+
+  /**
+   * Tous les matériaux à un seul côté de la scène, trouvés une fois pour toutes.
+   *
+   * Les double face n'ont pas de sens à retourner. On ne parcourt la scène qu'à
+   * la première caméra gauchère rencontrée, et jamais plus : un matériau ne
+   * change pas d'identité une fois bâti, et bien des parties n'ont aucun miroir.
+   *
+   * Statique, parce que la vue principale en a besoin elle aussi dès que le
+   * joueur a franchi un nombre impair de miroirs — et il n'y a aucune raison
+   * de tenir deux catalogues de la même scène.
+   */
+  private static materiaux: THREE.Material[] = [];
+  private static materiauxTrouves = false;
+  static materiauxDe(scene: THREE.Scene): THREE.Material[] {
+    if (PortalRenderer.materiauxTrouves) return PortalRenderer.materiaux;
+    PortalRenderer.materiauxTrouves = true;
+    const vus = new Set<THREE.Material>();
+    scene.traverse((o) => {
+      const m = (o as THREE.Mesh).material;
+      if (!m) return;
+      for (const x of Array.isArray(m) ? m : [m]) {
+        if (x.side !== THREE.DoubleSide) vus.add(x);
+      }
+    });
+    PortalRenderer.materiaux = [...vus];
+    return PortalRenderer.materiaux;
   }
 
   /**
@@ -500,38 +552,6 @@ export class PortalRenderer {
       .multiply(source.matrixWorld);
 
     if (reflechi) {
-      // ═══════════════════════════════════════════════════════════════════
-      // ON REGARDE PAR UNE PORTE MIROIR CE QU'ON VERRA APRÈS L'AVOIR PASSÉE.
-      //
-      // Signalé en jouant : « fais un pas en avant et l'image devient miroir,
-      // ça saute, ce n'est pas naturel ». C'était vrai, et c'était de fond.
-      //
-      // La simulation transporte le joueur par une RÉFLEXION, puis refait de sa
-      // direction un simple cap : `pl.yaw = atan2(regard.x, regard.z)`. Or un
-      // cap ne peut pas encoder une réflexion. La caméra qu'on a APRÈS est donc
-      // droitière, tandis que celle qu'on montrait À TRAVERS était gauchère —
-      // et l'une est l'image miroir de l'autre. D'où le basculement gauche-droite
-      // au moment précis du pas.
-      //
-      // On garde la position réfléchie, qui est bien celle où l'on atterrit, et
-      // l'on redresse la BASE en niant son axe latéral. Position inchangée,
-      // regard inchangé, verticale inchangée — seule la main de la base change,
-      // et son déterminant redevient positif. C'est très exactement la caméra
-      // que le joueur aura une fraction de seconde plus tard.
-      //
-      // Deux ennuis meurent d'un coup : la traversée devient continue, et il n'y
-      // a plus de déterminant négatif à compenser au rendu — donc plus
-      // d'intérieur de volumes, donc plus d'aplats noirs.
-      //
-      // ET LA CHIRALITÉ N'Y PERD RIEN. Elle vit là où elle doit vivre : sur
-      // l'objet qu'on porte, dont la main bascule et se VOIT basculer. C'est la
-      // vrille qui se retourne, pas le monde — et c'était déjà la leçon.
-      // ═══════════════════════════════════════════════════════════════════
-      const e = this.tmpMatrix.elements;
-      e[0] = -e[0];
-      e[1] = -e[1];
-      e[2] = -e[2];
-
       // ON NE DÉCOMPOSE PAS UNE RÉFLEXION.
       //
       // `decompose` suppose une matrice de déterminant positif ; devant un
