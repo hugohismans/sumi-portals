@@ -445,68 +445,17 @@ export class PortalRenderer {
       // pas d'être écrasé.
       const gl = renderer.getContext();
       const reflechi = view.face.miroir === true;
-      if (reflechi) {
-        gl.frontFace(gl.CW);
-        // ─── ET LA COQUE DU CONTOUR AVEC, SINON TOUT DEVIENT NOIR ─────────
-        //
-        // Le trait d'encre est une COQUE RETOURNÉE : on grossit l'objet et l'on
-        // n'en dessine que les faces arrière, ce qui laisse un liseré tout
-        // autour. Ça repose entièrement sur `side: BackSide`.
-        //
-        // Or la ligne du dessus vient d'inverser le sens de parcours des
-        // triangles. « Arrière » désigne donc maintenant l'autre moitié : la
-        // coque grossie se dessine PAR-DESSUS l'objet, en plein, et chaque
-        // volume vu à travers le miroir devient une silhouette noire.
-        //
-        // Signalé en jouant, sur la station du miroir du banc d'essai : « ce
-        // que tu vois à travers n'a pas de couleur, c'est juste du noir, les
-        // formes. » Et le second symptôme rapporté dans la même phrase —
-        // « quand tu traverses, ça fait un saut, ce n'est pas fluide » — n'en
-        // est pas un autre : la traversée sautait parce que l'image À TRAVERS
-        // et l'image APRÈS n'étaient pas la même.
-        //
-        // La parade est jumelle de celle des triangles : on retourne aussi la
-        // coque le temps de la passe, et on la remet aussitôt.
-        for (const m of this.contoursDe(scene)) m.side = THREE.FrontSide;
-      }
+      if (reflechi) gl.frontFace(gl.CW);
 
       renderer.setRenderTarget(level === 'deep' ? view.rtDeep : view.rt);
       renderer.clear();
       renderer.render(scene, renderCamera);
 
-      if (reflechi) {
-        gl.frontFace(gl.CCW);
-        for (const m of this.contours) m.side = THREE.BackSide;
-      }
+      if (reflechi) gl.frontFace(gl.CCW);
 
       renderer.clippingPlanes = [];
       view.twin.surface.visible = true;
     }
-  }
-
-  /**
-   * Les matériaux de contour de toute la scène, trouvés une fois pour toutes.
-   *
-   * On les reconnaît à leur `side: BackSide` : dans ce rendu, la coque
-   * retournée est la seule chose qui s'en serve. On parcourt la scène au
-   * premier miroir rencontré, et jamais plus — un matériau ne change pas
-   * d'identité une fois bâti, et la plupart des niveaux n'ont aucun miroir.
-   */
-  private contours: THREE.Material[] = [];
-  private contoursTrouves = false;
-  private contoursDe(scene: THREE.Scene): THREE.Material[] {
-    if (this.contoursTrouves) return this.contours;
-    this.contoursTrouves = true;
-    const vus = new Set<THREE.Material>();
-    scene.traverse((o) => {
-      const m = (o as THREE.Mesh).material;
-      if (!m) return;
-      for (const x of Array.isArray(m) ? m : [m]) {
-        if (x.side === THREE.BackSide) vus.add(x);
-      }
-    });
-    this.contours = [...vus];
-    return this.contours;
   }
 
   /**
