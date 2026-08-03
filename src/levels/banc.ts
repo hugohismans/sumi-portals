@@ -364,7 +364,11 @@ export const BANC: LevelDef = {
 // `jalon` : un par station, sauf la douzième qui prend le treizième — le
 // douzième est de l'autre côté du mur de la station 11.
 const rep = (n: number, titre: string, verifier: string, position: V3, lacet = EST): Repere =>
-  ({ titre: `${n} · ${titre}`, verifier, position, echelle: 0, lacet, pigments: [],
+  // LE NUMÉRO N'EST PAS DANS LE TITRE : le panneau affiche déjà la touche du
+  // clavier juste devant, et l'on lisait « 11 · Le refus qui parle ». Le rang
+  // sert encore à ranger les stations et à leur coller leur raison, mais il ne
+  // se dit qu'une fois.
+  ({ titre, verifier, position, echelle: 0, lacet, pigments: [],
     jalon: n === 12 ? 12 : n - 1 });
 
 /**
