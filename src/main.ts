@@ -630,6 +630,32 @@ overlay.addEventListener('touchstart', () => input.enableTouchMode(), { passive:
  * ═══════════════════════════════════════════════════════════════════════════
  */
 let partieFinie = false;
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LE CARNET EST UNE PAUSE, ET IL ÉTAIT INATTEIGNABLE.
+ *
+ * Trouvé en jouant, et c'est plus grave que le défaut de la carte de fin :
+ * celui-ci rendait TOUT LE PROTOCOLE inutilisable au clavier-souris.
+ *
+ * Le panneau est en couche 8, l'écran d'accueil en couche 10. Donc : souris
+ * capturée, pas de curseur pour cliquer une ligne ; Échap, l'écran d'accueil
+ * revient PAR-DESSUS le panneau. Il n'existait aucun chemin vers le carnet.
+ *
+ * Je ne m'en étais jamais aperçu parce que je ne l'ai jamais ouvert à la main :
+ * je l'ai toujours piloté par script depuis le navigateur, où la question du
+ * curseur ne se pose pas. J'ai bâti un protocole de test que personne ne
+ * pouvait suivre, et je l'ai vérifié d'une façon qui ne pouvait pas le montrer.
+ *
+ * Le carnet devient donc ce qu'il est : une PAUSE. L'ouvrir rend la souris et
+ * fait taire l'écran d'accueil ; le fermer la reprend et rend au jeu. Et
+ * démarrer une partie le range, pour qu'un seul geste suffise ensuite à le
+ * rouvrir.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+let carnetOuvert = false;
+/** Posé par le bloc du carnet, plus bas — il ne peut pas se déclarer ici. */
+let fermerLeCarnet: (() => void) | null = null;
 const rendreLaSouris = (): void => {
   partieFinie = true;
   overlay.classList.add('hidden');
@@ -639,13 +665,17 @@ const rendreLaSouris = (): void => {
 input.onLockChange = (locked) => {
   // La fin a la priorité sur tout : sans ça, Échap ramène le panneau de reprise
   // par-dessus la carte, et l'on repart pour un tour.
-  if (partieFinie) {
+  if (partieFinie || carnetOuvert) {
     overlay.classList.add('hidden');
     return;
   }
   overlay.classList.toggle('hidden', locked);
   if (locked) {
     overlay.classList.add('resumed');
+    // ON RANGE LE CARNET EN COMMENÇANT À JOUER. Sans ça, le panneau ouvert au
+    // chargement (`?debug=1`) restait derrière l'écran d'accueil : le premier
+    // geste pour le rouvrir le refermait, et il en fallait six.
+    fermerLeCarnet?.();
     // Premier geste du joueur : c'est le seul moment où le son peut démarrer.
     ambiance.demarrer();
   }
@@ -934,6 +964,28 @@ const REPERES: Repere[] =
   // besoin d'apprendre : on le dit une fois, et il ne s'oublie pas. Le jeu
   // livré à quelqu'un d'autre reste donc rigoureusement propre.
   panneau.hidden = !PARAMS.get('debug');
+
+  /**
+   * OUVRIR LE CARNET, C'EST METTRE LE JEU EN PAUSE.
+   *
+   * On rend la souris ET l'on fait taire l'écran d'accueil : les deux vont
+   * ensemble, sans quoi l'écran se pose par-dessus le panneau et l'on ne peut
+   * plus rien toucher. Le fermer reprend la souris et rend au jeu, ce qui fait
+   * du même geste un aller ET un retour.
+   */
+  const basculer = (ouvrir = panneau.hidden): void => {
+    panneau.hidden = !ouvrir;
+    carnetOuvert = ouvrir;
+    if (ouvrir) {
+      overlay.classList.add('hidden');
+      document.exitPointerLock();
+    } else if (!partieFinie) {
+      input.requestLock();
+    }
+  };
+  fermerLeCarnet = () => {
+    if (!panneau.hidden) basculer(false);
+  };
   {
     let coups = 0;
     let dernier = 0;
@@ -943,8 +995,7 @@ const REPERES: Repere[] =
       dernier = t;
       if (coups < 3) return;
       coups = 0;
-      panneau.hidden = !panneau.hidden;
-      if (!panneau.hidden) document.exitPointerLock();
+      basculer();
     });
   }
 
@@ -1290,6 +1341,10 @@ const REPERES: Repere[] =
 
   window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyH') replier();
+    // ÉCHAP REFERME LE CARNET ET REND AU JEU. C'est le geste que tout le monde
+    // fait devant une pause, et il n'avait aucun effet : Échap sert nativement
+    // à rendre la souris, or on l'avait déjà rendue en ouvrant le carnet.
+    if (e.code === 'Escape' && !panneau.hidden) basculer(false);
     const i = TOUCHES.indexOf(e.code);
     if (i >= 0 && i < REPERES.length) allerA(i);
   });
