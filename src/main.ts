@@ -607,7 +607,42 @@ input.onTouchMode = () => {
 // muet — tandis qu'un contact tactile, lui, est toujours signalé.
 overlay.addEventListener('touchstart', () => input.enableTouchMode(), { passive: true });
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA PARTIE EST FINIE : ON NE PROPOSE PLUS DE REPRENDRE.
+ *
+ * Trouvé en jouant, et le jeu ne pouvait pas être quitté par sa propre fin.
+ *
+ * La séquence : le sacre s'achève, le jeu relâche la souris pour qu'on puisse
+ * cliquer « Descendre » ou « Revenir au hall ». Relâcher la souris fait
+ * apparaître le panneau « clique pour reprendre » — juste, pendant une partie.
+ * Il se pose PAR-DESSUS la carte de fin. On clique vers le lien, le panneau
+ * intercepte, **reprend la souris**, disparaît. La carte est de nouveau
+ * visible, et l'on n'a plus de curseur pour l'atteindre. Échap relâche, le
+ * panneau revient. La boucle est fermée.
+ *
+ * Ni le panneau ni la carte n'avaient tort séparément : c'est leur rencontre
+ * qui l'était, et elle n'arrive qu'à la toute dernière seconde d'une partie
+ * complète. Aucune vérification ne pouvait la voir, et moi non plus — il
+ * fallait finir le jeu.
+ *
+ * Une fois la partie finie, la souris reste donc rendue pour de bon.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+let partieFinie = false;
+const rendreLaSouris = (): void => {
+  partieFinie = true;
+  overlay.classList.add('hidden');
+  document.exitPointerLock();
+};
+
 input.onLockChange = (locked) => {
+  // La fin a la priorité sur tout : sans ça, Échap ramène le panneau de reprise
+  // par-dessus la carte, et l'on repart pour un tour.
+  if (partieFinie) {
+    overlay.classList.add('hidden');
+    return;
+  }
   overlay.classList.toggle('hidden', locked);
   if (locked) {
     overlay.classList.add('resumed');
@@ -1654,8 +1689,10 @@ function frame(now: number): void {
         suiteEl.setAttribute('href', suite ?? './');
         suiteEl.textContent = suite ? 'niveau suivant' : 'retour au hall';
         winPanel.classList.add('show');
-        // On rend la souris, sinon le lien du panneau est inatteignable.
-        document.exitPointerLock();
+        // On rend la souris, sinon le lien du panneau est inatteignable — et
+        // on la rend POUR DE BON, sans quoi le panneau de reprise se pose
+        // par-dessus et reprend le premier clic qui vise le lien.
+        rendreLaSouris();
       }
     }
   }
@@ -1719,7 +1756,7 @@ function frame(now: number): void {
   if (sacre.actif) sacreEuLieu = true;
   if (sacreEuLieu && !sacre.actif && !finPanel.classList.contains('acheve')) {
     finPanel.classList.add('acheve');
-    document.exitPointerLock();
+    rendreLaSouris();
   }
 
   if (!sacre.update(dt, camera)) {
