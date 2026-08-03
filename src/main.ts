@@ -206,7 +206,39 @@ socketViews.build(sim.sockets.items);
 scene.add(socketViews.group);
 // Les socles suivent le monde : gris tant qu'il l'est, et ils reprennent leur
 // vermillon en même temps que lui. Un socle vide ne porte aucune couleur.
-if (pigmentDe.size > 0) socketViews.setCouleur(pigments.nombre / 2);
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UNE COULEUR SE JUGE RÉGION PAR RÉGION, PAS NIVEAU PAR NIVEAU.
+ *
+ * La règle était : « s'il existe UNE région du niveau qui attend une couleur,
+ * grise tous les creux et toutes les portes ». Juste dans le village, où tout
+ * attend ; faux partout ailleurs.
+ *
+ * Trouvé en jouant sur le banc d'essai : une seule de ses douze stations attend
+ * l'or, et les onze autres se retrouvaient en noir et blanc.
+ *
+ * Et ce n'est pas qu'une affaire de goût — **la couleur d'une face dit dans
+ * quel sens elle change la taille**, vermillon pour la grande et indigo pour la
+ * petite. La griser retire au joueur l'information dont il a le plus besoin
+ * pour lire une porte avant de la franchir.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const couleurIci = (x: number, y: number, z: number): number => {
+  for (const [nom, b] of bornesDeRegion) {
+    if (x < b.min[0] || x > b.max[0] || y < b.min[1] || y > b.max[1] || z < b.min[2] || z > b.max[2]) {
+      continue;
+    }
+    const attendu = pigmentDe.get(nom) ?? pigmentAccentDe.get(nom);
+    // Une région qui n'attend rien est en couleur ; une région qui attend
+    // quelque chose ne l'est qu'une fois qu'elle l'a reçu.
+    return attendu === undefined || pigments.a(attendu) ? 1 : 0;
+  }
+  return 1;
+};
+const teindreLesObjets = (): void => {
+  socketViews.setCouleur((s) => couleurIci(s.position.x, s.position.y, s.position.z));
+  portals.setCouleurCadres((f) => couleurIci(f.position.x, f.position.y, f.position.z));
+};
 
 // ─── LES PINCEAUX DE COULEUR ────────────────────────────────────────────────
 //
@@ -355,8 +387,7 @@ if (MODE === 'monde') {
       // exact où le pinceau donne son coup, puis le suit image par image.
       pigments.rendre(pigment, worldView.parRegion, pigmentDe, pigmentAccentDe, p.group.position, bornesDeRegion);
       peintreEnCours = p;
-      socketViews.setCouleur(pigments.nombre / 2);
-      portals.setCouleurCadres(pigments.nombre / 2);
+      teindreLesObjets();
       ambiance.progression(pigments.nombre, 3);
 
       // ON DIT OÙ REGARDER, et ce n'est pas un détail d'interface.
@@ -492,7 +523,7 @@ scene.add(portals.group);
 if (MODE === 'monde') portals.tracer(PORTE_A_DESSINER, 0);
 // Les cadres des portails se grisent avec le reste : dans ce monde, la couleur
 // est ce qu'on rapporte, jamais ce qui est déjà là.
-if (pigmentDe.size > 0) portals.setCouleurCadres(pigments.nombre / 2);
+if (pigmentDe.size > 0) teindreLesObjets();
 
 const paper = new PaperPass(window.innerWidth, window.innerHeight);
 
@@ -1623,8 +1654,7 @@ function frame(now: number): void {
           new THREE.Vector3(e.x, e.y, e.z),
           bornesDeRegion,
         );
-        portals.setCouleurCadres(1);
-        socketViews.setCouleur(1);
+        teindreLesObjets();
         flash('Il s’éveille — et là-bas, quelque chose reprend sa couleur.', 7);
       } else {
         flash('Il s’éveille, et il te suit. Ramène-le au monde gris.', 6);

@@ -299,9 +299,27 @@ export class PortalRenderer {
     }
   }
 
-  /** Grise ou rend leur couleur à tous les cadres. Voir PortalFaceView. */
-  setCouleurCadres(v: number): void {
-    for (const view of this.views) view.setCouleur(v);
+  /**
+   * Grise ou rend leur couleur aux cadres — **région par région**.
+   *
+   * C'était un seul nombre pour tout le monde, et ça ne pouvait pas marcher dès
+   * qu'un niveau contient à la fois des régions qui attendent une couleur et
+   * des régions qui n'en attendent aucune : une seule région en attente
+   * décolorait toutes les portes du niveau, y compris celles qui n'avaient rien
+   * à voir avec elle.
+   *
+   * Trouvé en jouant sur le banc d'essai, où une seule station attend l'or et
+   * où les onze autres se retrouvaient en noir et blanc.
+   *
+   * Et ce n'était pas qu'une affaire de goût : **la couleur d'une face dit dans
+   * quel sens elle change la taille** — vermillon pour la grande, indigo pour la
+   * petite. La griser retire au joueur l'information dont il a le plus besoin
+   * pour lire une porte.
+   */
+  setCouleurCadres(v: number | ((face: PortalFace) => number)): void {
+    for (const view of this.views) {
+      view.setCouleur(typeof v === 'function' ? v(view.face) : v);
+    }
   }
 
   /** Où en est le tracé d'une paire. 1 si elle n'a jamais été effacée. */

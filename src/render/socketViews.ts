@@ -36,6 +36,9 @@ export class SocketViews {
   readonly group = new THREE.Group();
   private readonly views = new Map<string, View>();
   private readonly materials: THREE.ShaderMaterial[] = [];
+  /** Les matériaux de chaque logement, pour pouvoir le teindre seul. */
+  private readonly vues = new Map<string, THREE.ShaderMaterial[]>();
+  private readonly socketsParId = new Map<string, Socket>();
 
   /**
    * LES SOCLES SONT GRIS COMME LE MONDE, tant qu'il n'a pas retrouvé ses
@@ -46,9 +49,19 @@ export class SocketViews {
    * La règle du jeu est simple : **tout est gris, sauf ce qui porte une
    * couleur.** Un socle vide n'en porte aucune. Il la prendra en se remplissant.
    */
-  setCouleur(v: number): void {
-    for (const m of this.materials) {
-      if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = v;
+  setCouleur(v: number | ((s: Socket) => number)): void {
+    if (typeof v !== 'function') {
+      for (const m of this.materials) {
+        if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = v;
+      }
+      return;
+    }
+    // RÉGION PAR RÉGION. Un seul nombre pour tout le monde décolorait les creux
+    // d'un niveau entier dès qu'UNE région y attendait une couleur — voir la
+    // note jumelle dans `portalRenderer.setCouleurCadres`.
+    for (const [id, view] of this.vues) {
+      const k = v(this.socketsParId.get(id)!);
+      for (const m of view) if (m.uniforms.uCouleur) m.uniforms.uCouleur.value = k;
     }
   }
 
@@ -58,6 +71,8 @@ export class SocketViews {
       const outline = createOutlineMaterial();
       outline.uniforms.uThickness.value = 0.004;
       this.materials.push(cel, outline);
+      this.vues.set(s.id, [cel, outline]);
+      this.socketsParId.set(s.id, s);
 
       const group = new THREE.Group();
       group.position.set(s.position.x, s.position.y, s.position.z);
