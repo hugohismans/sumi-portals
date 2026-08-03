@@ -431,74 +431,26 @@ export class PortalRenderer {
       if (brume) for (const v of this.views) v.fallback.color.copy(brume);
 
       // ═══════════════════════════════════════════════════════════════════
-      // LE PIÈGE DU MIROIR, ET IL A TENU DES SEMAINES.
+      // IL N'Y A PLUS DE PIÈGE DU MIROIR, PARCE QU'IL N'Y A PLUS DE MIROIR.
       //
-      // Une porte miroir transporte la caméra par une RÉFLEXION, dont le
-      // déterminant est négatif. Un déterminant négatif retourne le sens de
-      // parcours des triangles : ce que la carte graphique tenait pour la face
-      // avant devient la face arrière. Sans rien faire, on voit l'intérieur des
-      // volumes — et comme la lumière les prend alors à revers, ils se rendent
-      // en aplats NOIRS. C'est exactement ce qu'on voyait à travers le miroir.
+      // Ce bloc contenait, tour à tour, un appel direct à `gl.frontFace` qui
+      // n'a jamais rien fait — Three.js le réécrit pour chaque matériau — puis
+      // un retournement de tous les matériaux, qui marchait mais ne traitait
+      // que la moitié du mal.
       //
-      // LA PARADE D'AVANT NE MARCHAIT PAS, et son commentaire disait pourquoi
-      // en se trompant : « Three.js ne gère pas `frontFace` dans son suivi
-      // d'état ». Il le gère. `WebGLState.setMaterial` appelle `setFlipSided`,
-      // qui appelle `gl.frontFace`, **pour chaque matériau et à chaque dessin**.
-      // Notre appel direct était donc écrasé dans la milliseconde, et le miroir
-      // n'a jamais été rendu correctement une seule fois.
-      //
-      // Le seul levier que Three.js respecte est le CÔTÉ DU MATÉRIAU, puisque
-      // c'est lui qu'il consulte pour décider du sens. On retourne donc chaque
-      // matériau le temps de la passe — l'avant devient l'arrière et
-      // réciproquement — et l'on remet tout aussitôt après. Les matériaux
-      // double face n'ont rien à changer : ils n'ont pas de sens à retourner.
-      //
-      // Trouvé en jouant, après trois diagnostics faux de ma part. Le bon n'est
-      // venu qu'en masquant les portails pour voir ce qui restait, puis en
-      // allant lire le code de Three.js au lieu de croire un commentaire.
+      // La caméra virtuelle d'une porte miroir est désormais DROITIÈRE : voir
+      // `computeVirtual`. Son déterminant est positif, le sens de parcours des
+      // triangles est celui de tout le monde, et il n'y a plus rien à
+      // compenser. Le meilleur correctif est celui qui supprime le problème au
+      // lieu de le rattraper.
       // ═══════════════════════════════════════════════════════════════════
-      const reflechi = view.face.miroir === true;
-      const retournes = reflechi ? this.materiauxDe(scene) : [];
-      for (const m of retournes) {
-        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
-      }
-
       renderer.setRenderTarget(level === 'deep' ? view.rtDeep : view.rt);
       renderer.clear();
       renderer.render(scene, renderCamera);
 
-      for (const m of retournes) {
-        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
-      }
-
       renderer.clippingPlanes = [];
       view.twin.surface.visible = true;
     }
-  }
-
-  /**
-   * Tous les matériaux à un seul côté de la scène, trouvés une fois pour toutes.
-   *
-   * On laisse les double face de côté : ils n'ont pas de sens à retourner. Et
-   * l'on ne parcourt la scène qu'au premier miroir rencontré — un matériau ne
-   * change pas d'identité une fois bâti, et la plupart des niveaux n'ont aucun
-   * miroir.
-   */
-  private materiaux: THREE.Material[] = [];
-  private materiauxTrouves = false;
-  private materiauxDe(scene: THREE.Scene): THREE.Material[] {
-    if (this.materiauxTrouves) return this.materiaux;
-    this.materiauxTrouves = true;
-    const vus = new Set<THREE.Material>();
-    scene.traverse((o) => {
-      const m = (o as THREE.Mesh).material;
-      if (!m) return;
-      for (const x of Array.isArray(m) ? m : [m]) {
-        if (x.side !== THREE.DoubleSide) vus.add(x);
-      }
-    });
-    this.materiaux = [...vus];
-    return this.materiaux;
   }
 
   /**
@@ -548,6 +500,38 @@ export class PortalRenderer {
       .multiply(source.matrixWorld);
 
     if (reflechi) {
+      // ═══════════════════════════════════════════════════════════════════
+      // ON REGARDE PAR UNE PORTE MIROIR CE QU'ON VERRA APRÈS L'AVOIR PASSÉE.
+      //
+      // Signalé en jouant : « fais un pas en avant et l'image devient miroir,
+      // ça saute, ce n'est pas naturel ». C'était vrai, et c'était de fond.
+      //
+      // La simulation transporte le joueur par une RÉFLEXION, puis refait de sa
+      // direction un simple cap : `pl.yaw = atan2(regard.x, regard.z)`. Or un
+      // cap ne peut pas encoder une réflexion. La caméra qu'on a APRÈS est donc
+      // droitière, tandis que celle qu'on montrait À TRAVERS était gauchère —
+      // et l'une est l'image miroir de l'autre. D'où le basculement gauche-droite
+      // au moment précis du pas.
+      //
+      // On garde la position réfléchie, qui est bien celle où l'on atterrit, et
+      // l'on redresse la BASE en niant son axe latéral. Position inchangée,
+      // regard inchangé, verticale inchangée — seule la main de la base change,
+      // et son déterminant redevient positif. C'est très exactement la caméra
+      // que le joueur aura une fraction de seconde plus tard.
+      //
+      // Deux ennuis meurent d'un coup : la traversée devient continue, et il n'y
+      // a plus de déterminant négatif à compenser au rendu — donc plus
+      // d'intérieur de volumes, donc plus d'aplats noirs.
+      //
+      // ET LA CHIRALITÉ N'Y PERD RIEN. Elle vit là où elle doit vivre : sur
+      // l'objet qu'on porte, dont la main bascule et se VOIT basculer. C'est la
+      // vrille qui se retourne, pas le monde — et c'était déjà la leçon.
+      // ═══════════════════════════════════════════════════════════════════
+      const e = this.tmpMatrix.elements;
+      e[0] = -e[0];
+      e[1] = -e[1];
+      e[2] = -e[2];
+
       // ON NE DÉCOMPOSE PAS UNE RÉFLEXION.
       //
       // `decompose` suppose une matrice de déterminant positif ; devant un
