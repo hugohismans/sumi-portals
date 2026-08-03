@@ -430,32 +430,75 @@ export class PortalRenderer {
       const brume = (scene.fog as THREE.Fog | null)?.color;
       if (brume) for (const v of this.views) v.fallback.color.copy(brume);
 
-      // LE PIÈGE DU MIROIR, et il n'a rien d'évident.
+      // ═══════════════════════════════════════════════════════════════════
+      // LE PIÈGE DU MIROIR, ET IL A TENU DES SEMAINES.
       //
       // Une porte miroir transporte la caméra par une RÉFLEXION, dont le
-      // déterminant est négatif. Or un déterminant négatif retourne le sens de
+      // déterminant est négatif. Un déterminant négatif retourne le sens de
       // parcours des triangles : ce que la carte graphique tenait pour la face
-      // avant devient la face arrière, et inversement. Sans rien faire, tout le
-      // décor vu à travers le miroir serait dessiné à l'envers — on verrait
-      // l'intérieur des murs et le vide à la place des volumes.
+      // avant devient la face arrière. Sans rien faire, on voit l'intérieur des
+      // volumes — et comme la lumière les prend alors à revers, ils se rendent
+      // en aplats NOIRS. C'est exactement ce qu'on voyait à travers le miroir.
       //
-      // La parade tient en une ligne : on inverse la convention de parcours
-      // pendant cette passe, et on la remet aussitôt après. Three.js ne gère
-      // pas `frontFace` dans son suivi d'état, donc l'appel direct ne risque
-      // pas d'être écrasé.
-      const gl = renderer.getContext();
+      // LA PARADE D'AVANT NE MARCHAIT PAS, et son commentaire disait pourquoi
+      // en se trompant : « Three.js ne gère pas `frontFace` dans son suivi
+      // d'état ». Il le gère. `WebGLState.setMaterial` appelle `setFlipSided`,
+      // qui appelle `gl.frontFace`, **pour chaque matériau et à chaque dessin**.
+      // Notre appel direct était donc écrasé dans la milliseconde, et le miroir
+      // n'a jamais été rendu correctement une seule fois.
+      //
+      // Le seul levier que Three.js respecte est le CÔTÉ DU MATÉRIAU, puisque
+      // c'est lui qu'il consulte pour décider du sens. On retourne donc chaque
+      // matériau le temps de la passe — l'avant devient l'arrière et
+      // réciproquement — et l'on remet tout aussitôt après. Les matériaux
+      // double face n'ont rien à changer : ils n'ont pas de sens à retourner.
+      //
+      // Trouvé en jouant, après trois diagnostics faux de ma part. Le bon n'est
+      // venu qu'en masquant les portails pour voir ce qui restait, puis en
+      // allant lire le code de Three.js au lieu de croire un commentaire.
+      // ═══════════════════════════════════════════════════════════════════
       const reflechi = view.face.miroir === true;
-      if (reflechi) gl.frontFace(gl.CW);
+      const retournes = reflechi ? this.materiauxDe(scene) : [];
+      for (const m of retournes) {
+        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
+      }
 
       renderer.setRenderTarget(level === 'deep' ? view.rtDeep : view.rt);
       renderer.clear();
       renderer.render(scene, renderCamera);
 
-      if (reflechi) gl.frontFace(gl.CCW);
+      for (const m of retournes) {
+        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
+      }
 
       renderer.clippingPlanes = [];
       view.twin.surface.visible = true;
     }
+  }
+
+  /**
+   * Tous les matériaux à un seul côté de la scène, trouvés une fois pour toutes.
+   *
+   * On laisse les double face de côté : ils n'ont pas de sens à retourner. Et
+   * l'on ne parcourt la scène qu'au premier miroir rencontré — un matériau ne
+   * change pas d'identité une fois bâti, et la plupart des niveaux n'ont aucun
+   * miroir.
+   */
+  private materiaux: THREE.Material[] = [];
+  private materiauxTrouves = false;
+  private materiauxDe(scene: THREE.Scene): THREE.Material[] {
+    if (this.materiauxTrouves) return this.materiaux;
+    this.materiauxTrouves = true;
+    const vus = new Set<THREE.Material>();
+    scene.traverse((o) => {
+      const m = (o as THREE.Mesh).material;
+      if (!m) return;
+      for (const x of Array.isArray(m) ? m : [m]) {
+        if (x.side !== THREE.DoubleSide) vus.add(x);
+      }
+    });
+    this.materiaux = [...vus];
+    return this.materiaux;
   }
 
   /**
