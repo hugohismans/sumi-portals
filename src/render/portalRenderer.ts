@@ -139,6 +139,11 @@ class PortalFaceView {
    * Et ça rend la règle du jeu entière : dans ce monde, la couleur est ce qu'on
    * rapporte, jamais ce qui est déjà là.
    */
+  /** Montre ou cache les montants — voir la passe de rendu d'un portail. */
+  setCadreVisible(v: boolean): void {
+    for (const m of this.posts) m.visible = v;
+  }
+
   setCouleur(v: number): void {
     const gris =
       this.teinteCadre.r * 0.299 + this.teinteCadre.g * 0.587 + this.teinteCadre.b * 0.114;
@@ -403,6 +408,20 @@ export class PortalRenderer {
       // ci-dessous exactement juste.
       view.twin.surface.visible = false;
 
+      // ─── ET SON CADRE AVEC, SINON IL BARRE L'OUVERTURE ─────────────────
+      //
+      // Le cadre de la face jumelle est à cheval sur le plan de coupe : la
+      // moitié qui reste du bon côté survit au découpage et se dessine EN
+      // TRAVERS de la vue, comme une poutre noire posée sous le linteau.
+      //
+      // Signalé en jouant : « le cadre bleu est mal mis, il est en
+      // superposition avec autre chose ». Ce n'était pas un cadre mal placé,
+      // c'était le cadre d'EN FACE, vu de l'intérieur et tranché net.
+      //
+      // La surface était déjà masquée pour la même raison ; il manquait
+      // simplement de faire la moitié du geste jusqu'au bout.
+      view.twin.setCadreVisible(false);
+
       // Niveau 1 : la caméra du joueur passée une fois par le portail.
       this.computeVirtual(view, camera, this.camLevel1);
       let renderCamera = this.camLevel1;
@@ -474,6 +493,7 @@ export class PortalRenderer {
 
       renderer.clippingPlanes = [];
       view.twin.surface.visible = true;
+      view.twin.setCadreVisible(true);
     }
   }
 

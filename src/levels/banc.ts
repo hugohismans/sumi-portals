@@ -164,9 +164,110 @@ const maquette = (): BoxDef[] => [
       { region: 'or' });
   }),
 ];
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA MAIN — l'étalon de chiralité, et il manquait.
+ *
+ * La petite face d'une porte mesure toujours 2,80 m : c'est le mètre-ruban du
+ * monde, et il permet de lire une TAILLE sans qu'on l'explique. Rien ne
+ * permettait de lire une MAIN. La règle du miroir était donc vraie et
+ * invisible — et deux lecteurs extérieurs avaient prédit qu'on conclurait à un
+ * bug avant de conclure à la réflexion.
+ *
+ * Une main est l'objet chiral que tout le monde sait lire, et le mot vient de
+ * là : χείρ. Aucune rotation ne superpose une main gauche à une main droite, et
+ * personne n'a besoin qu'on le lui dise.
+ *
+ * ON EN POSE UNE DE CHAQUE CÔTÉ DE CHAQUE OUVERTURE. En regardant par le
+ * miroir, on voit donc côte à côte celle qui est devant soi et celle d'en face,
+ * retournée. La leçon tient dans un seul coup d'œil, sans un mot :
+ *
+ *     ce qui traverse change de main — donc lance ta pièce à travers.
+ *
+ * LE POUCE EST TOUT. C'est lui qui porte la chiralité : quatre doigts alignés
+ * sont symétriques, le pouce décide du côté. Il est donc plus court, plus épais,
+ * et franchement écarté — assez pour se lire de loin et à contre-jour.
+ *
+ * On la dessine à plat contre un panneau, dans le plan (y, z), face à l'axe des
+ * x — c'est l'orientation des deux portes du banc.
+ */
+const DOIGTS: [number, number][] = [
+  // écart depuis l'axe de la paume, longueur du doigt
+  [-0.30, 0.62],
+  [-0.10, 0.72],
+  [0.10, 0.68],
+  [0.28, 0.52],
+];
+
+const main = (
+  x: number,
+  y: number,
+  z: number,
+  gauche: boolean,
+  ech = 1,
+  /** Vers où l'encre regarde : +1 pour l'est, −1 pour l'ouest. */
+  vers = 1,
+): BoxDef[] => {
+  const m = (gauche ? 1 : -1) * vers;
+  const e = (v: number) => v * ech;
+  const out: BoxDef[] = [];
+  // Le panneau : un aplat clair pour que l'encre s'y détache.
+  const px = (a: number, bb: number): [number, number] =>
+    vers > 0 ? [x + e(a), x + e(bb)] : [x - e(bb), x - e(a)];
+  const [p0, p1] = px(-0.03, 0);
+  out.push(b([p0, y - e(0.25), z - e(0.62)], [p1, y + e(1.55), z + e(0.62)], 1));
+  // La paume.
+  const [a0, a1] = px(0, 0.05);
+  out.push(b([a0, y + e(0.1), z - e(0.42)], [a1, y + e(0.78), z + e(0.42)], 3));
+  // Le poignet, qui donne le sens de lecture.
+  const [w0, w1] = px(0, 0.049);
+  out.push(b([w0, y - e(0.16), z - e(0.2)], [w1, y + e(0.11), z + e(0.2)], 3));
+  // Les quatre doigts, alignés au-dessus de la paume.
+  for (const [d, l] of DOIGTS) {
+    const [d0, d1] = px(0, 0.051);
+    out.push(
+      b(
+        [d0, y + e(0.77), z + e(m * d) - e(0.075)],
+        [d1, y + e(0.77 + l), z + e(m * d) + e(0.075)],
+        3,
+      ),
+    );
+  }
+  // LE POUCE : court, épais, écarté. C'est lui qu'on lit.
+  const [t0, t1] = px(0, 0.052);
+  out.push(
+    b([t0, y + e(0.3), z + e(m * 0.44)], [t1, y + e(0.62), z + e(m * 0.72)], 3),
+  );
+  return out;
+};
+
+/**
+ * Les quatre mains de la station du miroir, deux par ouverture.
+ *
+ * Elles sont posées de biais par rapport aux montants pour rester visibles
+ * quand on aborde la porte de face, et assez près du bord pour entrer dans le
+ * même regard que l'ouverture — sans quoi l'on ne compare rien.
+ *
+ * Les deux d'une même face sont de la MÊME main : ce qu'on compare est ici et
+ * là-bas, jamais gauche et droite d'un même mur. Poser une paire dépareillée
+ * aurait donné à lire une symétrie du décor au lieu d'une propriété du passage.
+ */
+const mainsDuMiroir = (): BoxDef[] => [
+  // La GRANDE face regarde l'est : on l'aborde depuis x > 28, donc les mains se
+  // posent devant elle et leur encre regarde l'est.
+  ...main(X(2) - 5.4, 0.5, 6 - 4.9, true, 1, 1),
+  ...main(X(2) - 5.4, 0.5, 6 + 4.9, true, 1, 1),
+  // La PETITE regarde l'ouest : tout s'inverse, et les mains sont quatre fois
+  // plus petites — c'est le même objet, de l'autre côté d'un cran d'échelle.
+  ...main(X(2) + 5.4, 0.125, -6 - 1.35, true, 0.25, -1),
+  ...main(X(2) + 5.4, 0.125, -6 + 1.35, true, 0.25, -1),
+];
+
+
 const DECOR: BoxDef[] = [
   ...DALLE,
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(borne),
+  ...mainsDuMiroir(),
   // STATION 1 — la planche des cinq creux. Soixante centimètres, un genou :
   // l'étalon qu'on a dans le corps et qu'on n'a pas à calculer.
   b([X(1) - 1.5, 0, -12.5], [X(1) + 1.5, PLANCHE_Y, 12.5], 1),
@@ -312,6 +413,7 @@ const CARRYABLES: CarryableDef[] = [
  */
 const VERMILLON = 0xc8492e;
 const INDIGO = 0x2f4b7c;
+
 
 const PORTALS: PortalPairDef[] = [
   // STATION 2 — LE MIROIR. On entre à l'est de la station, on ressort à
