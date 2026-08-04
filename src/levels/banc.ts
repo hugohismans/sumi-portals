@@ -290,22 +290,45 @@ const CARRYABLES: CarryableDef[] = [
  * L'ON RESSORT AVEC ELLE : le banc allant vers l'est, les entrées regardent
  * l'ouest (`−π/2`) et les sorties l'est (`+π/2`), donc jamais dos au chemin.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LES DEUX SEULES COULEURS DE PORTE DU JEU, ET ELLES NE SE CHOISISSENT PAS.
+ *
+ * Vermillon pour la GRANDE face : la franchir rapetisse.
+ * Indigo pour la PETITE : la franchir grandit.
+ *
+ * C'est une loi du monde, pas un habillage. Un joueur lit une porte avant de la
+ * franchir en regardant sa couleur, et rien d'autre ne le lui dit.
+ *
+ * Le banc les avait remplacées par des gris, pour rester monochrome comme il
+ * doit l'être. L'intention était bonne et la conséquence mauvaise : le banc
+ * d'essai enseignait le contraire du jeu, ce qui est la dernière chose qu'un
+ * banc doit faire. Signalé par un joueur qui a trouvé le cadre « mal mis » sans
+ * pouvoir dire pourquoi — il lisait juste, et ce qu'il lisait était faux.
+ *
+ * Le reste du banc reste nu et gris. Les portes, elles, parlent la langue du
+ * monde.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const VERMILLON = 0xc8492e;
+const INDIGO = 0x2f4b7c;
+
 const PORTALS: PortalPairDef[] = [
   // STATION 2 — LE MIROIR. On entre à l'est de la station, on ressort à
   // l'ouest, dans le même décor et quatre fois plus grand : rien d'autre n'a
   // bougé, donc c'est soi. Et la vrille a changé de main en chemin.
-  { id: 'banc-miroir-porte', miroir: true, colorBig: 0x7b7f86, colorSmall: 0x2f4b7c,
+  { id: 'banc-miroir-porte', miroir: true, colorBig: VERMILLON, colorSmall: INDIGO,
     small: { position: [X(2) + 6, 0.05, -6], yaw: -EST },
     big: { position: [X(2) - 6, 0.05, 6], yaw: EST } },
   // STATION 9 — la paire ordinaire de l'épreuve du son. Douze mètres entre les
   // deux faces : on fait la navette autant qu'il faut pour comparer.
-  { id: 'banc-son', colorBig: 0xa9a49a, colorSmall: 0x7b7f86,
+  { id: 'banc-son', colorBig: VERMILLON, colorSmall: INDIGO,
     small: { position: [X(9) + 6, 0.05, -6], yaw: -EST },
     big: { position: [X(9) - 6, 0.05, 6], yaw: EST } },
   // STATION 11 — la porte du mur, celle par où le Pinceau doit passer. Plantée
   // à 3,7 m de la maçonnerie : un corps de 0,34 m de rayon doit atteindre le
   // PLAN de la face, et il ne l'atteindrait pas si le mur commençait avant.
-  { id: 'banc-guide-porte', colorBig: 0xa9a49a, colorSmall: 0x7b7f86,
+  { id: 'banc-guide-porte', colorBig: VERMILLON, colorSmall: INDIGO,
     small: { position: [X(11) - 4, 0.05, -5], yaw: -EST },
     big: { position: [X(11) + 4, 0.05, 5], yaw: EST } },
 ];
