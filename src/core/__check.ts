@@ -34,12 +34,10 @@ import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '..
  * vérifiées par ce seul bloc.
  */
 const SALLES_LIVREES: SalleModule[] = [
-  SALLES_DESCENTE[0],
-  SALLES_DESCENTE[1],
-  SALLES_DESCENTE[2],
-  SALLES_DESCENTE[3],
-  SALLES_DESCENTE[4],
-  SALLES_DESCENTE[5],
+  // La descente ENTIÈRE, et non six salles nommées une à une : la lucarne bleue
+  // a échappé au contrat pendant un mois parce qu'elle n'était pas dans la
+  // liste — la septième salle d'une liste qui en comptait six.
+  ...SALLES_DESCENTE,
   ...SALLES_MONTEE,
   ...SALLES_MESURE,
 ];
@@ -79,6 +77,8 @@ import { verifierParcelle } from '../levels/regions/contrat.js';
 import { BELVEDERE } from '../levels/regions/belvedere.js';
 import { JARDIN } from '../levels/regions/jardin.js';
 import { TERRASSE } from '../levels/regions/terrasse.js';
+import { ROUGE } from '../levels/regions/rouge.js';
+import { BANC, REPERES_BANC } from '../levels/banc.js';
 
 // Ce fichier est le seul du projet à tourner sous Node ; on déclare le strict
 // minimum plutôt que de tirer @types/node dans une base de code navigateur.
@@ -2932,6 +2932,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la montée', MONTEE],
     ['la mesure', MESURE],
     ['la boîte à formes', FORMES],
+    ['le banc d’essai', BANC],
   ] as const) {
     const sim = new Simulation(niveau);
 
@@ -3421,6 +3422,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la montée', MONTEE],
     ['la mesure', MESURE],
     ['la boîte à formes', FORMES],
+    ['le banc d’essai', BANC],
   ] as const) {
     const monde = new World(niveau);
     const sim = new Simulation(niveau);
@@ -3683,6 +3685,9 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la montée', MONTEE, REPERES_MONTEE],
     ['la mesure', MESURE, REPERES_MESURE],
     ['la boîte à formes', FORMES, REPERES_FORMES],
+    // Le banc n'était couvert par AUCUNE vérification : douze stations, douze
+    // repères écrits à la main, et personne pour dire si l'on y naît debout.
+    ['le banc d’essai', BANC, REPERES_BANC],
   ] as const) {
     // ON NE DEMANDE PAS D'ÊTRE À L'AIR LIBRE, ON DEMANDE DE POUVOIR MARCHER.
     //
@@ -3721,9 +3726,16 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       // ET IL PEUT AVANCER. Un corps coincé entre deux boîtes est « au sol » et
       // parfaitement immobile — c'est le pire des deux mondes, puisque rien ne
       // le signale.
+      // Devant, ou à défaut derrière : un repère posé face à un muret — celui
+      // du banc où l'on doit justement regarder le cube derrière le mur — n'est
+      // pas un repère coincé. Coincé, c'est ne pouvoir aller nulle part.
       const avant = { x: pose.x, z: pose.z };
       for (let i = 0; i < 45; i++) sim.step({ ...immobile, forward: 1 }, TICK_DT);
-      const d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      let d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      if (d < 0.3 * scaleOfLevel(r.echelle)) {
+        for (let i = 0; i < 45; i++) sim.step({ ...immobile, forward: -1 }, TICK_DT);
+        d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      }
       if (d < 0.3 * scaleOfLevel(r.echelle)) perdus.push(`« ${r.titre} » ne peut pas marcher (${d.toFixed(2)} m)`);
     }
     check(
@@ -3937,7 +3949,9 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
 
 {
   console.log('\n— Les régions tiennent dans leur parcelle —');
-  for (const m of [TERRASSE, BELVEDERE, JARDIN]) {
+  // La côte rouge manquait : six cent vingt lignes, la région qui porte le
+  // pigment rouge et le chantier des potiers, jamais contrôlée sur sa parcelle.
+  for (const m of [TERRASSE, BELVEDERE, JARDIN, ROUGE]) {
     const fautes = verifierParcelle(m);
     check(`${m.region.name} ne déborde pas`, fautes.length === 0, fautes[0] ?? '');
   }
