@@ -27,6 +27,20 @@ plan) et dans les messages de commit.
 
 ## 1. Tableau de bord
 
+> **Mise à jour du 22 septembre 2026.** Ce tableau date du 2 août ; plusieurs de
+> ses lignes ont bougé depuis, et il n'a pas été réécrit ligne à ligne pour
+> garder l'historique du jugement. Ce qui a changé : **les objets composites
+> sont faits** (la vrille) ; **la boîte à formes est faite** et reliée au bout
+> du troisième mouvement ; **la chiralité est visible** (vrille, mains d'encre
+> sur les murs), et sa règle a changé — un miroir bascule le monde avec le
+> joueur, donc seul ce qu'on LANCE à travers change de main ; **le son suit
+> l'échelle** ; **le mouvement I** (la descente) et **le mouvement II** (la
+> montée) sont assemblés et vérifiés, et le **mouvement III** existe sous une
+> forme réduite (§ 5) : la rive, le grain, et un seuil qui tient la place de
+> la fin — le monde retourné reste décidé, pas bâti. La face à sens unique
+> n'a pas été faite : le grain s'en passe en faisant ENTRER par le haut, dans
+> un puits d'où l'on ne remonte pas. Voir `REPRISE.md`.
+
 Trois registres, et il faut les tenir distincts. **FAIT** : c'est dans le code et
 ça tourne. **DÉCIDÉ** : le choix est arrêté, l'écriture reste à faire. **À
 TRANCHER** : personne n'a encore choisi, et mon avis est plus bas.
@@ -892,6 +906,15 @@ creux de 0,36, celui dont personne ne comprenait la taille depuis la première
 minute.
 
 ### Mouvement III — Le grain, et le plafond
+
+> **Ce qui existe au 22 septembre** (`src/levels/mesure.ts`, `?niveau=mesure`) :
+> la rive opposée (`salles/rive.ts`, ×4, une salle qui n'était pas dans ce plan
+> — poser la main où l'on ne posera jamais le pied), puis le grain
+> (`salles/grain.ts`, ×1), qui fond les salles 17 et 18 ci-dessous en une : deux
+> lobes bâtis du même tirage, l'un quatre fois l'autre, l'affichage muet, et la
+> sortie est une mesure. Puis un seuil (`salles/seuil.ts`, ×1/4) qui tient la
+> place de la fin. Les salles 19 et 20 : le monde retourné n'est pas bâti ; la
+> boîte à formes est bâtie et suit le seuil.
 
 #### 17. LA PIÈCE SANS ÉTALON — *faire peur, sans antagoniste*
 
