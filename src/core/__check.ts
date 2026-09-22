@@ -3313,6 +3313,73 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     );
   }
 
+  // ─── UNE PIÈCE TOMBÉE HORS DU MONDE REVIENT AUSSI ───────────────────────
+  //
+  // Ce qui sort d'une grande face sort quatre fois plus vite, et une pièce est
+  // souvent la seule clef d'une porte : perdue par-dessus un mur, elle
+  // emportait la salle. On la repose où elle reposait, TELLE qu'elle y
+  // reposait — une vrille lancée à travers un miroir puis perdue revient de la
+  // main et de la taille qu'elle avait avant le lancer, sinon le rattrapage
+  // garde la moitié d'un geste qu'il annule.
+  {
+    const sim = new Simulation(ilot);
+    for (let i = 0; i < 40; i++) sim.step(immobile, TICK_DT);
+    const c = sim.carryables.items[0];
+    const repos = { x: c.position.x, y: c.position.y, z: c.position.z };
+    check('une pièce posée retient son appui', c.appui !== null && near(c.appui.x, repos.x, 1e-6), '');
+    // Passée par une porte miroir, puis par-dessus bord.
+    c.size *= 4;
+    c.main = 'D';
+    c.position = { x: 60, y: 0, z: 60 };
+    c.velocity = { x: 30, y: 12, z: 0 };
+    let revenue = false;
+    for (let i = 0; i < 60 * 12 && !revenue; i++) {
+      revenue = sim.step(immobile, TICK_DT).pieceRattrapee?.id === 'caillou';
+    }
+    check('une pièce tombée hors du décor est rattrapée', revenue, `y = ${c.position.y.toFixed(0)}`);
+    check(
+      'et elle revient exactement où elle reposait',
+      Math.hypot(c.position.x - repos.x, c.position.z - repos.z) < 0.01,
+      `(${c.position.x.toFixed(2)}, ${c.position.z.toFixed(2)})`,
+    );
+    check(
+      'telle qu’elle y reposait — taille et main d’avant le lancer',
+      near(c.size, 0.3, 1e-6) && c.main === undefined,
+      `taille ${c.size}, main ${c.main ?? 'aucune'}`,
+    );
+    // Et elle se repose pour de bon : un rattrapage qui la laisserait en l'air
+    // au-dessus de son appui recommencerait à la faire tomber.
+    for (let i = 0; i < 60; i++) sim.step(immobile, TICK_DT);
+    check('puis elle se repose, immobile', c.grounded && Math.hypot(c.velocity.x, c.velocity.z) < 0.01, '');
+  }
+  // Jamais posée nulle part — lancée dès la première image — elle revient à
+  // son point de départ.
+  {
+    const sim = new Simulation(ilot);
+    const c = sim.carryables.items[0];
+    c.position = { x: 60, y: 0, z: 60 };
+    let revenue = false;
+    for (let i = 0; i < 60 * 12 && !revenue; i++) {
+      revenue = sim.step(immobile, TICK_DT).pieceRattrapee !== undefined;
+    }
+    check('une pièce jamais posée revient à son point de départ', revenue && near(c.position.x, 1, 1e-6) && near(c.position.z, 1, 1e-6), `(${c.position.x.toFixed(2)}, ${c.position.z.toFixed(2)})`);
+  }
+  // ET JAMAIS TROP TÔT : un galet tombé dans le chenal de la rive, quatre
+  // mètres sous le quai, y reste — on le repêche, on ne le téléporte pas.
+  {
+    const sim = new Simulation(MESURE);
+    const g = sim.carryables.items.find((c) => c.id === 'galet-rive-1')!;
+    // Au large de l'éperon : x = 150, là où le chenal est de l'eau et non de la pierre.
+    g.position = { x: 150, y: 2, z: 3495 };
+    let faux = false;
+    for (let i = 0; i < 60 * 8 && !faux; i++) faux = sim.step(immobile, TICK_DT).pieceRattrapee !== undefined;
+    check(
+      'un galet tombé dans le chenal de la rive y reste',
+      !faux && g.grounded && g.position.y < 0 && g.position.y > -5,
+      `à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+
   // ─── ET IL NE SE DÉCLENCHE JAMAIS QUAND IL NE FAUT PAS ──────────────────
   //
   // C'est la moitié qui compte. Un rattrapage trop bavard téléporterait le

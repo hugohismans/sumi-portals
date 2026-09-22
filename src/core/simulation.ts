@@ -426,6 +426,19 @@ export class Simulation {
     this.carryables.step(this.world, dt);
     this.carryTraversal(before);
 
+    // ─── UNE PIÈCE TOMBÉE HORS DU MONDE REVIENT, comme le joueur ──────────
+    //
+    // Vingt mètres sous le plancher du monde, comme lui. Le seuil ne suit pas
+    // la taille de la pièce : sa gravité est celle du monde, la chute dure le
+    // même temps pour toutes. On la repose où elle reposait, telle qu'elle y
+    // reposait — voir `Carryable.appui`.
+    for (const c of this.carryables.items) {
+      if (c.held || c.locked) continue;
+      if (c.position.y >= this.world.plancher - 20) continue;
+      this.carryables.rattraper(c);
+      events.pieceRattrapee = { id: c.id };
+    }
+
     // Les caisses reposées cherchent leur logement. Après la chute, donc : une
     // caisse doit avoir atterri avant de pouvoir s'emboîter.
     const wasAllFilled = this.sockets.allFilled;

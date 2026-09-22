@@ -73,6 +73,20 @@ export interface Carryable {
   held: boolean;
   grounded: boolean;
   /**
+   * LÀ OÙ ELLE REPOSAIT LA DERNIÈRE FOIS, telle qu'elle y reposait.
+   *
+   * Le joueur tombé hors du monde est reposé où il se tenait debout ; une
+   * pièce ne l'était pas. Or ce qui sort d'une grande face sort quatre fois
+   * plus vite, et une pièce est souvent la seule clef d'une porte : perdue
+   * par-dessus un mur, elle emportait la salle. On note son dernier repos —
+   * position, taille ET main, parce qu'une pièce lancée à travers un miroir
+   * puis perdue doit revenir telle qu'elle était AVANT le lancer, sinon le
+   * rattrapage garde la moitié d'un geste qu'il annule.
+   */
+  appui: { x: number; y: number; z: number; size: number; main?: 'L' | 'D' } | null;
+  /** Images passées au sol depuis le dernier appui noté. */
+  depuisAppui: number;
+  /**
    * Logée dans son réceptacle, donc figée pour de bon.
    *
    * On ne la reprend plus : un progrès qu'on peut défaire par accident en
@@ -177,8 +191,46 @@ export class Carryables {
         grounded: false,
         locked: false,
         releasedAt: null,
+        appui: null,
+        depuisAppui: 0,
       });
     }
+  }
+
+  /**
+   * TOMBER HORS DU MONDE NE COÛTE QUE DU TEMPS — pour une pièce aussi.
+   *
+   * On la repose là où elle reposait la dernière fois, telle qu'elle y
+   * reposait ; jamais posée nulle part, elle revient à son point de départ.
+   * Pas de dégâts, pas de compteur : le lancer raté est annulé, et c'est tout.
+   */
+  rattraper(c: Carryable): void {
+    const def = this.defs.find((d) => d.id === c.id);
+    const a = c.appui;
+    if (a) {
+      c.position.x = a.x;
+      c.position.y = a.y;
+      c.position.z = a.z;
+      c.size = a.size;
+      c.main = a.main;
+    } else if (def) {
+      c.position.x = def.position[0];
+      c.position.y = def.position[1];
+      c.position.z = def.position[2];
+      c.size = def.size;
+      c.main = def.main;
+    }
+    c.velocity.x = 0;
+    c.velocity.y = 0;
+    c.velocity.z = 0;
+    c.spin.x = 0;
+    c.spin.y = 0;
+    c.spin.z = 0;
+    c.rotation.x = 0;
+    c.rotation.y = 0;
+    c.rotation.z = 0;
+    c.grounded = false;
+    c.depuisAppui = 0;
   }
 
   get held(): Carryable | null {
@@ -372,6 +424,15 @@ export class Carryables {
         c.spin.x *= keep;
         c.spin.y *= keep;
         c.spin.z *= keep;
+        // Une pièce qui a reposé douze images au même endroit y a son appui —
+        // le même délai que le joueur, pour la même raison : un rebond n'est
+        // pas un repos.
+        if (++c.depuisAppui > 12 && Math.hypot(c.velocity.x, c.velocity.z) < 1) {
+          c.depuisAppui = 0;
+          c.appui = { x: c.position.x, y: c.position.y, z: c.position.z, size: c.size, main: c.main };
+        }
+      } else {
+        c.depuisAppui = 0;
       }
 
       c.rotation.x += c.spin.x * dt;

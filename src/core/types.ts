@@ -782,6 +782,8 @@ export interface TickEvents {
    * l'on sort du décor par un trou que personne n'avait prévu.
    */
   rattrape?: boolean;
+  /** Une pièce tombée hors du monde vient d'être reposée où elle reposait. */
+  pieceRattrapee?: { id: string };
   /**
    * Un trait vient d'être posé sur une toile. `u` et `v` vont de 0 à 1 sur la
    * toile, `rayon` est en fraction de sa largeur — donc proportionnel à la

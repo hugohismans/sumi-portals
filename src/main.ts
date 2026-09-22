@@ -1695,6 +1695,9 @@ function frame(now: number): void {
       flash('Tu es tombé hors du dessin. Le papier te repose où tu étais.', 5);
       ambiance.portail();
     }
+    if (events.pieceRattrapee) {
+      flash('La pièce est tombée hors du dessin. Elle est revenue où elle reposait.', 4);
+    }
     if (events.eveilRefuse) {
       flash(
         events.eveilRefuse.trop === 'grand'

@@ -522,12 +522,11 @@ qu'une neige permanente, qui tuerait la lisibilité des énigmes.
 
 Non discutées, juste posées là.
 
-**Une pièce tombée hors du monde devrait revenir.** Le joueur est rattrapé à
-vingt mètres sous le décor et reposé où il se tenait ; une pièce, non. Or ce qui
-sort d'une grande face sort quatre fois plus vite, et une pièce est souvent la
-seule clef d'une porte. Ce soir on a mis un ciel de verre sur les deux cours
-chirales ; ce devrait être une loi du moteur — reposer la pièce là où on l'a
-lâchée, ou à son point de départ.
+**Une pièce tombée hors du monde revient — FAIT.** Le joueur est rattrapé à
+vingt mètres sous le décor et reposé où il se tenait ; une pièce l'est
+maintenant aussi, là où elle reposait la dernière fois, telle qu'elle y
+reposait (`Carryable.appui`). Le ciel de verre des cours chirales reste, pour
+qu'une vrille retombe dans la cour plutôt qu'à son point de départ.
 
 **La fin du troisième mouvement.** Le seuil est un palier, pas une fin : la
 mesure ne rend aucune couleur. La conception dit « le monde retourné rend le

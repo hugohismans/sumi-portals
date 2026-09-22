@@ -88,6 +88,11 @@ Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
    parcelle, la lucarne bleue échappait au contrat des salles, le banc d'essai
    n'était dans aucune vérification.
 5. Cette note, et `PROTOCOLE.md`.
+6. **Une pièce tombée hors du monde revient**, comme le joueur : vingt mètres
+   sous le plancher, elle est reposée là où elle reposait la dernière fois,
+   telle qu'elle y reposait — taille et main d'avant le lancer. C'est une loi
+   du moteur (`Carryable.appui`), et le ciel de verre des deux cours chirales
+   n'est plus qu'une ceinture par-dessus les bretelles.
 
 ## Par où commencer demain matin, dans l'ordre du risque
 
@@ -183,9 +188,9 @@ qui ont coûté le plus cher :
 5. **À grande échelle, la portée du bras est énorme.** Un géant repose ce qu'il
    porte à 1,36 m plus deux fois l'arête devant lui.
 6. **Ce qui sort d'une grande face sort quatre fois plus vite.** Une pièce
-   lancée un peu vers le haut passe douze mètres de mur, et rien ne rattrape une
-   pièce tombée hors du monde. Là où une pièce est une clef, on met un ciel de
-   verre.
+   lancée un peu vers le haut passe douze mètres de mur. Le moteur la rattrape
+   désormais ; là où une pièce est une clef, on met quand même un ciel de
+   verre, pour qu'elle retombe dans la cour plutôt qu'à son point de départ.
 
 ## Ce qui reste à faire
 
@@ -194,8 +199,6 @@ Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
 - **Jouer.** Quatorze lieux n'ont jamais été vus par un œil humain qui joue.
 - **Le monde retourné** (les portails de gravité) : la fin que le troisième
   mouvement n'a pas encore — le seuil tient la place. Décidé, pas bâti.
-- **Une pièce tombée hors du monde devrait revenir**, comme le joueur. Ce soir
-  c'est du verre salle par salle ; ça devrait être une loi du moteur.
 - **L'énigme chromatique** à quatre paliers.
 - **Brancher la fin à deux dans le hall** (`lobby.ts`, les deux dalles).
 - **Essayer le duo à deux vraies machines.**
