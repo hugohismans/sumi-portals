@@ -1,6 +1,6 @@
-# Protocole de test — les nuits du 2 et du 3 août
+# Protocole de test — les nuits du 2 et du 3 août, et celle du 22 septembre
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 440 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 611 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -16,16 +16,18 @@ la mauvaise chose.
 Rien de ce document n'a encore été suivi une seule fois. Dans l'ordre du risque,
 du plus gros au plus petit :
 
-1. **Le voyage de l'introduction, de bout en bout** — `?niveau=monde&neuf=1`.
-   Le moteur a énormément bougé sous lui : la gravité, le franchissement de
-   marche, le sprint en l'air, le son. C'est ce qui a le plus de chances d'être
-   cassé, et c'est ce que verrait un ami en premier.
-2. **La montée**, `?niveau=montee&debug=1`, et surtout ses trois salles neuves
-   qui n'ont jamais été regardées par un œil humain : les toits, l'escalier, la
-   vallée. Les trois questions de la fin de ce fichier sont là.
-3. **Le hall**, `./?debug=1`. C'est là qu'on arrive par défaut, donc là qu'un
+1. **Le banc d'essai**, `?niveau=banc&debug=1` — douze stations en une marche,
+   une par chose que le moteur prétend faire et que personne n'a regardée.
+2. **Les deux salles chirales de la montée**, `?niveau=montee&debug=1`, touches
+   `2` et `3` — réécrites autour du LANCER (voir § 3 bis). C'est le chantier
+   le plus récent, donc le moins vu.
+3. **La mesure**, `?niveau=mesure&debug=1` — le troisième mouvement, assemblé
+   la nuit du 22 septembre, jamais joué (voir § 3 septies).
+4. **Le voyage de l'introduction, de bout en bout** — `?niveau=monde`. Le
+   moteur a encore bougé sous lui : deux correctifs de physique sur les pièces.
+5. **Le hall**, `./?debug=1`. C'est là qu'on arrive par défaut, donc là qu'un
    défaut coûte le plus cher.
-4. Le reste, dans n'importe quel ordre.
+6. Le reste, dans n'importe quel ordre.
 
 **Ce qu'aucune vérification ne peut te dire, et qui est le vrai sujet :** est-ce
 que tu comprends ce qu'on te demande sans qu'on te l'écrive.
@@ -57,11 +59,13 @@ start "https://hugohismans.github.io/sumi-portals/"
 ```
 
 - **le hall** — l'adresse nue.
-- **l'introduction** — `?niveau=monde` · ajoute `&neuf=1` pour oublier les
-  couleurs déjà rapportées.
-- **la descente** (six salles, on y cherche le bleu) — `?niveau=descente`
-- **la montée** (six salles neuves, on y cherche l'or) — `?niveau=montee`
-- **la boîte à formes** (une seule pièce, cinq creux) — `?niveau=formes`
+- **l'introduction** — `?niveau=monde`. Elle repart toujours du gris ;
+  `&neuf=1` ne sert qu'avec `&debug=1`, dont la mémoire est séparée.
+- **la descente** (sept salles, on y cherche le bleu) — `?niveau=descente`
+- **la montée** (sept salles, on y cherche l'or) — `?niveau=montee`
+- **la mesure** (trois salles, on y perd la taille) — `?niveau=mesure`
+- **la boîte à formes** (cinq pièces, cinq creux) — `?niveau=formes`
+- **le banc d'essai** (douze stations) — `?niveau=banc`
 - **les repères** — ajoute `&debug=1` à l'un ou l'autre. Une touche par moment ;
   `H` replie la liste. Le mode débug a sa propre sauvegarde : il n'abîme plus ta
   partie.
@@ -200,7 +204,14 @@ réveille, mais seulement à ×1/4.* À toute autre taille il frémit et refuse.
 
 **`0` — La cour de pluie**, le détour. Rien à résoudre. → *De grosses gouttes
 s'écrasent et laissent un anneau d'encre qui sèche. Sous l'auvent, il ne tombe
-rien.*
+rien.* *(Il ne pleuvait pas jusqu'au 22 septembre : le moteur de gouttes
+n'était branché nulle part.)* Regarde aussi **les trois chutes** : la nappe qui
+tombe du bord de l'auvent, le jet de la goulotte du puits, et l'égouttement
+sous le banc — deux gouttes par seconde, le seul qu'on puisse regarder debout
+dessous et au sec.
+**Défaut à guetter :** des gouttes qui traversent le toit de l'auvent ou
+l'assise du banc ; une pluie qui s'arrête net à une frontière visible ; des
+anneaux qui flottent au-dessus du sol.
 
 ---
 
@@ -219,19 +230,31 @@ monte dessus sans y penser.
 **Défaut à guetter, et c'est le seul qui compte ici :** ne pas reconnaître le
 village. Si ça arrive, la salle ne vaut rien et il faut la reprendre.
 
-**`2` — Le creux qui refuse.** Une vrille au sol, un creux à sa forme. Présente-la
-→ *elle refuse, et tu crois que c'est la taille.* Porte-la par la porte du fond,
-ressors quatre fois plus grand, elle entre.
-→ *Elle a AUSSI changé de main, et rien ne te l'a dit.* C'est voulu : cette
-salle est le brouillon de la suivante.
+**`2` — Le creux qui refuse.** *(Réécrit le 22 septembre : porter une pièce à
+travers un miroir ne la retourne plus, seul le LANCER le fait.)* Une vrille au
+sol, un creux à sa forme. Porte-la par la porte du fond, ressors quatre fois
+plus grand, pose-la → *bonne taille, et le creux dit qu'elle N'ENTRE PAS, que
+la tourner n'y changera rien.* Regarde les **mains** de part et d'autre des
+deux faces : en regardant par le miroir, celle d'en face est retournée. Reviens
+homme, **lance** la vrille dans la petite face (clic) → *elle ressort par la
+grande, à l'autre bout de la cour, retournée et trop lourde.* Suis-la par la
+porte, ramasse-la géant, elle entre.
+**Défaut à guetter :** ne pas comprendre qu'il faut lancer ; une phrase de refus
+qui ne vient pas ; une vrille qui passe par-dessus le mur (le ciel est en
+verre à treize mètres, elle DOIT retomber dans la cour).
 
 **`3` — Le blanchiment.** Le creux veut la taille d'origine **et** l'autre main.
-La navette au miroir ne peut pas marcher — un nombre impair de passages ne fait
-jamais une taille nulle, c'est de l'arithmétique et non de la difficulté. Il
-faut la **seconde porte, ordinaire**, derrière le mur de refend.
-→ *Et on ne la voit qu'en étant grand : la tête passe au-dessus de la lame.*
-**Défaut à guetter :** ne jamais la trouver, et faire la navette dix minutes. Si
-ça arrive, le mur de refend est trop haut ou mal placé.
+Le miroir n'est plus qu'une **chatière** au pied du mur ouest, 1,20 m : on n'y
+entre pas, on y lance. → *La vrille en ressort droite et 2,00, trop lourde pour
+un homme.* Trouve la porte ordinaire derrière le mur de refend (la brèche est au
+nord), grandis, va la chercher, rapporte-la par la grande face ordinaire → *0,50,
+toujours droite, et le creux est à dix mètres.*
+Le théorème : la main ne change qu'à la chatière, et jamais sans la taille ; la
+taille se corrige à la porte ordinaire, sans toucher à la main.
+**Défaut à guetter :** ne jamais trouver la brèche ; forcer la chatière ; ne pas
+voir que les deux portes ne font pas la même chose. Et l'erreur PARFAITE, à
+faire exprès : lancer, grandir, courir au creux avec la vrille trop grosse,
+la rapporter — et comprendre après coup ce qu'on a fait.
 
 **`4` — L'escalier pour plus tard.** À ×4, en haut d'une falaise de 3,60. Quatre
 cubes de 0,80 traînent là : dispose-les **en escalier pour quelqu'un d'1,80**,
@@ -276,6 +299,53 @@ fosse.
 
 **3. Les toits se reconnaissent-ils ?** C'est la seule question qui décide de la
 première salle. Rien de ce que j'ai vérifié ne peut y répondre.
+
+---
+
+## 3 septies. La mesure — `?niveau=mesure&debug=1`
+
+Le troisième mouvement, assemblé la nuit du 22 septembre à partir de deux salles
+écrites en août et reliées à rien. **Jamais joué.** Il ne rapporte pas de
+couleur : il retire ce qui permet de savoir quelle taille on fait, et le rend.
+On y arrive au bout de la montée ; il mène à la boîte à formes.
+
+**`1` — La rive.** On arrive à ×4 à l'ouest d'un quai. → *Trente mètres d'eau,
+une falaise en face.* Vers l'est, la passe : 2,40 m de large, on ne descend pas
+là. Dans l'éperon, une baie à six mètres, et au fond une serrure pour une arête
+de 3,60. Trois galets de 0,90 au quai.
+**Le geste :** rapetisser par la grande porte à l'ouest, porter un galet dans
+la petite face, ressortir géant avec un bloc de 3,60.
+
+**`2` — La serrure, depuis la lèvre.** Debout au méridien, trois mètres au sud
+de la lèvre, le bloc dans les bras. **Lève les yeux d'environ vingt-trois
+degrés** vers la baie et lâche (E). → *La pièce entre dans une baie où l'on
+n'entrera jamais, et la serrure clique. La porte de sortie se dessine au sud.*
+**Défaut à guetter :** la pièce qui tombe dans la passe (elle se repêche du
+bout des doigts depuis la lèvre) ; une pièce posée dans la baie qu'on ne peut
+plus reprendre ; ne pas trouver l'angle — en dessous de vingt degrés elle bute
+sur la tablette, c'est mesuré.
+
+**`3` — Le grain, le vaste lobe.** On y tombe de trente et un mètres, et l'on
+ne remonte pas. **L'affichage de la taille s'est tu.** → *Des parois de grain
+de papier, aucune arête, rien qui se répète. Une graine au sol près du puits ;
+plus loin un creux, et une graine énorme à côté.*
+**Défaut à guetter, et c'est le seul qui compte :** savoir quand même quelle
+taille on fait — par le brouillard, par le Pinceau, par n'importe quoi. Si tu
+le sais, dis par quoi : c'est ça qu'il faut éteindre.
+
+**`4` — Le grain, le menu lobe.** Le même lieu, quatre fois plus petit, au bout
+d'un goulet coudé. Un creux de 0,72 attend la graine du vaste ; la graine d'ici
+ne se soulève pas. **C'est la mesure :** deux gestes, dont un qui échoue, et
+l'on connaît sa taille. Pose la graine → *la porte de sortie se dessine au sud.*
+**Défaut à guetter :** reconnaître le lobe SANS pouvoir dire s'il a grandi ou si
+l'on a rétréci, c'est le but ; en être sûr trop vite est le défaut.
+
+**`5` — Le seuil.** Une dalle nue. On arrive quart d'homme, la porte dans le
+dos. → *Marche vers le bout de la dalle, retourne-toi : la plus petite porte du
+jeu, soixante-dix centimètres, pour quelqu'un de quarante-cinq.* Le lien de fin
+mène à la boîte à formes.
+**Défaut à guetter :** ne pas lire la porte comme un étalon ; un premier pas
+qui la retraverse (elle est dans le dos, ça ne doit pas arriver).
 
 ---
 
@@ -428,7 +498,12 @@ sont à reprendre** — c'est leur seul critère.
 - **le sacre**, qui a changé d'endroit : il part au sommet et plus à la dernière
   couleur ;
 - **l'aventure à deux**, jamais essayée sur deux machines ;
-- **le mode rêve**, `?niveau=reve&graine=7`.
+- **le mode rêve**, `?niveau=reve&graine=7` ;
+- **tout ce qui se pose dans un creux** : un creux attend désormais qu'une
+  pièce se soit posée avant de la prendre (il happait une pièce en vol). Une
+  pièce posée qui ne rentre plus serait ce correctif qui a trop mordu ;
+- **tout ce qui passe une porte en glissant au sol** : une pièce ne ressort plus
+  jamais sous le seuil de la face jumelle.
 
 ---
 
@@ -444,8 +519,11 @@ Par honnêteté, avant que tu le trouves :
   moteur, pas la géométrie.
 - **Le bol fait 1,12 m** — ce n'est pas un bol à thé. « Quatre mètres à ×1/4 »
   impose un mètre d'intérieur. J'ai gardé la mesure et perdu le mot.
-- **La chiralité reste invisible.** Les objets sont des cubes, et un cube n'a pas
-  de main gauche. Elle attend une forme.
+- **La chiralité a un corps** (la vrille) et un étalon (les mains sur les
+  murs), mais elle n'a jamais été REGARDÉE en jeu : deux salles et une
+  station du banc sont écrites pour ça, prouvées, et vues en captures fixes.
+- **Le troisième mouvement n'a pas de fin.** Le seuil tient la place de la
+  lucarne ; le monde retourné qui « rend le ciel » est décidé, pas bâti.
 - **Une famille entière de fautes reste possible :** le franchissement de marche
   sonde une marche PLEINE, donc un seuil de six centimètres peut fermer un
   passage sous un linteau. Ça a déjà mordu une fois cette nuit.

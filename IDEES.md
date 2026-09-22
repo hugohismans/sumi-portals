@@ -522,6 +522,23 @@ qu'une neige permanente, qui tuerait la lisibilité des énigmes.
 
 Non discutées, juste posées là.
 
+**Une pièce tombée hors du monde devrait revenir.** Le joueur est rattrapé à
+vingt mètres sous le décor et reposé où il se tenait ; une pièce, non. Or ce qui
+sort d'une grande face sort quatre fois plus vite, et une pièce est souvent la
+seule clef d'une porte. Ce soir on a mis un ciel de verre sur les deux cours
+chirales ; ce devrait être une loi du moteur — reposer la pièce là où on l'a
+lâchée, ou à son point de départ.
+
+**La fin du troisième mouvement.** Le seuil est un palier, pas une fin : la
+mesure ne rend aucune couleur. La conception dit « le monde retourné rend le
+ciel » (portails de gravité). Tant qu'il n'est pas bâti, le seuil suffit et ne
+fait pas semblant.
+
+**Le Pinceau, instrument de mesure, jalon par jalon.** `stationsEchelle` existe
+sur le contrat des salles et l'assemblage le suit, mais aucune salle ne le
+remplit encore : le grain l'a demandé (un Pinceau d'un mètre au pied d'un
+rocher de douze annonce la taille du rocher) et attend qu'on l'écrive.
+
 **Le son de l'échelle.** À ×4, tout devrait sonner plus grave et plus lent ; à
 ×1/4, plus aigu. C'est très peu de travail et ça vend le changement de taille
 presque autant que l'image.
