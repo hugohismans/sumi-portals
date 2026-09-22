@@ -576,14 +576,15 @@ const POURQUOI_MONTEE: Record<string, string> = {
     'des heures, vu d’une taille qu’on n’avait jamais eue. Si la reconnaissance ne se ' +
     'fait pas, la salle ne vaut rien — et aucune vérification ne peut me le dire.',
   'Le creux qui refuse — la vrille':
-    'Les portes miroirs existaient depuis des semaines sans se voir : on dessinait tout ' +
-    'avec des cubes, et un cube n’a pas de main gauche. C’est la première fois que la ' +
-    'chiralité a un corps. Deux lecteurs extérieurs ont prédit qu’on conclurait à un ' +
-    'bug avant de conclure au miroir.',
+    'La règle du miroir a changé : porter une pièce à travers ne la retourne plus, seul ' +
+    'le LANCER le fait — et cette salle reposait sur le portage. Elle est réécrite ' +
+    'autour du lancer, prouvée par un pilote, jamais regardée. Les mains sur les murs ' +
+    'sont l’étalon de la main, comme la petite face est celui de la taille.',
   'Le blanchiment — le théorème':
     'La meilleure sensation que ce jeu puisse produire, si elle passe : comprendre ' +
-    'qu’un système a des lois et qu’on peut les DÉDUIRE au lieu de les subir. Le risque ' +
-    'est qu’on force au hasard sans jamais comprendre.',
+    'qu’un système a des lois et qu’on peut les DÉDUIRE au lieu de les subir. Avec un ' +
+    'miroir qu’on franchit, le théorème mourait sous la règle nouvelle ; d’où la ' +
+    'chatière. Le risque est qu’on force au hasard sans jamais comprendre.',
   'L’escalier pour plus tard':
     'La salle a été retournée après qu’on a mesuré que rien ne blesse une chute : on la ' +
     'gravit maintenant au lieu de la descendre. On vérifie que le verrou est réel et que ' +
@@ -611,18 +612,24 @@ export const REPERES_MONTEE: Repere[] = [
   auSeuil(
     SALLES_MONTEE[1],
     'Le creux qui refuse — la vrille',
-    'Une vrille au sol, un creux à sa forme dans la cour. Présente-la : elle refuse, ' +
-      'et l’on croit que c’est la taille. Porte-la par la porte du fond, ressors quatre ' +
-      'fois plus grand, elle entre. Elle a changé de MAIN aussi, et rien ne le dit.',
+    'Une vrille au sol, un creux à sa forme dans la cour. Porte-la par la porte du fond, ' +
+      'ressors quatre fois plus grand, pose-la : bonne taille, et le creux dit qu’elle ' +
+      'N’ENTRE PAS, que la tourner n’y changera rien. Regarde les MAINS de part et d’autre ' +
+      'des deux faces. Reviens homme, LANCE la vrille dans la petite face : elle ressort ' +
+      'par la grande, retournée, trop lourde. Suis-la par la porte, ramasse-la, elle entre. ' +
+      'Défaut à guetter : ne pas comprendre qu’il faut lancer ; une vrille perdue par-dessus ' +
+      'le mur (le ciel est en verre, elle doit retomber dans la cour).',
     5,
   ),
   auSeuil(
     SALLES_MONTEE[2],
     'Le blanchiment — le théorème',
-    'Le creux veut la taille d’origine ET l’autre main. La navette au miroir ne peut ' +
-      'PAS marcher : un nombre impair de passages ne fait jamais une taille nulle. ' +
-      'Il faut trouver la seconde porte, ordinaire, derrière le mur de refend — et ' +
-      'on ne la voit qu’en étant grand. Défaut à guetter : ne jamais la trouver.',
+    'Le creux veut la taille d’origine ET l’autre main. Le miroir n’est plus qu’une ' +
+      'CHATIÈRE au pied du mur ouest : on n’y entre pas, on y lance. La vrille en ressort ' +
+      'droite et 2,00, trop lourde. Trouve la porte ordinaire derrière le mur de refend, ' +
+      'grandis, va la chercher, rapporte-la par la grande face ordinaire : 0,50, toujours ' +
+      'droite, et le creux est à dix mètres. Défaut à guetter : ne jamais trouver la brèche ' +
+      'du refend ; forcer la chatière ; ne pas voir la différence entre les deux portes.',
     10,
   ),
   auSeuil(

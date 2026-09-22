@@ -674,7 +674,25 @@ export class Simulation {
       // portée. Rien ne justifierait qu'un objet jeté échappe à la géométrie.
       retournerLaMain(c, face);
       c.position.x = newCenter.x;
-      c.position.y = newCenter.y - c.size * 0.5;
+      // ═══════════════════════════════════════════════════════════════════
+      // ON NE RESSORT JAMAIS SOUS LE SEUIL DE LA FACE JUMELLE.
+      //
+      // Une face est plantée cinq centimètres au-dessus de son sol — deux
+      // plans confondus grésillent. Une pièce qui GLISSE au sol à travers une
+      // petite face a donc son centre à « taille/2 − 0,05 » au-dessus du
+      // seuil ; multiplié par quatre, cet écart met le bas de la pièce quinze
+      // centimètres DANS le plancher de l'autre côté, quelle que soit sa
+      // taille. La dépénétration par axe faisait le reste : au premier pas
+      // horizontal, elle résolvait le chevauchement avec la DALLE le long de
+      // cet axe et catapultait la pièce au bord du monde, d'où elle
+      // retraversait la porte à l'envers. Trouvé par le pilote du blanchiment,
+      // qui voyait sa vrille ressortir de la bonne taille et de la même main,
+      // trente mètres plus loin.
+      //
+      // Le joueur subit le même écart et son corps le rattrape ; une pièce
+      // n'a pas de corps. On la pose donc au ras du seuil, jamais dessous.
+      // ═══════════════════════════════════════════════════════════════════
+      c.position.y = Math.max(newCenter.y - c.size * 0.5, face.twin.position.y - 0.05);
       c.position.z = newCenter.z;
       c.velocity.x = newVel.x;
       c.velocity.y = newVel.y;

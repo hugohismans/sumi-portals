@@ -254,6 +254,12 @@ export class Sockets {
 
       for (const c of carryables) {
         if (c.held || c.locked) continue;
+        // UN CREUX NE HAPPE PAS UNE PIÈCE EN VOL. Il attend qu'elle se soit
+        // posée : sans ça, une vrille lancée à travers une porte et qui
+        // passait à portée d'un creux en pleine course s'y logeait d'un coup —
+        // l'énigme résolue par un lancer, sans qu'on ait jamais rien porté.
+        // Poser une pièce est une question ; la lancer n'en est pas une.
+        if (!c.grounded || Math.hypot(c.velocity.x, c.velocity.z) > 1) continue;
         if (!this.fits(socket, c)) continue;
 
         const dx = c.position.x - socket.position.x;
