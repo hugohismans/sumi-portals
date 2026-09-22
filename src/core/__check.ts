@@ -17,14 +17,10 @@ import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
 import { verifierParcelleSalle, verifierTaillesDistinctes, type SalleModule } from '../levels/salles/contrat.js';
-import { CREUX } from '../levels/salles/creux.js';
 import { PLUIE, PLUIE_AVERSE } from '../levels/salles/pluie.js';
-import { LAVOIR } from '../levels/salles/lavoir.js';
-import { ATELIER } from '../levels/salles/atelier.js';
-import { CONDUIT } from '../levels/salles/conduit.js';
-import { BOL } from '../levels/salles/bol.js';
 import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
 import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
+import { MESURE, RACCORDS_MESURE, SALLES_MESURE } from '../levels/mesure.js';
 import { REFUS_GRANDE, REFUS_PETITE } from '../levels/salles/refus.js';
 import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
 
@@ -38,13 +34,14 @@ import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '..
  * vérifiées par ce seul bloc.
  */
 const SALLES_LIVREES: SalleModule[] = [
-  LAVOIR,
-  CONDUIT,
-  CREUX,
-  ATELIER,
-  BOL,
-  PLUIE,
+  SALLES_DESCENTE[0],
+  SALLES_DESCENTE[1],
+  SALLES_DESCENTE[2],
+  SALLES_DESCENTE[3],
+  SALLES_DESCENTE[4],
+  SALLES_DESCENTE[5],
   ...SALLES_MONTEE,
+  ...SALLES_MESURE,
 ];
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
@@ -73,6 +70,8 @@ import {
   REPERES_LOBBY,
   REPERES_MONDE,
   REPERES_MONTEE,
+  REPERES_MESURE,
+  POURQUOI_MESURE_ORPHELINS,
 } from '../debug/reperes.js';
 import { MONDE } from '../levels/monde.js';
 import { reve } from '../levels/reve.js';
@@ -207,6 +206,60 @@ const bondirVers = (sim: Simulation, cible: [number, number, number]): void => {
     );
   }
   settle(sim, 24);
+};
+
+/**
+ * LE PILOTE QUI JOUE, ET NON QUI COMPTE. Ces gestes servent à toute salle qui
+ * se résout en portant, posant ou lançant : on fait la faute que fera le
+ * joueur, on entend le creux la nommer, puis on fait le geste juste.
+ */
+const ordre = (sim: Simulation, o: Partial<InputCommand> = {}): InputCommand => ({
+  forward: 0, strafe: 0, jump: false, sprint: false, interact: false, throwIt: false,
+  yaw: sim.player.yaw, pitch: 0, ...o,
+});
+const poserA = (sim: Simulation, x: number, y: number, z: number, palier: number): void => {
+  sim.player.position = { x, y, z };
+  sim.player.velocity = { x: 0, y: 0, z: 0 };
+  sim.player.scaleLevel = palier;
+  sim.player.grounded = true;
+};
+/** Laisse le monde tourner et rapporte tout ce qui s'y est dit. */
+const attendre = (sim: Simulation, ticks: number): TickEvents => {
+  const tout: TickEvents = {};
+  for (let i = 0; i < ticks; i++) Object.assign(tout, sim.step(ordre(sim), TICK_DT));
+  return tout;
+};
+const versLePoint = (sim: Simulation, cible: [number, number, number]): number =>
+  Math.atan2(cible[0] - sim.player.position.x, cible[2] - sim.player.position.z);
+/** E, face à quelque chose : prendre ce qu'on vise, ou poser ce qu'on tient. */
+const agirVers = (sim: Simulation, cible: [number, number, number]): TickEvents => {
+  const yaw = versLePoint(sim, cible);
+  const tout: TickEvents = {};
+  sim.step(ordre(sim, { yaw }), TICK_DT);
+  Object.assign(tout, sim.step(ordre(sim, { yaw, interact: true }), TICK_DT));
+  Object.assign(tout, sim.step(ordre(sim, { yaw }), TICK_DT));
+  return tout;
+};
+/** Clic : lancer ce qu'on tient dans la direction du regard. */
+const lancer = (sim: Simulation, yaw: number, pitch: number): void => {
+  sim.step(ordre(sim, { yaw, pitch }), TICK_DT);
+  sim.step(ordre(sim, { yaw, pitch, throwIt: true }), TICK_DT);
+  sim.step(ordre(sim, { yaw, pitch }), TICK_DT);
+};
+const piece = (sim: Simulation, id: string) => sim.carryables.items.find((c) => c.id === id)!;
+const dansLaCour = (c: { position: Vec3 }, x0: number, x1: number, z0: number, z1: number): boolean =>
+  c.position.x > x0 && c.position.x < x1 && c.position.z > z0 && c.position.z < z1 && c.position.y > -0.5;
+/** E, en regardant un point — le regard commande la hauteur de la dépose. */
+const poserVers = (sim: Simulation, cible: [number, number, number]): TickEvents => {
+  const p = sim.player.position;
+  const oeilY = p.y + PLAYER_HEIGHT * EYE_FRACTION * scaleOfLevel(sim.player.scaleLevel);
+  const yaw = Math.atan2(cible[0] - p.x, cible[2] - p.z);
+  const pitch = Math.atan2(cible[1] - oeilY, Math.hypot(cible[0] - p.x, cible[2] - p.z));
+  const tout: TickEvents = {};
+  sim.step(ordre(sim, { yaw, pitch }), TICK_DT);
+  Object.assign(tout, sim.step(ordre(sim, { yaw, pitch, interact: true }), TICK_DT));
+  Object.assign(tout, sim.step(ordre(sim, { yaw, pitch }), TICK_DT));
+  return tout;
 };
 
 // =============================================================================
@@ -2202,6 +2255,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   for (const [salles, raccords] of [
     [SALLES_DESCENTE, RACCORDS_DESCENTE],
     [SALLES_MONTEE, RACCORDS_MONTEE],
+    [SALLES_MESURE, RACCORDS_MESURE],
   ] as const) {
     for (const r of raccords) {
       const a = salles[r.depuis];
@@ -2226,10 +2280,13 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       perdues.join(', '),
     );
   }
-  // On ne réclame pas encore la chaîne complète : les dernières salles ne sont
-  // pas nées. Mais on exige que ce qui est déclaré soit VRAI, et que les
-  // raccords se suivent sans trou — un raccord isolé au milieu du tableau
-  // serait une salle inatteignable qu'on croirait reliée.
+  // Les trois mouvements sont assemblés : la descente, la montée, la mesure.
+  // Deux salles de la mesure ont attendu un mois, écrites et vérifiées, sans
+  // qu'aucun fichier ne les relie — et rien ici ne le disait, puisqu'une salle
+  // qu'aucun tableau ne nomme n'est jamais vérifiée comme orpheline. On exige
+  // que ce qui est déclaré soit VRAI, et que les raccords se suivent sans
+  // trou — un raccord isolé au milieu du tableau serait une salle
+  // inatteignable qu'on croirait reliée.
   // ET TOUTE SALLE EST ATTEIGNABLE. Une salle bâtie, vérifiée, et que personne
   // ne peut atteindre est le pire gaspillage possible — et rien d'autre ne le
   // dirait : elle passe toutes les autres vérifications sans broncher.
@@ -2631,42 +2688,6 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // entend le creux la nommer, puis fait le geste juste et voit la porte de
   // sortie se desceller. Une salle qui ne se résout pas ainsi ne passe pas.
   // ═══════════════════════════════════════════════════════════════════════
-  const ordre = (sim: Simulation, o: Partial<InputCommand> = {}): InputCommand => ({
-    forward: 0, strafe: 0, jump: false, sprint: false, interact: false, throwIt: false,
-    yaw: sim.player.yaw, pitch: 0, ...o,
-  });
-  const poserA = (sim: Simulation, x: number, y: number, z: number, palier: number): void => {
-    sim.player.position = { x, y, z };
-    sim.player.velocity = { x: 0, y: 0, z: 0 };
-    sim.player.scaleLevel = palier;
-    sim.player.grounded = true;
-  };
-  /** Laisse le monde tourner et rapporte tout ce qui s'y est dit. */
-  const attendre = (sim: Simulation, ticks: number): TickEvents => {
-    const tout: TickEvents = {};
-    for (let i = 0; i < ticks; i++) Object.assign(tout, sim.step(ordre(sim), TICK_DT));
-    return tout;
-  };
-  const versLePoint = (sim: Simulation, cible: [number, number, number]): number =>
-    Math.atan2(cible[0] - sim.player.position.x, cible[2] - sim.player.position.z);
-  /** E, face à quelque chose : prendre ce qu'on vise, ou poser ce qu'on tient. */
-  const agirVers = (sim: Simulation, cible: [number, number, number]): TickEvents => {
-    const yaw = versLePoint(sim, cible);
-    const tout: TickEvents = {};
-    sim.step(ordre(sim, { yaw }), TICK_DT);
-    Object.assign(tout, sim.step(ordre(sim, { yaw, interact: true }), TICK_DT));
-    Object.assign(tout, sim.step(ordre(sim, { yaw }), TICK_DT));
-    return tout;
-  };
-  /** Clic : lancer ce qu'on tient dans la direction du regard. */
-  const lancer = (sim: Simulation, yaw: number, pitch: number): void => {
-    sim.step(ordre(sim, { yaw, pitch }), TICK_DT);
-    sim.step(ordre(sim, { yaw, pitch, throwIt: true }), TICK_DT);
-    sim.step(ordre(sim, { yaw, pitch }), TICK_DT);
-  };
-  const piece = (sim: Simulation, id: string) => sim.carryables.items.find((c) => c.id === id)!;
-  const dansLaCour = (c: { position: Vec3 }, x0: number, x1: number, z0: number, z1: number): boolean =>
-    c.position.x > x0 && c.position.x < x1 && c.position.z > z0 && c.position.z < z1 && c.position.y > -0.5;
 
   // ─── LE CREUX QUI REFUSE ────────────────────────────────────────────────
   {
@@ -2909,6 +2930,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
     ['la boîte à formes', FORMES],
   ] as const) {
     const sim = new Simulation(niveau);
@@ -3299,6 +3321,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
   ] as const) {
     const sim = new Simulation(niveau);
     let faux = false;
@@ -3396,6 +3419,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
     ['la boîte à formes', FORMES],
   ] as const) {
     const monde = new World(niveau);
@@ -3657,6 +3681,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE, REPERES_MONDE],
     ['la descente', DESCENTE, REPERES_DESCENTE],
     ['la montée', MONTEE, REPERES_MONTEE],
+    ['la mesure', MESURE, REPERES_MESURE],
     ['la boîte à formes', FORMES, REPERES_FORMES],
   ] as const) {
     // ON NE DEMANDE PAS D'ÊTRE À L'AIR LIBRE, ON DEMANDE DE POUVOIR MARCHER.
@@ -3723,6 +3748,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   for (const [nom, salles, liste] of [
     ['la descente', SALLES_DESCENTE, REPERES_DESCENTE],
     ['la montée', SALLES_MONTEE, REPERES_MONTEE],
+    ['la mesure', SALLES_MESURE, REPERES_MESURE],
   ] as const) {
     const sansRepere = salles.filter(
       (s) =>
@@ -3747,9 +3773,91 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // avant d'être devant l'écran.
   check(
     'aucune raison de test ne vise une station qui n’existe plus',
-    POURQUOI_MONTEE_ORPHELINS.length === 0,
-    POURQUOI_MONTEE_ORPHELINS.join(', '),
+    POURQUOI_MONTEE_ORPHELINS.length === 0 && POURQUOI_MESURE_ORPHELINS.length === 0,
+    [...POURQUOI_MONTEE_ORPHELINS, ...POURQUOI_MESURE_ORPHELINS].join(', '),
   );
+}
+
+// =============================================================================
+console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule partie —');
+{
+  // Deux salles écrites au mètre près par deux mains, mesurées chacune à son
+  // banc jetable, et jamais jouées l'une APRÈS l'autre : le raccord est le
+  // seul endroit où une erreur coûte à quelqu'un d'autre que soi. On joue donc
+  // le mouvement de bout en bout — la rive, la chute, le grain, le seuil.
+  const M = new Simulation(MESURE);
+  check('on naît géant à l’ouest du quai', M.player.scaleLevel === 1, pos(M));
+
+  // LA RIVE. Un galet de 0,90 ne se présente pas à une serrure de 3,60 : il
+  // faut le faire grandir, donc rapetisser d'abord par la grande porte.
+  walkTo(M, [176, 0, 3462], 60 * 30);
+  const d1 = walkTo(M, [167, 0, 3462], 60 * 10, { stopOnEvent: true });
+  check('la rive : par la grande porte, on redevient homme', d1.traversed?.newLevel === 0, pos(M));
+  walkTo(M, [232, 0, 3458.6], 60 * 30);
+  agirVers(M, [232, 0.01, 3456]);
+  const galet = piece(M, 'galet-rive-1');
+  check('la rive : homme, on soulève un galet', galet.held, `${pos(M)}`);
+  walkTo(M, [232, 0, 3466], 60 * 10);
+  const d2 = walkTo(M, [232, 0, 3471], 60 * 10, { stopOnEvent: true });
+  check(
+    'la rive : par la petite face, géant, un bloc de 3,60 dans les bras',
+    d2.traversed?.newLevel === 1 && galet.held && near(galet.size, 3.6, 1e-6),
+    `${d2.traversed ? 'traversé' : 'pas traversé'}, taille ${galet.size}, ${pos(M)}`,
+  );
+  // À la lèvre, on lève les yeux vers la baie et l'on lâche : la pièce entre
+  // où l'on n'entrera jamais. C'est le geste de la salle, et le seul.
+  walkTo(M, [210, 0, 3477], 60 * 40);
+  // Vingt-trois degrés, dit la salle — et c'est mesuré : en dessous, la pièce
+  // bute sur la tablette ou tombe dans la passe. On vise le linteau.
+  poserVers(M, [210, 10.4, 3486]);
+  attendre(M, 60 * 3);
+  check(
+    'la rive : lâchée depuis la lèvre, la pièce entre dans la baie et la serrure clique',
+    M.sockets.pourvus.has('serrure-rive'),
+    `pièce à (${galet.position.x.toFixed(1)}, ${galet.position.y.toFixed(2)}, ${galet.position.z.toFixed(1)}), ${galet.held ? 'encore en main' : 'lâchée'}`,
+  );
+  // La porte de sortie se DESSINE avant de s'ouvrir : c'est le rendu qui trace
+  // et qui descelle. Ici on l'ouvre comme le Pinceau le ferait, en une ligne,
+  // après avoir constaté que la serrure la libère.
+  check('la rive : la serrure libère la porte de sortie', M.conditionsRemplies.has('serrure-rive'), '');
+  M.portesFermees.delete('mesure-rive-grain');
+  walkTo(M, [210, 0, 3462], 60 * 20);
+  const d3 = walkTo(M, [210, 0, 3452], 60 * 10, { stopOnEvent: true });
+  check('la rive : la porte de sortie s’ouvre, et l’on tombe dans le grain', d3.traversed?.newLevel === 0, pos(M));
+
+  // LE GRAIN. Trente et un mètres de chute, puis le sol du vaste lobe.
+  attendre(M, 60 * 3);
+  check(
+    'le grain : on atterrit debout au fond du puits, homme',
+    M.player.grounded && M.player.scaleLevel === 0 && M.player.position.y > -0.5 && M.player.position.y < 0.5,
+    pos(M),
+  );
+  walkTo(M, [-94, 0, 3503.4], 60 * 12);
+  agirVers(M, [-94, 0.02, 3506]);
+  const graine = piece(M, 'graine-grain');
+  check('le grain : la graine du vaste se soulève', graine.held, pos(M));
+  check(
+    'le grain : la graine du menu, elle, ne se soulève pas — c’est la mesure',
+    !M.carryables.canLift(piece(M, 'graine-lourde'), scaleOfLevel(0)),
+    '',
+  );
+  // Le goulet coudé : vers l'est, puis vers le sud, puis le menu lobe.
+  walkTo(M, [-80, 0, 3500], 60 * 12);
+  walkTo(M, [-57, 0, 3500], 60 * 12);
+  walkTo(M, [-57, 0, 3470], 60 * 14);
+  walkTo(M, [-54, 0, 3460], 60 * 8);
+  agirVers(M, [-54, 0.02, 3455]);
+  attendre(M, 60 * 2);
+  check('le grain : le creux du menu accepte la graine du vaste', M.sockets.pourvus.has('creux-grain'), pos(M));
+  check('le grain : la graine libère la porte de sortie', M.conditionsRemplies.has('creux-grain'), '');
+  M.portesFermees.delete('mesure-grain-seuil');
+  const d4 = walkTo(M, [-54, 0, 3441], 60 * 12, { stopOnEvent: true });
+  check('le grain : la porte de sortie s’ouvre, et l’on arrive petit sur le seuil', d4.traversed?.newLevel === -1, pos(M));
+
+  // LE SEUIL. Dix secondes de marche, et le but.
+  // Trente mètres de dalle à 1,07 m/s : un quart d'homme prend son temps.
+  const fin = walkTo(M, [350, 0, 3484], 60 * 40, { stopOnEvent: true });
+  check('le seuil : au bout de la dalle, le mouvement s’achève', fin.reachedGoal === true, pos(M));
 }
 
 // =============================================================================
@@ -3786,6 +3894,7 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
     ['le hall', LOBBY],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
   ] as const) {
     const e = niveau.guideEchelle;
     if (!e) continue;

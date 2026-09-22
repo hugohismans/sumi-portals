@@ -10,6 +10,7 @@ import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
 import { DESCENTE } from './levels/descente.js';
 import { MONTEE } from './levels/montee.js';
+import { MESURE } from './levels/mesure.js';
 import { FORMES } from './levels/formes.js';
 import { BANC, REPERES_BANC } from './levels/banc.js';
 import { reve } from './levels/reve.js';
@@ -25,6 +26,7 @@ import {
   REPERES_LOBBY,
   REPERES_MONDE,
   REPERES_MONTEE,
+  REPERES_MESURE,
   changeDeMonde,
 } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
@@ -80,6 +82,7 @@ const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   monde: () => MONDE,
   descente: () => DESCENTE,
   montee: () => MONTEE,
+  mesure: () => MESURE,
   formes: () => FORMES,
   banc: () => BANC,
   cour: () => LEVEL_01,
@@ -97,6 +100,13 @@ const NIVEAU_SUIVANT: Record<string, string> = {
   // pas un goût : la montée revisite le village vu d'en haut, et cette lecture
   // ne s'acquiert qu'après y avoir marché longtemps à hauteur d'homme.
   descente: '?niveau=montee',
+  // Puis l'on va se mesurer. Le troisième mouvement ne rapporte pas de
+  // couleur : il retire ce qui permettait de savoir quelle taille on fait, et
+  // le rend. Il s'achève sur la boîte à formes, qui n'enseigne rien et vérifie
+  // tout — elle se disait l'avant-dernière salle du jeu et n'était dans aucune
+  // chaîne.
+  montee: '?niveau=mesure',
+  mesure: '?niveau=formes',
   cour: '?niveau=caisse',
   caisse: '?niveau=monde',
 };
@@ -983,6 +993,8 @@ const REPERES: Repere[] =
       ? REPERES_DESCENTE
       : MODE === 'montee'
         ? REPERES_MONTEE
+        : MODE === 'mesure'
+          ? REPERES_MESURE
         : MODE === 'formes'
           ? REPERES_FORMES
           : MODE === 'monde'
@@ -1202,6 +1214,7 @@ const REPERES: Repere[] =
     ['monde', '?niveau=monde&debug=1'],
     ['descente', '?niveau=descente&debug=1'],
     ['montée', '?niveau=montee&debug=1'],
+    ['mesure', '?niveau=mesure&debug=1'],
     ['formes', '?niveau=formes&debug=1'],
     ['banc', '?niveau=banc&debug=1'],
     ['rêve', '?niveau=reve&graine=7&debug=1'],
