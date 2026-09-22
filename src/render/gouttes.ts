@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { SourceDePluie, SurfaceDePluie } from '../core/types.js';
 import { INK, syncInkUniforms } from './ink.js';
 
 /**
@@ -34,6 +35,15 @@ import { INK, syncInkUniforms } from './ink.js';
 /** Combien de gouttes vivantes à la fois. Une averse d'encre, pas un rideau. */
 const GOUTTES = 90;
 
+/**
+ * Et combien pour les SOURCES — la nappe de l'auvent, le jet de la goulotte,
+ * l'égouttement du banc. Elles partent en cadence d'un segment, pas du ciel :
+ * ce sont les chutes qu'on REGARDE. Une nappe de 34 gouttes par seconde qui
+ * tombent 1,36 m en 0,32 s n'en a jamais plus d'une douzaine en l'air ; la
+ * réserve est large pour que le débit ne se serre jamais faute de place.
+ */
+const SOURCES_GOUTTES = 48;
+
 /** Taille d'une goutte, en unités du monde. Quatre centimètres. */
 const CALIBRE = 0.04;
 
@@ -61,30 +71,21 @@ interface Goutte {
   sol: number;
   /** Vrai si elle tombe dans l'eau. La tache n'est pas la même. */
   eau: boolean;
+  /**
+   * Une goutte du ciel renaît en haut de la zone dès qu'elle s'écrase. Une
+   * goutte de SOURCE, elle, s'éteint et attend que sa source la relance : c'est
+   * le débit qui commande, pas la mort de la précédente.
+   */
+  vive: boolean;
 }
 
 /**
- * UNE SURFACE OÙ LA PLUIE S'ÉCRASE.
- *
- * Une cour n'est pas un plan. Il y a des terrasses, une goulotte, un lac, une
- * margelle de puits, le toit d'un auvent, l'assise d'un banc. Sans cette table,
- * les gouttes traversent tout et éclaboussent le sol à travers un toit.
- *
- * ET IL N'Y A PAS DE LISTE D'ABRIS, ce qui est le point important. Un toit
- * déclaré comme surface d'impact ordinaire ARRÊTE la pluie, donc il ne tombe
- * rien dessous, donc c'est sec. La zone sèche n'est pas une règle, c'est une
- * conséquence — et le joueur qui se met à l'abri voit la pluie s'arrêter net
- * au-dessus de sa tête, ce qui est le seul argument qui vaille.
- *
- * L'ordre compte : la PREMIÈRE surface qui contient le point gagne. Elles se
- * recouvrent en plan, et c'est voulu.
+ * UNE SURFACE OÙ LA PLUIE S'ÉCRASE. C'est le décor qui la déclare — voir
+ * `AverseDef` dans `core/types.ts`, où la règle est écrite une fois : la
+ * PREMIÈRE surface qui contient le point gagne, et il n'y a pas de liste
+ * d'abris, un toit ARRÊTE la pluie et c'est ce qui rend sec ce qu'il couvre.
  */
-export interface Surface {
-  min: [number, number];
-  max: [number, number];
-  y: number;
-  eau: boolean;
-}
+export type Surface = SurfaceDePluie;
 
 interface Tache {
   x: number;
@@ -119,6 +120,11 @@ export class Gouttes {
   private readonly max: THREE.Vector3;
   private readonly sol: number;
   private readonly surfaces: Surface[];
+  private readonly sources: SourceDePluie[];
+  /** Ce que chaque source doit encore à l'averse : `debit × dt` s'y accumule. */
+  private readonly dettes: number[];
+  /** Ciel + sources. Les gouttes de source sont rangées après celles du ciel. */
+  private readonly n: number;
 
   /**
    * `zone` : la boîte où il pleut, en unités du monde. `sol` : la hauteur où
@@ -130,15 +136,20 @@ export class Gouttes {
     sol: number,
     /** Le relief. Sans lui, la pluie tombe à travers les toits. Voir Surface. */
     surfaces: Surface[] = [],
+    /** Les chutes suivies — nappe, jet, égouttement. Voir SourceDePluie. */
+    sources: SourceDePluie[] = [],
   ) {
     this.min = new THREE.Vector3(...zone.min);
     this.max = new THREE.Vector3(...zone.max);
     this.sol = sol;
     this.surfaces = surfaces;
+    this.sources = sources;
+    this.dettes = sources.map(() => 0);
+    this.n = GOUTTES + (sources.length > 0 ? SOURCES_GOUTTES : 0);
 
-    for (let i = 0; i < GOUTTES; i++) {
-      this.gouttes.push({ x: 0, y: 0, z: 0, v: 0, sol, eau: false });
-      this.semer(i, true);
+    for (let i = 0; i < this.n; i++) {
+      this.gouttes.push({ x: 0, y: 0, z: 0, v: 0, sol, eau: false, vive: i < GOUTTES });
+      if (i < GOUTTES) this.semer(i, true);
     }
 
     // ─── LES GOUTTES : un quadrilatère étiré vers le bas ────────────────────
@@ -146,9 +157,9 @@ export class Gouttes {
     // Étiré, et pas rond. Une goutte qui tombe vite se lit comme un TRAIT, et
     // c'est ce trait qui dit la vitesse ; une bille ronde à la même vitesse ne
     // dit rien du tout et se lit comme du bruit.
-    this.posGouttes = new Float32Array(GOUTTES * 4 * 3);
+    this.posGouttes = new Float32Array(this.n * 4 * 3);
     const idxG: number[] = [];
-    for (let i = 0; i < GOUTTES; i++) {
+    for (let i = 0; i < this.n; i++) {
       const a = i * 4;
       idxG.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
     }
@@ -180,21 +191,21 @@ export class Gouttes {
     meshG.renderOrder = 3;
 
     // ─── LES ÉCLABOUSSURES : un disque à plat, qui sèche ────────────────────
-    this.posTaches = new Float32Array(GOUTTES * 4 * 3);
-    this.ageTaches = new Float32Array(GOUTTES * 4);
+    this.posTaches = new Float32Array(this.n * 4 * 3);
+    this.ageTaches = new Float32Array(this.n * 4);
     // ─── PAS DE `gl_VertexID` ICI ────────────────────────────────────────────
     //
     // Il n'existe qu'en GLSL ES 3.00, et Three compile en 1.00 par défaut. Un
     // shader qui ne compile pas ne se voit QUE dans un navigateur : c'est ce
     // qui a fait disparaître tous les portails du jeu pendant une soirée, sans
     // qu'aucune vérification puisse le dire. On passe donc par un attribut.
-    this.coinTaches = new Float32Array(GOUTTES * 4 * 2);
-    for (let i = 0; i < GOUTTES * 4; i++) {
+    this.coinTaches = new Float32Array(this.n * 4 * 2);
+    for (let i = 0; i < this.n * 4; i++) {
       this.coinTaches[i * 2] = i % 2;
       this.coinTaches[i * 2 + 1] = Math.floor((i % 4) / 2);
     }
     const idxT: number[] = [];
-    for (let i = 0; i < GOUTTES; i++) {
+    for (let i = 0; i < this.n; i++) {
       const a = i * 4;
       idxT.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
     }
@@ -252,24 +263,69 @@ export class Gouttes {
     // l'averse commence par un rideau parfaitement aligné, ce qui se voit.
     g.y = premiere ? alea(this.sol, this.max.y) : this.max.y;
     g.v = 0;
-    // On décide de ce qu'elle va toucher AU DÉPART, une seule fois : elle tombe
-    // droit, donc le résultat ne changera pas, et faire la recherche à chaque
-    // image pour quatre-vingt-dix gouttes serait payer soixante fois pour rien.
+    g.vive = true;
+    this.viser(g);
+  }
+
+  /**
+   * On décide de ce qu'elle va toucher AU DÉPART, une seule fois : elle tombe
+   * droit, donc le résultat ne changera pas, et faire la recherche à chaque
+   * image pour cent gouttes serait payer soixante fois pour rien.
+   */
+  private viser(g: Goutte): void {
     g.sol = this.sol;
     g.eau = false;
     for (const s of this.surfaces) {
       if (g.x < s.min[0] || g.x > s.max[0] || g.z < s.min[1] || g.z > s.max[1]) continue;
+      // Une source peut couler SOUS une surface — l'égouttement du banc part
+      // de dessous l'assise. Une surface au-dessus de la goutte ne l'arrête pas.
+      if (s.y > g.y) continue;
       g.sol = s.y;
       g.eau = s.eau;
       break;
     }
   }
 
+  /**
+   * Les sources font partir leurs gouttes en cadence, et non au hasard : c'est
+   * la régularité qui rend un égouttement hypnotique. Chaque source accumule
+   * `debit × dt` et lâche une goutte par unité de dette, dans une réserve
+   * commune où l'on prend la première éteinte.
+   */
+  private couler(pas: number): void {
+    for (let k = 0; k < this.sources.length; k++) {
+      const src = this.sources[k];
+      this.dettes[k] += src.debit * pas;
+      while (this.dettes[k] >= 1) {
+        this.dettes[k] -= 1;
+        const i = this.eteinte();
+        if (i < 0) break;
+        const g = this.gouttes[i];
+        const u = Math.random();
+        g.x = src.a[0] + (src.b[0] - src.a[0]) * u;
+        g.y = src.a[1] + (src.b[1] - src.a[1]) * u;
+        g.z = src.a[2] + (src.b[2] - src.a[2]) * u;
+        g.v = 0;
+        g.vive = true;
+        this.viser(g);
+      }
+    }
+  }
+
+  /** La première goutte de source éteinte, ou −1 si la réserve est pleine. */
+  private eteinte(): number {
+    for (let i = GOUTTES; i < this.n; i++) if (!this.gouttes[i].vive) return i;
+    return -1;
+  }
+
   update(dt: number, camera: THREE.Camera): void {
     const pas = Math.min(dt, 0.05);
 
-    for (let i = 0; i < GOUTTES; i++) {
+    this.couler(pas);
+
+    for (let i = 0; i < this.n; i++) {
       const g = this.gouttes[i];
+      if (!g.vive) continue;
       g.v -= G * pas;
       g.y += g.v * pas;
       if (g.y <= g.sol) {
@@ -286,7 +342,9 @@ export class Gouttes {
           // qui distingue une flaque d'un pavé, sans qu'on ait rien à dessiner.
           rayon: CALIBRE * (g.eau ? alea(6, 9) : alea(3.5, 5.5)),
         };
-        this.semer(i);
+        // Le ciel renaît tout de suite ; une source attend son tour.
+        if (i < GOUTTES) this.semer(i);
+        else g.vive = false;
       }
     }
 
@@ -303,8 +361,14 @@ export class Gouttes {
     const p = this.posGouttes;
     const cam = camera.position;
 
-    for (let i = 0; i < GOUTTES; i++) {
+    for (let i = 0; i < this.n; i++) {
       const g = this.gouttes[i];
+      const o = i * 12;
+      if (!g.vive) {
+        // Éteinte : repliée sur un point, invisible sans coûter un tri.
+        for (let k = 0; k < 12; k++) p[o + k] = 0;
+        continue;
+      }
       // Le ruban fait face à la caméra : on prend la perpendiculaire à la
       // ligne œil→goutte, dans le plan horizontal.
       const dx = g.x - cam.x;
@@ -316,7 +380,6 @@ export class Gouttes {
       // s'étire. C'est ce qui fait lire la chute au lieu de la deviner.
       const longueur = CALIBRE * (1 + Math.abs(g.v) * 0.09);
 
-      const o = i * 12;
       p[o] = g.x - sx; p[o + 1] = g.y; p[o + 2] = g.z - sz;
       p[o + 3] = g.x + sx; p[o + 4] = g.y; p[o + 5] = g.z + sz;
       p[o + 6] = g.x - sx; p[o + 7] = g.y + longueur; p[o + 8] = g.z - sz;
@@ -330,7 +393,7 @@ export class Gouttes {
     const p = this.posTaches;
     const a = this.ageTaches;
 
-    for (let i = 0; i < GOUTTES; i++) {
+    for (let i = 0; i < this.n; i++) {
       const t = this.taches[i];
       const o = i * 12;
       const oa = i * 4;

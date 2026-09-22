@@ -201,6 +201,7 @@ const assembler = (): LevelDef => ({
   sockets: SALLES.flatMap((s) => s.sockets ?? []),
   tableaux: SALLES.flatMap((s) => s.tableaux ?? []),
   veilleurs: SALLES.flatMap((s) => s.veilleurs ?? []),
+  averse: SALLES.flatMap((s) => (s.averse ? [s.averse] : [])),
   portals: [...SALLES.flatMap((s) => s.portals ?? []), ...RACCORDS.map(raccorder)],
   guide: SALLES.flatMap((s) => s.stations),
   /**

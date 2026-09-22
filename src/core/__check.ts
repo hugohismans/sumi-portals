@@ -18,7 +18,7 @@ import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
 import { verifierParcelleSalle, verifierTaillesDistinctes, type SalleModule } from '../levels/salles/contrat.js';
 import { CREUX } from '../levels/salles/creux.js';
-import { PLUIE } from '../levels/salles/pluie.js';
+import { PLUIE, PLUIE_AVERSE } from '../levels/salles/pluie.js';
 import { LAVOIR } from '../levels/salles/lavoir.js';
 import { ATELIER } from '../levels/salles/atelier.js';
 import { CONDUIT } from '../levels/salles/conduit.js';
@@ -2120,6 +2120,69 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     // Une salle sans station est une salle où le Pinceau ne passe pas, donc
     // une salle où le joueur n'a aucune raison d'aller.
     check(`${salle.nom} : le Pinceau la traverse`, salle.stations.length > 0, `${salle.stations.length} jalons`);
+  }
+
+  // ─── LA COUR DE PLUIE : IL PLEUT, ET IL NE PLEUT PAS SOUS L'AUVENT ──────
+  //
+  // Le moteur de gouttes a existé des semaines sans être branché : la salle
+  // était livrée, reliée, au protocole, et il n'y pleuvait pas. Rien ne le
+  // disait — un rendu absent ressemble à un rendu qu'on n'a pas encore
+  // regardé. On exige donc que l'assemblage porte l'averse, et que la table
+  // des surfaces fasse ce que la salle promet : deux abris secs, sans qu'aucune
+  // règle ne les déclare — seulement un toit et une assise qui ARRÊTENT l'eau.
+  {
+    console.log('\n— La cour de pluie : il pleut, et il ne pleut pas sous l’auvent —');
+    const averses = DESCENTE.averse ?? [];
+    check('la descente porte une averse, et une seule', averses.length === 1, `${averses.length}`);
+    const a = averses[0] ?? PLUIE_AVERSE;
+    const { min, max } = PLUIE.bounds;
+    check(
+      'la pluie tombe dans la parcelle de la cour',
+      a.zone.min.every((v, i) => v >= min[i]) && a.zone.max.every((v, i) => v <= max[i]),
+      `${a.zone.min.join(',')} … ${a.zone.max.join(',')}`,
+    );
+
+    // Une surface entièrement hors de la zone ne recevra jamais une goutte :
+    // c'est une ligne écrite pour rien, ou une zone mal bornée.
+    const horsZone = PLUIE_AVERSE.surfaces.filter(
+      (s) => s.max[0] < a.zone.min[0] || s.min[0] > a.zone.max[0] || s.max[1] < a.zone.min[2] || s.min[1] > a.zone.max[2],
+    );
+    check('chaque surface d’impact est sous la pluie', horsZone.length === 0, horsZone.map((s) => s.nom).join(', '));
+
+    // LES DEUX ZONES SÈCHES SE VÉRIFIENT, ELLES NE S'APPLIQUENT PAS. On tombe
+    // du ciel en cent points de chaque abri : la première surface rencontrée
+    // doit être le toit ou l'assise, jamais le pavé qu'ils couvrent.
+    const premiere = (x: number, z: number, y: number): (typeof PLUIE_AVERSE.surfaces)[number] | null => {
+      for (const s of PLUIE_AVERSE.surfaces) {
+        if (x < s.min[0] || x > s.max[0] || z < s.min[1] || z > s.max[1] || s.y > y) continue;
+        return s;
+      }
+      return null;
+    };
+    for (const sec of PLUIE_AVERSE.secs) {
+      const abri = sec.nom.includes('auvent') ? 'auvent' : 'banc';
+      let mouilles = 0;
+      const n = 10;
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const x = sec.min[0] + ((i + 0.5) / n) * (sec.max[0] - sec.min[0]);
+          const z = sec.min[1] + ((j + 0.5) / n) * (sec.max[1] - sec.min[1]);
+          if (premiere(x, z, a.zone.max[1])?.nom !== abri) mouilles++;
+        }
+      }
+      check(`il ne pleut pas ${sec.nom}`, mouilles === 0, `${mouilles} point(s) sur ${n * n} reçoivent l’eau`);
+    }
+
+    // Et chaque source coule sur quelque chose : une nappe qui tomberait dans
+    // le vide serait une goutte qui traverse le sol.
+    for (const src of PLUIE_AVERSE.sources) {
+      const dessous = premiere(src.a[0], src.a[2], src.a[1] - 1e-6);
+      check(
+        `la source « ${src.nom} » tombe sur ${dessous?.nom ?? 'rien'}`,
+        dessous !== null && dessous.y < src.a[1],
+        `depuis y = ${src.a[1].toFixed(2)}`,
+      );
+    }
   }
 
   // ─── LA LOI DE L'ENCHAÎNEMENT : UNE PORTE NE VAUT QU'UN CRAN ────────────

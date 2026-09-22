@@ -1,4 +1,5 @@
 import type {
+  AverseDef,
   BoxDef,
   CarryableDef,
   PortalPairDef,
@@ -122,6 +123,12 @@ export interface SalleModule {
 
   /** Pinceau de couleur endormi, si la salle est un bout de monde. */
   veilleurs?: VeilleurDef[];
+
+  /**
+   * Là où il pleut, si la salle est une cour sous l'averse. Voir AverseDef :
+   * la salle dit SUR QUOI l'eau tombe, le rendu ne fait que la faire tomber.
+   */
+  averse?: AverseDef;
 
   /**
    * Portes INTERNES à la salle. Les portes qui la relient aux autres sont

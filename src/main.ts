@@ -42,6 +42,7 @@ import { Avatar } from './render/avatar.js';
 import { Brush } from './render/brush.js';
 import { CarryableViews } from './render/carryableViews.js';
 import { Feuilles } from './render/feuilles.js';
+import { Gouttes } from './render/gouttes.js';
 import { SocketViews } from './render/socketViews.js';
 import { RemotePlayers } from './render/remotePlayers.js';
 import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
@@ -441,6 +442,16 @@ let aTrace = false;
 // douzaine, pas davantage : une planche encrée tire sa force de ses vides.
 const feuilles = new Feuilles();
 scene.add(feuilles.group);
+
+// LA PLUIE, là où une salle en déclare une. Le moteur de gouttes existait
+// depuis le premier commit et n'était branché nulle part : la cour de pluie
+// était livrée, reliée, au protocole — et il n'y pleuvait pas. C'est le décor
+// qui dit où il pleut et sur quoi ça tombe (voir `AverseDef`) ; ici on ne fait
+// que le lui obéir.
+const averses = (LEVEL.averse ?? []).map(
+  (a) => new Gouttes(a.zone, a.zone.min[1], a.surfaces, a.sources),
+);
+for (const g of averses) scene.add(g.group);
 
 // Le sceau de la retrouvaille, entre les deux dalles. Invisible partout
 // ailleurs : il n'a de sens que dans l'aventure à deux.
@@ -1975,6 +1986,7 @@ function frame(now: number): void {
   canevas.update(aTrace);
   aTrace = false;
   feuilles.update(dt, camera, scale);
+  for (const g of averses) g.update(dt, camera);
   pigments.update(dt, peintreEnCours?.group.position);
 
   // Les coups de pinceau en attente : chacun se pose à son tour, et la famille
@@ -2016,6 +2028,7 @@ function frame(now: number): void {
   }
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
+  for (const g of averses) g.syncInk();
 
   // --- Les autres joueurs -----------------------------------------------------
   if (presenceActive) {
