@@ -243,6 +243,10 @@
         line-height: 1;
       }
       #overlay .ligne { font-size: 15px; line-height: 1.7; opacity: .78; margin-bottom: 26px; }
+      /* Le chapitre : petites capitales espacées, comme un intertitre de
+         carnet. Vide dans le hall, donc absent — pas de trou à sa place. */
+      #overlay .chapitre { font-size: 13px; letter-spacing: .22em; text-transform: uppercase; opacity: .6; margin: -2px 0 18px; }
+      #overlay .chapitre:empty { display: none; }
       #overlay .go { margin-top: 4px; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; opacity: .62; }
       #overlay .son { margin-top: 16px; font-size: 12px; opacity: .42; }
       /* Une seule fois : à la reprise, le joueur a déjà lu. */
@@ -399,13 +403,13 @@
             <path class="touffe" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
             <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
           </svg>
-          <svg viewBox="0 0 20 70" style="--teinte: #c8a02e" aria-hidden="true">
+          <svg data-pigment="or" viewBox="0 0 20 70" style="--teinte: #c8a02e" aria-hidden="true">
             <rect class="hampe trait" x="6.5" y="2" width="7" height="40" rx="1.4" />
             <rect class="virole trait" x="5.4" y="40" width="9.2" height="7" rx="1" />
             <path class="touffe" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
             <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
           </svg>
-          <svg viewBox="0 0 20 70" style="--teinte: #2f4b7c" aria-hidden="true">
+          <svg data-pigment="bleu" viewBox="0 0 20 70" style="--teinte: #2f4b7c" aria-hidden="true">
             <rect class="hampe trait" x="6.5" y="2" width="7" height="40" rx="1.4" />
             <rect class="virole trait" x="5.4" y="40" width="9.2" height="7" rx="1" />
             <path class="touffe" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
@@ -418,6 +422,14 @@
             <path class="trait" d="M5.6 46 h8.8 l-1.5 12 q-.4 6 -2.9 10 q-2.5 -4 -2.9 -10 z" />
           </svg>
         </div>
+
+        <!--
+          LE CHAPITRE. Vide dans le hall ; dans un voyage, le nom du niveau
+          (« La descente », « La montée »…). Un joueur qui rouvre l'onglet
+          sait ainsi OÙ il est avant même de reprendre la souris, et la carte
+          de titre cesse d'être la même page pour cinq lieux différents.
+        -->
+        <p class="ligne chapitre" id="chapitre"></p>
 
         <p class="ligne lede">
           Un monde dessiné à l’encre, et qui a perdu ses couleurs.<br />

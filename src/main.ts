@@ -110,6 +110,17 @@ const NIVEAU_SUIVANT: Record<string, string> = {
   cour: '?niveau=caisse',
   caisse: '?niveau=monde',
 };
+/**
+ * CE QUE DIT LE LIEN DE FIN. « Niveau suivant » est un mot d'ascenseur, et ce
+ * jeu n'en a pas : on descend chercher le bleu, on monte chercher l'or, on va
+ * se mesurer, puis on passe l'examen. Le lien dit le geste, pas le numéro.
+ */
+const OU_MENE_LA_SUITE: Record<string, string> = {
+  monde: 'Descendre',
+  descente: 'Monter',
+  montee: 'Aller se mesurer',
+  mesure: 'La boîte à formes',
+};
 
 // --- Simulation ---------------------------------------------------------------
 const sim = new Simulation(LEVEL);
@@ -649,6 +660,10 @@ overlay.addEventListener('click', () => input.requestLock());
     brosse.classList.toggle('encre', pigment !== undefined && acquis.has(pigment));
   }
 
+  // ET OÙ L'ON EST. Le hall n'a pas de chapitre — c'est la couverture. Un
+  // voyage en a un, et c'est son nom tel que le niveau le porte, pour que le
+  // panneau de fin, le sélecteur de repères et cette carte disent le même mot.
+  el('chapitre').textContent = EN_AVENTURE ? LEVEL.name : '';
 }
 
 // --- Tactile ---------------------------------------------------------------
@@ -1817,7 +1832,7 @@ function frame(now: number): void {
         // à la fin du plus long voyage du jeu, là où mentir coûte le plus cher.
         const suite = NIVEAU_SUIVANT[MODE!];
         suiteEl.setAttribute('href', suite ?? './');
-        suiteEl.textContent = suite ? 'niveau suivant' : 'retour au hall';
+        suiteEl.textContent = suite ? (OU_MENE_LA_SUITE[MODE!] ?? 'niveau suivant') : 'retour au hall';
         winPanel.classList.add('show');
         // On rend la souris, sinon le lien du panneau est inatteignable — et
         // on la rend POUR DE BON, sans quoi le panneau de reprise se pose
