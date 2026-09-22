@@ -121,6 +121,33 @@ export class Simulation {
    * c'est « tu as le rouge, donc le rouge est ce que tu sais dire ».
    */
   couleurEnMain: string | null = null;
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * LES COULEURS QU'ON SAIT DIRE, dans l'ordre où on les a apprises.
+   *
+   * Dans le village, c'est la fée qui peint : on a réveillé quelqu'un, il nous
+   * suit, et il ne porte que sa couleur — c'est `couleurEnMain`. Mais les fées
+   * n'existent QUE dans le village, et les ateliers sont ailleurs : dans la
+   * descente et dans la montée, personne ne suivait le joueur, `couleurEnMain`
+   * restait nul, et rien ne pouvait être peint. La porte de la vallée, scellée
+   * par le tableau de l'atelier du haut, ne s'ouvrait donc jamais : la montée
+   * était infinissable, et aucune vérification ne jouait ces salles-là.
+   *
+   * La conception le disait pourtant en une phrase : « ce n'est pas "tu as la
+   * clé rouge", c'est "tu as le rouge, donc le rouge est ce que tu sais
+   * dire" ». Ce tableau est ce qu'on sait dire — les pigments rapportés, dans
+   * l'ordre du voyage — et le rendu le remplit depuis la mémoire des couleurs.
+   *
+   * ET ON LES DIT L'UNE APRÈS L'AUTRE. Appuyer sur E devant une famille lui
+   * donne la couleur SUIVANTE de celle qu'elle porte : rouge, puis vert, puis
+   * bleu, puis rouge. Aucune commande nouvelle — le même geste que réveiller,
+   * prendre et poser — et le choix reste au joueur : le tableau montre ce que
+   * chaque famille devrait être, et c'est à lui de s'arrêter sur la bonne. Une
+   * couleur est une décision, donc elle se reprend ; un logement est un
+   * progrès, donc il verrouille. La fée, quand elle est là, a la priorité.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  couleursConnues: string[] = [];
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
@@ -613,7 +640,9 @@ export class Simulation {
       // et désigner un objet à travers la pièce serait une visée — donc
       // quelque chose de pénible au doigt sur un téléphone.
       const famille = this.familles.visee(this.player.position, this.player.yaw, scale);
-      if (!famille || this.couleurEnMain === null) return;
+      if (!famille) return;
+      const couleur = this.couleurEnMain ?? this.couleurSuivante(famille);
+      if (couleur === null) return;
       if (!this.familles.peignable(famille, scale)) {
         // Le refus est une leçon, pas une panne : c'est le seuil du « trop
         // lourd », déjà connu, et il enseigne en une seconde que la palette
@@ -621,8 +650,8 @@ export class Simulation {
         events.peintureRefusee = { famille };
         return;
       }
-      this.familles.peindre(famille, this.couleurEnMain);
-      events.peinte = { famille, pigment: this.couleurEnMain };
+      this.familles.peindre(famille, couleur);
+      events.peinte = { famille, pigment: couleur };
       const neufs = this.familles.verifier();
       if (neufs.length > 0) events.tableauSatisfait = { id: neufs[0] };
       return;
@@ -635,6 +664,15 @@ export class Simulation {
 
     target.held = true;
     events.carry = { id: target.id, taken: true };
+  }
+
+  /** La couleur qu'on dira ensuite à cette famille. Voir `couleursConnues`. */
+  private couleurSuivante(famille: string): string | null {
+    const connues = this.couleursConnues;
+    if (connues.length === 0) return null;
+    const actuelle = this.familles.teintes.get(famille);
+    const i = actuelle === undefined ? -1 : connues.indexOf(actuelle);
+    return connues[(i + 1) % connues.length];
   }
 
   /**

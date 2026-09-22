@@ -3940,6 +3940,106 @@ console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule pa
 }
 
 // =============================================================================
+console.log('\n— On sait dire les couleurs qu’on a rapportées, et les ateliers se peignent —');
+{
+  // Les fées n'existent que dans le village. Dans la descente et la montée,
+  // personne ne suivait le joueur, rien ne pouvait être peint, et la porte de
+  // la vallée — scellée par le tableau de l'atelier du haut — ne s'ouvrait
+  // jamais : la montée était infinissable. Rien ici ne jouait ces salles.
+  //
+  // Désormais on sait dire les couleurs qu'on a rapportées, l'une après
+  // l'autre. Le pilote peint les deux ateliers avec ce seul geste.
+  const centre = (b: BoxDef): [number, number, number] => [
+    (b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2,
+  ];
+  const plusProche = (boxes: BoxDef[], famille: string, de: [number, number, number], filtre: (b: BoxDef) => boolean = () => true): [number, number, number] => {
+    let best: [number, number, number] | null = null;
+    let d = Infinity;
+    for (const b of boxes) {
+      if (b.famille !== famille || !filtre(b)) continue;
+      const c = centre(b);
+      const dist = Math.hypot(c[0] - de[0], c[2] - de[2]);
+      if (dist < d) { d = dist; best = c; }
+    }
+    if (!best) throw new Error(`aucune boîte de la famille ${famille}`);
+    return best;
+  };
+
+  // ─── L'ATELIER DE LAVIS (descente) : une famille, une couleur ───────────
+  {
+    const D = new Simulation(DESCENTE);
+    D.couleursConnues = ['rouge', 'vert'];
+    poserA(D, -1.9, 0.12, 1298.65, 0);
+    // Une claie du côté est, abordée depuis l'allée en regardant vers l'est :
+    // le mur est derrière elle, pas devant. Le mur se vise aussi — c'est
+    // l'erreur prévue — mais le pilote fait le geste juste.
+    const claie = plusProche(DESCENTE.boxes, 'atelier-claies', [-1.9, 0, 1298.65], (b) => b.min[0] > 0);
+    walkTo(D, [claie[0] - 1.6, 0, claie[2]], 60 * 10);
+    const e = agirVers(D, claie);
+    check(
+      'atelier : on dit le rouge à une claie — la première couleur qu’on connaisse',
+      e.peinte?.pigment === 'rouge' && D.familles.teintes.get('atelier-claies') === 'rouge',
+      `${e.peinte ? e.peinte.pigment : e.peintureRefusee ? 'refusé' : 'rien'} ${pos(D)}`,
+    );
+    check('atelier : et la pièce ressemble au tableau', D.familles.satisfaits.has('atelier-tableau'), '');
+    const e2 = agirVers(D, claie);
+    check('atelier : appuyer encore dit la couleur suivante', e2.peinte?.pigment === 'vert', `${e2.peinte?.pigment ?? 'rien'}`);
+    check('atelier : et un tableau réussi ne se dé-satisfait pas', D.familles.satisfaits.has('atelier-tableau'), '');
+  }
+
+  // ─── L'ATELIER DU HAUT (montée) : deux familles, deux couleurs, deux tailles
+  {
+    const H = new Simulation(MONTEE);
+    H.couleursConnues = ['rouge', 'vert', 'bleu'];
+    poserA(H, 92, 14.05, 2076, 1);
+    // Descendre dans la cour par la grande face de la porte interne.
+    walkTo(H, [96, 14, 2026], 60 * 10);
+    const d1 = walkTo(H, [96, 14, 2014], 60 * 10, { stopOnEvent: true });
+    check('atelier du haut : on descend dans la cour, homme', d1.traversed?.newLevel === 0, pos(H));
+    // La pile de tuiles de la cour se refuse à un homme : c'est là que la loi enseigne.
+    // La porte est au milieu de la cour : on la contourne au lieu de la
+    // repasser — un pas de côté, c'est ce que fait un joueur qui la voit.
+    walkTo(H, [44, 0, 1923], 60 * 6);
+    walkTo(H, [44, 0, 1934], 60 * 8);
+    const pile = plusProche(MONTEE.boxes, 'haut-tuiles', [40, 0, 1922], (b) => b.max[1] < 5);
+    walkTo(H, [pile[0], 0, pile[2] - 2.2], 60 * 12);
+    const r = agirVers(H, pile);
+    check('atelier du haut : la pile de tuiles est trop grande pour un homme', r.peintureRefusee !== undefined, `${r.peinte ? 'peinte !' : r.peintureRefusee ? 'refusée' : 'rien'} ${pos(H)}`);
+    // Les pots, eux, se peignent en bas : rouge du premier coup.
+    const pot = plusProche(MONTEE.boxes, 'haut-pots', [pile[0], 0, pile[2]]);
+    walkTo(H, [pot[0], 0, pot[2] - 1.6], 60 * 12);
+    const e = agirVers(H, pot);
+    check('atelier du haut : on dit le rouge aux pots', e.peinte?.pigment === 'rouge', `${e.peinte?.pigment ?? (e.peintureRefusee ? 'refusé' : 'rien')} ${pos(H)}`);
+    // Remonter par la petite face, et peindre les tuiles du toit : rouge, vert, puis bleu.
+    walkTo(H, [44, 0, 1934], 60 * 12);
+    walkTo(H, [44, 0, 1922], 60 * 8);
+    walkTo(H, [40, 0, 1921], 60 * 8);
+    const d2 = walkTo(H, [40, 0, 1931], 60 * 10, { stopOnEvent: true });
+    check('atelier du haut : on remonte sur le toit, géant', d2.traversed?.newLevel === 1, pos(H));
+    const tuile = plusProche(MONTEE.boxes, 'haut-tuiles', [96, 14, 2030], (b) => b.min[1] > 10);
+    walkTo(H, [tuile[0], 14, tuile[2] - 5], 60 * 15);
+    const t1 = agirVers(H, tuile);
+    const t2 = agirVers(H, tuile);
+    const t3 = agirVers(H, tuile);
+    check(
+      'atelier du haut : aux tuiles on dit rouge, puis vert, puis bleu',
+      t1.peinte?.pigment === 'rouge' && t2.peinte?.pigment === 'vert' && t3.peinte?.pigment === 'bleu',
+      `${t1.peinte?.pigment ?? '?'}, ${t2.peinte?.pigment ?? '?'}, ${t3.peinte?.pigment ?? '?'} ${pos(H)}`,
+    );
+    check(
+      'atelier du haut : le tableau de la cour est satisfait, et la porte de la vallée se libère',
+      H.familles.satisfaits.has('haut-tableau-cour') && H.conditionsRemplies.has('haut-tableau-cour'),
+      [...H.familles.satisfaits].join(', ') || 'aucun',
+    );
+    // Sans couleur connue, rien ne se peint : la mémoire des couleurs est la clef.
+    const V = new Simulation(MONTEE);
+    poserA(V, pot[0], 0.05, pot[2] - 1.6, 0);
+    const v = agirVers(V, pot);
+    check('et sans couleur rapportée, on ne dit rien', v.peinte === undefined && v.peintureRefusee === undefined, '');
+  }
+}
+
+// =============================================================================
 console.log('\n— Les trois tableaux du guide sont alignés —');
 {
   // Un décalage entre `guide`, `guideEchelle` et `guidePorte` ne se voit pas à

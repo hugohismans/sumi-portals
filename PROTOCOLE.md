@@ -184,8 +184,12 @@ différentes. Une reste, une monte d'une porte, une de deux.
 *Rien ne doit être perdu.*
 
 **`7` — L'atelier de lavis.** Le cadre au mur montre la pièce **avec les claies
-en rouge**. Approche-toi d'une claie, appuie. → *Elles se peignent une par une,
-portées par la fée qui traverse la pièce.*
+en rouge**. Approche-toi d'une claie, appuie. → *Elles prennent le rouge — la
+première couleur que tu sais dire.* Appuie encore → *elles passent au vert* :
+on dit les couleurs qu'on a rapportées, dans l'ordre où on les a apprises, et
+une couleur est une décision, donc elle se reprend. *(Jusqu'au 22 septembre,
+rien ne se peignait hors du village : seule une fée qui nous suit savait dire
+une couleur, et les fées n'existent que là-bas.)*
 **L'erreur à faire exprès :** essaie de peindre le mur. *Refus — il est trop
 grand pour toi.*
 **Défaut à guetter, et c'est le plus important de la nuit :** que tu ne
@@ -265,9 +269,16 @@ gouffres. On n'a pas mal joué — on a pensé à la mauvaise échelle.
 → *La correction doit être gratuite : on remonte, on rapproche, on redescend.*
 
 **`5` — L'atelier du haut.** La couleur, paliers 2 et 3. Deux familles, deux
-couleurs, deux tailles : descendre peindre les pots, remonter peindre les
-tuiles. Puis le point de vue — un tabouret quelque part, et **depuis lui seul la
-composition du tableau se referme**.
+couleurs, deux tailles : descendre dire le rouge aux pots, remonter dire le bleu
+aux tuiles — chaque appui fait défiler rouge, vert, bleu, et l'on s'arrête sur
+la bonne. Puis le point de vue — un tabouret quelque part, et **depuis lui seul
+la composition du tableau se referme**.
+**Sans couleur rapportée, rien ne se peint, et la porte de la vallée reste
+scellée.** Les repères (`&debug=1`) donnent le rouge, le vert et le bleu ;
+sinon, joue les voyages dans l'ordre. *(Jusqu'au 22 septembre la montée était
+infinissable : personne ne pouvait peindre ici, et rien ne le disait.)*
+**Défaut à guetter :** ne pas comprendre qu'appuyer encore change la couleur ;
+la phrase « Tu dis le rouge » qui n'apparaît pas.
 
 **`6` — La vallée en maquette.** ×16. La côte rouge entière **sous les
 semelles**, traversée en huit enjambées. Le dernier four, trente mètres qui
@@ -503,7 +514,9 @@ sont à reprendre** — c'est leur seul critère.
   pièce se soit posée avant de la prendre (il happait une pièce en vol). Une
   pièce posée qui ne rentre plus serait ce correctif qui a trop mordu ;
 - **tout ce qui passe une porte en glissant au sol** : une pièce ne ressort plus
-  jamais sous le seuil de la face jumelle.
+  jamais sous le seuil de la face jumelle ;
+- **peindre dans le village** : la fée garde la priorité sur les couleurs
+  connues, donc rien ne doit avoir changé là-bas — mais c'est le même geste.
 
 ---
 

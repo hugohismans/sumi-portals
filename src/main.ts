@@ -341,6 +341,17 @@ const TEINTE_DU_PIGMENT: Record<string, string> = {
   bleu: '#2f6a8c',
   or: '#c99a3c',
 };
+/**
+ * CE QU'ON SAIT DIRE : les pigments rapportés, dans l'ordre du voyage. Voir
+ * `Simulation.couleursConnues` — c'est ce qui permet de peindre dans les
+ * ateliers de la descente et de la montée, où aucune fée ne suit le joueur.
+ * Recalculé quand une couleur revient, pour que la lucarne d'un voyage serve
+ * dès le voyage suivant sans recharger.
+ */
+const direLesCouleursConnues = (): void => {
+  sim.couleursConnues = Object.keys(TEINTE_DU_PIGMENT).filter((p) => pigments.a(p));
+};
+direLesCouleursConnues();
 if (MODE === 'monde') {
   // Chaque pinceau : son socle de repos, sa couleur, ET l'endroit de son monde
   // où il dort, planté, en attendant qu'on vienne le prendre. La taille dont il
@@ -1679,6 +1690,7 @@ function frame(now: number): void {
           bornesDeRegion,
         );
         teindreLesObjets();
+        direLesCouleursConnues();
         flash('Il s’éveille — et là-bas, quelque chose reprend sa couleur.', 7);
       } else {
         flash('Il s’éveille, et il te suit. Ramène-le au monde gris.', 6);
@@ -1772,6 +1784,12 @@ function frame(now: number): void {
     if (events.peinte) {
       peindreFamille(events.peinte.famille, events.peinte.pigment);
       ambiance.tache(0);
+      // Hors du village, personne ne vole jusqu'à la famille : on dit la
+      // couleur, et l'on dit qu'appuyer encore en dira une autre.
+      if (sim.couleurEnMain === null) {
+        const autres = sim.couleursConnues.length > 1 ? ' Encore, pour dire la suivante.' : '';
+        flash(`Tu dis le ${events.peinte.pigment}.${autres}`, 3);
+      }
     }
     // Le refus est une leçon, pas une panne : même seuil que le « trop lourd »,
     // et il enseigne en une seconde que la palette dépend de la taille qu'on a.

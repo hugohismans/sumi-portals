@@ -87,12 +87,19 @@ Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
 4. **Trois trous du harnais** : la côte rouge n'était pas contrôlée sur sa
    parcelle, la lucarne bleue échappait au contrat des salles, le banc d'essai
    n'était dans aucune vérification.
-5. Cette note, et `PROTOCOLE.md`.
+5. Cette note, et `PROTOCOLE.md`, mis à jour au fil de la nuit.
 6. **Une pièce tombée hors du monde revient**, comme le joueur : vingt mètres
    sous le plancher, elle est reposée là où elle reposait la dernière fois,
    telle qu'elle y reposait — taille et main d'avant le lancer. C'est une loi
    du moteur (`Carryable.appui`), et le ciel de verre des deux cours chirales
    n'est plus qu'une ceinture par-dessus les bretelles.
+7. **On sait dire les couleurs qu'on a rapportées, et la montée est
+   finissable.** Les fées n'existent que dans le village ; dans la descente et
+   la montée personne ne suivait le joueur, rien ne pouvait être peint, et la
+   porte de la vallée — scellée par le tableau de l'atelier du haut — ne
+   s'ouvrait jamais. Un pilote joue maintenant les deux ateliers : appuyer sur
+   E devant une famille lui dit la couleur suivante parmi celles qu'on a
+   rapportées (rouge, vert, bleu), et une couleur se reprend.
 
 ## Par où commencer demain matin, dans l'ordre du risque
 
@@ -105,7 +112,9 @@ pour le détail de chaque station.
 2. **`?niveau=montee&debug=1`, touches `2` et `3`** — le creux qui refuse et le
    blanchiment, réécrits cette nuit. Le geste à juger : lancer la vrille dans
    une porte, la voir ressortir retournée. Et le refus qui parle, phrase par
-   phrase.
+   phrase. Puis la touche `5`, l'atelier du haut : dire le rouge aux pots, le
+   bleu aux tuiles, et voir la porte de la vallée se dessiner — c'était
+   impossible jusqu'à cette nuit.
 3. **`?niveau=mesure&debug=1`** — le troisième mouvement, jamais joué. La rive
    (lever les yeux de 23° et lâcher), le grain (est-ce qu'on ne sait VRAIMENT
    plus quelle taille on fait ?), le seuil.
