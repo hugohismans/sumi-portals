@@ -1638,8 +1638,13 @@ function frame(now: number): void {
     // rien de plus petit. La porte ne refuse pas le joueur — elle n'a nulle
     // part où le mener. Il suffisait de le dire.
     if (events.refused) {
+      // Et une porte scellée le dit : elle passait pour une porte qui ne mène
+      // nulle part, ce qui est le contraire — elle mène quelque part, il y a
+      // quelque chose à faire d'abord.
       flash(
-        events.refused.reason === 'tooBig'
+        events.refused.reason === 'scelle'
+          ? 'Cette porte est scellée. Quelque chose, ici, l’ouvrira.'
+          : events.refused.reason === 'tooBig'
           ? 'Trop grand pour cette porte. Il faudrait rapetisser.'
           : events.refused.versLePetit
             ? 'Plus petit, il n’y a plus rien. Cette porte ne mène nulle part.'

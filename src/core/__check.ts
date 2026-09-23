@@ -21,6 +21,7 @@ import { PLUIE, PLUIE_AVERSE } from '../levels/salles/pluie.js';
 import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
 import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
 import { MESURE, RACCORDS_MESURE, SALLES_MESURE } from '../levels/mesure.js';
+import { LACET_PAR_DEFAUT } from '../levels/salles/contrat.js';
 import { REFUS_GRANDE, REFUS_PETITE } from '../levels/salles/refus.js';
 import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
 
@@ -51,7 +52,7 @@ import {
 } from '../levels/duo.js';
 import { Simulation } from './simulation.js';
 import {
-  agirVers, attendre, bondirVers, dansLaCour, lancer, near, piece, pos, poserA, poserVers, settle, walkTo,
+  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, piece, pos, poserA, poserVers, settle, versLePoint, walkTo,
 } from './__pilote.js';
 import type { BoxDef, LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
@@ -2591,6 +2592,107 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     );
   }
 
+  // ─── CE QUE LE LANCER NE FAIT PAS, ET CE QUE LE VERRE RETIENT ──────────
+  {
+    // La relecture a balayé cent soixante-quinze lancers d'homme dans le
+    // miroir : vingt-trois fois la vrille s'arrêtait à portée du creux, et le
+    // creux la prenait — l'énigme résolue sans rien porter, le joueur resté
+    // homme, et arrivé quart d'homme au blanchiment. Une pièce LANCÉE n'est
+    // plus une question, même arrêtée au bon endroit ; reprise et posée,
+    // elle en redevient une.
+    const R = new Simulation(MONTEE);
+    const v = piece(R, 'vrille-refus');
+    v.size = REFUS_GRANDE;
+    v.main = 'D';
+    v.lancee = true;
+    v.position = { x: 3, y: 0.05, z: 1679 };
+    v.velocity = { x: 0, y: 0, z: 0 };
+    poserA(R, 0, 0.05, 1700, 1);
+    attendre(R, 60 * 3);
+    check(
+      'refus : une vrille lancée, arrêtée à trois mètres du creux, n’y entre pas toute seule',
+      !R.sockets.pourvus.has('creux-refus') && v.grounded,
+      `pourvus : ${[...R.sockets.pourvus].join(',') || 'aucun'}`,
+    );
+    walkTo(R, [3, 0, 1687], 60 * 12);
+    agirVers(R, [v.position.x, v.position.y, v.position.z]);
+    check('refus : reprise en main par le géant', v.held && !v.lancee, pos(R));
+    // Et posée d'où le pilote de la salle pose : à dix mètres, la vrille
+    // tombe à cinq, à portée.
+    walkTo(R, [0, 0, 1686], 60 * 12);
+    agirVers(R, [0, 0.9, 1676]);
+    attendre(R, 60 * 2);
+    check('refus : posée, le creux la prend', R.sockets.pourvus.has('creux-refus'), pos(R));
+
+    // Et un vrai lancer, le plus heureux du balayage : depuis (21, 1696),
+    // à 0,3 d'inclinaison, la vrille ressortait à 4,5 m du creux et s'y
+    // logeait. Elle reste au sol, et l'homme reste homme.
+    const L = new Simulation(MONTEE);
+    const w = piece(L, 'vrille-refus');
+    w.held = true;
+    poserA(L, 21, 0.05, 1696, 0);
+    const visee = versLePoint(L, [28, 0, 1700]);
+    L.player.yaw = visee;
+    attendre(L, 2);
+    lancer(L, visee, 0.3);
+    attendre(L, 60 * 8);
+    const dCreux = Math.hypot(w.position.x, w.position.z - 1676);
+    check(
+      'refus : le lancer le plus heureux ne résout rien',
+      !L.sockets.pourvus.has('creux-refus') && near(w.size, REFUS_GRANDE, 1e-6) && w.grounded && dCreux < 8,
+      `pourvus : ${[...L.sockets.pourvus].join(',') || 'aucun'}, vrille ${w.size} à ${dCreux.toFixed(1)} m du creux`,
+    );
+
+    // LE CIEL DE VERRE retient la vrille d'un géant qui lève les yeux. Il
+    // était à treize mètres, sous la main qui la tient : lancée, elle montait
+    // à soixante-dix mètres et le papier la rattrapait — la clef de la porte
+    // « tombée hors du dessin » sous les yeux du joueur.
+    for (const pitch of [0.9, 1.1, 1.3]) {
+      const V = new Simulation(MONTEE);
+      const u = piece(V, 'vrille-refus');
+      u.size = REFUS_GRANDE;
+      u.main = 'D';
+      u.held = true;
+      poserA(V, 0, 0.05, 1700, 1);
+      V.player.yaw = 0;
+      attendre(V, 2);
+      lancer(V, 0, pitch);
+      let haut = 0;
+      let ratt = false;
+      for (let i = 0; i < 60 * 6; i++) {
+        const e = V.step(ordre(V), TICK_DT);
+        haut = Math.max(haut, u.position.y + u.size);
+        if (e.pieceRattrapee) ratt = true;
+      }
+      check(
+        `refus : lancée vers le haut par un géant (inclinaison ${pitch}), la vrille se cogne au verre et retombe dans la cour`,
+        haut < 18.6 && !ratt && u.grounded && dansLaCour(u, -30, 30, 1670, 1730),
+        `sommet ${haut.toFixed(1)} m${ratt ? ', rattrapée' : ''}, fin (${u.position.x.toFixed(1)}, ${u.position.y.toFixed(2)}, ${u.position.z.toFixed(1)})`,
+      );
+    }
+
+    // ET ON NE POSE PAS À TRAVERS UN MUR. Un géant face au mur est, à deux
+    // pas, tient sa vrille de l'autre côté ; E la posait dehors, et elle
+    // tombait du monde.
+    {
+      const M = new Simulation(MONTEE);
+      const u = piece(M, 'vrille-refus');
+      u.size = REFUS_GRANDE;
+      u.main = 'D';
+      u.held = true;
+      poserA(M, 27, 0.05, 1690, 1);
+      M.player.yaw = Math.PI / 2;
+      attendre(M, 2);
+      const e = M.step(ordre(M, { yaw: Math.PI / 2, interact: true }), TICK_DT);
+      attendre(M, 60 * 3);
+      check(
+        'refus : face au mur, un géant ne pose pas sa vrille de l’autre côté',
+        (u.held && e.noRoom === true) || (!u.held && dansLaCour(u, -30, 30, 1670, 1730)),
+        `${u.held ? 'gardée en main' : 'posée'} à (${u.position.x.toFixed(1)}, ${u.position.y.toFixed(2)}, ${u.position.z.toFixed(1)})`,
+      );
+    }
+  }
+
   // ─── LE BLANCHIMENT ─────────────────────────────────────────────────────
   {
     // LE THÉORÈME EN NOMBRES. La chatière est trop basse pour quiconque peut
@@ -2608,10 +2710,20 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
     // Un homme qui marche dans la chatière bute ; un géant qui marche dans la
     // grande face bute. Ni l'un ni l'autre ne passe.
+    //
+    // Et l'homme s'entend REFUSER. Son œil passe au-dessus du rectangle de
+    // la chatière et c'est le mur, derrière, qui l'arrêtait sans un mot —
+    // cette vérification passait « pour une mauvaise raison », dit la
+    // relecture. On refuse maintenant celui qui passe AU-DESSUS d'une porte
+    // trop basse, dans sa largeur : le monde le dit, et le mur fait le reste.
     const H = new Simulation(MONTEE);
     poserA(H, 176, 0.05, 1720, 0);
     const h = walkTo(H, [170.2, 0, 1720], 60 * 8, { stopOnEvent: true });
-    check('blanchiment : un homme bute sur la chatière', !h.traversed && H.player.scaleLevel === 0, pos(H));
+    check(
+      'blanchiment : un homme bute sur la chatière, et elle le lui dit',
+      !h.traversed && H.player.scaleLevel === 0 && h.refused?.reason === 'tooBig',
+      `${h.refused ? `refusé : ${h.refused.reason}` : 'aucun refus'}, ${pos(H)}`,
+    );
     const G = new Simulation(MONTEE);
     poserA(G, 176, 0.05, 1682, 1);
     const g = walkTo(G, [170.2, 0, 1682], 60 * 8, { stopOnEvent: true });
@@ -3770,10 +3882,149 @@ console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule pa
   const d4 = walkTo(M, [-54, 0, 3441], 60 * 12, { stopOnEvent: true });
   check('le grain : la porte de sortie s’ouvre, et l’on arrive petit sur le seuil', d4.traversed?.newLevel === -1, pos(M));
 
-  // LE SEUIL. Dix secondes de marche, et le but.
-  // Trente mètres de dalle à 1,07 m/s : un quart d'homme prend son temps.
+  // LE SEUIL. Un quart de minute de marche, et le but.
+  // Vingt-huit mètres de dalle à 1,9 m/s : un quart d'homme prend son temps.
   const fin = walkTo(M, [350, 0, 3484], 60 * 40, { stopOnEvent: true });
   check('le seuil : au bout de la dalle, le mouvement s’achève', fin.reachedGoal === true, pos(M));
+}
+
+// =============================================================================
+console.log('\n— Une porte scellée fait mur aux pièces, et l’on en ressort au ras du sol —');
+{
+  // Deux trous trouvés par la relecture, dans le même bout de moteur.
+  //
+  // Le premier tuait le troisième mouvement : une porte scellée ne faisait mur
+  // qu'au JOUEUR. La graine du grain, lancée ou simplement posée vers la sortie
+  // encore scellée, passait dans le seuil — où l'on ne pouvait pas encore
+  // aller — et l'autre graine ne se soulève pas. Et cela dans la salle qui
+  // suit précisément celle où l'on apprend à lancer sa pièce à travers une
+  // porte.
+  for (const [z, pitch] of [
+    [3452, 0.15],
+    [3455, 0.3],
+    [3458, 0.4],
+  ] as const) {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, z, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    lancer(M, Math.PI, pitch);
+    const ev = attendre(M, 60 * 5);
+    check(
+      `le grain : la graine lancée vers la porte scellée (depuis z=${z}) rebondit et reste dans le grain`,
+      near(g.size, 0.72, 1e-6) && g.position.z > 3441 && !ev.pieceRattrapee,
+      `taille ${g.size}, à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+  {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, 3446.3, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    M.step(ordre(M, { yaw: Math.PI, interact: true }), TICK_DT);
+    attendre(M, 60 * 4);
+    check(
+      'le grain : la graine posée à un pas de la porte scellée reste de ce côté-ci',
+      near(g.size, 0.72, 1e-6) && g.position.z > 3441,
+      `taille ${g.size}, à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+
+  // Le second était la catapulte du blanchiment, revenue par une autre porte :
+  // on bornait la sortie d'une pièce au « seuil de la jumelle moins cinq
+  // centimètres », juste pour les faces plantées à cinq centimètres, faux pour
+  // celles de la rive plantées à un. Un galet lancé à plat par un homme dans
+  // la petite face de la rive ressortait trois centimètres DANS le quai, et la
+  // dépénétration l'expédiait au bord du monde. Il ressort maintenant au ras
+  // du sol, et glisse.
+  for (const pitch of [0, -0.1]) {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'galet-rive-1');
+    g.held = true;
+    poserA(M, 232, 0.05, 3461, 0);
+    M.player.yaw = 0;
+    attendre(M, 2);
+    lancer(M, 0, pitch);
+    let ratt = false;
+    let minY = Infinity;
+    for (let i = 0; i < 60 * 5; i++) {
+      const e = M.step(ordre(M), TICK_DT);
+      if (g.size > 1) minY = Math.min(minY, g.position.y);
+      if (e.pieceRattrapee) ratt = true;
+    }
+    check(
+      `la rive : un galet lancé à plat (inclinaison ${pitch}) par la petite face ressort géant, au ras du quai, et y reste`,
+      near(g.size, 3.6, 1e-6) && minY > -1e-3 && !ratt && g.position.x > 168 && g.position.x < 200 && g.grounded,
+      `taille ${g.size}, y min ${minY.toFixed(3)}, fin (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})${ratt ? ', rattrapé' : ''}`,
+    );
+  }
+}
+
+// =============================================================================
+console.log('\n— Chaque raccord se franchit depuis l’intérieur, et l’on arrive face à la salle —');
+{
+  // Aucune vérification ne franchissait un raccord de la descente ni de la
+  // montée : chaque salle passait ses épreuves sur son banc, l'assemblage
+  // vérifiait les échelles et les parcelles, et c'est le PASSAGE qui manquait.
+  // Trois sorties (le refus, le conduit, les creux) ne se franchissaient qu'en
+  // se glissant entre la porte et le mur pour revenir sur ses pas, et quatre
+  // entrées (le blanchiment, l'atelier, le bol, la cour de pluie) posaient le
+  // joueur face à un mur, la salle dans le dos. Trouvé par la relecture ; les
+  // salles déclarent maintenant le sens de leurs portes (`lacet`).
+  //
+  // Le pilote : posé un pas et demi avant la porte, DANS la salle, il marche
+  // droit vers elle, la franchit, puis continue tout droit dans le cap que la
+  // salle d'arrivée lui donne — et doit avancer, ou tomber si la salle est
+  // une chute voulue (le refus, le grain).
+  const ouvrir = (niveau: LevelDef): LevelDef => ({
+    ...niveau,
+    portals: niveau.portals.map((p) => ({ ...p, condition: undefined, dessinee: false })),
+  });
+  for (const [nom, prefixe, niveau, salles, raccords] of [
+    ['la descente', 'raccord', DESCENTE, SALLES_DESCENTE, RACCORDS_DESCENTE],
+    ['la montée', 'montee', MONTEE, SALLES_MONTEE, RACCORDS_MONTEE],
+    ['la mesure', 'mesure', MESURE, SALLES_MESURE, RACCORDS_MESURE],
+  ] as const) {
+    for (const r of raccords) {
+      const a = salles[r.depuis];
+      const b = salles[r.vers];
+      const depart = r.depart ?? a.sortie.position;
+      const sortie = a.sortie.lacet ?? LACET_PAR_DEFAUT;
+      const entree = b.entree.lacet ?? LACET_PAR_DEFAUT;
+      const sA = scaleOfLevel(a.sortie.echelle);
+      const sB = scaleOfLevel(b.entree.echelle);
+      const sim = new Simulation(ouvrir(niveau));
+      poserA(sim, depart[0] - Math.sin(sortie) * 1.5 * sA, depart[1] + 0.05, depart[2] - Math.cos(sortie) * 1.5 * sA, a.sortie.echelle);
+      sim.player.yaw = sortie;
+      let trav: TickEvents['traversed'] | undefined;
+      for (let i = 0; i < 180 && !trav; i++) trav = sim.step(ordre(sim, { forward: 1, yaw: sortie }), TICK_DT).traversed;
+      check(
+        `${nom} : on quitte ${a.nom} vers ${b.nom} en marchant droit vers la porte`,
+        trav?.pairId === `${prefixe}-${a.nom}-${b.nom}` && trav.newLevel === b.entree.echelle,
+        trav ? `traversé ${trav.pairId} → palier ${trav.newLevel}` : `pas traversé, ${pos(sim)}`,
+      );
+      if (!trav) continue;
+      const x0 = sim.player.position.x;
+      const y0 = sim.player.position.y;
+      const z0 = sim.player.position.z;
+      for (let i = 0; i < 180; i++) sim.step(ordre(sim, { forward: 1, yaw: entree }), TICK_DT);
+      const avance = Math.hypot(sim.player.position.x - x0, sim.player.position.z - z0) / sB;
+      const chute = y0 - sim.player.position.y;
+      // Un pas ou presque suffit : la lucarne bleue accueille sur un balcon
+      // dont le parapet est à un mètre quatre-vingts, et c'est voulu — on y
+      // vient regarder la maquette, pas marcher. Ce qu'on refuse, c'est le
+      // mur au nez.
+      check(
+        `${nom} : arrivé dans ${b.nom}, on marche droit devant soi — la salle est devant, pas le mur`,
+        avance >= 0.9 || chute > 2,
+        `${avance.toFixed(1)} taille(s) parcourue(s), ${chute.toFixed(1)} m de chute, ${pos(sim)}`,
+      );
+    }
+  }
 }
 
 // =============================================================================

@@ -16,8 +16,8 @@ import type { SalleModule } from './contrat.js';
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * UNE DALLE NUE, ET LE BROUILLARD. Vingt mètres de côté, quarante-quatre corps
- * pour qui vient d'arriver : on marche dix secondes vers le but, et pendant ces
- * dix secondes la porte derrière soi dit ce qu'on est. Rien d'autre à voir.
+ * pour qui vient d'arriver : on marche un quart de minute vers le but, et
+ * pendant ce temps la porte derrière soi dit ce qu'on est. Rien d'autre à voir.
  * Ce mouvement n'a pas de couleur à rendre — pas encore : le monde retourné
  * qui « rend le ciel » est décidé, pas bâti. Le seuil tient la place de la
  * lucarne en attendant, sans faire semblant d'être une fin.
@@ -89,5 +89,5 @@ export const SEUIL: SalleModule = {
   sortie: { position: [CX, 0.05, Z0 + 4], echelle: -1 },
 };
 
-/** Le but du mouvement : au bout de la dalle, à dix secondes de marche. */
+/** Le but du mouvement : au bout de la dalle, à un quart de minute de marche. */
 export const SEUIL_BUT: [number, number, number] = [CX, 0.05, Z0 + 6];

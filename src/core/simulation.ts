@@ -32,8 +32,8 @@ import {
   type PortalFace,
 } from './portals.js';
 import type { InputCommand, LevelDef, PlayerState, TickEvents } from './types.js';
-import { World } from './world.js';
-import type { Carryable } from './carryables.js';
+import { World, type Aabb } from './world.js';
+import { aabbOfCarryable, type Carryable } from './carryables.js';
 
 /**
  * Une porte miroir échange la gauche et la droite de ce qui la traverse.
@@ -62,6 +62,9 @@ const retournerLaMain = (c: Carryable, face: PortalFace): void => {
  * cette classe doit pouvoir tourner dans Node pour un serveur autoritaire, avec
  * les clients qui prédisent localement et se réconcilient.
  */
+/** Boîte de travail pour la sortie des pièces par les portes. */
+const seuilScratch: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+
 export class Simulation {
   readonly world: World;
   readonly faces: PortalFace[];
@@ -433,6 +436,18 @@ export class Simulation {
         this.teleport(face, newEye, nextLevel);
         events.traversed = { pairId: face.pairId, from: face.kind, newLevel: nextLevel };
       }
+    } else {
+      // ON PASSE AU-DESSUS D'UNE PORTE TROP BASSE, et il faut le dire aussi.
+      // La chatière du blanchiment fait 1,20 : l'œil d'un homme passe
+      // au-dessus de son rectangle, aucune face n'est franchie, et c'est le
+      // mur qui l'arrête sans un mot. Le joueur voyait une ouverture et un
+      // mur, jamais la phrase qui les relie. Si l'œil franchit le plan dans
+      // la largeur de la porte mais au-dessus d'elle, la porte a refusé —
+      // on ne déplace personne, le mur s'en charge.
+      const dessus = this.findCrossing(prevEye, newEye, 4);
+      if (dessus && !canPass(dessus.face, scale)) {
+        events.refused = { pairId: dessus.face.pairId, face: dessus.face.kind, reason: 'tooBig', versLePetit: false };
+      }
     }
 
     // --- Caisses : suivi du porteur, puis chute des autres ----------------------
@@ -621,6 +636,7 @@ export class Simulation {
         return;
       }
       held.held = false;
+      held.lancee = false;
       held.velocity.y = 0;
       held.releasedAt = this.eyePosition();
       events.carry = { id: held.id, taken: false };
@@ -663,6 +679,7 @@ export class Simulation {
     }
 
     target.held = true;
+    target.lancee = false;
     events.carry = { id: target.id, taken: true };
   }
 
@@ -701,8 +718,15 @@ export class Simulation {
 
       const face = crossing.face;
       const fits = c.size <= face.height * 0.96 && c.size <= face.width * 0.9;
+      // UNE PORTE SCELLÉE FAIT MUR AUX PIÈCES COMME AU JOUEUR. Elle ne le
+      // faisait qu'au joueur : une graine lancée — ou simplement posée — vers
+      // la sortie scellée du grain passait de l'autre côté, dans une salle où
+      // l'on ne pouvait pas encore aller, et le mouvement tout entier était
+      // mort. Trouvé par la relecture, dans la salle qui suit précisément
+      // celle où l'on apprend à lancer sa pièce à travers une porte.
+      const scellee = this.portesFermees.has(face.pairId) || estScelle(face, this.conditionsRemplies);
 
-      if (!fits) {
+      if (!fits || scellee) {
         c.position.x = from.x;
         c.position.y = from.y - c.size * 0.5;
         c.position.z = from.z;
@@ -725,26 +749,33 @@ export class Simulation {
       // portée. Rien ne justifierait qu'un objet jeté échappe à la géométrie.
       retournerLaMain(c, face);
       c.position.x = newCenter.x;
-      // ═══════════════════════════════════════════════════════════════════
-      // ON NE RESSORT JAMAIS SOUS LE SEUIL DE LA FACE JUMELLE.
-      //
-      // Une face est plantée cinq centimètres au-dessus de son sol — deux
-      // plans confondus grésillent. Une pièce qui GLISSE au sol à travers une
-      // petite face a donc son centre à « taille/2 − 0,05 » au-dessus du
-      // seuil ; multiplié par quatre, cet écart met le bas de la pièce quinze
-      // centimètres DANS le plancher de l'autre côté, quelle que soit sa
-      // taille. La dépénétration par axe faisait le reste : au premier pas
-      // horizontal, elle résolvait le chevauchement avec la DALLE le long de
-      // cet axe et catapultait la pièce au bord du monde, d'où elle
-      // retraversait la porte à l'envers. Trouvé par le pilote du blanchiment,
-      // qui voyait sa vrille ressortir de la bonne taille et de la même main,
-      // trente mètres plus loin.
-      //
-      // Le joueur subit le même écart et son corps le rattrape ; une pièce
-      // n'a pas de corps. On la pose donc au ras du seuil, jamais dessous.
-      // ═══════════════════════════════════════════════════════════════════
-      c.position.y = Math.max(newCenter.y - c.size * 0.5, face.twin.position.y - 0.05);
       c.position.z = newCenter.z;
+      // ═══════════════════════════════════════════════════════════════════
+      // ON NE RESSORT JAMAIS DANS LE PLANCHER DE L'AUTRE CÔTÉ.
+      //
+      // Une face est plantée quelques centimètres au-dessus de son sol — deux
+      // plans confondus grésillent. Une pièce qui GLISSE au sol à travers une
+      // petite face a donc son centre un peu au-dessus du seuil ; multiplié
+      // par quatre, cet écart met le bas de la pièce dans le plancher de
+      // l'autre côté. La dépénétration par axe faisait le reste : au premier
+      // pas horizontal, elle résolvait le chevauchement avec la DALLE le long
+      // de cet axe et catapultait la pièce au bord du monde, d'où elle
+      // retraversait la porte à l'envers. Trouvé par le pilote du
+      // blanchiment, qui voyait sa vrille ressortir de la bonne taille et de
+      // la même main, trente mètres plus loin.
+      //
+      // On bornait au « seuil de la jumelle moins cinq centimètres », et
+      // c'était juste pour les faces plantées à cinq centimètres — pas pour
+      // celles de la rive (un), du lavoir (six millimètres) ni de l'atelier
+      // (SOUS son sol). La relecture a revu la catapulte sur la rive. La
+      // borne est donc maintenant la vraie : le dessus du plancher que la
+      // pièce chevauche, quel que soit l'endroit où la face a été plantée.
+      // Le joueur subit le même écart et son corps le rattrape ; une pièce
+      // n'a pas de corps, alors on la pose au ras du sol, jamais dedans.
+      // ═══════════════════════════════════════════════════════════════════
+      c.position.y = newCenter.y - c.size * 0.5;
+      c.position.y = this.world.dessusDuSol(aabbOfCarryable(c, seuilScratch), c.size * 0.5);
+      c.velocity.x = newVel.x;
       c.velocity.x = newVel.x;
       c.velocity.y = newVel.y;
       c.velocity.z = newVel.z;
@@ -790,14 +821,14 @@ export class Simulation {
   }
 
   /** Première face franchie par le segment [from → to], de l'avant vers l'arrière. */
-  private findCrossing(from: Vec3, to: Vec3): { face: PortalFace; t: number } | null {
+  private findCrossing(from: Vec3, to: Vec3, hauteurs = 1): { face: PortalFace; t: number } | null {
     let best: { face: PortalFace; t: number } | null = null;
     for (const face of this.faces) {
       const d0 = signedDistance(face, from);
       const d1 = signedDistance(face, to);
       if (d0 <= 0 || d1 > 0) continue; // pas de franchissement avant → arrière
       const t = d0 / (d0 - d1);
-      if (!withinFaceRect(face, from, to, t)) continue;
+      if (!withinFaceRect(face, from, to, t, hauteurs)) continue;
       if (!best || t < best.t) best = { face, t };
     }
     return best;

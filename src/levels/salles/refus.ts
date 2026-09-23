@@ -86,8 +86,15 @@ const X1 = 30;
 const Z0 = 1670;
 const Z1 = 1730;
 const MUR = 12;
-/** Le ciel de verre. Au-dessus de la tête d'un ×4 qui saute (12,38). */
-const CIEL = 13;
+/**
+ * Le ciel de verre. Il était à treize mètres, « au-dessus de la tête d'un ×4
+ * qui saute (12,38) » — et sous la pièce qu'il TIENT : un géant qui lève les
+ * yeux porte sa vrille à plus de quatorze mètres, déjà de l'autre côté du
+ * verre, et la lançait à soixante-dix mètres de haut, hors du monde. Dix-huit
+ * : au-dessus du plus haut point où une main de géant puisse tenir quoi que
+ * ce soit ici (16,2 pour la vrille), et l'on s'y cogne toujours sans le voir.
+ */
+const CIEL = 18;
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -195,8 +202,9 @@ const decor = (): BoxDef[] => [
   // compare est ici et là-bas, et en regardant par la petite face on voit les
   // grandes d'en face, retournées.
   //
-  // Elles sont posées QUATRE centimètres devant le mur, jamais dessus : une
-  // face confondue avec celle du mur grésillerait.
+  // Elles sont posées à quelques centimètres devant le mur — quatre pour les
+  // petites, deux pour les grandes, dont le panneau est plus épais — jamais
+  // dessus : une face confondue avec celle du mur grésillerait.
   ...mainDEncre('refus', X1 - 0.05, 0.125, PETITE.z - 1.6, true, 0.25, -1),
   ...mainDEncre('refus', X1 - 0.05, 0.125, PETITE.z + 1.6, true, 0.25, -1),
   ...mainDEncre('refus', X0 + 0.05, 0.5, GRANDE.z - 6.4, true, 1, 1),
@@ -306,7 +314,10 @@ export const REFUS: SalleModule = {
    * `echelle` EST UN PALIER : −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16.
    */
   entree: { position: [-22, 0.05, 1724], echelle: 0 },
-  sortie: { position: [14, 0.05, 1726], echelle: 1 },
+  // La porte est dans le mur nord : on la franchit en marchant vers le nord.
+  // Sans ce mot, l'assemblage la plantait face au nord et l'on ne pouvait
+  // la passer qu'en se glissant entre elle et le mur, puis en revenant.
+  sortie: { position: [14, 0.05, 1726], echelle: 1, lacet: 0 },
 };
 
 /** Les cotes de la vrille, pour les vérifications. */

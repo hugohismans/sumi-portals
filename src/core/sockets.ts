@@ -260,6 +260,9 @@ export class Sockets {
         // l'énigme résolue par un lancer, sans qu'on ait jamais rien porté.
         // Poser une pièce est une question ; la lancer n'en est pas une.
         if (!c.grounded || Math.hypot(c.velocity.x, c.velocity.z) > 1) continue;
+        // Et une pièce LANCÉE n'en est pas une non plus, même arrêtée : elle
+        // attend qu'on la reprenne et qu'on la pose. Voir `Carryable.lancee`.
+        if (c.lancee) continue;
         if (!this.fits(socket, c)) continue;
 
         const dx = c.position.x - socket.position.x;

@@ -259,12 +259,17 @@ export class Gouttes {
     const g = this.gouttes[i];
     g.x = alea(this.min.x, this.max.x);
     g.z = alea(this.min.z, this.max.z);
-    // À la première image, on étale les gouttes sur toute la hauteur : sinon
-    // l'averse commence par un rideau parfaitement aligné, ce qui se voit.
-    g.y = premiere ? alea(this.sol, this.max.y) : this.max.y;
+    g.y = this.max.y;
     g.v = 0;
     g.vive = true;
     this.viser(g);
+    // À la première image, on étale les gouttes sur toute la hauteur : sinon
+    // l'averse commence par un rideau parfaitement aligné, ce qui se voit.
+    // Mais entre le ciel et CE QU'ELLES VONT TOUCHER — visées d'abord depuis
+    // le haut, puis reculées dans leur propre chute. Tirées n'importe où en
+    // hauteur, la moitié de celles sous l'auvent naissaient sous le toit et
+    // le pavé se mouillait à l'abri pendant une demi-seconde.
+    if (premiere) g.y = alea(g.sol, this.max.y);
   }
 
   /**

@@ -155,7 +155,7 @@ export const signedDistance = (face: PortalFace, p: Vec3): number => {
  * `t` est le paramètre d'interpolation entre `from` et `to` au moment du
  * franchissement du plan.
  */
-export const withinFaceRect = (face: PortalFace, from: Vec3, to: Vec3, t: number): boolean => {
+export const withinFaceRect = (face: PortalFace, from: Vec3, to: Vec3, t: number, hauteurs = 1): boolean => {
   const hit = vec3(
     from.x + (to.x - from.x) * t,
     from.y + (to.y - from.y) * t,
@@ -163,10 +163,12 @@ export const withinFaceRect = (face: PortalFace, from: Vec3, to: Vec3, t: number
   );
   const local = rotateY(sub(hit, face.position), -face.yaw);
   // Un chouïa de marge : mieux vaut téléporter que laisser passer au travers.
+  // `hauteurs` élargit le rectangle vers le haut — pour savoir si l'on passe
+  // AU-DESSUS d'une porte, et le dire, sans jamais la franchir.
   return (
     Math.abs(local.x) <= face.width * 0.5 + 0.02 &&
     local.y >= -0.05 &&
-    local.y <= face.height
+    local.y <= face.height * hauteurs
   );
 };
 

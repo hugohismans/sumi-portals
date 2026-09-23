@@ -202,9 +202,37 @@ export interface SalleModule {
    * versions qu'il a de lecteurs.
    * ═══════════════════════════════════════════════════════════════════════
    */
-  entree: { position: [number, number, number]; echelle: number };
-  sortie: { position: [number, number, number]; echelle: number };
+  entree: { position: [number, number, number]; echelle: number; lacet?: number };
+  sortie: { position: [number, number, number]; echelle: number; lacet?: number };
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `lacet` DIT DANS QUEL SENS ON FRANCHIT LA PORTE.
+ *
+ * C'est le cap du joueur au moment où il la passe — la convention du reste du
+ * jeu : 0 = vers +z (le nord), π/2 = vers +x (l'est), π = vers −z (le sud),
+ * −π/2 = vers −x (l'ouest). Pour la sortie, c'est le sens dans lequel on
+ * QUITTE la salle ; pour l'entrée, le sens dans lequel on y ARRIVE, et donc
+ * celui qu'on regarde au premier pas.
+ *
+ * Il manquait, et l'assemblage plantait toutes les portes face au nord : on
+ * les franchissait en marchant vers le sud, et seulement ainsi. Une salle
+ * dont la sortie est dans le mur nord ne se quittait qu'en se glissant dans
+ * la bande entre la porte et le mur, puis en revenant sur ses pas ; une
+ * salle qu'on aborde par le mur sud accueillait le joueur face à ce mur, la
+ * pièce dans le dos. Trois sorties et quatre entrées étaient dans ce cas, et
+ * aucune vérification ne franchissait un raccord : chaque salle passait ses
+ * épreuves, l'assemblage aussi, et c'est le PASSAGE qui manquait.
+ *
+ * Par défaut, π — vers le sud — parce que c'est ce que faisaient toutes les
+ * portes jusqu'ici, et que la moitié d'entre elles avaient raison.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const LACET_PAR_DEFAUT = Math.PI;
+
+/** Le cap opposé, ramené dans (−π, π] — et π donne exactement 0. */
+export const opposer = (lacet: number): number => (lacet > 0 ? lacet - Math.PI : lacet + Math.PI);
 
 /** Vérifie qu'une salle respecte sa parcelle. Appelé par npm run check. */
 export const verifierParcelleSalle = (m: SalleModule): string[] => {

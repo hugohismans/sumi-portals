@@ -1,6 +1,6 @@
 import { scaleOfLevel } from '../core/constants.js';
 import type { LevelDef, PortalPairDef } from '../core/types.js';
-import type { SalleModule } from './salles/contrat.js';
+import { LACET_PAR_DEFAUT, opposer, type SalleModule } from './salles/contrat.js';
 import { LAVOIR } from './salles/lavoir.js';
 import { CONDUIT } from './salles/conduit.js';
 import { CREUX } from './salles/creux.js';
@@ -158,6 +158,8 @@ const raccorder = (r: Raccord): PortalPairDef => {
   const b = SALLES[r.vers];
   const [ax, ay, az] = r.depart ?? a.sortie.position;
   const [bx, by, bz] = b.entree.position;
+  const lacetDepart = opposer(a.sortie.lacet ?? LACET_PAR_DEFAUT);
+  const lacetArrivee = b.entree.lacet ?? LACET_PAR_DEFAUT;
 
   // On rapetisse en franchissant une GRANDE face ; on grandit en franchissant
   // une petite. La face plantée dans la salle de départ suit donc le signe.
@@ -174,12 +176,16 @@ const raccorder = (r: Raccord): PortalPairDef => {
     // c'est la faute la plus facile à commettre en assemblant.
     smallHeight: 2.8 * Math.pow(4, Math.min(a.sortie.echelle, b.entree.echelle)),
     smallWidth: 1.9 * Math.pow(4, Math.min(a.sortie.echelle, b.entree.echelle)),
+    // Le sens de chaque porte est celui que déclare sa salle (voir `lacet`
+    // dans le contrat) : la face de départ REGARDE le joueur qui vient, la
+    // face d'arrivée lui tourne le dos — il en ressort en marchant droit dans
+    // la salle, dans le cap qu'elle a choisi pour lui.
     big: departEstGrand
-      ? { position: [ax, ay, az], yaw: 0 }
-      : { position: [bx, by, bz], yaw: Math.PI },
+      ? { position: [ax, ay, az], yaw: lacetDepart }
+      : { position: [bx, by, bz], yaw: lacetArrivee },
     small: departEstGrand
-      ? { position: [bx, by, bz], yaw: Math.PI }
-      : { position: [ax, ay, az], yaw: 0 },
+      ? { position: [bx, by, bz], yaw: lacetArrivee }
+      : { position: [ax, ay, az], yaw: lacetDepart },
   };
 };
 

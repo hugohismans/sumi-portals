@@ -1288,8 +1288,10 @@ export const PLUIE: SalleModule = {
   // PALIER, et non multiplicateur : −1 vaut ×1/4. Le contrat était muet
   // là-dessus et disait donc autant de choses qu'il avait de lecteurs ; il ne
   // l'est plus.
-  entree: { position: [PORTE_O, solDalle(0, 3) + 0.035, AXE_Z], echelle: -1 },
-  sortie: { position: [PORTE_E, solDalle(NX - 1, 3) + 0.03, AXE_Z], echelle: -1 },
+  // La porte ouest : on arrive en marchant vers l'est, la cour devant soi, et
+  // non face au piédroit à un mètre. La porte est : on repart vers l'est.
+  entree: { position: [PORTE_O, solDalle(0, 3) + 0.035, AXE_Z], echelle: -1, lacet: Math.PI / 2 },
+  sortie: { position: [PORTE_E, solDalle(NX - 1, 3) + 0.03, AXE_Z], echelle: -1, lacet: Math.PI / 2 },
 };
 
 /**

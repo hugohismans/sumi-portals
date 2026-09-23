@@ -102,7 +102,8 @@ const X1 = 230;
 const Z0 = 1670;
 const Z1 = 1730;
 const MUR = 12;
-const CIEL = 13;
+/** Dix-huit, comme au refus : au-dessus de la pièce qu'un géant tient en levant les yeux. */
+const CIEL = 18;
 
 /**
  * LA VRILLE, la même qu'à la salle d'avant — importée, jamais recopiée.
@@ -187,8 +188,8 @@ const decor = (): BoxDef[] => [
   //
   // De part et d'autre de la chatière, deux mains de trente-six centimètres ;
   // de part et d'autre de la grande face, deux mains quatre fois plus grandes.
-  // Toutes de la MÊME main, l'encre tournée vers l'est d'où l'on vient. Quatre
-  // centimètres devant le mur, jamais dessus.
+  // Toutes de la MÊME main, l'encre tournée vers l'est d'où l'on vient. À un
+  // ou deux centimètres devant le mur, jamais dessus.
   ...mainDEncre('blanchiment', X0 + 0.05, 0.1, PETITE.z - 1.05, true, 0.3, 1),
   ...mainDEncre('blanchiment', X0 + 0.05, 0.1, PETITE.z + 1.05, true, 0.3, 1),
   ...mainDEncre('blanchiment', X0 + 0.05, 0.4, GRANDE_FACE.z - 4.2, true, 1.2, 1),
@@ -303,8 +304,10 @@ export const BLANCHIMENT: SalleModule = {
    *
    * `echelle` EST UN PALIER : −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16.
    */
-  entree: { position: [176, 0.05, 1676], echelle: 0 },
-  sortie: { position: [206, 0.05, 1726], echelle: 0 },
+  // On arrive par le mur sud, donc face au nord, la cour devant soi — et non
+  // face au mur, la cour dans le dos. On repart par le mur nord, vers le nord.
+  entree: { position: [176, 0.05, 1676], echelle: 0, lacet: 0 },
+  sortie: { position: [206, 0.05, 1726], echelle: 0, lacet: 0 },
 };
 
 /** La taille attendue par le creux, pour les vérifications. */

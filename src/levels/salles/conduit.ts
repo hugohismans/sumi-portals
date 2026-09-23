@@ -718,7 +718,8 @@ export const CONDUIT: SalleModule = {
   // La sortie est au bout du tunnel : c'est le seul endroit de la salle où la
   // taille du joueur soit connue d'avance, et l'assemblage peut compter dessus.
   entree: { position: [178, Y_LEVRE, AXE], echelle: -1 },
-  sortie: { position: [TUNNEL_BOUT - 1, Y_TUNNEL, AXE], echelle: 0 },
+  // Le tunnel court vers l'est : on le quitte en marchant vers l'est.
+  sortie: { position: [TUNNEL_BOUT - 1, Y_TUNNEL, AXE], echelle: 0, lacet: Math.PI / 2 },
 };
 
 /**

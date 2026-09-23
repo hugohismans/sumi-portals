@@ -87,6 +87,18 @@ export interface Carryable {
   /** Images passées au sol depuis le dernier appui noté. */
   depuisAppui: number;
   /**
+   * LANCÉE, ET PAS ENCORE REPRISE EN MAIN.
+   *
+   * Un creux ne prend qu'une pièce POSÉE. Il attendait déjà qu'elle se soit
+   * arrêtée, mais une vrille lancée à travers un miroir et retombée à sept
+   * mètres du creux s'y logeait dès qu'elle avait fini de rouler — l'énigme
+   * résolue sans que le joueur ait jamais porté ce qu'il devait porter, et
+   * à une taille qui n'était pas la sienne. Poser est une question ; lancer
+   * n'en est pas une, même quand la pièce finit au bon endroit. Le drapeau
+   * tombe quand on la reprend.
+   */
+  lancee: boolean;
+  /**
    * Logée dans son réceptacle, donc figée pour de bon.
    *
    * On ne la reprend plus : un progrès qu'on peut défaire par accident en
@@ -193,6 +205,7 @@ export class Carryables {
         releasedAt: null,
         appui: null,
         depuisAppui: 0,
+        lancee: false,
       });
     }
   }
@@ -358,6 +371,12 @@ export class Carryables {
     // éviter le décor. On se rapproche progressivement pour pouvoir caler la
     // caisse contre un mur sans l'y encastrer.
     const steps = 8;
+    // ET PAS À TRAVERS UN MUR. Un géant tient sa pièce quatre mètres et demi
+    // devant lui : face à un mur de deux mètres d'épaisseur, le premier point
+    // libre était DE L'AUTRE CÔTÉ, et la pièce y tombait hors de la cour.
+    // Le segment de l'œil au centre de la pièce doit être de la pierre en
+    // moins — la règle même qui interdit déjà de ramasser à travers les murs.
+    const oeil = vec3(playerPos.x, playerPos.y + PLAYER_HEIGHT * EYE_FRACTION * playerScale, playerPos.z);
     for (let step = 0; step <= steps; step++) {
       const closeness = 1 - (1 - DROP_CLOSENESS_FLOOR) * (step / steps);
       const p = holdPoint(c, playerPos, yaw, pitch, playerScale, closeness);
@@ -366,7 +385,9 @@ export class Carryables {
       c.position.z = p.z;
 
       aabbOfCarryable(c, scratch);
-      if (world.queryStatic(scratch, hits).length === 0) return true;
+      if (world.queryStatic(scratch, hits).length !== 0) continue;
+      if (!world.segmentLibre(oeil, vec3(p.x, p.y + c.size * 0.5, p.z))) continue;
+      return true;
     }
     return false;
   }
@@ -376,6 +397,7 @@ export class Carryables {
     const look = lookDirection(yaw, pitch);
     const speed = THROW_SPEED * PLAYER_HEIGHT * playerScale;
     c.held = false;
+    c.lancee = true;
     c.velocity.x = look.x * speed;
     // Un peu de hauteur : sans ça, viser droit devant fait raser le sol.
     c.velocity.y = look.y * speed + speed * 0.18;

@@ -984,7 +984,8 @@ export const BOL: SalleModule = {
   // et c'est le seul endroit du module qui n'ouvre sur rien. Le mouvement ne
   // finit pas quand on franchit quelque chose, il finit quand le bleu s'éveille
   // — après quoi il n'y a plus qu'à remonter, et c'est la vraie récompense.
-  entree: { position: [-340.6, 0.03, P_Z0], echelle: 0 },
+  // Par le mur sud : on arrive en marchant vers le nord, la salle devant soi.
+  entree: { position: [-340.6, 0.03, P_Z0], echelle: 0, lacet: 0 },
   sortie: { position: [V_X, V_EAU, V_Z], echelle: -1 },
 };
 
