@@ -253,6 +253,19 @@ class PortalFaceView {
  * exactement celui qu'on subira en traversant : ce qu'on voit et ce qui nous
  * arrive sont donc gouvernés par la même constante.
  */
+/**
+ * Au-delà, une porte est de la brume : le brouillard le plus long du jeu
+ * porte à trois cents mètres.
+ */
+const PORTEE_VUE = 320;
+/**
+ * En dessous de cet angle apparent (rayon sur distance), une porte fait
+ * quelques pixels : on n'y rendrait rien de lisible. Le second niveau se
+ * contente de moins encore — c'est une porte dans une porte.
+ */
+const ANGLE_MIN_1 = 0.004;
+const ANGLE_MIN_2 = 0.012;
+
 export class PortalRenderer {
   readonly views: PortalFaceView[] = [];
   readonly group = new THREE.Group();
@@ -363,6 +376,26 @@ export class PortalRenderer {
    * rouge plat au beau milieu de l'image. Avec deux, il montre ce qu'il y a
    * derrière lui, et l'aplat sourd ne survient qu'au troisième emboîtement —
    * en pratique invisible.
+   *
+   * ═══════════════════════════════════════════════════════════════════════
+   * LE SECOND NIVEAU EST RENDU POUR CHAQUE PORTE VUE À TRAVERS, AVEC SA
+   * PROPRE CAMÉRA — et c'est une correction.
+   *
+   * Il l'était avec une caméra passée deux fois par la MÊME porte : juste
+   * quand une porte se voit elle-même (le torii par la porte indigo, dans le
+   * hall), faux pour toute autre porte aperçue à travers — elle recevait une
+   * image prise d'un point de vue sans rapport, souvent hors du monde. Le
+   * joueur voyait, à travers une porte, les portes de la pièce d'en face en
+   * noir ou en aplat de brume, qui ne « s'allumaient » qu'une fois la porte
+   * franchie. Signalé en jouant : « une sensation de saccade ».
+   *
+   * Maintenant, pour chaque porte visible depuis le joueur, on cherche les
+   * portes visibles DEPUIS SA CAMÉRA VIRTUELLE, on rend chacune avec la
+   * caméra passée par la première porte PUIS par elle, et c'est cette image
+   * qu'on plaque dans la vue. Et l'on ne rend que ce qui est visible : une
+   * face derrière soi, ou hors du champ, ne coûte rien — la montée compte
+   * vingt faces, et l'on en rendait quarante fois la scène par image.
+   * ═══════════════════════════════════════════════════════════════════════
    */
   renderViews(
     renderer: THREE.WebGLRenderer,
@@ -372,129 +405,166 @@ export class PortalRenderer {
   ): void {
     const previousTarget = renderer.getRenderTarget();
     this.ambience = ambience;
+    this.rendus = 0;
 
-    // Passe profonde : les portails vus dans les portails sont des aplats.
-    this.renderPass(renderer, scene, camera, 'deep');
-    // Passe visible : ils montrent maintenant le résultat de la passe profonde.
-    this.renderPass(renderer, scene, camera, 'final');
+    camera.updateMatrixWorld(true);
+    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+
+    for (const view of this.views) {
+      if (!this.visibleDepuis(view, camera, ANGLE_MIN_1)) continue;
+
+      // Niveau 1 : la caméra du joueur passée une fois par le portail.
+      this.computeVirtual(view, camera, this.camLevel1);
+      this.camLevel1.matrixWorldInverse.copy(this.camLevel1.matrixWorld).invert();
+      // Ce que cette vue tranche : tout ce qui est devant la face jumelle.
+      this.setupClipPlane(view);
+
+      // Niveau 2 : chaque porte visible depuis là, rendue avec la caméra
+      // passée par CETTE porte puis par elle. La jumelle est exclue : on la
+      // regarde par l'arrière, et sa surface est masquée dans cette vue. La
+      // porte elle-même ne l'est pas — dans le hall, les deux faces se font
+      // face et le torii se voit à travers la porte indigo.
+      const profondes: PortalFaceView[] = [];
+      for (const other of this.views) {
+        if (other === view.twin) continue;
+        if (this.visibleDepuis(other, this.camLevel1, ANGLE_MIN_2, this.clipPlane)) profondes.push(other);
+      }
+      for (const other of profondes) {
+        this.computeVirtual(other, this.camLevel1, this.camLevel2);
+        // Au troisième emboîtement, un aplat de brume : voir `fallback`.
+        for (const v of this.views) v.surface.material = v.fallback;
+        this.rendre(renderer, scene, other, this.camLevel2, other.rtDeep);
+      }
+
+      for (const v of this.views) {
+        v.surface.material = profondes.includes(v) ? v.materialDeep : v.fallback;
+      }
+      this.rendre(renderer, scene, view, this.camLevel1, view.rt);
+    }
 
     // On rétablit les surfaces d'affichage pour le rendu de la scène principale.
     for (const view of this.views) view.surface.material = view.material;
     renderer.setRenderTarget(previousTarget);
   }
 
-  private renderPass(
+  /** Scènes rendues dans les portails à la dernière image. Pour mesurer. */
+  rendus = 0;
+
+  private readonly frustum = new THREE.Frustum();
+  private readonly projScreen = new THREE.Matrix4();
+  private readonly sphere = new THREE.Sphere();
+  private readonly tmpVec2 = new THREE.Vector3();
+  private readonly tmpNormal2 = new THREE.Vector3();
+
+  /**
+   * Une face est-elle visible depuis cette caméra : devant elle (on ne voit
+   * une porte que par sa face avant) et dans son champ. La sphère qui
+   * enveloppe le rectangle suffit — elle contient tout ce qui pourrait se
+   * voir, et une porte rendue pour rien coûte moins qu'une porte manquée.
+   */
+  private visibleDepuis(
+    view: PortalFaceView,
+    cam: THREE.Camera,
+    angleMin: number,
+    coupe?: THREE.Plane,
+  ): boolean {
+    view.group.getWorldDirection(this.tmpNormal2);
+    this.tmpVec2.setFromMatrixPosition(cam.matrixWorld).sub(view.group.position);
+    if (this.tmpVec2.dot(this.tmpNormal2) <= 0) return false;
+
+    const w = view.surface.scale.x;
+    const h = view.surface.scale.y;
+    this.sphere.center.set(0, h * 0.5, 0);
+    view.group.localToWorld(this.sphere.center);
+    this.sphere.radius = Math.hypot(w, h) * 0.5;
+
+    // Trop loin pour être autre chose que de la brume, ou trop petite à
+    // l'écran pour qu'on y distingue quoi que ce soit : on ne rend pas.
+    const d = this.sphere.center.distanceTo(this.tmpVec2.setFromMatrixPosition(cam.matrixWorld));
+    if (d > PORTEE_VUE || this.sphere.radius < d * angleMin) return false;
+
+    // Entièrement du côté tranché par le plan de coupe : invisible.
+    if (coupe && coupe.distanceToPoint(this.sphere.center) < -this.sphere.radius) return false;
+
+    this.projScreen.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.projScreen);
+    return this.frustum.intersectsSphere(this.sphere);
+  }
+
+  /** Rend ce qu'on voit par `view` avec la caméra donnée, dans la cible. */
+  private rendre(
     renderer: THREE.WebGLRenderer,
     scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera,
-    level: 'deep' | 'final',
+    view: PortalFaceView,
+    renderCamera: THREE.PerspectiveCamera,
+    target: THREE.WebGLRenderTarget,
   ): void {
-    for (const view of this.views) {
-      for (const other of this.views) {
-        other.surface.material = level === 'deep' ? other.fallback : other.materialDeep;
-      }
-      // On masque la SURFACE de la face jumelle, mais surtout PAS son cadre.
-      //
-      // La caméra virtuelle se tient juste derrière cette face : son cadre doit
-      // donc encadrer la vue, exactement comme une fenêtre vue de tout près.
-      // C'est ce qui manquait au moment de traverser — on voyait l'épaisseur du
-      // torii rouge des deux côtés, alors que de l'autre côté c'est celle de la
-      // porte indigo qu'on devrait voir. C'était le dernier détail qui trahissait
-      // le passage.
-      //
-      // Sa surface, elle, n'a rien à faire là : la caméra la regarde par
-      // l'arrière, et le seul portail encore visible dans la vue d'une face
-      // reste cette face elle-même — ce qui rend la chaîne de caméras
-      // ci-dessous exactement juste.
-      view.twin.surface.visible = false;
+    // On masque la SURFACE de la face jumelle, mais surtout PAS son cadre.
+    //
+    // La caméra virtuelle se tient juste derrière cette face : son cadre doit
+    // donc encadrer la vue, exactement comme une fenêtre vue de tout près.
+    // C'est ce qui manquait au moment de traverser — on voyait l'épaisseur du
+    // torii rouge des deux côtés, alors que de l'autre côté c'est celle de la
+    // porte indigo qu'on devrait voir. C'était le dernier détail qui trahissait
+    // le passage.
+    //
+    // Sa surface, elle, n'a rien à faire là : la caméra la regarde par
+    // l'arrière.
+    view.twin.surface.visible = false;
 
-      // ─── ET SON CADRE AVEC, SINON IL BARRE L'OUVERTURE ─────────────────
-      //
-      // Le cadre de la face jumelle est à cheval sur le plan de coupe : la
-      // moitié qui reste du bon côté survit au découpage et se dessine EN
-      // TRAVERS de la vue, comme une poutre noire posée sous le linteau.
-      //
-      // Signalé en jouant : « le cadre bleu est mal mis, il est en
-      // superposition avec autre chose ». Ce n'était pas un cadre mal placé,
-      // c'était le cadre d'EN FACE, vu de l'intérieur et tranché net.
-      //
-      // La surface était déjà masquée pour la même raison ; il manquait
-      // simplement de faire la moitié du geste jusqu'au bout.
-      view.twin.setCadreVisible(false);
+    // ─── ET SON CADRE AVEC, SINON IL BARRE L'OUVERTURE ─────────────────
+    //
+    // Le cadre de la face jumelle est à cheval sur le plan de coupe : la
+    // moitié qui reste du bon côté survit au découpage et se dessine EN
+    // TRAVERS de la vue, comme une poutre noire posée sous le linteau.
+    //
+    // Signalé en jouant : « le cadre bleu est mal mis, il est en
+    // superposition avec autre chose ». Ce n'était pas un cadre mal placé,
+    // c'était le cadre d'EN FACE, vu de l'intérieur et tranché net.
+    view.twin.setCadreVisible(false);
 
-      // Niveau 1 : la caméra du joueur passée une fois par le portail.
-      this.computeVirtual(view, camera, this.camLevel1);
-      let renderCamera = this.camLevel1;
+    this.setupClipPlane(view);
+    renderer.clippingPlanes = [this.clipPlane];
 
-      if (level === 'deep') {
-        // Niveau 2 : on repasse par le MÊME portail. C'est ce second passage
-        // qui manquait — sans lui, les deux passes partageaient une seule
-        // caméra et le portail finissait par se montrer lui-même, d'où l'aplat
-        // en plein milieu de l'image.
-        this.computeVirtual(view, this.camLevel1, this.camLevel2);
-        renderCamera = this.camLevel2;
-      }
+    // L'ambiance de la région d'ARRIVÉE, pas celle où l'on se tient : c'est
+    // ce qui fait qu'un portail donne à voir un autre ciel avant qu'on y
+    // entre, et c'est là tout l'effet.
+    this.ambience?.(renderCamera.position);
 
-      this.setupClipPlane(view);
-      renderer.clippingPlanes = [this.clipPlane];
+    // L'aplat de dernier recours prend la couleur du brouillard de LA RÉGION
+    // QU'ON REGARDE — donc juste après l'appel ci-dessus, jamais avant. Un
+    // portail qui donne sur un autre ciel doit s'éteindre dans CE ciel-là.
+    const brume = (scene.fog as THREE.Fog | null)?.color;
+    if (brume) for (const v of this.views) v.fallback.color.copy(brume);
 
-      // L'ambiance de la région d'ARRIVÉE, pas celle où l'on se tient : c'est
-      // ce qui fait qu'un portail donne à voir un autre ciel avant qu'on y
-      // entre, et c'est là tout l'effet.
-      this.ambience?.(renderCamera.position);
-
-      // L'aplat de dernier recours prend la couleur du brouillard de LA RÉGION
-      // QU'ON REGARDE — donc juste après l'appel ci-dessus, jamais avant. Un
-      // portail qui donne sur un autre ciel doit s'éteindre dans CE ciel-là.
-      const brume = (scene.fog as THREE.Fog | null)?.color;
-      if (brume) for (const v of this.views) v.fallback.color.copy(brume);
-
-      // ═══════════════════════════════════════════════════════════════════
-      // IL N'Y A PLUS DE PIÈGE DU MIROIR, PARCE QU'IL N'Y A PLUS DE MIROIR.
-      //
-      // Ce bloc contenait, tour à tour, un appel direct à `gl.frontFace` qui
-      // n'a jamais rien fait — Three.js le réécrit pour chaque matériau — puis
-      // un retournement de tous les matériaux, qui marchait mais ne traitait
-      // que la moitié du mal.
-      //
-      // La caméra virtuelle d'une porte miroir est désormais DROITIÈRE : voir
-      // `computeVirtual`. Son déterminant est positif, le sens de parcours des
-      // triangles est celui de tout le monde, et il n'y a plus rien à
-      // compenser. Le meilleur correctif est celui qui supprime le problème au
-      // lieu de le rattraper.
-      // ═══════════════════════════════════════════════════════════════════
-      // ═══════════════════════════════════════════════════════════════════
-      // UNE SEULE RÈGLE, ICI COMME POUR LA VUE PRINCIPALE.
-      //
-      // On retourne les matériaux dès que la caméra employée est GAUCHÈRE, et
-      // c'est tout. Une caméra devient gauchère en passant par une réflexion —
-      // donc à travers une porte miroir, ou parce que le joueur en a déjà
-      // franchi un nombre impair.
-      //
-      // Ce bloc a contenu, tour à tour : un appel direct à `gl.frontFace` qui
-      // n'a jamais rien fait (Three.js le réécrit pour chaque matériau), puis un
-      // redressement de la caméra qui supprimait le miroir au lieu de le rendre.
-      // La bonne réponse ne compense rien : elle constate la main de la caméra
-      // et en tire la conséquence.
-      // ═══════════════════════════════════════════════════════════════════
-      const gauchere = renderCamera.matrixWorld.determinant() < 0;
-      const retournes = gauchere ? PortalRenderer.materiauxDe(scene) : [];
-      for (const m of retournes) {
-        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
-      }
-
-      renderer.setRenderTarget(level === 'deep' ? view.rtDeep : view.rt);
-      renderer.clear();
-      renderer.render(scene, renderCamera);
-
-      for (const m of retournes) {
-        m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
-      }
-
-      renderer.clippingPlanes = [];
-      view.twin.surface.visible = true;
-      view.twin.setCadreVisible(true);
+    // ═══════════════════════════════════════════════════════════════════
+    // UNE SEULE RÈGLE, ICI COMME POUR LA VUE PRINCIPALE.
+    //
+    // On retourne les matériaux dès que la caméra employée est GAUCHÈRE, et
+    // c'est tout. Une caméra devient gauchère en passant par une réflexion —
+    // donc à travers une porte miroir, ou parce que le joueur en a déjà
+    // franchi un nombre impair. La caméra virtuelle d'une porte miroir est
+    // construite dans `computeVirtual` ; on constate sa main et l'on en tire
+    // la conséquence, sans rien compenser.
+    // ═══════════════════════════════════════════════════════════════════
+    const gauchere = renderCamera.matrixWorld.determinant() < 0;
+    const retournes = gauchere ? PortalRenderer.materiauxDe(scene) : [];
+    for (const m of retournes) {
+      m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
     }
+
+    renderer.setRenderTarget(target);
+    renderer.clear();
+    renderer.render(scene, renderCamera);
+    this.rendus++;
+
+    for (const m of retournes) {
+      m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
+    }
+
+    renderer.clippingPlanes = [];
+    view.twin.surface.visible = true;
+    view.twin.setCadreVisible(true);
   }
 
   /**
