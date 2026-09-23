@@ -347,7 +347,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [-200, 0.05, 692],
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 0,
   },
   {
@@ -363,7 +363,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [-200, -1.1, 701.5],
     echelle: -1,
     lacet: Math.PI * 0.5,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 1,
   },
   {
@@ -379,7 +379,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [-205, 0.05, 694],
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 3,
   },
   {
@@ -395,7 +395,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [186, 0.4, 1000],
     echelle: 0,
     lacet: Math.PI * 0.5,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 4,
   },
   {
@@ -411,7 +411,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [200, -41.5, 1000],
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 5,
   },
   {
@@ -427,7 +427,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [200, 0.4, 682],
     echelle: 1,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 8,
   },
   {
@@ -443,7 +443,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [-1.9, 0.12, 1298.65],
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 12,
   },
   {
@@ -460,7 +460,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [-340.6, 0.03, 1237],
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 17,
   },
   {
@@ -476,7 +476,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [-267.5, 0.2, 1335],
     echelle: -1,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 19,
   },
   {
@@ -492,7 +492,7 @@ export const REPERES_DESCENTE: Repere[] = [
     position: [-212.5, 0.03, 1000],
     echelle: -1,
     lacet: Math.PI * 0.5,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 24,
   },
   {
@@ -515,7 +515,7 @@ export const REPERES_DESCENTE: Repere[] = [
     ],
     echelle: SALLES_DESCENTE[6].entree.echelle,
     lacet: Math.PI,
-    pigments: [],
+    pigments: ['rouge', 'vert'],
     jalon: 0,
   },
 ];
@@ -757,7 +757,7 @@ export const REPERES_MESURE: Repere[] = [
     position: [RIVE_M.entree.position[0], RIVE_M.entree.position[1] + 0.05, RIVE_M.entree.position[2]],
     echelle: RIVE_M.entree.echelle,
     lacet: 0.35,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 0,
   },
   {
@@ -772,7 +772,7 @@ export const REPERES_MESURE: Repere[] = [
     position: [210, 0.05, 3477],
     echelle: 1,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 2,
   },
   {
@@ -787,7 +787,7 @@ export const REPERES_MESURE: Repere[] = [
     position: [GRAIN_M.entree.position[0], 0.05, GRAIN_M.entree.position[2] - 6.5],
     echelle: 0,
     lacet: Math.PI,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 7,
   },
   {
@@ -803,7 +803,7 @@ export const REPERES_MESURE: Repere[] = [
     position: [GRAIN_M.sortie.position[0], 0.05, GRAIN_M.sortie.position[2] + 17],
     echelle: 0,
     lacet: Math.PI,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 13,
   },
   {
@@ -816,7 +816,7 @@ export const REPERES_MESURE: Repere[] = [
     position: [SEUIL_M.entree.position[0], SEUIL_M.entree.position[1] + 0.05, SEUIL_M.entree.position[2] - 1],
     echelle: SEUIL_M.entree.echelle,
     lacet: Math.PI,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 15,
   },
 ];
@@ -1003,7 +1003,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-taille', 14),
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 0,
   },
   {
@@ -1021,7 +1021,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-taille', 6),
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 0,
   },
   {
@@ -1039,7 +1039,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-main', 10),
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 0,
   },
   {
@@ -1057,7 +1057,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-tout', 4),
     echelle: 0,
     lacet: 0,
-    pigments: [],
+    pigments: ['rouge', 'vert', 'bleu', 'or'],
     jalon: 0,
   },
 ];

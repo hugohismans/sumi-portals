@@ -178,6 +178,23 @@ scene.add(worldView.group);
 // Le monde commence en gris. Chaque pigment rapporté d'ailleurs repeint la part
 // du monde qui l'attendait. On garde la trace d'une partie à l'autre : rendre
 // une couleur est un acquis, pas un état de session.
+//
+// `?couleurs=rouge,vert` POSE cette mémoire avant qu'on la lise : c'est ce qui
+// permet de tester un chapitre seul, avec les couleurs qu'on y aurait en
+// arrivant par le jeu — l'atelier de la descente ne se peint qu'avec le rouge
+// et le vert, celui de la montée demande le bleu. Sans ce mot, un chapitre
+// ouvert directement était infinissable, et rien ne le disait. `couleurs=`
+// (vide) efface. La case écrite est celle du mode en cours, débug ou jeu.
+{
+  const demandees = PARAMS.get('couleurs');
+  if (demandees !== null) {
+    try {
+      localStorage.setItem(clePigments(), JSON.stringify(demandees.split(',').filter(Boolean)));
+    } catch {
+      /* sans mémoire, on jouera gris */
+    }
+  }
+}
 const pigments = new Pigments();
 // ─── ENTRER DANS L'AVENTURE, C'EST REPARTIR DU LAVIS ────────────────────────
 //
@@ -197,7 +214,7 @@ const pigments = new Pigments();
 // Le mode débug garde la sienne : il écrit dans sa propre case (voir
 // `src/render/pigments.ts`) et il en a besoin pour se poser au milieu du
 // voyage.
-if (PARAMS.get('neuf') || (MODE === 'monde' && !PARAMS.get('debug'))) {
+if (PARAMS.get('neuf') || (MODE === 'monde' && !PARAMS.get('debug') && !PARAMS.has('couleurs'))) {
   pigments.effacer();
   // Et l'on oublie aussi les chapitres finis : le monde est le début de
   // l'aventure, pas une salle parmi d'autres. Voir `src/voyage.ts`.

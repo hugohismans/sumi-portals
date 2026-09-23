@@ -156,6 +156,31 @@ Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
     un géant enjambe le torii) ; et le lancer voyage sur le réseau, sans quoi
     le creux se pourvoyait chez le spectateur et pas chez le lanceur.
 
+## Tester un chapitre seul, sans refaire ce qui précède
+
+Chaque chapitre s'ouvre par son adresse. Deux mots utiles :
+
+- **`couleurs=rouge,vert`** pose la mémoire des couleurs avant d'entrer :
+  c'est ce qu'on aurait en arrivant par le jeu, et l'atelier de la descente ne
+  se peint qu'avec le rouge et le vert, celui de la montée demande le bleu.
+  Sans ce mot, un chapitre ouvert directement est infinissable. `couleurs=`
+  (vide) efface.
+- **`debug=1&repere=N`** pose le joueur au moment N du chapitre, à la bonne
+  taille, avec les bonnes couleurs (les repères les sèment eux-mêmes), et la
+  liste des moments s'affiche (`H` la replie). Le débug a sa propre mémoire :
+  il n'abîme pas la partie.
+
+```
+hall         ./
+monde        ?niveau=monde
+descente     ?niveau=descente&couleurs=rouge,vert
+montée       ?niveau=montee&couleurs=rouge,vert,bleu
+mesure       ?niveau=mesure&couleurs=rouge,vert,bleu,or
+formes       ?niveau=formes&couleurs=rouge,vert,bleu,or
+banc         ?niveau=banc
+rêve         ?niveau=reve&graine=7
+```
+
 ## Par où commencer demain matin, dans l'ordre du risque
 
 Tout ce qui suit est PROUVÉ en simulation et n'a été vu qu'en captures
