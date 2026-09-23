@@ -22,6 +22,8 @@ import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '..
 import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
 import { MESURE, RACCORDS_MESURE, SALLES_MESURE } from '../levels/mesure.js';
 import { LACET_PAR_DEFAUT } from '../levels/salles/contrat.js';
+import { piloterDescente } from './__pilote_descente.js';
+import { piloterMontee } from './__pilote_montee.js';
 import { REFUS_GRANDE, REFUS_PETITE } from '../levels/salles/refus.js';
 import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
 
@@ -3887,6 +3889,17 @@ console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule pa
   const fin = walkTo(M, [350, 0, 3484], 60 * 40, { stopOnEvent: true });
   check('le seuil : au bout de la dalle, le mouvement s’achève', fin.reachedGoal === true, pos(M));
 }
+
+// =============================================================================
+// LES DEUX AUTRES VOYAGES, DE BOUT EN BOUT. Chacun dans son fichier, parce
+// qu'un pilote de cinq cents lignes n'a rien à faire au milieu des lois du
+// moteur ; chacun dans une seule simulation, du spawn au but, sans jamais
+// poser le joueur nulle part. Relus adversarialement : pas de triche, et
+// trois défauts de niveau trouvés par cette relecture sont corrigés (la
+// feuille perchée sur le dosseret du lavoir, les sorties de l'escalier et de
+// l'atelier du haut plantées à l'envers).
+piloterDescente(check);
+piloterMontee(check);
 
 // =============================================================================
 console.log('\n— Une porte scellée fait mur aux pièces, et l’on en ressort au ras du sol —');

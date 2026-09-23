@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 23 septembre 2026
 
-`npm run check` : **670 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **790 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -132,9 +132,15 @@ Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
 11. **La descente et la montée sont jouées de bout en bout** par un pilote
     chacune (`src/core/__pilote_descente.ts`, `src/core/__pilote_montee.ts`),
     du spawn au but, dans une seule simulation, sans téléportation — comme la
-    mesure l'était déjà. *En cours d'écriture au moment où cette ligne est
-    commise : si `src/core/__check.ts` ne les importe pas encore, c'est que la
-    nuit s'est arrêtée avant — voir le dernier message de commit.*
+    mesure l'était déjà (68 et 52 vérifications, une seconde chacune). Chaque
+    pilote a été relu adversarialement : pas de triche, et trois défauts de
+    niveau que la relecture a prouvés sont corrigés — la feuille logée sur le
+    chevalet du lavoir finissait perchée sur le dosseret (le plateau est
+    creusé vers le nord), les sorties de l'escalier et de l'atelier du haut
+    regardaient à l'envers (`lacet`). Un fait à connaître pour l'escalier : un
+    géant POSE un cube trois mètres devant lui — depuis la lèvre, il tombe sur
+    les vires, pas au fond — et un lancer de géant survole la fosse ; le texte
+    de la salle disait encore « quatorze mètres », c'est corrigé.
 
 ## Par où commencer demain matin, dans l'ordre du risque
 

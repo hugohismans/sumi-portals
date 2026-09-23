@@ -326,7 +326,16 @@ export const piloterMontee = (check: Check): void => {
 
     // LE GÉANT JETTE. À chaque fois le cube le plus proche, depuis la lèvre,
     // en regardant en bas — et un peu moins bas à chaque jet.
-    const inclinaisons = [-1.3, -1.2, -1.1, -1.0];
+    //
+    // MESURÉ, ET C'EST UN DÉFAUT DE LA SALLE, PAS DU PILOTE : un géant qui
+    // POSE son cube au bord le laisse sur le plateau (la dépose se fait à
+    // 2,96 m, proportionnelle à la pièce — les « quatorze mètres » de l'en-tête
+    // de la salle sont d'un moteur qui n'existe plus) ; et un géant qui LANCE
+    // en regardant le fond de la fosse l'envoie par-dessus, dans la galerie
+    // (50 m/s à ×4 contre 24 m de fosse). Seuls les jets entre −1,05 et −1,45
+    // rad — de 60° à 83° sous l'horizon, le regard presque à ses pieds —
+    // retombent dans la fosse. On les prend, et on le dit.
+    const inclinaisons = [-1.35, -1.25, -1.15, -1.08];
     for (const pitch of inclinaisons) {
       const libres = CUBES.filter((c) => !c.lancee).sort(
         (a, b) =>
@@ -340,11 +349,13 @@ export const piloterMontee = (check: Check): void => {
       lancer(sim, Math.PI, pitch);
       attendre(sim, 60 * 3);
     }
-    // Quatre îlots : tous au fond, tous à plus d'un demi-mètre de la paroi —
-    // le demi-mètre est la mesure de la salle, au-delà on retombe dans la fente.
+    // Quatre îlots : tous au fond DE LA FOSSE — entre la bouche de la galerie
+    // (1952) et la paroi, pas dans la galerie —, tous à plus d'un demi-mètre de
+    // la paroi : le demi-mètre est la mesure de la salle, au-delà on retombe
+    // dans la fente.
     check(
       'escalier : les quatre cubes sont au fond, jetés à l’œil d’un géant — quatre îlots, aucun contre la paroi',
-      CUBES.every((c) => c.grounded && near(c.position.y, FOND, 0.05) && c.position.z + 0.4 < PAROI - 0.5 && c.position.z > 1908),
+      CUBES.every((c) => c.grounded && near(c.position.y, FOND, 0.05) && c.position.z + 0.4 < PAROI - 0.5 && c.position.z - 0.4 > 1952),
       CUBES.map((c) => ou(c)).join(' '),
     );
 
@@ -427,12 +438,12 @@ export const piloterMontee = (check: Check): void => {
     check('escalier : le creux prend le jeton', sim.sockets.pourvus.has('creux-escalier'), `${[...sim.sockets.pourvus].join(',') || 'aucun'} jeton à ${ou(jeton)}`);
     desceller(sim, check, 'montee-escalier-atelierHaut', 'creux-escalier', 'escalier');
 
-    // LA SORTIE est dix mètres au nord du creux et regarde le nord : on la
-    // dépasse, on se retourne, on la franchit vers le sud.
-    walkTo(sim, [X, 0, 2012], 60 * 10);
-    const s = walkTo(sim, [X, 0, 1998], 60 * 6, { stopOnEvent: true });
+    // LA SORTIE est dix mètres au nord du creux, et l'on y va tout droit :
+    // elle regarde le sud, d'où l'on vient (la salle le déclare, `lacet: 0`).
+    walkTo(sim, [X, 0, 2001], 60 * 6);
+    const s = walkTo(sim, [X, 0, 2014], 60 * 8, { stopOnEvent: true });
     check(
-      'escalier → atelier du haut : par la petite face, vers le sud, on arrive géant sur le toit',
+      'escalier → atelier du haut : par la petite face, vers le nord, on arrive géant sur le toit',
       s.traversed?.pairId === 'montee-escalier-atelierHaut' && s.traversed.newLevel === 1,
       `${s.traversed ? s.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
     );
@@ -485,13 +496,14 @@ export const piloterMontee = (check: Check): void => {
     );
     desceller(sim, check, 'montee-atelierHaut-vallee', 'haut-tableau-cour', 'atelier du haut');
 
-    // LA SORTIE, soixante-seize mètres à l'ouest, regarde le nord : on se
-    // poste entre elle et le parapet nord, et l'on marche vers le sud.
-    walkTo(sim, [16, 14, 2085], 60 * 20);
-    const s = walkTo(sim, [16, 14, 2060], 60 * 8, { stopOnEvent: true });
+    // LA SORTIE, soixante-seize mètres à l'ouest, regarde l'est d'où l'on
+    // vient : on y va tout droit, le long du toit, et on la franchit vers
+    // l'ouest.
+    walkTo(sim, [34, 14, 2074], 60 * 20);
+    const s = walkTo(sim, [2, 14, 2074], 60 * 10, { stopOnEvent: true });
     settle(sim, 60);
     check(
-      'atelier du haut → vallée : par la petite face, vers le sud, on arrive ×16 sur la cour des tessons',
+      'atelier du haut → vallée : par la petite face, vers l’ouest, on arrive ×16 sur la cour des tessons',
       s.traversed?.pairId === 'montee-atelierHaut-vallee' && s.traversed.newLevel === 2 && sim.player.grounded,
       `${s.traversed ? s.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
     );

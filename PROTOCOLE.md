@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août, et celle du 22 septembre
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 611 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 790 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -279,6 +279,14 @@ marches à moins d'un mètre l'une de l'autre. Puis rapetisse, retourne-toi.
 géant, donc de quatre mètres, et l'on découvre quatre îlots séparés par des
 gouffres. On n'a pas mal joué — on a pensé à la mauvaise échelle.
 → *La correction doit être gratuite : on remonte, on rapproche, on redescend.*
+*Mesuré, à savoir avant de juger :* un géant POSE un cube trois mètres devant
+lui — depuis la lèvre, il tombe sur les vires, contre la paroi ; et un géant
+qui LANCE en regardant le fond envoie le cube par-dessus la fosse, dans la
+galerie (rien n'est perdu : on l'y ramasse à ×1). La fosse fait 3,60, hauteur
+de genou pour un géant : il peut y descendre et y poser où il veut.
+**Défaut à guetter :** ne pas comprendre qu'on ne remonte pas sans cube ; un
+cube qui « colle » à la paroi sans qu'on puisse monter dessus (il faut moins
+d'un demi-mètre de jeu, c'est mesuré).
 
 **`5` — L'atelier du haut.** La couleur, paliers 2 et 3. Deux familles, deux
 couleurs, deux tailles : descendre dire le rouge aux pots, remonter dire le bleu

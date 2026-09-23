@@ -45,12 +45,15 @@ import { agirVers, attendre, near, ordre, piece, pos, settle, walkTo, type Check
  * c'est ça, la vérification — puis fait le geste du rendu.
  */
 const desceller = (sim: Simulation, check: Check, porte: string, condition: string, salle: string): void => {
+  const libre = sim.conditionsRemplies.has(condition);
   check(
     `${salle} : le verrou « ${condition} » libère la porte « ${porte} »`,
-    sim.conditionsRemplies.has(condition),
+    libre,
     [...sim.conditionsRemplies].join(', ') || 'aucune condition remplie',
   );
-  sim.portesFermees.delete(porte);
+  // Si la condition n'est pas remplie, la porte reste close : le voyage
+  // s'arrête là où il s'arrêterait pour un joueur.
+  if (libre) sim.portesFermees.delete(porte);
 };
 
 /**
@@ -63,16 +66,18 @@ const desceller = (sim: Simulation, check: Check, porte: string, condition: stri
  * on ne rend la main qu'une fois posé quelque part, sur la vire ou au fond.
  */
 const LEVRE = 190;
-const sElancer = (sim: Simulation, z: number, sprint: boolean): void => {
+const sElancer = (sim: Simulation, z: number, sprint: boolean, sauter = true): void => {
   let saute = false;
   let enLAir = false;
   for (let i = 0; i < 60 * 12; i++) {
     const p = sim.player.position;
     const yaw = Math.atan2(300 - p.x, z - p.z);
-    const jump = !saute && sim.player.grounded && p.x >= LEVRE - 0.15;
+    const jump = sauter && !saute && sim.player.grounded && p.x >= LEVRE - 0.15;
     if (jump) saute = true;
     sim.step(ordre(sim, { forward: 1, sprint, jump, yaw }), TICK_DT);
-    if (saute && !sim.player.grounded) enLAir = true;
+    // On n'est « en l'air » qu'une fois la lèvre passée : un petit ressaut
+    // avant elle ne compte pas, sinon l'on rendrait la main à mi-course.
+    if (!sim.player.grounded && (saute || p.x >= LEVRE)) enLAir = true;
     if (enLAir && sim.player.grounded) break;
   }
   settle(sim, 30);
@@ -233,7 +238,7 @@ export const piloterDescente = (check: Check): void => {
     walkTo(sim, [-207.5, 0, 698.5], 60 * 8);
     walkTo(sim, [-207.5, 0, 693.6], 60 * 8);
     walkTo(sim, [-205.25, 0, 693.6], 60 * 6);
-    agirVers(sim, [-205.25, 1.28, 695.75]);
+    agirVers(sim, [-205.25, 1.28, 695.85]);
     attendre(sim, 60);
     check('lavoir : la feuille est tendue sur le chevalet', sim.sockets.pourvus.has('chevalet-lavoir') && !feuille.held, `${[...sim.sockets.pourvus].join(', ')} feuille ${ou(feuille)}`);
     check('lavoir : et c’est ça qui fait venir le Pinceau', sim.conditionsRemplies.has('chevalet-lavoir'), [...sim.conditionsRemplies].join(', '));
@@ -246,7 +251,7 @@ export const piloterDescente = (check: Check): void => {
       feuille.held && !sim.sockets.pourvus.has('chevalet-lavoir') && !sim.conditionsRemplies.has('chevalet-lavoir'),
       `${feuille.held ? 'en main' : 'pas en main'}, ${[...sim.conditionsRemplies].join(', ') || 'aucune condition'}`,
     );
-    agirVers(sim, [-205.25, 1.28, 695.75]);
+    agirVers(sim, [-205.25, 1.28, 695.85]);
     attendre(sim, 60);
     check('lavoir : on la repose, et le Pinceau revient', sim.sockets.pourvus.has('chevalet-lavoir'), [...sim.sockets.pourvus].join(', '));
     desceller(sim, check, 'raccord-lavoir-conduit', 'chevalet-lavoir', 'lavoir');
@@ -263,17 +268,19 @@ export const piloterDescente = (check: Check): void => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // LE CONDUIT — une chute est un lieu qu'on traverse. On essaie petit : on
-  // manque l'arête et l'on tombe au fond, quarante mètres plus bas. On remonte
-  // par la faille, qui rend homme. On essaie homme en marchant : on tombe
-  // encore. Homme en courant : on se pose sur la vire, et le tunnel mène à la
-  // porte des creux.
+  // LE CONDUIT — une chute est un lieu qu'on traverse, et le puits fait
+  // tourner les trois tailles : la faille du fond rend un cran plus grand, la
+  // gueule du fond un cran plus petit. On essaie petit : on manque l'arête.
+  // On remonte homme, on se laisse tomber sans élan : on manque encore. On
+  // remonte géant, on atteint la vire, et l'on ne rentre pas. On redescend,
+  // on remonte homme, on court, on saute : on passe.
   // ═══════════════════════════════════════════════════════════════════════
   {
     attendre(sim, 30);
     check('conduit : on arrive petit, debout, à la lèvre', sim.player.scaleLevel === -1 && sim.player.grounded, pos(sim));
 
-    // LA FAUTE PRÉVUE, la première : petit, en sprintant, on manque de portée.
+    // LA FAUTE PRÉVUE, la première : petit, même en courant, on manque de
+    // portée — l'arête est à 15,5 et le meilleur coup du petit à 14.
     walkTo(sim, [183, 0, 999.6], 60 * 6);
     sElancer(sim, 999.6, true);
     check(
@@ -282,7 +289,7 @@ export const piloterDescente = (check: Check): void => {
       pos(sim),
     );
     // LA REMONTÉE, par la faille du fond : sa petite face regarde le nord, on
-    // la franchit vers le sud, et l'on ressort homme en haut, face au sud.
+    // la franchit vers le sud, et l'on ressort en haut un cran plus grand.
     walkTo(sim, [202, -41.9, 999.5], 60 * 8);
     let t = walkTo(sim, [202, -41.9, 995], 60 * 6, { stopOnEvent: true });
     check(
@@ -293,23 +300,47 @@ export const piloterDescente = (check: Check): void => {
     settle(sim, 30);
     check('conduit : la remontée s’est faite debout, en haut du puits', sim.player.grounded && sim.player.position.y > -0.5, pos(sim));
 
-    // LA FAUTE PRÉVUE, la seconde : homme, sans élan, on tombe.
+    // LA FAUTE PRÉVUE, la seconde : homme, sans élan — on marche dans le vide
+    // sans sauter, et l'on passe SOUS la vire.
     walkTo(sim, [186, 0, 1003], 60 * 4);
     walkTo(sim, [182, 0, 1000], 60 * 4);
-    sElancer(sim, 1000, false);
-    check('conduit : homme, en marchant seulement, on tombe encore', sim.player.grounded && sim.player.position.y < -41, pos(sim));
+    sElancer(sim, 1000, false, false);
+    check('conduit : homme, sans élan, on tombe encore', sim.player.grounded && sim.player.position.y < -41, pos(sim));
     walkTo(sim, [202, -41.9, 999.5], 60 * 8);
     t = walkTo(sim, [202, -41.9, 995], 60 * 6, { stopOnEvent: true });
-    check('conduit : et la faille ramène en haut une seconde fois, toujours homme', t.traversed?.pairId === 'conduit-faille' && t.traversed.newLevel === 0, pos(sim));
+    check('conduit : la faille rend un cran de plus — on ressort géant', t.traversed?.pairId === 'conduit-faille' && t.traversed.newLevel === 1, pos(sim));
     settle(sim, 30);
 
-    // LE GESTE JUSTE : homme, en courant, on se pose sur la vire.
+    // LA FAUTE PRÉVUE, la troisième : géant, on a la portée et davantage, on
+    // se pose sur la vire — et l'ouverture fait 3,60 pour un joueur de 7,20.
     walkTo(sim, [186, 0, 1003], 60 * 4);
     walkTo(sim, [182, 0, 1000], 60 * 4);
     sElancer(sim, 1000, true);
+    check('conduit : géant, on se pose sur la vire', sim.player.grounded && near(sim.player.position.y, -32, 0.5) && sim.player.position.x > 205.5, pos(sim));
+    walkTo(sim, [216, -32, 1000], 60 * 6);
+    check('conduit : et l’on ne rentre pas — la porte est trop petite pour soi', sim.player.position.x < 211 && near(sim.player.position.y, -32, 0.5), pos(sim));
+    // On quitte la vire par où l'on est venu : en marchant dans le vide.
+    walkTo(sim, [198, -32, 1000], 60 * 6);
+    settle(sim, 60 * 3);
+    check('conduit : géant, on redescend de la vire au fond', sim.player.grounded && sim.player.position.y < -41, pos(sim));
+    // LA GUEULE, au fond aussi : sa grande face regarde le sud, on la franchit
+    // vers le nord, et l'on ressort en haut un cran plus petit — homme.
+    walkTo(sim, [200, -41.9, 999], 60 * 6);
+    t = walkTo(sim, [200, -41.9, 1007], 60 * 6, { stopOnEvent: true });
+    check(
+      'conduit : la gueule du fond ramène en haut, et rend homme',
+      t.traversed?.pairId === 'conduit-gueule' && t.traversed.newLevel === 0,
+      `${t.traversed ? t.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
+    );
+    settle(sim, 30);
+
+    // LE GESTE JUSTE : homme, en courant, on se pose sur la vire.
+    walkTo(sim, [176, 0, 1000], 60 * 6);
+    walkTo(sim, [182, 0, 1000], 60 * 6);
+    sElancer(sim, 1000, true);
     check(
       'conduit : homme, en courant et en sautant, on se pose sur la vire',
-      sim.player.grounded && near(sim.player.position.y, -31.6, 0.3) && sim.player.position.x > 205.5,
+      sim.player.grounded && near(sim.player.position.y, -31.6, 0.5) && sim.player.position.x > 205.5,
       pos(sim),
     );
     // Le tunnel, puis la porte au bout : sa petite face regarde l'ouest, on la
@@ -470,7 +501,16 @@ export const piloterDescente = (check: Check): void => {
     walkTo(sim, [-338.7, 0.92, 1241.2], 60 * 6);
     walkTo(sim, [-338.7, 0.92, 1240.05], 60 * 6);
     walkTo(sim, [-338.2, 0.95, 1240.05], 60 * 6);
-    check('bol : on est entré dans le bol par la brèche, en marchant', sim.player.grounded && sim.player.position.x > -338.45 && near(sim.player.position.y, 0.95, 0.1), pos(sim));
+    // Dedans, c'est : les pieds sur le FOND (0,95, et pas les 0,92 du tablier
+    // — trois centimètres, donc pas de tolérance à 0,1 ici) et à moins d'un
+    // rayon intérieur (0,50) de l'axe du bol.
+    check(
+      'bol : on est entré dans le bol par la brèche, en marchant',
+      sim.player.grounded &&
+        sim.player.position.y > 0.94 &&
+        Math.hypot(sim.player.position.x + 337.905, sim.player.position.z - 1240) < 0.5,
+      pos(sim),
+    );
     const d = agirVers(sim, [-337.905, 0.95, 1240]);
     attendre(sim, 60);
     check(
