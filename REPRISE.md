@@ -18,11 +18,18 @@ style encre et manga. Ça tourne dans un navigateur, y compris sur téléphone.
 Le fil est **le Pinceau** : un personnage qui vole de jalon en jalon. Il passe
 là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
-## État au 22 septembre 2026
+## État au 23 septembre 2026
 
-`npm run check` : **611 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **670 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
+
+**Les cinq chapitres s'enchaînent, et le hall s'en souvient.** On finit un
+chapitre, le panneau dit où l'on va (« Descendre », « Monter », « Aller se
+mesurer », « La boîte à formes »), et si l'on ferme l'onglet, l'arche « Seul »
+du hall reprend au premier chapitre qu'on n'a pas fini (`src/voyage.ts`). La
+carte de titre porte le nom du chapitre, et ses pinceaux s'encrent au fil des
+couleurs rapportées — les quatre.
 
 Le jeu est un hall et **trois voyages enchaînés**, plus un examen final :
 
@@ -40,14 +47,16 @@ hall  →  monde (rouge, vert)  →  descente (bleu)  →  montée (or)
 - `?niveau=montee` — sept salles, on y cherche l'or.
 - `?niveau=mesure` — **NEUF** : trois salles, on y perd la taille.
 - `?niveau=formes` — la boîte à formes, l'examen.
-- `?niveau=banc` — le banc d'essai, douze stations, une par chose que personne
+- `?niveau=banc` — le banc d'essai, treize stations, une par chose que personne
   n'a vue. **C'est par là qu'il faut commencer.**
 - `?niveau=reve&graine=7` — le rêve génératif.
 - `?niveau=duo&salon=…&role=geant|minuscule` — l'aventure à deux, jamais
   essayée à deux vraies machines.
 
-**`?debug=1` — LES REPÈRES.** Sur tous les mondes. Une touche par moment du
-voyage, chaque ligne dit ce qu'il faut regarder là et POURQUOI on le regarde.
+**`?debug=1` — LES REPÈRES.** Sur le hall, le monde, la descente, la montée,
+la mesure, la boîte à formes et le banc (pas sur la cour, la caisse, le duo ni
+le rêve). Une touche par moment du voyage, chaque ligne dit ce qu'il faut
+regarder là et POURQUOI on le regarde.
 `H` replie la liste. Certains sauts RECHARGENT la page, voir
 `src/debug/reperes.ts`.
 
@@ -57,7 +66,7 @@ liste des choses à faire dans l'ordre, une case à cocher par ligne (elle survi
 au rechargement), un bouton pour copier le rapport. `PROTOCOLE.md` en est la
 version longue.
 
-## Ce qui a changé cette nuit (5 commits après le 4 août)
+## Ce qui a changé ces deux nuits (après le 4 août)
 
 Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
 
@@ -100,6 +109,32 @@ Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
    s'ouvrait jamais. Un pilote joue maintenant les deux ateliers : appuyer sur
    E devant une famille lui dit la couleur suivante parmi celles qu'on a
    rapportées (rouge, vert, bleu), et une couleur se reprend.
+8. **Le joueur a un fil.** Le lien de fin dit le geste et non « niveau
+   suivant » ; la carte de titre dit le chapitre ; le hall se souvient des
+   chapitres finis et son arche reprend au suivant (`src/voyage.ts`, mémoire
+   `sumi.voyage`, effacée quand on rentre dans le monde, qui est le début).
+9. **Une relecture adversariale de tout ce qui précède**, et ses douze
+   trouvailles corrigées. La grosse : une porte scellée ne faisait mur qu'au
+   joueur — une graine lancée ou posée vers la sortie scellée du grain passait
+   dans le seuil et le troisième mouvement était mort. Puis : la borne de
+   sortie des pièces (fausse dès qu'une face n'est pas plantée à cinq
+   centimètres — le galet de la rive était catapulté) ; le refus qui se
+   résolvait au lancer (un creux ne prend plus qu'une pièce POSÉE) ; le ciel
+   de verre sous la main d'un géant (dix-huit mètres) ; la pose à travers un
+   mur ; la pluie semée sous les toits ; la chatière qui ne refusait pas ; la
+   porte scellée qui disait « ne mène nulle part ».
+10. **Chaque porte sait dans quel sens on la passe.** L'assemblage plantait
+    tous les raccords face au nord : trois sorties ne se quittaient qu'en se
+    glissant entre la porte et le mur pour revenir sur ses pas, et quatre
+    entrées posaient le joueur face à un mur, la salle dans le dos. Le contrat
+    des salles porte un `lacet` par porte, sept salles le déclarent, et le
+    harnais franchit les quatorze raccords depuis l'intérieur.
+11. **La descente et la montée sont jouées de bout en bout** par un pilote
+    chacune (`src/core/__pilote_descente.ts`, `src/core/__pilote_montee.ts`),
+    du spawn au but, dans une seule simulation, sans téléportation — comme la
+    mesure l'était déjà. *En cours d'écriture au moment où cette ligne est
+    commise : si `src/core/__check.ts` ne les importe pas encore, c'est que la
+    nuit s'est arrêtée avant — voir le dernier message de commit.*
 
 ## Par où commencer demain matin, dans l'ordre du risque
 
@@ -107,14 +142,19 @@ Tout ce qui suit est PROUVÉ en simulation et n'a été vu qu'en captures
 d'écran fixes, à une image par seconde. Personne n'a joué. Voir `PROTOCOLE.md`
 pour le détail de chaque station.
 
-1. **`?niveau=banc&debug=1`** — le banc d'essai, douze stations en une marche.
+0. **Le fil, tel qu'un joueur le suivra** : le hall, l'arche « Seul », le
+   monde jusqu'au sacre, « Descendre », la descente jusqu'au bleu, « Monter »…
+   et, entre deux, fermer l'onglet, rouvrir le hall, voir la carte dire
+   « Suite : la montée » et l'arche y mener.
+1. **`?niveau=banc&debug=1`** — le banc d'essai, treize stations en une marche.
    Il dit en une demi-heure si les corrections du moteur tiennent à l'œil.
 2. **`?niveau=montee&debug=1`, touches `2` et `3`** — le creux qui refuse et le
-   blanchiment, réécrits cette nuit. Le geste à juger : lancer la vrille dans
-   une porte, la voir ressortir retournée. Et le refus qui parle, phrase par
-   phrase. Puis la touche `5`, l'atelier du haut : dire le rouge aux pots, le
-   bleu aux tuiles, et voir la porte de la vallée se dessiner — c'était
-   impossible jusqu'à cette nuit.
+   blanchiment, réécrits l'avant-veille et relus la veille. Le geste à juger :
+   lancer la vrille dans une porte, la voir ressortir retournée ; la ramasser,
+   la POSER (lancée à côté du creux, elle n'y entre pas toute seule). Et le
+   refus qui parle, phrase par phrase. Puis la touche `5`, l'atelier du haut :
+   dire le rouge aux pots, le bleu aux tuiles, et voir la porte de la vallée
+   se dessiner.
 3. **`?niveau=mesure&debug=1`** — le troisième mouvement, jamais joué. La rive
    (lever les yeux de 23° et lâcher), le grain (est-ce qu'on ne sait VRAIMENT
    plus quelle taille on fait ?), le seuil.

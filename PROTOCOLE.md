@@ -16,7 +16,7 @@ la mauvaise chose.
 Rien de ce document n'a encore été suivi une seule fois. Dans l'ordre du risque,
 du plus gros au plus petit :
 
-1. **Le banc d'essai**, `?niveau=banc&debug=1` — douze stations en une marche,
+1. **Le banc d'essai**, `?niveau=banc&debug=1` — treize stations en une marche,
    une par chose que le moteur prétend faire et que personne n'a regardée.
 2. **Les deux salles chirales de la montée**, `?niveau=montee&debug=1`, touches
    `2` et `3` — réécrites autour du LANCER (voir § 3 bis). C'est le chantier
@@ -65,7 +65,7 @@ start "https://hugohismans.github.io/sumi-portals/"
 - **la montée** (sept salles, on y cherche l'or) — `?niveau=montee`
 - **la mesure** (trois salles, on y perd la taille) — `?niveau=mesure`
 - **la boîte à formes** (cinq pièces, cinq creux) — `?niveau=formes`
-- **le banc d'essai** (douze stations) — `?niveau=banc`
+- **le banc d'essai** (treize stations) — `?niveau=banc`
 - **les repères** — ajoute `&debug=1` à l'un ou l'autre. Une touche par moment ;
   `H` replie la liste. Le mode débug a sa propre sauvegarde : il n'abîme plus ta
   partie.
