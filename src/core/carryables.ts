@@ -73,6 +73,34 @@ export interface Carryable {
   held: boolean;
   grounded: boolean;
   /**
+   * LÀ OÙ ELLE REPOSAIT LA DERNIÈRE FOIS, telle qu'elle y reposait.
+   *
+   * Le joueur tombé hors du monde est reposé où il se tenait debout ; une
+   * pièce ne l'était pas. Or ce qui sort d'une grande face sort quatre fois
+   * plus vite, et une pièce est souvent la seule clef d'une porte : perdue
+   * par-dessus un mur, elle emportait la salle. On note son dernier repos —
+   * position, taille ET main, parce qu'une pièce lancée à travers un miroir
+   * puis perdue doit revenir telle qu'elle était AVANT le lancer, sinon le
+   * rattrapage garde la moitié d'un geste qu'il annule.
+   */
+  appui: { x: number; y: number; z: number; size: number; main?: 'L' | 'D' } | null;
+  /** Images passées au sol depuis le dernier appui noté. */
+  depuisAppui: number;
+  /**
+   * LANCÉE, ET PAS ENCORE REPRISE EN MAIN.
+   *
+   * Un creux ne prend qu'une pièce POSÉE. Il attendait déjà qu'elle se soit
+   * arrêtée, mais une vrille lancée à travers un miroir et retombée à sept
+   * mètres du creux s'y logeait dès qu'elle avait fini de rouler — l'énigme
+   * résolue sans que le joueur ait jamais porté ce qu'il devait porter, et
+   * à une taille qui n'était pas la sienne. Poser est une question ; lancer
+   * n'en est pas une, même quand la pièce finit au bon endroit. Le drapeau
+   * tombe quand on la reprend.
+   */
+  lancee: boolean;
+  /** Le creux a déjà dit, pour ce lancer, qu'il ne prend pas ce qu'on lance. */
+  lanceeDite: boolean;
+  /**
    * Logée dans son réceptacle, donc figée pour de bon.
    *
    * On ne la reprend plus : un progrès qu'on peut défaire par accident en
@@ -177,8 +205,48 @@ export class Carryables {
         grounded: false,
         locked: false,
         releasedAt: null,
+        appui: null,
+        depuisAppui: 0,
+        lancee: false,
+        lanceeDite: false,
       });
     }
+  }
+
+  /**
+   * TOMBER HORS DU MONDE NE COÛTE QUE DU TEMPS — pour une pièce aussi.
+   *
+   * On la repose là où elle reposait la dernière fois, telle qu'elle y
+   * reposait ; jamais posée nulle part, elle revient à son point de départ.
+   * Pas de dégâts, pas de compteur : le lancer raté est annulé, et c'est tout.
+   */
+  rattraper(c: Carryable): void {
+    const def = this.defs.find((d) => d.id === c.id);
+    const a = c.appui;
+    if (a) {
+      c.position.x = a.x;
+      c.position.y = a.y;
+      c.position.z = a.z;
+      c.size = a.size;
+      c.main = a.main;
+    } else if (def) {
+      c.position.x = def.position[0];
+      c.position.y = def.position[1];
+      c.position.z = def.position[2];
+      c.size = def.size;
+      c.main = def.main;
+    }
+    c.velocity.x = 0;
+    c.velocity.y = 0;
+    c.velocity.z = 0;
+    c.spin.x = 0;
+    c.spin.y = 0;
+    c.spin.z = 0;
+    c.rotation.x = 0;
+    c.rotation.y = 0;
+    c.rotation.z = 0;
+    c.grounded = false;
+    c.depuisAppui = 0;
   }
 
   get held(): Carryable | null {
@@ -306,6 +374,12 @@ export class Carryables {
     // éviter le décor. On se rapproche progressivement pour pouvoir caler la
     // caisse contre un mur sans l'y encastrer.
     const steps = 8;
+    // ET PAS À TRAVERS UN MUR. Un géant tient sa pièce quatre mètres et demi
+    // devant lui : face à un mur de deux mètres d'épaisseur, le premier point
+    // libre était DE L'AUTRE CÔTÉ, et la pièce y tombait hors de la cour.
+    // Le segment de l'œil au centre de la pièce doit être de la pierre en
+    // moins — la règle même qui interdit déjà de ramasser à travers les murs.
+    const oeil = vec3(playerPos.x, playerPos.y + PLAYER_HEIGHT * EYE_FRACTION * playerScale, playerPos.z);
     for (let step = 0; step <= steps; step++) {
       const closeness = 1 - (1 - DROP_CLOSENESS_FLOOR) * (step / steps);
       const p = holdPoint(c, playerPos, yaw, pitch, playerScale, closeness);
@@ -314,7 +388,9 @@ export class Carryables {
       c.position.z = p.z;
 
       aabbOfCarryable(c, scratch);
-      if (world.queryStatic(scratch, hits).length === 0) return true;
+      if (world.queryStatic(scratch, hits).length !== 0) continue;
+      if (!world.segmentLibre(oeil, vec3(p.x, p.y + c.size * 0.5, p.z))) continue;
+      return true;
     }
     return false;
   }
@@ -324,6 +400,8 @@ export class Carryables {
     const look = lookDirection(yaw, pitch);
     const speed = THROW_SPEED * PLAYER_HEIGHT * playerScale;
     c.held = false;
+    c.lancee = true;
+    c.lanceeDite = false;
     c.velocity.x = look.x * speed;
     // Un peu de hauteur : sans ça, viser droit devant fait raser le sol.
     c.velocity.y = look.y * speed + speed * 0.18;
@@ -372,6 +450,15 @@ export class Carryables {
         c.spin.x *= keep;
         c.spin.y *= keep;
         c.spin.z *= keep;
+        // Une pièce qui a reposé douze images au même endroit y a son appui —
+        // le même délai que le joueur, pour la même raison : un rebond n'est
+        // pas un repos.
+        if (++c.depuisAppui > 12 && Math.hypot(c.velocity.x, c.velocity.z) < 1) {
+          c.depuisAppui = 0;
+          c.appui = { x: c.position.x, y: c.position.y, z: c.position.z, size: c.size, main: c.main };
+        }
+      } else {
+        c.depuisAppui = 0;
       }
 
       c.rotation.x += c.spin.x * dt;

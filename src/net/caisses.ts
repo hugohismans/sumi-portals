@@ -37,6 +37,13 @@ export interface CaisseRes {
   s: number;
   /** 1 si elle est dans les mains de son propriétaire. */
   m?: number;
+  /**
+   * 1 si elle a été LANCÉE et pas encore reprise. Sans lui, la copie du
+   * spectateur — posée par le réseau, vitesse nulle, jamais « lancée » — se
+   * logeait dans un creux que le lanceur, lui, voyait rester vide : deux
+   * clients, deux verrous, pour de bon.
+   */
+  l?: number;
 }
 
 const rond = (v: number): number => Math.round(v * 100) / 100;
@@ -62,6 +69,7 @@ export class CaissesPartagees {
         z: rond(c.position.z),
         s: rond(c.size),
         ...(c.held ? { m: 1 } : {}),
+        ...(c.lancee ? { l: 1 } : {}),
       };
     }
     return out;
@@ -92,6 +100,7 @@ export class CaissesPartagees {
         c.position.y = r.y;
         c.position.z = r.z;
         c.size = r.s;
+        c.lancee = r.l === 1;
         // Elle est pilotée à distance : sa vitesse locale n'a plus de sens, et
         // la laisser courir la ferait dériver entre deux nouvelles.
         c.velocity.x = 0;

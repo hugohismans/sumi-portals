@@ -253,10 +253,19 @@ const lavoir = (): BoxDef[] => {
 const chevalet = (): BoxDef[] => [
   b([X0 - 6.5, 0.006, Z0 - 4.4], [X0 - 6.2, 1.15, Z0 - 4.1], 2),
   b([X0 - 4.3, 0.006, Z0 - 4.4], [X0 - 4.0, 1.15, Z0 - 4.1], 2),
-  b([X0 - 6.7, 1.15, Z0 - 4.6], [X0 - 3.8, 1.28, Z0 - 3.9], 1),
+  // LE PLATEAU FAIT UN MÈTRE DE PROFONDEUR, VERS LE NORD, et c'est une
+  // correction : à soixante-dix centimètres, dont quinze pris par le dosseret,
+  // la feuille de 0,80 logée n'y tenait pas — la collision l'expulsait vers
+  // le haut et elle finissait perchée sur la tranche du dosseret, soixante-
+  // douze centimètres au-dessus du plateau, « pourvue » aux yeux du logement
+  // et absurde aux yeux du joueur. Trouvé par la relecture du pilote de la
+  // descente. On a creusé vers le NORD et non vers le sud : le bord sud reste
+  // où il était, parce que c'est de là qu'on pose — une feuille lâchée devant
+  // le chevalet tombe au sol et le logement l'y cueille.
+  b([X0 - 6.7, 1.15, Z0 - 4.6], [X0 - 3.8, 1.28, Z0 - 3.55], 1),
   // Un dosseret incliné derrière : il dit « ça se pose ici » sans un mot, et il
   // empêche la feuille de rouler au-delà.
-  b([X0 - 6.7, 1.28, Z0 - 4.05], [X0 - 3.8, 2.0, Z0 - 3.9], 2),
+  b([X0 - 6.7, 1.28, Z0 - 3.7], [X0 - 3.8, 2.0, Z0 - 3.55], 2),
 ];
 
 export const LAVOIR: SalleModule = {
@@ -290,7 +299,9 @@ export const LAVOIR: SalleModule = {
     // de la porte qu'on va faire dessiner — et qu'une décision se reprend.
     {
       id: 'chevalet-lavoir',
-      position: [X0 - 5.25, 1.28, Z0 - 4.25],
+      // Cinq centimètres devant le dosseret et cinq derrière le bord, pour
+      // une feuille de 0,40 de demi-côté : elle repose sur le plateau, entière.
+      position: [X0 - 5.25, 1.28, Z0 - 4.15],
       size: FEUILLE_GRANDE,
       ink: 0,
       portee: 2.6,
@@ -327,7 +338,7 @@ export const LAVOIR: SalleModule = {
     [X0 + 3, 1.6, Z0 - 1],
     [X0 + 1.2, -FENTE_FOND + 0.55, FENTE_Z],
     [X0 + 3.4, 1.9, Z0 + 11],
-    [X0 - 5.25, 2.4, Z0 - 4.25],
+    [X0 - 5.25, 2.4, Z0 - 4.15],
   ],
 
   // On entre à taille d'homme par le sud, face au bassin. On repart par où le

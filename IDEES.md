@@ -522,9 +522,40 @@ qu'une neige permanente, qui tuerait la lisibilité des énigmes.
 
 Non discutées, juste posées là.
 
-**Le son de l'échelle.** À ×4, tout devrait sonner plus grave et plus lent ; à
-×1/4, plus aigu. C'est très peu de travail et ça vend le changement de taille
-presque autant que l'image.
+**Une pièce tombée hors du monde revient — FAIT.** Le joueur est rattrapé à
+vingt mètres sous le décor et reposé où il se tenait ; une pièce l'est
+maintenant aussi, là où elle reposait la dernière fois, telle qu'elle y
+reposait (`Carryable.appui`). Le ciel de verre des cours chirales reste, pour
+qu'une vrille retombe dans la cour plutôt qu'à son point de départ.
+
+**La fin du troisième mouvement.** Le seuil est un palier, pas une fin : la
+mesure ne rend aucune couleur. La conception dit « le monde retourné rend le
+ciel » (portails de gravité). Tant qu'il n'est pas bâti, le seuil suffit et ne
+fait pas semblant.
+
+**Le Pinceau, instrument de mesure, jalon par jalon.** `stationsEchelle` existe
+sur le contrat des salles et l'assemblage le suit, mais aucune salle ne le
+remplit encore : le grain l'a demandé (un Pinceau d'un mètre au pied d'un
+rocher de douze annonce la taille du rocher) et attend qu'on l'écrive.
+
+**Le son de l'échelle — FAIT.** Le son se transpose avec la taille (vent, pas,
+arpège, pinceau : voir l'en-tête de `src/audio/ambiance.ts`). On entend qu'on a
+changé de taille avant de l'avoir vu.
+
+**Une porte scellée fait mur aux pièces — FAIT.** Elle ne faisait mur qu'au
+joueur ; une graine lancée vers la sortie scellée du grain passait de l'autre
+côté. Et un creux ne prend plus qu'une pièce POSÉE : lancer n'est pas une
+question.
+
+**Le hall se souvient du voyage — FAIT.** Les chapitres finis sont notés
+(`src/voyage.ts`), l'arche « Seul » reprend au premier qu'on n'a pas fini, et
+la carte de titre dit la suite. Le jour où il y aura un vrai menu de chapitres,
+c'est cette mémoire qu'il lira.
+
+**Chaque porte de raccord sait dans quel sens on la passe — FAIT.** Le contrat
+des salles porte un `lacet` par porte ; l'assemblage plantait tout face au
+nord. Une salle nouvelle doit le déclarer si sa porte n'est pas dans un mur
+sud (sortie) ou nord (entrée).
 
 **Un portail à sens unique.** Une face qu'on peut franchir, l'autre qui fait
 mur. Change complètement la lecture d'un niveau : on ne peut plus revenir sur

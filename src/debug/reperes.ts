@@ -1,5 +1,6 @@
 import { SALLES_MONTEE } from '../levels/montee.js';
 import { SALLES_DESCENTE } from '../levels/descente.js';
+import { SALLES_MESURE } from '../levels/mesure.js';
 import { FORMES } from '../levels/formes.js';
 
 /**
@@ -576,14 +577,15 @@ const POURQUOI_MONTEE: Record<string, string> = {
     'des heures, vu d’une taille qu’on n’avait jamais eue. Si la reconnaissance ne se ' +
     'fait pas, la salle ne vaut rien — et aucune vérification ne peut me le dire.',
   'Le creux qui refuse — la vrille':
-    'Les portes miroirs existaient depuis des semaines sans se voir : on dessinait tout ' +
-    'avec des cubes, et un cube n’a pas de main gauche. C’est la première fois que la ' +
-    'chiralité a un corps. Deux lecteurs extérieurs ont prédit qu’on conclurait à un ' +
-    'bug avant de conclure au miroir.',
+    'La règle du miroir a changé : porter une pièce à travers ne la retourne plus, seul ' +
+    'le LANCER le fait — et cette salle reposait sur le portage. Elle est réécrite ' +
+    'autour du lancer, prouvée par un pilote, jamais regardée. Les mains sur les murs ' +
+    'sont l’étalon de la main, comme la petite face est celui de la taille.',
   'Le blanchiment — le théorème':
     'La meilleure sensation que ce jeu puisse produire, si elle passe : comprendre ' +
-    'qu’un système a des lois et qu’on peut les DÉDUIRE au lieu de les subir. Le risque ' +
-    'est qu’on force au hasard sans jamais comprendre.',
+    'qu’un système a des lois et qu’on peut les DÉDUIRE au lieu de les subir. Avec un ' +
+    'miroir qu’on franchit, le théorème mourait sous la règle nouvelle ; d’où la ' +
+    'chatière. Le risque est qu’on force au hasard sans jamais comprendre.',
   'L’escalier pour plus tard':
     'La salle a été retournée après qu’on a mesuré que rien ne blesse une chute : on la ' +
     'gravit maintenant au lieu de la descendre. On vérifie que le verrou est réel et que ' +
@@ -611,18 +613,25 @@ export const REPERES_MONTEE: Repere[] = [
   auSeuil(
     SALLES_MONTEE[1],
     'Le creux qui refuse — la vrille',
-    'Une vrille au sol, un creux à sa forme dans la cour. Présente-la : elle refuse, ' +
-      'et l’on croit que c’est la taille. Porte-la par la porte du fond, ressors quatre ' +
-      'fois plus grand, elle entre. Elle a changé de MAIN aussi, et rien ne le dit.',
+    'Une vrille au sol, un creux à sa forme dans la cour. Porte-la par la porte du fond, ' +
+      'ressors quatre fois plus grand, pose-la : bonne taille, et le creux dit qu’elle ' +
+      'N’ENTRE PAS, que la tourner n’y changera rien. Regarde les MAINS de part et d’autre ' +
+      'des deux faces. Reviens homme, LANCE la vrille dans la petite face : elle ressort ' +
+      'par la grande, retournée, trop lourde. Suis-la par la porte, ramasse-la, POSE-LA, ' +
+      'elle entre — lancée à côté du creux, elle n’y entre pas toute seule. ' +
+      'Défaut à guetter : ne pas comprendre qu’il faut lancer ; une vrille perdue par-dessus ' +
+      'le mur (le ciel est en verre, elle doit retomber dans la cour).',
     5,
   ),
   auSeuil(
     SALLES_MONTEE[2],
     'Le blanchiment — le théorème',
-    'Le creux veut la taille d’origine ET l’autre main. La navette au miroir ne peut ' +
-      'PAS marcher : un nombre impair de passages ne fait jamais une taille nulle. ' +
-      'Il faut trouver la seconde porte, ordinaire, derrière le mur de refend — et ' +
-      'on ne la voit qu’en étant grand. Défaut à guetter : ne jamais la trouver.',
+    'Le creux veut la taille d’origine ET l’autre main. Le miroir n’est plus qu’une ' +
+      'CHATIÈRE au pied du mur ouest : on n’y entre pas, on y lance. La vrille en ressort ' +
+      'droite et 2,00, trop lourde. Trouve la porte ordinaire derrière le mur de refend, ' +
+      'grandis, va la chercher, rapporte-la par la grande face ordinaire : 0,50, toujours ' +
+      'droite, et le creux est à dix mètres. Défaut à guetter : ne jamais trouver la brèche ' +
+      'du refend ; forcer la chatière ; ne pas voir la différence entre les deux portes.',
     10,
   ),
   auSeuil(
@@ -702,6 +711,123 @@ export const POURQUOI_MONTEE_ORPHELINS = Object.keys(POURQUOI_MONTEE).filter(
  * pose donc le joueur en face de la chose et lui dit ce qu'il doit voir.
  * ═══════════════════════════════════════════════════════════════════════════
  */
+/**
+ * LA MESURE — le troisième mouvement. Ses repères demandent leurs positions
+ * aux salles, comme ceux de la montée : ils ne peuvent pas dériver.
+ *
+ * Aucun ne pose le joueur en haut du puits du grain : on y tombe pendant une
+ * seconde et demie, et un repère doit laisser le joueur debout. On le pose au
+ * fond, là où il atterrit.
+ */
+const [RIVE_M, GRAIN_M, SEUIL_M] = SALLES_MESURE;
+const POURQUOI_MESURE: Record<string, string> = {
+  'La rive — poser la main où l’on ne posera jamais le pied':
+    'Une salle écrite au mètre près il y a un mois, mesurée au banc par son autrice, et ' +
+    'reliée à rien : personne ne l’a jamais vue. Sa loi est celle du conduit, retournée — ' +
+    'l’ouverture est trop basse pour soi, et l’on fait quand même ce qu’il y a à faire ' +
+    'dedans.',
+  'La rive — la serrure, depuis la lèvre':
+    'Le geste de la salle : lever les yeux de vingt-trois degrés et lâcher. Mesuré cent ' +
+    'cinquante-quatre fois en simulation, zéro à l’écran. Si la pièce ne rentre pas dans ' +
+    'la baie depuis là, c’est la portée de dépose qui ment, pas le joueur.',
+  'Le grain — le vaste lobe, où le monde se tait':
+    'La salle-thèse du voyage : deux lobes bâtis du même tirage, l’un quatre fois ' +
+    'l’autre, l’affichage éteint, le brouillard repoussé. Elle repose entièrement sur le ' +
+    'fait qu’on ne sache plus — et aucune vérification ne peut dire si c’est le cas.',
+  'Le grain — le menu lobe, et la mesure':
+    'La sortie est une mesure : une graine qu’on soulève, une qu’on ne soulève pas, et ' +
+    'entre les deux une seule taille possible. C’est un raisonnement d’arpenteur, et je ' +
+    'ne connais pas d’autre jeu qui le demande.',
+  'Le seuil — la porte redit la taille':
+    'Un palier nu après un quart d’heure sans étalon. La porte par où l’on vient de ' +
+    'passer fait soixante-dix centimètres et l’on en fait quarante-cinq : c’est tout ce ' +
+    'qu’il y a à voir, et c’est le but. Bâti cette nuit, jamais regardé.',
+};
+
+export const REPERES_MESURE: Repere[] = [
+  {
+    titre: 'La rive — poser la main où l’on ne posera jamais le pied',
+    verifier:
+      'On arrive à ×4 à l’ouest d’un quai : trente mètres d’eau, une falaise en face. ' +
+      'Marche vers l’est jusqu’à la passe — 2,40 m de large, on ne descend pas là. Dans ' +
+      'l’éperon, une baie à six mètres, et au fond une serrure pour une arête de 3,60. ' +
+      'Trois galets de 0,90 traînent au quai. Défaut à guetter : ne pas comprendre qu’il ' +
+      'faut RAPETISSER (grande porte à l’ouest) pour porter un galet dans la petite face ' +
+      'et le faire grandir.',
+    position: [RIVE_M.entree.position[0], RIVE_M.entree.position[1] + 0.05, RIVE_M.entree.position[2]],
+    echelle: RIVE_M.entree.echelle,
+    lacet: 0.35,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'La rive — la serrure, depuis la lèvre',
+    verifier:
+      'Debout au méridien, trois mètres au sud de la lèvre, un bloc de 3,60 dans les bras ' +
+      '(un galet passé une fois par la petite face). Lève les yeux d’environ vingt-trois ' +
+      'degrés vers la baie et lâche (E). → La pièce entre dans une baie où l’on n’entrera ' +
+      'jamais, et la serrure clique. Puis la porte de sortie se dessine au sud. Défaut à ' +
+      'guetter : la pièce qui tombe dans la passe (on la repêche du bout des doigts) ; ' +
+      'une pièce posée dans la baie qu’on ne peut plus reprendre.',
+    position: [210, 0.05, 3477],
+    echelle: 1,
+    lacet: 0,
+    pigments: [],
+    jalon: 2,
+  },
+  {
+    titre: 'Le grain — le vaste lobe, où le monde se tait',
+    verifier:
+      'On y tombe de trente et un mètres, et l’on ne remonte pas. L’affichage de la taille ' +
+      's’est TU. Regarde les parois : du grain de papier, aucune arête, rien qui se répète. ' +
+      'Une graine au sol près du puits, un creux et une graine énorme plus loin. Défaut à ' +
+      'guetter : savoir quand même quelle taille on fait — par le brouillard, par le ' +
+      'Pinceau, par n’importe quoi. Si tu le sais, la salle est ratée, et dis par quoi.',
+    // Au fond du puits, six mètres et demi au sud de son axe : là où l'on atterrit.
+    position: [GRAIN_M.entree.position[0], 0.05, GRAIN_M.entree.position[2] - 6.5],
+    echelle: 0,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 7,
+  },
+  {
+    titre: 'Le grain — le menu lobe, et la mesure',
+    verifier:
+      'Le même lieu, quatre fois plus petit, au bout d’un goulet coudé. Un creux de 0,72 ' +
+      'attend la graine du vaste ; la graine d’ici, 2,88, ne se soulève pas — c’est la ' +
+      'mesure : deux gestes, dont un qui échoue, et l’on connaît sa taille. Pose la ' +
+      'graine : la porte de sortie se dessine au sud. Défaut à guetter : reconnaître le ' +
+      'lobe SANS pouvoir dire s’il a grandi ou si l’on a rétréci — c’est le but ; s’en ' +
+      'être sûr trop vite est le défaut.',
+    // Dix-sept mètres au nord de la sortie : au débouché du goulet, face au creux.
+    position: [GRAIN_M.sortie.position[0], 0.05, GRAIN_M.sortie.position[2] + 17],
+    echelle: 0,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 13,
+  },
+  {
+    titre: 'Le seuil — la porte redit la taille',
+    verifier:
+      'Une dalle nue, et derrière soi la plus petite porte du jeu : soixante-dix ' +
+      'centimètres, pour quelqu’un de quarante-cinq. Retourne-toi, regarde-la, puis ' +
+      'marche au bout de la dalle. → Le mouvement s’achève ; le lien mène à la boîte à ' +
+      'formes. Défaut à guetter : ne pas lire la porte comme un étalon.',
+    position: [SEUIL_M.entree.position[0], SEUIL_M.entree.position[1] + 0.05, SEUIL_M.entree.position[2] - 1],
+    echelle: SEUIL_M.entree.echelle,
+    lacet: Math.PI,
+    pigments: [],
+    jalon: 15,
+  },
+];
+for (const r of REPERES_MESURE) {
+  const p = POURQUOI_MESURE[r.titre];
+  if (p) r.pourquoi = p;
+}
+export const POURQUOI_MESURE_ORPHELINS = Object.keys(POURQUOI_MESURE).filter(
+  (t) => !REPERES_MESURE.some((r) => r.titre === t),
+);
+
 export const REPERES_LOBBY: Repere[] = [
   {
     titre: 'La toile et les deux stylos',

@@ -172,17 +172,20 @@ __game.tp(0, 0.2, 17, 0, 0.0, -0.2)    // + lacet et inclinaison du regard
 C'est exactement la forme que produit la touche `C` en jeu : on colle la ligne
 dans la console et on se retrouve au point de vue signalé.
 
+## Où en est le jeu
+
+Ce fichier décrit le premier prototype, « la cour », et les décisions de rendu
+qui tiennent toujours. Le jeu a grandi depuis : un hall, trois voyages
+enchaînés (`?niveau=monde`, `descente`, `montee`, `mesure`), un examen
+(`formes`), un banc d'essai (`banc`), un rêve génératif et une aventure à deux.
+**L'état à jour, les adresses et l'ordre dans lequel tester sont dans
+`REPRISE.md`** ; le protocole de test est dans `PROTOCOLE.md` et dans le jeu
+(trois touchers sur l'affichage de la taille).
+
 ## Limites connues
 
 - **Récursion coupée au troisième niveau.** Deux niveaux sont rendus, ce qui
-  suffit largement : depuis le fond de la cour on voit le grand torii, et il
-  montre bien ce qu'il y a derrière lui. L'aplat sourd n'apparaît qu'au
-  troisième emboîtement, en pratique invisible.
-- **Pas d'apparence de joueur.** Prochaine étape avant le multijoueur : un
-  bonhomme bâton dessiné au crayon, une couleur par joueur, visible à travers
-  les portails — y compris soi-même.
-- **Pas d'objets transportables.**
-- **Une seule paire de portails.** L'architecture en accepte N, colorées ; il
-  suffit de les ajouter dans le fichier de niveau.
+  suffit largement. L'aplat sourd n'apparaît qu'au troisième emboîtement, en
+  pratique invisible.
 - **Le cadre du portail n'a pas de collision.** Un joueur trop grand traverse
   simplement le plan sans effet au lieu de buter dans les montants.

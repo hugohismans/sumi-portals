@@ -8,7 +8,7 @@
  *
  *   npm run check
  */
-import { PLAYER_HEIGHT, PLAYER_RADIUS, SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
+import { EYE_FRACTION, PLAYER_HEIGHT, PLAYER_RADIUS, SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
@@ -17,14 +17,15 @@ import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
 import { verifierParcelleSalle, verifierTaillesDistinctes, type SalleModule } from '../levels/salles/contrat.js';
-import { CREUX } from '../levels/salles/creux.js';
-import { PLUIE } from '../levels/salles/pluie.js';
-import { LAVOIR } from '../levels/salles/lavoir.js';
-import { ATELIER } from '../levels/salles/atelier.js';
-import { CONDUIT } from '../levels/salles/conduit.js';
-import { BOL } from '../levels/salles/bol.js';
+import { PLUIE, PLUIE_AVERSE } from '../levels/salles/pluie.js';
 import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
 import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
+import { MESURE, RACCORDS_MESURE, SALLES_MESURE } from '../levels/mesure.js';
+import { LACET_PAR_DEFAUT } from '../levels/salles/contrat.js';
+import { piloterDescente } from './__pilote_descente.js';
+import { piloterMontee } from './__pilote_montee.js';
+import { REFUS_GRANDE, REFUS_PETITE } from '../levels/salles/refus.js';
+import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
 
 /**
  * Les salles déjà bâties, les deux mouvements confondus. On en ajoute une ligne
@@ -36,13 +37,12 @@ import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
  * vérifiées par ce seul bloc.
  */
 const SALLES_LIVREES: SalleModule[] = [
-  LAVOIR,
-  CONDUIT,
-  CREUX,
-  ATELIER,
-  BOL,
-  PLUIE,
+  // La descente ENTIÈRE, et non six salles nommées une à une : la lucarne bleue
+  // a échappé au contrat pendant un mois parce qu'elle n'était pas dans la
+  // liste — la septième salle d'une liste qui en comptait six.
+  ...SALLES_DESCENTE,
   ...SALLES_MONTEE,
+  ...SALLES_MESURE,
 ];
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
@@ -53,6 +53,9 @@ import {
   construireDuo,
 } from '../levels/duo.js';
 import { Simulation } from './simulation.js';
+import {
+  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, piece, pos, poserA, poserVers, settle, versLePoint, walkTo,
+} from './__pilote.js';
 import type { BoxDef, LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
 import { LEVEL_02 } from '../levels/level02.js';
@@ -70,6 +73,8 @@ import {
   REPERES_LOBBY,
   REPERES_MONDE,
   REPERES_MONTEE,
+  REPERES_MESURE,
+  POURQUOI_MESURE_ORPHELINS,
 } from '../debug/reperes.js';
 import { MONDE } from '../levels/monde.js';
 import { reve } from '../levels/reve.js';
@@ -77,6 +82,8 @@ import { verifierParcelle } from '../levels/regions/contrat.js';
 import { BELVEDERE } from '../levels/regions/belvedere.js';
 import { JARDIN } from '../levels/regions/jardin.js';
 import { TERRASSE } from '../levels/regions/terrasse.js';
+import { ROUGE } from '../levels/regions/rouge.js';
+import { BANC, REPERES_BANC } from '../levels/banc.js';
 
 // Ce fichier est le seul du projet à tourner sous Node ; on déclare le strict
 // minimum plutôt que de tirer @types/node dans une base de code navigateur.
@@ -93,117 +100,6 @@ const check = (label: string, ok: boolean, detail = ''): void => {
     failures++;
     console.log(`  FAIL ${label}${detail ? ` — ${detail}` : ''}`);
   }
-};
-
-const near = (a: number, b: number, eps: number): boolean => Math.abs(a - b) < eps;
-
-const pos = (sim: Simulation): string => {
-  const p = sim.player.position;
-  return `(${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}) niveau ${sim.player.scaleLevel}`;
-};
-
-/** Fait marcher le joueur vers un point et rapporte ce qui s'est passé. */
-const walkTo = (
-  sim: Simulation,
-  target: [number, number, number],
-  ticks: number,
-  opts: { jump?: boolean; sprint?: boolean; interact?: boolean; stopOnEvent?: boolean } = {},
-): TickEvents => {
-  const collected: TickEvents = {};
-  for (let i = 0; i < ticks; i++) {
-    const p = sim.player.position;
-    const dx = target[0] - p.x;
-    const dz = target[2] - p.z;
-    const dist = Math.hypot(dx, dz);
-    const e = sim.step(
-      {
-        forward: dist > scaleOfLevel(sim.player.scaleLevel) * 0.5 ? 1 : 0,
-        strafe: 0,
-        jump: opts.jump ?? false,
-        sprint: opts.sprint ?? false,
-        interact: opts.interact ?? false,
-        throwIt: false,
-        yaw: Math.atan2(dx, dz),
-        pitch: 0,
-      },
-      TICK_DT,
-    );
-    if (e.traversed) collected.traversed = e.traversed;
-    if (e.refused) collected.refused = e.refused;
-    if (e.reachedGoal) collected.reachedGoal = e.reachedGoal;
-    if (e.carry) collected.carry = e.carry;
-    if (e.tooHeavy) collected.tooHeavy = e.tooHeavy;
-    if (e.socketFilled) collected.socketFilled = e.socketFilled;
-    if (e.eveil) collected.eveil = e.eveil;
-    if (e.eveilRefuse) collected.eveilRefuse = e.eveilRefuse;
-    if (opts.stopOnEvent && (e.traversed || e.refused || e.reachedGoal)) break;
-  }
-  return collected;
-};
-
-/** Laisse le joueur retomber et s'immobiliser avant de conclure. */
-const settle = (sim: Simulation, ticks = 180): void => {
-  for (let i = 0; i < ticks; i++) {
-    sim.step(
-      {
-        forward: 0,
-        strafe: 0,
-        jump: false,
-        sprint: false,
-        interact: false,
-        throwIt: false,
-        yaw: sim.player.yaw,
-        pitch: 0,
-      },
-      TICK_DT,
-    );
-  }
-};
-
-/**
- * MONTE SUR UN APPUI, puis LÂCHE LA TOUCHE.
- *
- * `walkTo(..., { jump: true })` maintient le saut enfoncé pendant toute la
- * durée qu'on lui donne. Sur un trajet au sol c'est sans conséquence ; sur une
- * plateforme, c'est fatal — et il a fallu une épreuve entière pour le
- * comprendre.
- *
- * Une fois l'appui atteint, `forward` retombe à zéro, mais la touche de saut,
- * elle, reste appuyée. Le joueur rebondit donc sur place pendant les trente-six
- * secondes qui restent. Or un rebond conserve l'élan horizontal : il oscille
- * autour de sa cible, dérive, et finit par tomber d'une feuille large de deux
- * mètres. Mesuré : la même épreuve, avec le même pilote, donne 1/21 en
- * accordant 40 s par appui et 21/21 en n'en accordant que 4. Ce n'était pas la
- * géométrie qui était fausse, c'était la durée.
- *
- * D'où ce pilote-ci : il s'élance en tenant le saut, et DÈS QU'IL EST POSÉ sur
- * l'appui visé, il lâche tout et se laisse immobiliser. C'est ce que fait un
- * joueur, et c'est la seule façon honnête de vérifier un parcours de
- * plateformes : sans timing au millième, mais sans rebond parasite non plus.
- */
-const bondirVers = (sim: Simulation, cible: [number, number, number]): void => {
-  for (let i = 0; i < 60 * 6; i++) {
-    const p = sim.player.position;
-    const dx = cible[0] - p.x;
-    const dz = cible[2] - p.z;
-    const dist = Math.hypot(dx, dz);
-    // Posé sur l'appui : on relâche, sinon on rebondit jusqu'à en tomber.
-    if (dist < 0.6 && sim.player.grounded && p.y > cible[1] - 0.25) break;
-    sim.step(
-      {
-        forward: dist > 0.4 ? 1 : 0,
-        strafe: 0,
-        jump: true,
-        sprint: false,
-        interact: false,
-        throwIt: false,
-        yaw: Math.atan2(dx, dz),
-        pitch: 0,
-      },
-      TICK_DT,
-    );
-  }
-  settle(sim, 24);
 };
 
 // =============================================================================
@@ -2122,6 +2018,69 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     check(`${salle.nom} : le Pinceau la traverse`, salle.stations.length > 0, `${salle.stations.length} jalons`);
   }
 
+  // ─── LA COUR DE PLUIE : IL PLEUT, ET IL NE PLEUT PAS SOUS L'AUVENT ──────
+  //
+  // Le moteur de gouttes a existé des semaines sans être branché : la salle
+  // était livrée, reliée, au protocole, et il n'y pleuvait pas. Rien ne le
+  // disait — un rendu absent ressemble à un rendu qu'on n'a pas encore
+  // regardé. On exige donc que l'assemblage porte l'averse, et que la table
+  // des surfaces fasse ce que la salle promet : deux abris secs, sans qu'aucune
+  // règle ne les déclare — seulement un toit et une assise qui ARRÊTENT l'eau.
+  {
+    console.log('\n— La cour de pluie : il pleut, et il ne pleut pas sous l’auvent —');
+    const averses = DESCENTE.averse ?? [];
+    check('la descente porte une averse, et une seule', averses.length === 1, `${averses.length}`);
+    const a = averses[0] ?? PLUIE_AVERSE;
+    const { min, max } = PLUIE.bounds;
+    check(
+      'la pluie tombe dans la parcelle de la cour',
+      a.zone.min.every((v, i) => v >= min[i]) && a.zone.max.every((v, i) => v <= max[i]),
+      `${a.zone.min.join(',')} … ${a.zone.max.join(',')}`,
+    );
+
+    // Une surface entièrement hors de la zone ne recevra jamais une goutte :
+    // c'est une ligne écrite pour rien, ou une zone mal bornée.
+    const horsZone = PLUIE_AVERSE.surfaces.filter(
+      (s) => s.max[0] < a.zone.min[0] || s.min[0] > a.zone.max[0] || s.max[1] < a.zone.min[2] || s.min[1] > a.zone.max[2],
+    );
+    check('chaque surface d’impact est sous la pluie', horsZone.length === 0, horsZone.map((s) => s.nom).join(', '));
+
+    // LES DEUX ZONES SÈCHES SE VÉRIFIENT, ELLES NE S'APPLIQUENT PAS. On tombe
+    // du ciel en cent points de chaque abri : la première surface rencontrée
+    // doit être le toit ou l'assise, jamais le pavé qu'ils couvrent.
+    const premiere = (x: number, z: number, y: number): (typeof PLUIE_AVERSE.surfaces)[number] | null => {
+      for (const s of PLUIE_AVERSE.surfaces) {
+        if (x < s.min[0] || x > s.max[0] || z < s.min[1] || z > s.max[1] || s.y > y) continue;
+        return s;
+      }
+      return null;
+    };
+    for (const sec of PLUIE_AVERSE.secs) {
+      const abri = sec.nom.includes('auvent') ? 'auvent' : 'banc';
+      let mouilles = 0;
+      const n = 10;
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const x = sec.min[0] + ((i + 0.5) / n) * (sec.max[0] - sec.min[0]);
+          const z = sec.min[1] + ((j + 0.5) / n) * (sec.max[1] - sec.min[1]);
+          if (premiere(x, z, a.zone.max[1])?.nom !== abri) mouilles++;
+        }
+      }
+      check(`il ne pleut pas ${sec.nom}`, mouilles === 0, `${mouilles} point(s) sur ${n * n} reçoivent l’eau`);
+    }
+
+    // Et chaque source coule sur quelque chose : une nappe qui tomberait dans
+    // le vide serait une goutte qui traverse le sol.
+    for (const src of PLUIE_AVERSE.sources) {
+      const dessous = premiere(src.a[0], src.a[2], src.a[1] - 1e-6);
+      check(
+        `la source « ${src.nom} » tombe sur ${dessous?.nom ?? 'rien'}`,
+        dessous !== null && dessous.y < src.a[1],
+        `depuis y = ${src.a[1].toFixed(2)}`,
+      );
+    }
+  }
+
   // ─── LA LOI DE L'ENCHAÎNEMENT : UNE PORTE NE VAUT QU'UN CRAN ────────────
   //
   // Une paire de portails multiplie ou divise par quatre. Toujours, parce que
@@ -2136,6 +2095,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   for (const [salles, raccords] of [
     [SALLES_DESCENTE, RACCORDS_DESCENTE],
     [SALLES_MONTEE, RACCORDS_MONTEE],
+    [SALLES_MESURE, RACCORDS_MESURE],
   ] as const) {
     for (const r of raccords) {
       const a = salles[r.depuis];
@@ -2160,10 +2120,13 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       perdues.join(', '),
     );
   }
-  // On ne réclame pas encore la chaîne complète : les dernières salles ne sont
-  // pas nées. Mais on exige que ce qui est déclaré soit VRAI, et que les
-  // raccords se suivent sans trou — un raccord isolé au milieu du tableau
-  // serait une salle inatteignable qu'on croirait reliée.
+  // Les trois mouvements sont assemblés : la descente, la montée, la mesure.
+  // Deux salles de la mesure ont attendu un mois, écrites et vérifiées, sans
+  // qu'aucun fichier ne les relie — et rien ici ne le disait, puisqu'une salle
+  // qu'aucun tableau ne nomme n'est jamais vérifiée comme orpheline. On exige
+  // que ce qui est déclaré soit VRAI, et que les raccords se suivent sans
+  // trou — un raccord isolé au milieu du tableau serait une salle
+  // inatteignable qu'on croirait reliée.
   // ET TOUTE SALLE EST ATTEIGNABLE. Une salle bâtie, vérifiée, et que personne
   // ne peut atteindre est le pire gaspillage possible — et rien d'autre ne le
   // dirait : elle passe toutes les autres vérifications sans broncher.
@@ -2550,39 +2513,293 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 {
   console.log('\n— La montée : la main est une serrure qu’aucune taille n’ouvre —');
 
-  // ─── LE THÉORÈME DU BLANCHIMENT, ET IL EST VÉRIFIABLE ────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // LA RÈGLE DU MIROIR A CHANGÉ, ET CES DEUX SALLES ONT DÛ CHANGER AVEC ELLE.
   //
-  // Un creux qui exige l'AUTRE MAIN et la TAILLE D'ORIGINE ne s'ouvre par aucun
-  // nombre de passages au miroir. La démonstration tient en deux lignes :
+  // Depuis que le monde bascule avec le joueur, PORTER une pièce à travers un
+  // miroir ne la retourne plus ; seul LE LANCER le fait. Les deux salles
+  // chirales reposaient sur le portage. Le commit qui a posé la règle l'a
+  // admis en toutes lettres — « ils sont à réécrire autour du lancer » — et
+  // rien ici ne le disait : l'ancienne vérification se contentait de compter
+  // un miroir et une porte ordinaire, ce qui restait vrai d'une salle devenue
+  // impossible.
   //
-  //   la main    bascule à chaque passage miroir  → il en faut un nombre IMPAIR
-  //   la taille  se multiplie par 4 à chaque cran → il faut une somme NULLE
-  //
-  // Un nombre impair de ±1 ne fait jamais zéro. La salle est donc impossible si
-  // elle ne contient que des miroirs — mathématiquement, pas par difficulté.
-  // Il lui faut une SECONDE paire, ordinaire, qui change la taille sans toucher
-  // à la main : un passage de chaque, en sens contraires, et le compte tombe.
-  //
-  // C'est exactement la faute qu'un auteur de salle commettra un jour en toute
-  // bonne foi — il aura dessiné un beau lieu, posé un miroir, réglé son creux,
-  // et livré une salle que personne ne peut finir. Rien ne le dirait : elle
-  // passe toutes les autres vérifications sans broncher, et l'on ne s'en
-  // apercevrait qu'en jouant, après une demi-heure à faire la navette.
-  for (const salle of SALLES_LIVREES) {
-    for (const s of salle.sockets ?? []) {
-      if (s.main === undefined) continue;
-      const impossible = (salle.carryables ?? []).some(
-        (c) => c.main !== undefined && c.main !== s.main && Math.abs(c.size - s.size) < 1e-6,
-      );
-      if (!impossible) continue;
+  // On ne compte plus, on JOUE. Le pilote fait la faute que fera le joueur,
+  // entend le creux la nommer, puis fait le geste juste et voit la porte de
+  // sortie se desceller. Une salle qui ne se résout pas ainsi ne passe pas.
+  // ═══════════════════════════════════════════════════════════════════════
 
-      const portes = salle.portals ?? [];
+  // ─── LE CREUX QUI REFUSE ────────────────────────────────────────────────
+  {
+    const R = new Simulation(MONTEE);
+    poserA(R, -14, 0.05, 1696, 0);
+    walkTo(R, [-14, 0, 1698.4], 60 * 3);
+    agirVers(R, [-14, 0, 1700]);
+    const v = piece(R, 'vrille-refus');
+    check('refus : on prend la vrille, gauche, 0,40', v.held && v.main === 'L' && near(v.size, REFUS_PETITE, 1e-6), pos(R));
+
+    // LA FAUTE. On la porte par la petite face : on ressort géant, elle est
+    // quatre fois plus grosse — et toujours de la même main.
+    const t1 = walkTo(R, [29.5, 0, 1700], 60 * 20, { stopOnEvent: true });
+    check(
+      'refus : portée par le miroir, elle grossit mais ne change PAS de main',
+      t1.traversed?.newLevel === 1 && v.held && near(v.size, REFUS_GRANDE, 1e-6) && v.main === 'L',
+      `${t1.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}`,
+    );
+    // Un géant pose à quatre mètres et demi devant lui : on se poste à dix
+    // mètres du creux, et la vrille tombe à cinq.
+    walkTo(R, [0, 0, 1686], 60 * 20);
+    agirVers(R, [0, 0.9, 1676]);
+    const e1 = attendre(R, 60 * 2);
+    check(
+      'refus : le creux la refuse, et dit que c’est la MAIN',
+      !R.sockets.pourvus.has('creux-refus') && e1.logementRefuse?.raison === 'main',
+      `${e1.logementRefuse?.raison ?? 'aucun refus'}`,
+    );
+
+    // LE GESTE JUSTE. On la reprend, on revient homme par la grande face, et
+    // on la LANCE dans la petite : elle ressort par la grande, droite, 1,60.
+    agirVers(R, [v.position.x, v.position.y, v.position.z]);
+    check('refus : on reprend la vrille, géant', v.held, pos(R));
+    // Un géant s'arrête à deux mètres de sa cible : on vise AU-DELÀ du plan.
+    const t2 = walkTo(R, [-31, 0, 1690], 60 * 20, { stopOnEvent: true });
+    check(
+      'refus : rapportée par la grande face, elle rapetisse et garde sa main',
+      t2.traversed?.newLevel === 0 && near(v.size, REFUS_PETITE, 1e-6) && v.main === 'L',
+      `${t2.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}`,
+    );
+    walkTo(R, [23, 0, 1700], 60 * 12);
+    lancer(R, Math.PI / 2, 0.12);
+    attendre(R, 60 * 6);
+    check(
+      'refus : LANCÉE dans le miroir, elle ressort droite, 1,60, dans la cour',
+      !v.held && v.main === 'D' && near(v.size, REFUS_GRANDE, 1e-6) && v.grounded && dansLaCour(v, -30, 30, 1670, 1730),
+      `main ${v.main ?? '?'}, taille ${v.size}, à (${v.position.x.toFixed(1)}, ${v.position.y.toFixed(2)}, ${v.position.z.toFixed(1)})`,
+    );
+    check('refus : trop lourde pour un homme — il faut la suivre', !R.carryables.canLift(v, scaleOfLevel(0)), '');
+
+    // ON LA SUIT. Par la petite face, géant, jusqu'à elle, puis au creux.
+    const t3 = walkTo(R, [29.5, 0, 1700], 60 * 12, { stopOnEvent: true });
+    check('refus : on passe la porte derrière elle', t3.traversed?.newLevel === 1, pos(R));
+    walkTo(R, [v.position.x, 0, v.position.z - 3.6], 60 * 30);
+    agirVers(R, [v.position.x, v.position.y, v.position.z]);
+    check('refus : géant, on la ramasse', v.held, `${pos(R)} pièce à (${v.position.x.toFixed(1)}, ${v.position.z.toFixed(1)})`);
+    walkTo(R, [0, 0, 1686], 60 * 30);
+    agirVers(R, [0, 0.9, 1676]);
+    attendre(R, 60 * 2);
+    check(
+      'refus : le creux l’accepte, et la porte de sortie se descelle',
+      R.sockets.pourvus.has('creux-refus') && R.conditionsRemplies.has('creux-refus'),
+      [...R.sockets.pourvus].join(',') || 'aucun',
+    );
+  }
+
+  // ─── CE QUE LE LANCER NE FAIT PAS, ET CE QUE LE VERRE RETIENT ──────────
+  {
+    // La relecture a balayé cent soixante-quinze lancers d'homme dans le
+    // miroir : vingt-trois fois la vrille s'arrêtait à portée du creux, et le
+    // creux la prenait — l'énigme résolue sans rien porter, le joueur resté
+    // homme, et arrivé quart d'homme au blanchiment. Une pièce LANCÉE n'est
+    // plus une question, même arrêtée au bon endroit ; reprise et posée,
+    // elle en redevient une.
+    const R = new Simulation(MONTEE);
+    const v = piece(R, 'vrille-refus');
+    v.size = REFUS_GRANDE;
+    v.main = 'D';
+    v.lancee = true;
+    v.position = { x: 3, y: 0.05, z: 1679 };
+    v.velocity = { x: 0, y: 0, z: 0 };
+    poserA(R, 0, 0.05, 1700, 1);
+    attendre(R, 60 * 3);
+    check(
+      'refus : une vrille lancée, arrêtée à trois mètres du creux, n’y entre pas toute seule',
+      !R.sockets.pourvus.has('creux-refus') && v.grounded,
+      `pourvus : ${[...R.sockets.pourvus].join(',') || 'aucun'}`,
+    );
+    walkTo(R, [3, 0, 1687], 60 * 12);
+    agirVers(R, [v.position.x, v.position.y, v.position.z]);
+    check('refus : reprise en main par le géant', v.held && !v.lancee, pos(R));
+    // Et posée d'où le pilote de la salle pose : à dix mètres, la vrille
+    // tombe à cinq, à portée.
+    walkTo(R, [0, 0, 1686], 60 * 12);
+    agirVers(R, [0, 0.9, 1676]);
+    attendre(R, 60 * 2);
+    check('refus : posée, le creux la prend', R.sockets.pourvus.has('creux-refus'), pos(R));
+
+    // Et un vrai lancer, le plus heureux du balayage : depuis (21, 1696),
+    // à 0,3 d'inclinaison, la vrille ressortait à 4,5 m du creux et s'y
+    // logeait. Elle reste au sol, et l'homme reste homme.
+    const L = new Simulation(MONTEE);
+    const w = piece(L, 'vrille-refus');
+    w.held = true;
+    poserA(L, 21, 0.05, 1696, 0);
+    const visee = versLePoint(L, [28, 0, 1700]);
+    L.player.yaw = visee;
+    attendre(L, 2);
+    lancer(L, visee, 0.3);
+    attendre(L, 60 * 8);
+    const dCreux = Math.hypot(w.position.x, w.position.z - 1676);
+    check(
+      'refus : le lancer le plus heureux ne résout rien',
+      !L.sockets.pourvus.has('creux-refus') && near(w.size, REFUS_GRANDE, 1e-6) && w.grounded && dCreux < 8,
+      `pourvus : ${[...L.sockets.pourvus].join(',') || 'aucun'}, vrille ${w.size} à ${dCreux.toFixed(1)} m du creux`,
+    );
+
+    // LE CIEL DE VERRE retient la vrille d'un géant qui lève les yeux. Il
+    // était à treize mètres, sous la main qui la tient : lancée, elle montait
+    // à soixante-dix mètres et le papier la rattrapait — la clef de la porte
+    // « tombée hors du dessin » sous les yeux du joueur.
+    for (const pitch of [0.9, 1.1, 1.3]) {
+      const V = new Simulation(MONTEE);
+      const u = piece(V, 'vrille-refus');
+      u.size = REFUS_GRANDE;
+      u.main = 'D';
+      u.held = true;
+      poserA(V, 0, 0.05, 1700, 1);
+      V.player.yaw = 0;
+      attendre(V, 2);
+      lancer(V, 0, pitch);
+      let haut = 0;
+      let ratt = false;
+      for (let i = 0; i < 60 * 6; i++) {
+        const e = V.step(ordre(V), TICK_DT);
+        haut = Math.max(haut, u.position.y + u.size);
+        if (e.pieceRattrapee) ratt = true;
+      }
       check(
-        `${salle.nom} : « ${s.id} » veut l’autre main à taille égale, et la salle en donne le moyen`,
-        portes.some((p) => p.miroir) && portes.some((p) => !p.miroir),
-        `${portes.filter((p) => p.miroir).length} miroir(s), ${portes.filter((p) => !p.miroir).length} ordinaire(s) — il faut au moins un de chaque`,
+        `refus : lancée vers le haut par un géant (inclinaison ${pitch}), la vrille se cogne au verre et retombe dans la cour`,
+        haut < 18.6 && !ratt && u.grounded && dansLaCour(u, -30, 30, 1670, 1730),
+        `sommet ${haut.toFixed(1)} m${ratt ? ', rattrapée' : ''}, fin (${u.position.x.toFixed(1)}, ${u.position.y.toFixed(2)}, ${u.position.z.toFixed(1)})`,
       );
     }
+
+    // ET ON NE POSE PAS À TRAVERS UN MUR. Un géant face au mur est, à deux
+    // pas, tient sa vrille de l'autre côté ; E la posait dehors, et elle
+    // tombait du monde.
+    {
+      const M = new Simulation(MONTEE);
+      const u = piece(M, 'vrille-refus');
+      u.size = REFUS_GRANDE;
+      u.main = 'D';
+      u.held = true;
+      poserA(M, 27, 0.05, 1690, 1);
+      M.player.yaw = Math.PI / 2;
+      attendre(M, 2);
+      const e = M.step(ordre(M, { yaw: Math.PI / 2, interact: true }), TICK_DT);
+      attendre(M, 60 * 3);
+      check(
+        'refus : face au mur, un géant ne pose pas sa vrille de l’autre côté',
+        (u.held && e.noRoom === true) || (!u.held && dansLaCour(u, -30, 30, 1670, 1730)),
+        `${u.held ? 'gardée en main' : 'posée'} à (${u.position.x.toFixed(1)}, ${u.position.y.toFixed(2)}, ${u.position.z.toFixed(1)})`,
+      );
+    }
+  }
+
+  // ─── LE BLANCHIMENT ─────────────────────────────────────────────────────
+  {
+    // LE THÉORÈME EN NOMBRES. La chatière est trop basse pour quiconque peut
+    // soulever la grande vrille, et assez large pour la petite.
+    check(
+      'blanchiment : un homme n’entre pas dans la chatière, un géant pas dans sa grande sœur',
+      PLAYER_HEIGHT > BLANCHIMENT_CHATIERE * 0.96 && PLAYER_HEIGHT * 4 > BLANCHIMENT_CHATIERE * 4 * 0.96,
+      '',
+    );
+    check(
+      'blanchiment : la vrille, elle, passe la chatière',
+      BLANCHIMENT_TAILLE <= BLANCHIMENT_CHATIERE * 0.9 && BLANCHIMENT_GRANDE <= BLANCHIMENT_CHATIERE * 4 * 0.9,
+      '',
+    );
+
+    // Un homme qui marche dans la chatière bute ; un géant qui marche dans la
+    // grande face bute. Ni l'un ni l'autre ne passe.
+    //
+    // Et l'homme s'entend REFUSER. Son œil passe au-dessus du rectangle de
+    // la chatière et c'est le mur, derrière, qui l'arrêtait sans un mot —
+    // cette vérification passait « pour une mauvaise raison », dit la
+    // relecture. On refuse maintenant celui qui passe AU-DESSUS d'une porte
+    // trop basse, dans sa largeur : le monde le dit, et le mur fait le reste.
+    const H = new Simulation(MONTEE);
+    poserA(H, 176, 0.05, 1720, 0);
+    const h = walkTo(H, [170.2, 0, 1720], 60 * 8, { stopOnEvent: true });
+    check(
+      'blanchiment : un homme bute sur la chatière, et elle le lui dit',
+      !h.traversed && H.player.scaleLevel === 0 && h.refused?.reason === 'tooBig',
+      `${h.refused ? `refusé : ${h.refused.reason}` : 'aucun refus'}, ${pos(H)}`,
+    );
+    const G = new Simulation(MONTEE);
+    poserA(G, 176, 0.05, 1682, 1);
+    const g = walkTo(G, [170.2, 0, 1682], 60 * 8, { stopOnEvent: true });
+    check('blanchiment : un géant bute sur la grande face du miroir', !g.traversed && G.player.scaleLevel === 1, pos(G));
+
+    // LE PARCOURS. On prend la vrille, on la lance dans la chatière — en la
+    // regardant, simplement — et elle ressort droite, 2,00, trop lourde.
+    const B = new Simulation(MONTEE);
+    poserA(B, 180, 0.05, 1686, 0);
+    walkTo(B, [180, 0, 1688.4], 60 * 3);
+    agirVers(B, [180, 0, 1690]);
+    const w = piece(B, 'vrille-blanchiment');
+    check('blanchiment : on prend la vrille, gauche, 0,50', w.held && w.main === 'L' && near(w.size, BLANCHIMENT_TAILLE, 1e-6), pos(B));
+    walkTo(B, [174.6, 0, 1720], 60 * 20);
+    const oeil = PLAYER_HEIGHT * EYE_FRACTION;
+    // On regarde le haut de la chatière et l'on lance : la vrille y entre en cloche.
+    lancer(B, -Math.PI / 2, Math.atan2(BLANCHIMENT_CHATIERE - oeil, 174.6 - 170.6));
+    attendre(B, 60 * 6);
+    check(
+      'blanchiment : lancée dans la chatière, elle ressort droite et 2,00',
+      !w.held && w.main === 'D' && near(w.size, BLANCHIMENT_GRANDE, 1e-6) && w.grounded && dansLaCour(w, 170, 230, 1670, 1730),
+      `main ${w.main ?? '?'}, taille ${w.size}, à (${w.position.x.toFixed(1)}, ${w.position.y.toFixed(2)}, ${w.position.z.toFixed(1)})`,
+    );
+    check('blanchiment : trop lourde pour un homme', !B.carryables.canLift(w, scaleOfLevel(0)), '');
+
+    // On grandit par la porte ordinaire, on va la chercher, on la rapporte
+    // par la grande face : elle rapetisse et GARDE sa main.
+    const t4 = walkTo(B, [227, 0, 1720], 60 * 30, { stopOnEvent: true });
+    check('blanchiment : on grandit par la porte ordinaire', t4.traversed?.newLevel === 1, pos(B));
+    // Le mur de refend coupe la cour : on passe par la brèche du nord, à
+    // l'aller comme au retour — c'est le chemin que fera le joueur.
+    if (w.position.x < 201) {
+      walkTo(B, [206, 0, 1724], 60 * 30);
+      walkTo(B, [195, 0, 1724], 60 * 20);
+    }
+    walkTo(B, [w.position.x, 0, w.position.z - 3.6], 60 * 40);
+    agirVers(B, [w.position.x, w.position.y, w.position.z]);
+    check('blanchiment : géant, on la ramasse', w.held, `${pos(B)} pièce à (${w.position.x.toFixed(1)}, ${w.position.z.toFixed(1)})`);
+    if (B.player.position.x < 201) {
+      walkTo(B, [195, 0, 1724], 60 * 30);
+      walkTo(B, [206, 0, 1724], 60 * 20);
+    }
+    // On aborde la porte DE FACE : en diagonale, l'œil coupe le plan hors du cadre.
+    walkTo(B, [221, 0, 1682], 60 * 30);
+    const t5 = walkTo(B, [229.5, 0, 1682], 60 * 40, { stopOnEvent: true });
+    check(
+      'blanchiment : rapportée par la grande face ordinaire, 0,50 et toujours droite',
+      t5.traversed?.newLevel === 0 && w.held && near(w.size, BLANCHIMENT_TAILLE, 1e-6) && w.main === 'D',
+      `${t5.traversed ? 'traversé' : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(B)}`,
+    );
+    walkTo(B, [216, 0, 1711.5], 60 * 20);
+    agirVers(B, [216, 0.6, 1716]);
+    attendre(B, 60 * 2);
+    check(
+      'blanchiment : le creux l’accepte, et la porte de sortie se descelle',
+      B.sockets.pourvus.has('creux-blanchiment') && B.conditionsRemplies.has('creux-blanchiment'),
+      [...B.sockets.pourvus].join(',') || 'aucun',
+    );
+
+    // CONTRE-PREUVE : la porte ordinaire ne retourne rien, même à une pièce
+    // lancée. C'est elle qui fait de la chatière la seule serrure de la main.
+    const O = new Simulation(MONTEE);
+    const o = piece(O, 'vrille-blanchiment');
+    o.position = { x: 223.2, y: 0, z: 1720 };
+    poserA(O, 221, 0.05, 1720, 0);
+    agirVers(O, [223.2, 0, 1720]);
+    check('blanchiment : on prend la vrille près de la porte ordinaire', o.held, pos(O));
+    lancer(O, Math.PI / 2, Math.atan2(1.4 - oeil, 226 - 221));
+    attendre(O, 60 * 6);
+    check(
+      'blanchiment : lancée par la porte ordinaire, elle grossit mais garde sa main',
+      !o.held && o.main === 'L' && near(o.size, BLANCHIMENT_GRANDE, 1e-6),
+      `main ${o.main ?? '?'}, taille ${o.size}`,
+    );
   }
 
   // ─── LES FILS QUI PENDENT ENTRE DEUX FICHIERS ───────────────────────────
@@ -2664,7 +2881,9 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
     ['la boîte à formes', FORMES],
+    ['le banc d’essai', BANC],
   ] as const) {
     const sim = new Simulation(niveau);
 
@@ -3045,6 +3264,73 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     );
   }
 
+  // ─── UNE PIÈCE TOMBÉE HORS DU MONDE REVIENT AUSSI ───────────────────────
+  //
+  // Ce qui sort d'une grande face sort quatre fois plus vite, et une pièce est
+  // souvent la seule clef d'une porte : perdue par-dessus un mur, elle
+  // emportait la salle. On la repose où elle reposait, TELLE qu'elle y
+  // reposait — une vrille lancée à travers un miroir puis perdue revient de la
+  // main et de la taille qu'elle avait avant le lancer, sinon le rattrapage
+  // garde la moitié d'un geste qu'il annule.
+  {
+    const sim = new Simulation(ilot);
+    for (let i = 0; i < 40; i++) sim.step(immobile, TICK_DT);
+    const c = sim.carryables.items[0];
+    const repos = { x: c.position.x, y: c.position.y, z: c.position.z };
+    check('une pièce posée retient son appui', c.appui !== null && near(c.appui.x, repos.x, 1e-6), '');
+    // Passée par une porte miroir, puis par-dessus bord.
+    c.size *= 4;
+    c.main = 'D';
+    c.position = { x: 60, y: 0, z: 60 };
+    c.velocity = { x: 30, y: 12, z: 0 };
+    let revenue = false;
+    for (let i = 0; i < 60 * 12 && !revenue; i++) {
+      revenue = sim.step(immobile, TICK_DT).pieceRattrapee?.id === 'caillou';
+    }
+    check('une pièce tombée hors du décor est rattrapée', revenue, `y = ${c.position.y.toFixed(0)}`);
+    check(
+      'et elle revient exactement où elle reposait',
+      Math.hypot(c.position.x - repos.x, c.position.z - repos.z) < 0.01,
+      `(${c.position.x.toFixed(2)}, ${c.position.z.toFixed(2)})`,
+    );
+    check(
+      'telle qu’elle y reposait — taille et main d’avant le lancer',
+      near(c.size, 0.3, 1e-6) && c.main === undefined,
+      `taille ${c.size}, main ${c.main ?? 'aucune'}`,
+    );
+    // Et elle se repose pour de bon : un rattrapage qui la laisserait en l'air
+    // au-dessus de son appui recommencerait à la faire tomber.
+    for (let i = 0; i < 60; i++) sim.step(immobile, TICK_DT);
+    check('puis elle se repose, immobile', c.grounded && Math.hypot(c.velocity.x, c.velocity.z) < 0.01, '');
+  }
+  // Jamais posée nulle part — lancée dès la première image — elle revient à
+  // son point de départ.
+  {
+    const sim = new Simulation(ilot);
+    const c = sim.carryables.items[0];
+    c.position = { x: 60, y: 0, z: 60 };
+    let revenue = false;
+    for (let i = 0; i < 60 * 12 && !revenue; i++) {
+      revenue = sim.step(immobile, TICK_DT).pieceRattrapee !== undefined;
+    }
+    check('une pièce jamais posée revient à son point de départ', revenue && near(c.position.x, 1, 1e-6) && near(c.position.z, 1, 1e-6), `(${c.position.x.toFixed(2)}, ${c.position.z.toFixed(2)})`);
+  }
+  // ET JAMAIS TROP TÔT : un galet tombé dans le chenal de la rive, quatre
+  // mètres sous le quai, y reste — on le repêche, on ne le téléporte pas.
+  {
+    const sim = new Simulation(MESURE);
+    const g = sim.carryables.items.find((c) => c.id === 'galet-rive-1')!;
+    // Au large de l'éperon : x = 150, là où le chenal est de l'eau et non de la pierre.
+    g.position = { x: 150, y: 2, z: 3495 };
+    let faux = false;
+    for (let i = 0; i < 60 * 8 && !faux; i++) faux = sim.step(immobile, TICK_DT).pieceRattrapee !== undefined;
+    check(
+      'un galet tombé dans le chenal de la rive y reste',
+      !faux && g.grounded && g.position.y < 0 && g.position.y > -5,
+      `à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+
   // ─── ET IL NE SE DÉCLENCHE JAMAIS QUAND IL NE FAUT PAS ──────────────────
   //
   // C'est la moitié qui compte. Un rattrapage trop bavard téléporterait le
@@ -3054,6 +3340,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
   ] as const) {
     const sim = new Simulation(niveau);
     let faux = false;
@@ -3151,7 +3438,9 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
     ['la boîte à formes', FORMES],
+    ['le banc d’essai', BANC],
   ] as const) {
     const monde = new World(niveau);
     const sim = new Simulation(niveau);
@@ -3412,7 +3701,11 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['le monde', MONDE, REPERES_MONDE],
     ['la descente', DESCENTE, REPERES_DESCENTE],
     ['la montée', MONTEE, REPERES_MONTEE],
+    ['la mesure', MESURE, REPERES_MESURE],
     ['la boîte à formes', FORMES, REPERES_FORMES],
+    // Le banc n'était couvert par AUCUNE vérification : douze stations, douze
+    // repères écrits à la main, et personne pour dire si l'on y naît debout.
+    ['le banc d’essai', BANC, REPERES_BANC],
   ] as const) {
     // ON NE DEMANDE PAS D'ÊTRE À L'AIR LIBRE, ON DEMANDE DE POUVOIR MARCHER.
     //
@@ -3451,9 +3744,16 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       // ET IL PEUT AVANCER. Un corps coincé entre deux boîtes est « au sol » et
       // parfaitement immobile — c'est le pire des deux mondes, puisque rien ne
       // le signale.
+      // Devant, ou à défaut derrière : un repère posé face à un muret — celui
+      // du banc où l'on doit justement regarder le cube derrière le mur — n'est
+      // pas un repère coincé. Coincé, c'est ne pouvoir aller nulle part.
       const avant = { x: pose.x, z: pose.z };
       for (let i = 0; i < 45; i++) sim.step({ ...immobile, forward: 1 }, TICK_DT);
-      const d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      let d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      if (d < 0.3 * scaleOfLevel(r.echelle)) {
+        for (let i = 0; i < 45; i++) sim.step({ ...immobile, forward: -1 }, TICK_DT);
+        d = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+      }
       if (d < 0.3 * scaleOfLevel(r.echelle)) perdus.push(`« ${r.titre} » ne peut pas marcher (${d.toFixed(2)} m)`);
     }
     check(
@@ -3478,6 +3778,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   for (const [nom, salles, liste] of [
     ['la descente', SALLES_DESCENTE, REPERES_DESCENTE],
     ['la montée', SALLES_MONTEE, REPERES_MONTEE],
+    ['la mesure', SALLES_MESURE, REPERES_MESURE],
   ] as const) {
     const sansRepere = salles.filter(
       (s) =>
@@ -3502,9 +3803,461 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // avant d'être devant l'écran.
   check(
     'aucune raison de test ne vise une station qui n’existe plus',
-    POURQUOI_MONTEE_ORPHELINS.length === 0,
-    POURQUOI_MONTEE_ORPHELINS.join(', '),
+    POURQUOI_MONTEE_ORPHELINS.length === 0 && POURQUOI_MESURE_ORPHELINS.length === 0,
+    [...POURQUOI_MONTEE_ORPHELINS, ...POURQUOI_MESURE_ORPHELINS].join(', '),
   );
+}
+
+// =============================================================================
+console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule partie —');
+{
+  // Deux salles écrites au mètre près par deux mains, mesurées chacune à son
+  // banc jetable, et jamais jouées l'une APRÈS l'autre : le raccord est le
+  // seul endroit où une erreur coûte à quelqu'un d'autre que soi. On joue donc
+  // le mouvement de bout en bout — la rive, la chute, le grain, le seuil.
+  const M = new Simulation(MESURE);
+  check('on naît géant à l’ouest du quai', M.player.scaleLevel === 1, pos(M));
+
+  // LA RIVE. Un galet de 0,90 ne se présente pas à une serrure de 3,60 : il
+  // faut le faire grandir, donc rapetisser d'abord par la grande porte.
+  walkTo(M, [176, 0, 3462], 60 * 30);
+  const d1 = walkTo(M, [167, 0, 3462], 60 * 10, { stopOnEvent: true });
+  check('la rive : par la grande porte, on redevient homme', d1.traversed?.newLevel === 0, pos(M));
+  walkTo(M, [232, 0, 3458.6], 60 * 30);
+  agirVers(M, [232, 0.01, 3456]);
+  const galet = piece(M, 'galet-rive-1');
+  check('la rive : homme, on soulève un galet', galet.held, `${pos(M)}`);
+  walkTo(M, [232, 0, 3466], 60 * 10);
+  const d2 = walkTo(M, [232, 0, 3471], 60 * 10, { stopOnEvent: true });
+  check(
+    'la rive : par la petite face, géant, un bloc de 3,60 dans les bras',
+    d2.traversed?.newLevel === 1 && galet.held && near(galet.size, 3.6, 1e-6),
+    `${d2.traversed ? 'traversé' : 'pas traversé'}, taille ${galet.size}, ${pos(M)}`,
+  );
+  // À la lèvre, on lève les yeux vers la baie et l'on lâche : la pièce entre
+  // où l'on n'entrera jamais. C'est le geste de la salle, et le seul.
+  walkTo(M, [210, 0, 3477], 60 * 40);
+  // Vingt-trois degrés, dit la salle — et c'est mesuré : en dessous, la pièce
+  // bute sur la tablette ou tombe dans la passe. On vise le linteau.
+  poserVers(M, [210, 10.4, 3486]);
+  attendre(M, 60 * 3);
+  check(
+    'la rive : lâchée depuis la lèvre, la pièce entre dans la baie et la serrure clique',
+    M.sockets.pourvus.has('serrure-rive'),
+    `pièce à (${galet.position.x.toFixed(1)}, ${galet.position.y.toFixed(2)}, ${galet.position.z.toFixed(1)}), ${galet.held ? 'encore en main' : 'lâchée'}`,
+  );
+  // La porte de sortie se DESSINE avant de s'ouvrir : c'est le rendu qui trace
+  // et qui descelle. Ici on l'ouvre comme le Pinceau le ferait, en une ligne,
+  // après avoir constaté que la serrure la libère.
+  check('la rive : la serrure libère la porte de sortie', M.conditionsRemplies.has('serrure-rive'), '');
+  M.portesFermees.delete('mesure-rive-grain');
+  walkTo(M, [210, 0, 3462], 60 * 20);
+  const d3 = walkTo(M, [210, 0, 3452], 60 * 10, { stopOnEvent: true });
+  check('la rive : la porte de sortie s’ouvre, et l’on tombe dans le grain', d3.traversed?.newLevel === 0, pos(M));
+
+  // LE GRAIN. Trente et un mètres de chute, puis le sol du vaste lobe.
+  attendre(M, 60 * 3);
+  check(
+    'le grain : on atterrit debout au fond du puits, homme',
+    M.player.grounded && M.player.scaleLevel === 0 && M.player.position.y > -0.5 && M.player.position.y < 0.5,
+    pos(M),
+  );
+  walkTo(M, [-94, 0, 3503.4], 60 * 12);
+  agirVers(M, [-94, 0.02, 3506]);
+  const graine = piece(M, 'graine-grain');
+  check('le grain : la graine du vaste se soulève', graine.held, pos(M));
+  check(
+    'le grain : la graine du menu, elle, ne se soulève pas — c’est la mesure',
+    !M.carryables.canLift(piece(M, 'graine-lourde'), scaleOfLevel(0)),
+    '',
+  );
+  // Le goulet coudé : vers l'est, puis vers le sud, puis le menu lobe.
+  walkTo(M, [-80, 0, 3500], 60 * 12);
+  walkTo(M, [-57, 0, 3500], 60 * 12);
+  walkTo(M, [-57, 0, 3470], 60 * 14);
+  walkTo(M, [-54, 0, 3460], 60 * 8);
+  agirVers(M, [-54, 0.02, 3455]);
+  attendre(M, 60 * 2);
+  check('le grain : le creux du menu accepte la graine du vaste', M.sockets.pourvus.has('creux-grain'), pos(M));
+  check('le grain : la graine libère la porte de sortie', M.conditionsRemplies.has('creux-grain'), '');
+  M.portesFermees.delete('mesure-grain-seuil');
+  const d4 = walkTo(M, [-54, 0, 3441], 60 * 12, { stopOnEvent: true });
+  check('le grain : la porte de sortie s’ouvre, et l’on arrive petit sur le seuil', d4.traversed?.newLevel === -1, pos(M));
+
+  // LE SEUIL. Un quart de minute de marche, et le but.
+  // Vingt-huit mètres de dalle à 1,9 m/s : un quart d'homme prend son temps.
+  const fin = walkTo(M, [350, 0, 3484], 60 * 40, { stopOnEvent: true });
+  check('le seuil : au bout de la dalle, le mouvement s’achève', fin.reachedGoal === true, pos(M));
+}
+
+// =============================================================================
+console.log('\n— Ce que la relecture finale a trouvé, et qui ne revient pas —');
+{
+  // UNE PIÈCE LANCÉE QUI S'ARRÊTE DANS LE CREUX OBTIENT UNE RÉPONSE. Le creux
+  // ne la prend pas — lancer n'est pas une question — mais il le dit, une
+  // fois, au lieu de se taire comme une panne. Le hall : bille lancée vers
+  // l'établi.
+  {
+    const H = new Simulation(LOBBY);
+    const b = piece(H, 'bille-a');
+    b.held = true;
+    poserA(H, 3.2, 0.05, 27.3, 0);
+    H.player.yaw = 0;
+    attendre(H, 2);
+    lancer(H, 0, -0.3);
+    let dit: TickEvents['logementRefuse'] | undefined;
+    let fois = 0;
+    for (let i = 0; i < 60 * 5; i++) {
+      const e = H.step(ordre(H), TICK_DT);
+      if (e.logementRefuse) {
+        dit = e.logementRefuse;
+        fois++;
+      }
+    }
+    check(
+      'hall : une bille lancée qui s’arrête au creux s’entend refuser « lancée », une fois, sans y entrer',
+      dit?.raison === 'lancee' && dit.socketId === 'creux-petit' && fois === 1 && !H.sockets.pourvus.has('creux-petit'),
+      `${dit ? `${dit.raison} ×${fois}` : 'aucune réponse'}, bille à (${b.position.x.toFixed(1)}, ${b.position.z.toFixed(1)}), pourvus ${[...H.sockets.pourvus].join(',') || 'aucun'}`,
+    );
+  }
+
+  // UNE PORTE FERMÉE FAIT MUR À CE QU'ON POSE. La graine du grain, tenue
+  // au-delà du plan de la sortie scellée : E la gardait en main ? Non — elle
+  // revenait à l'œil, apparaissait dans la tête et tombait entre les pieds.
+  {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, 3446.3, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    const e = M.step(ordre(M, { yaw: Math.PI, interact: true }), TICK_DT);
+    attendre(M, 60);
+    check(
+      'le grain : E devant la porte scellée, la graine reste en main — la porte fait mur à ce qu’on pose',
+      e.noRoom === true && g.held,
+      `${e.noRoom ? 'refusé' : 'posée'}, ${g.held ? 'en main' : `à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`}`,
+    );
+  }
+
+  // ET UNE PIÈCE LANCÉE SUR UNE PORTE SCELLÉE S'ARRÊTE DEVANT LE PLAN, pas
+  // dans la tête du lanceur.
+  {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, 3450, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    lancer(M, Math.PI, 0.05);
+    attendre(M, 60 * 4);
+    const d = Math.hypot(g.position.x - M.player.position.x, g.position.z - M.player.position.z);
+    check(
+      'le grain : la graine lancée sur la porte scellée retombe devant la porte, pas entre les pieds',
+      d > 1.5 && g.position.z > 3441 && g.position.z < 3449 && g.grounded,
+      `à ${d.toFixed(1)} m du joueur, (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+
+  // LE REFUS « AU-DESSUS D'UNE PORTE » N'A LIEU QUE CONTRE UN MUR. Un géant
+  // qui enjambe le torii du village en plein air n'a rien à s'entendre dire.
+  {
+    const V = new Simulation(MONDE);
+    poserA(V, 0, 0.05, -20, 1);
+    let refus = 0;
+    for (let i = 0; i < 60 * 4; i++) if (V.step(ordre(V, { forward: 1, yaw: Math.PI }), TICK_DT).refused) refus++;
+    check(
+      'le monde : un géant qui enjambe le torii n’est pas « trop grand pour cette porte »',
+      refus === 0 && V.player.position.z < -45,
+      `${refus} refus, ${pos(V)}`,
+    );
+  }
+
+  // LE LANCER VOYAGE SUR LE RÉSEAU. Deux clients : le lanceur et le
+  // spectateur. Sans le drapeau, la copie du spectateur — posée par le réseau,
+  // vitesse nulle — se logeait dans le creux que le lanceur voyait vide.
+  {
+    const A = new Simulation(LOBBY);
+    const B = new Simulation(LOBBY);
+    const pa = new CaissesPartagees();
+    const pb = new CaissesPartagees();
+    const ba = piece(A, 'bille-a');
+    ba.held = true;
+    pa.reclamer('bille-a');
+    poserA(A, 3.2, 0.05, 27.3, 0);
+    A.player.yaw = 0;
+    poserA(B, 20, 0.05, 20, 0);
+    attendre(A, 2);
+    lancer(A, 0, -0.3);
+    for (let i = 0; i < 60 * 5; i++) {
+      A.step(ordre(A), TICK_DT);
+      B.step(ordre(B), TICK_DT);
+      if (i % 6 === 0) {
+        const lot = pa.aPublier(A.carryables);
+        if (lot) {
+          pb.appliquer(
+            new Map([['a', { uid: 'a', x: 0, y: 0, z: 0, yaw: 0, lvl: 0, mv: 0, sol: 1, t: Date.now(), caisses: lot }]]),
+            B.carryables,
+          );
+        }
+      }
+    }
+    check(
+      'hall à deux : la bille lancée ne se loge ni chez le lanceur ni chez le spectateur',
+      !A.sockets.pourvus.has('creux-petit') && !B.sockets.pourvus.has('creux-petit') && piece(B, 'bille-a').lancee,
+      `lanceur ${[...A.sockets.pourvus].join(',') || 'vide'}, spectateur ${[...B.sockets.pourvus].join(',') || 'vide'}, copie lancée=${piece(B, 'bille-a').lancee}`,
+    );
+  }
+}
+
+// =============================================================================
+// LES DEUX AUTRES VOYAGES, DE BOUT EN BOUT. Chacun dans son fichier, parce
+// qu'un pilote de cinq cents lignes n'a rien à faire au milieu des lois du
+// moteur ; chacun dans une seule simulation, du spawn au but, sans jamais
+// poser le joueur nulle part. Relus adversarialement : pas de triche, et
+// trois défauts de niveau trouvés par cette relecture sont corrigés (la
+// feuille perchée sur le dosseret du lavoir, les sorties de l'escalier et de
+// l'atelier du haut plantées à l'envers).
+piloterDescente(check);
+piloterMontee(check);
+
+// =============================================================================
+console.log('\n— Une porte scellée fait mur aux pièces, et l’on en ressort au ras du sol —');
+{
+  // Deux trous trouvés par la relecture, dans le même bout de moteur.
+  //
+  // Le premier tuait le troisième mouvement : une porte scellée ne faisait mur
+  // qu'au JOUEUR. La graine du grain, lancée ou simplement posée vers la sortie
+  // encore scellée, passait dans le seuil — où l'on ne pouvait pas encore
+  // aller — et l'autre graine ne se soulève pas. Et cela dans la salle qui
+  // suit précisément celle où l'on apprend à lancer sa pièce à travers une
+  // porte.
+  for (const [z, pitch] of [
+    [3452, 0.15],
+    [3455, 0.3],
+    [3458, 0.4],
+  ] as const) {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, z, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    lancer(M, Math.PI, pitch);
+    const ev = attendre(M, 60 * 5);
+    check(
+      `le grain : la graine lancée vers la porte scellée (depuis z=${z}) rebondit et reste dans le grain`,
+      near(g.size, 0.72, 1e-6) && g.position.z > 3441 && !ev.pieceRattrapee,
+      `taille ${g.size}, à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+  {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, 3446.3, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    M.step(ordre(M, { yaw: Math.PI, interact: true }), TICK_DT);
+    attendre(M, 60 * 4);
+    check(
+      'le grain : la graine posée à un pas de la porte scellée reste de ce côté-ci',
+      near(g.size, 0.72, 1e-6) && g.position.z > 3441,
+      `taille ${g.size}, à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+
+  // Le second était la catapulte du blanchiment, revenue par une autre porte :
+  // on bornait la sortie d'une pièce au « seuil de la jumelle moins cinq
+  // centimètres », juste pour les faces plantées à cinq centimètres, faux pour
+  // celles de la rive plantées à un. Un galet lancé à plat par un homme dans
+  // la petite face de la rive ressortait trois centimètres DANS le quai, et la
+  // dépénétration l'expédiait au bord du monde. Il ressort maintenant au ras
+  // du sol, et glisse.
+  for (const pitch of [0, -0.1]) {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'galet-rive-1');
+    g.held = true;
+    poserA(M, 232, 0.05, 3461, 0);
+    M.player.yaw = 0;
+    attendre(M, 2);
+    lancer(M, 0, pitch);
+    let ratt = false;
+    let minY = Infinity;
+    for (let i = 0; i < 60 * 5; i++) {
+      const e = M.step(ordre(M), TICK_DT);
+      if (g.size > 1) minY = Math.min(minY, g.position.y);
+      if (e.pieceRattrapee) ratt = true;
+    }
+    check(
+      `la rive : un galet lancé à plat (inclinaison ${pitch}) par la petite face ressort géant, au ras du quai, et y reste`,
+      near(g.size, 3.6, 1e-6) && minY > -1e-3 && !ratt && g.position.x > 168 && g.position.x < 200 && g.grounded,
+      `taille ${g.size}, y min ${minY.toFixed(3)}, fin (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})${ratt ? ', rattrapé' : ''}`,
+    );
+  }
+}
+
+// =============================================================================
+console.log('\n— Chaque raccord se franchit depuis l’intérieur, et l’on arrive face à la salle —');
+{
+  // Aucune vérification ne franchissait un raccord de la descente ni de la
+  // montée : chaque salle passait ses épreuves sur son banc, l'assemblage
+  // vérifiait les échelles et les parcelles, et c'est le PASSAGE qui manquait.
+  // Trois sorties (le refus, le conduit, les creux) ne se franchissaient qu'en
+  // se glissant entre la porte et le mur pour revenir sur ses pas, et quatre
+  // entrées (le blanchiment, l'atelier, le bol, la cour de pluie) posaient le
+  // joueur face à un mur, la salle dans le dos. Trouvé par la relecture ; les
+  // salles déclarent maintenant le sens de leurs portes (`lacet`).
+  //
+  // Le pilote : posé un pas et demi avant la porte, DANS la salle, il marche
+  // droit vers elle, la franchit, puis continue tout droit dans le cap que la
+  // salle d'arrivée lui donne — et doit avancer, ou tomber si la salle est
+  // une chute voulue (le refus, le grain).
+  const ouvrir = (niveau: LevelDef): LevelDef => ({
+    ...niveau,
+    portals: niveau.portals.map((p) => ({ ...p, condition: undefined, dessinee: false })),
+  });
+  for (const [nom, prefixe, niveau, salles, raccords] of [
+    ['la descente', 'raccord', DESCENTE, SALLES_DESCENTE, RACCORDS_DESCENTE],
+    ['la montée', 'montee', MONTEE, SALLES_MONTEE, RACCORDS_MONTEE],
+    ['la mesure', 'mesure', MESURE, SALLES_MESURE, RACCORDS_MESURE],
+  ] as const) {
+    for (const r of raccords) {
+      const a = salles[r.depuis];
+      const b = salles[r.vers];
+      const depart = r.depart ?? a.sortie.position;
+      const sortie = a.sortie.lacet ?? LACET_PAR_DEFAUT;
+      const entree = b.entree.lacet ?? LACET_PAR_DEFAUT;
+      const sA = scaleOfLevel(a.sortie.echelle);
+      const sB = scaleOfLevel(b.entree.echelle);
+      const sim = new Simulation(ouvrir(niveau));
+      poserA(sim, depart[0] - Math.sin(sortie) * 1.5 * sA, depart[1] + 0.05, depart[2] - Math.cos(sortie) * 1.5 * sA, a.sortie.echelle);
+      sim.player.yaw = sortie;
+      let trav: TickEvents['traversed'] | undefined;
+      for (let i = 0; i < 180 && !trav; i++) trav = sim.step(ordre(sim, { forward: 1, yaw: sortie }), TICK_DT).traversed;
+      check(
+        `${nom} : on quitte ${a.nom} vers ${b.nom} en marchant droit vers la porte`,
+        trav?.pairId === `${prefixe}-${a.nom}-${b.nom}` && trav.newLevel === b.entree.echelle,
+        trav ? `traversé ${trav.pairId} → palier ${trav.newLevel}` : `pas traversé, ${pos(sim)}`,
+      );
+      if (!trav) continue;
+      const x0 = sim.player.position.x;
+      const y0 = sim.player.position.y;
+      const z0 = sim.player.position.z;
+      for (let i = 0; i < 180; i++) sim.step(ordre(sim, { forward: 1, yaw: entree }), TICK_DT);
+      const avance = Math.hypot(sim.player.position.x - x0, sim.player.position.z - z0) / sB;
+      const chute = y0 - sim.player.position.y;
+      // Un pas ou presque suffit : la lucarne bleue accueille sur un balcon
+      // dont le parapet est à un mètre quatre-vingts, et c'est voulu — on y
+      // vient regarder la maquette, pas marcher. Ce qu'on refuse, c'est le
+      // mur au nez.
+      check(
+        `${nom} : arrivé dans ${b.nom}, on marche droit devant soi — la salle est devant, pas le mur`,
+        avance >= 0.9 || chute > 2,
+        `${avance.toFixed(1)} taille(s) parcourue(s), ${chute.toFixed(1)} m de chute, ${pos(sim)}`,
+      );
+    }
+  }
+}
+
+// =============================================================================
+console.log('\n— On sait dire les couleurs qu’on a rapportées, et les ateliers se peignent —');
+{
+  // Les fées n'existent que dans le village. Dans la descente et la montée,
+  // personne ne suivait le joueur, rien ne pouvait être peint, et la porte de
+  // la vallée — scellée par le tableau de l'atelier du haut — ne s'ouvrait
+  // jamais : la montée était infinissable. Rien ici ne jouait ces salles.
+  //
+  // Désormais on sait dire les couleurs qu'on a rapportées, l'une après
+  // l'autre. Le pilote peint les deux ateliers avec ce seul geste.
+  const centre = (b: BoxDef): [number, number, number] => [
+    (b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2,
+  ];
+  const plusProche = (boxes: BoxDef[], famille: string, de: [number, number, number], filtre: (b: BoxDef) => boolean = () => true): [number, number, number] => {
+    let best: [number, number, number] | null = null;
+    let d = Infinity;
+    for (const b of boxes) {
+      if (b.famille !== famille || !filtre(b)) continue;
+      const c = centre(b);
+      const dist = Math.hypot(c[0] - de[0], c[2] - de[2]);
+      if (dist < d) { d = dist; best = c; }
+    }
+    if (!best) throw new Error(`aucune boîte de la famille ${famille}`);
+    return best;
+  };
+
+  // ─── L'ATELIER DE LAVIS (descente) : une famille, une couleur ───────────
+  {
+    const D = new Simulation(DESCENTE);
+    D.couleursConnues = ['rouge', 'vert'];
+    poserA(D, -1.9, 0.12, 1298.65, 0);
+    // Une claie du côté est, abordée depuis l'allée en regardant vers l'est :
+    // le mur est derrière elle, pas devant. Le mur se vise aussi — c'est
+    // l'erreur prévue — mais le pilote fait le geste juste.
+    const claie = plusProche(DESCENTE.boxes, 'atelier-claies', [-1.9, 0, 1298.65], (b) => b.min[0] > 0);
+    walkTo(D, [claie[0] - 1.6, 0, claie[2]], 60 * 10);
+    const e = agirVers(D, claie);
+    check(
+      'atelier : on dit le rouge à une claie — la première couleur qu’on connaisse',
+      e.peinte?.pigment === 'rouge' && D.familles.teintes.get('atelier-claies') === 'rouge',
+      `${e.peinte ? e.peinte.pigment : e.peintureRefusee ? 'refusé' : 'rien'} ${pos(D)}`,
+    );
+    check('atelier : et la pièce ressemble au tableau', D.familles.satisfaits.has('atelier-tableau'), '');
+    const e2 = agirVers(D, claie);
+    check('atelier : appuyer encore dit la couleur suivante', e2.peinte?.pigment === 'vert', `${e2.peinte?.pigment ?? 'rien'}`);
+    check('atelier : et un tableau réussi ne se dé-satisfait pas', D.familles.satisfaits.has('atelier-tableau'), '');
+  }
+
+  // ─── L'ATELIER DU HAUT (montée) : deux familles, deux couleurs, deux tailles
+  {
+    const H = new Simulation(MONTEE);
+    H.couleursConnues = ['rouge', 'vert', 'bleu'];
+    poserA(H, 92, 14.05, 2076, 1);
+    // Descendre dans la cour par la grande face de la porte interne.
+    walkTo(H, [96, 14, 2026], 60 * 10);
+    const d1 = walkTo(H, [96, 14, 2014], 60 * 10, { stopOnEvent: true });
+    check('atelier du haut : on descend dans la cour, homme', d1.traversed?.newLevel === 0, pos(H));
+    // La pile de tuiles de la cour se refuse à un homme : c'est là que la loi enseigne.
+    // La porte est au milieu de la cour : on la contourne au lieu de la
+    // repasser — un pas de côté, c'est ce que fait un joueur qui la voit.
+    walkTo(H, [44, 0, 1923], 60 * 6);
+    walkTo(H, [44, 0, 1934], 60 * 8);
+    const pile = plusProche(MONTEE.boxes, 'haut-tuiles', [40, 0, 1922], (b) => b.max[1] < 5);
+    walkTo(H, [pile[0], 0, pile[2] - 2.2], 60 * 12);
+    const r = agirVers(H, pile);
+    check('atelier du haut : la pile de tuiles est trop grande pour un homme', r.peintureRefusee !== undefined, `${r.peinte ? 'peinte !' : r.peintureRefusee ? 'refusée' : 'rien'} ${pos(H)}`);
+    // Les pots, eux, se peignent en bas : rouge du premier coup.
+    const pot = plusProche(MONTEE.boxes, 'haut-pots', [pile[0], 0, pile[2]]);
+    walkTo(H, [pot[0], 0, pot[2] - 1.6], 60 * 12);
+    const e = agirVers(H, pot);
+    check('atelier du haut : on dit le rouge aux pots', e.peinte?.pigment === 'rouge', `${e.peinte?.pigment ?? (e.peintureRefusee ? 'refusé' : 'rien')} ${pos(H)}`);
+    // Remonter par la petite face, et peindre les tuiles du toit : rouge, vert, puis bleu.
+    walkTo(H, [44, 0, 1934], 60 * 12);
+    walkTo(H, [44, 0, 1922], 60 * 8);
+    walkTo(H, [40, 0, 1921], 60 * 8);
+    const d2 = walkTo(H, [40, 0, 1931], 60 * 10, { stopOnEvent: true });
+    check('atelier du haut : on remonte sur le toit, géant', d2.traversed?.newLevel === 1, pos(H));
+    const tuile = plusProche(MONTEE.boxes, 'haut-tuiles', [96, 14, 2030], (b) => b.min[1] > 10);
+    walkTo(H, [tuile[0], 14, tuile[2] - 5], 60 * 15);
+    const t1 = agirVers(H, tuile);
+    const t2 = agirVers(H, tuile);
+    const t3 = agirVers(H, tuile);
+    check(
+      'atelier du haut : aux tuiles on dit rouge, puis vert, puis bleu',
+      t1.peinte?.pigment === 'rouge' && t2.peinte?.pigment === 'vert' && t3.peinte?.pigment === 'bleu',
+      `${t1.peinte?.pigment ?? '?'}, ${t2.peinte?.pigment ?? '?'}, ${t3.peinte?.pigment ?? '?'} ${pos(H)}`,
+    );
+    check(
+      'atelier du haut : le tableau de la cour est satisfait, et la porte de la vallée se libère',
+      H.familles.satisfaits.has('haut-tableau-cour') && H.conditionsRemplies.has('haut-tableau-cour'),
+      [...H.familles.satisfaits].join(', ') || 'aucun',
+    );
+    // Sans couleur connue, rien ne se peint : la mémoire des couleurs est la clef.
+    const V = new Simulation(MONTEE);
+    poserA(V, pot[0], 0.05, pot[2] - 1.6, 0);
+    const v = agirVers(V, pot);
+    check('et sans couleur rapportée, on ne dit rien', v.peinte === undefined && v.peintureRefusee === undefined, '');
+  }
 }
 
 // =============================================================================
@@ -3541,6 +4294,7 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
     ['le hall', LOBBY],
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
+    ['la mesure', MESURE],
   ] as const) {
     const e = niveau.guideEchelle;
     if (!e) continue;
@@ -3583,7 +4337,9 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
 
 {
   console.log('\n— Les régions tiennent dans leur parcelle —');
-  for (const m of [TERRASSE, BELVEDERE, JARDIN]) {
+  // La côte rouge manquait : six cent vingt lignes, la région qui porte le
+  // pigment rouge et le chantier des potiers, jamais contrôlée sur sa parcelle.
+  for (const m of [TERRASSE, BELVEDERE, JARDIN, ROUGE]) {
     const fautes = verifierParcelle(m);
     check(`${m.region.name} ne déborde pas`, fautes.length === 0, fautes[0] ?? '');
   }

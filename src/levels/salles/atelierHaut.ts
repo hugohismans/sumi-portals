@@ -443,7 +443,9 @@ export const ATELIER_HAUT: SalleModule = {
   // l'on ne voit qu'un toit encombré de tuiles trop grandes pour un homme, ce qu'il faut
   // justement ne pas comprendre tout de suite. La sortie est soixante-seize mètres à l'ouest.
   entree: { position: [92, TOIT + 0.02, 2076], echelle: 1 },
-  sortie: { position: [16, TOIT + 0.02, 2074], echelle: 1 },
+  // À l'ouest du toit, soixante-seize mètres après l'entrée : on y va vers
+  // l'ouest, et on la franchit vers l'ouest.
+  sortie: { position: [16, TOIT + 0.02, 2074], echelle: 1, lacet: -Math.PI / 2 },
 };
 
 /**

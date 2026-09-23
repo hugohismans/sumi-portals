@@ -674,8 +674,10 @@ export const CREUX: SalleModule = {
   // descendre. On repart par le fond de la grande cour, une fois le dernier
   // creux comblé — au même palier, parce que la salle est une descente qu'on
   // remonte, et non un couloir.
-  entree: { position: [CX, Y_G + 0.4, CZ - R_M - 6], echelle: 1 },
-  sortie: { position: [CX, Y_G + 0.4, CZ + 42], echelle: 1 },
+  // On arrive au sud du bassin, face à lui : vers le nord. On repart par le
+  // fond de la grande cour, au nord, en marchant vers le nord.
+  entree: { position: [CX, Y_G + 0.4, CZ - R_M - 6], echelle: 1, lacet: 0 },
+  sortie: { position: [CX, Y_G + 0.4, CZ + 42], echelle: 1, lacet: 0 },
 };
 
 /**

@@ -527,6 +527,58 @@ export interface VeilleurDef {
   echelle: number;
 }
 
+/**
+ * UNE AVERSE — où il pleut, sur quoi ça tombe, et d'où l'eau ruisselle.
+ *
+ * C'est le décor qui le dit, jamais le rendu : `render/gouttes.ts` sait faire
+ * tomber une goutte et l'écraser, mais il ne peut pas inventer SUR QUOI. Une
+ * cour a des terrasses, une rigole, un lac, un puits, l'assise d'un banc — dix
+ * hauteurs, pas une — et sans cette table les gouttes traversent les toits.
+ *
+ * IL N'Y A PAS DE LISTE D'ABRIS. Un toit déclaré comme surface d'impact
+ * ordinaire ARRÊTE la pluie, donc il ne tombe rien dessous, donc c'est sec. La
+ * zone sèche n'est pas une règle, c'est une conséquence — et le joueur qui se
+ * met à l'abri voit la pluie s'arrêter net au-dessus de sa tête.
+ *
+ * Ce module a existé des semaines sans être branché nulle part : la cour de
+ * pluie était livrée, reliée, testée — et il n'y pleuvait pas. Rien ne le
+ * disait, parce qu'un rendu absent ressemble à un rendu qu'on n'a pas encore
+ * regardé.
+ */
+export interface SurfaceDePluie {
+  /** Emprise au sol, (x, z). */
+  min: [number, number];
+  max: [number, number];
+  /** Le niveau où la goutte meurt. */
+  y: number;
+  /** Un rond dans l'eau, ou une couronne sèche sur la pierre. */
+  eau: boolean;
+}
+
+/**
+ * UNE CHUTE QU'ON REGARDE, par opposition aux mille qu'on subit : un segment
+ * d'où les gouttes partent en cadence — la nappe d'un auvent, le jet d'une
+ * goulotte, l'égouttement d'un banc. `debit` est en gouttes par seconde pour
+ * la source entière.
+ */
+export interface SourceDePluie {
+  a: [number, number, number];
+  b: [number, number, number];
+  debit: number;
+}
+
+export interface AverseDef {
+  /** La boîte où il pleut, en unités du monde. Hors d'elle, pas une goutte. */
+  zone: { min: [number, number, number]; max: [number, number, number] };
+  /**
+   * Les surfaces d'impact, dans l'ordre où il faut les essayer : la PREMIÈRE
+   * qui contient le point gagne. Elles se recouvrent en plan, et c'est voulu —
+   * un toit couvre un dallage.
+   */
+  surfaces: SurfaceDePluie[];
+  sources?: SourceDePluie[];
+}
+
 export interface LevelDef {
   name: string;
   spawn: [number, number, number];
@@ -556,6 +608,8 @@ export interface LevelDef {
   seuils?: SeuilDef[];
   /** Les pinceaux endormis qu'on réveille. Voir VeilleurDef. */
   veilleurs?: VeilleurDef[];
+  /** Là où il pleut. Une salle déclare son averse ; l'assemblage les réunit. */
+  averse?: AverseDef[];
   /** Indices contextuels déclenchés par proximité. */
   hints?: { position: [number, number, number]; radius: number; text: string }[];
   /**
@@ -728,6 +782,8 @@ export interface TickEvents {
    * l'on sort du décor par un trou que personne n'avait prévu.
    */
   rattrape?: boolean;
+  /** Une pièce tombée hors du monde vient d'être reposée où elle reposait. */
+  pieceRattrapee?: { id: string };
   /**
    * Un trait vient d'être posé sur une toile. `u` et `v` vont de 0 à 1 sur la
    * toile, `rayon` est en fraction de sa largeur — donc proportionnel à la

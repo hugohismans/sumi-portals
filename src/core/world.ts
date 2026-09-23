@@ -145,6 +145,28 @@ export class World {
     return out;
   }
 
+  /**
+   * LE DESSUS DU PLANCHER DANS LEQUEL UNE BOÎTE EST ENFONCÉE.
+   *
+   * Une pièce qui sort d'une porte peut avoir le bas sous le sol de l'autre
+   * côté — la face est plantée à quelques centimètres au-dessus de son sol,
+   * et cet écart change avec la taille. On cherche donc, parmi les solides
+   * qui chevauchent l'empreinte de la boîte, ceux dont le DESSUS est juste
+   * au-dessus de son bas : ce sont des planchers, et l'on renvoie le plus
+   * haut. Un mur pris de côté a son dessus bien plus haut que `tolerance` :
+   * ce n'est pas un plancher, et on le laisse à la dépénétration horizontale.
+   *
+   * Renvoie `box.minY` s'il n'y a rien à corriger.
+   */
+  dessusDuSol(box: Aabb, tolerance: number): number {
+    let haut = box.minY;
+    for (const s of this.solids) {
+      if (!overlaps(box, s)) continue;
+      if (s.maxY > haut && s.maxY <= box.minY + tolerance) haut = s.maxY;
+    }
+    return haut;
+  }
+
   /** Décor fixe uniquement — ce sur quoi les caisses elles-mêmes retombent. */
   queryStatic(box: Aabb, out: Aabb[]): Aabb[] {
     out.length = 0;

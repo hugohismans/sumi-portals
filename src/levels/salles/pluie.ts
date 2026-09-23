@@ -980,78 +980,6 @@ const decor = (): BoxDef[] => [
 ];
 
 /**
- * LA PLUIE.
- *
- * Quatre stations, et pas une n'est une énigme : le Pinceau vole, le joueur
- * marche, et ici cet écart ne sert qu'à faire regarder. Il se pose sur les
- * quatre choses qu'on aurait pu ne pas voir — le bord du toit d'où tombe la
- * nappe, la margelle où l'on ne montera pas, le dossier du banc où l'on peut
- * monter, et l'avaloir qui dit où l'on sort. Il traverse la cour d'ouest en
- * est, comme l'eau, comme le joueur.
- */
-export const PLUIE: SalleModule = {
-  nom: 'pluie',
-
-  region: {
-    name: 'pluie',
-    min: [-300, -40, 900],
-    max: [-100, 40, 1100],
-    // Le papier d'une averse : un gris bleuté à peine teinté, celui d'un ciel
-    // bas vu depuis une cour fermée.
-    paper: '#e4eaec',
-    colors: [
-      '#cfdde2', // 0 — l'eau, la pierre lavée, tout ce qui luit
-      '#93a8b0', // 1 — le gris trempé du dallage et des murs
-      '#3b525d', // 2 — l'ardoise : les toits, le fond de la rigole, le puits
-      '#a8734a', // 3 — LE BOIS, et il ne dit qu'une chose : c'est sec dessous
-    ],
-    ink: '#141f24',
-    // La cour fait vingt-sept mètres du seuil à la sortie. Le brouillard est
-    // posé quatre fois plus loin : il voile les toits d'en face et ne touche
-    // pas à la ligne de vue. La sortie doit rester nette depuis l'entrée, et
-    // c'est la seule contrainte que ce nombre ait à respecter.
-    brouillard: 110,
-  },
-
-  // La parcelle réservée, telle qu'attribuée. L'emprise RÉELLE des 217 boîtes,
-  // mesurée et non estimée, tient dans
-  //   x ∈ [−214,50 ; −184,53]   y ∈ [−1,69 ; 5,27]   z ∈ [987,70 ; 1012,35]
-  // soit 85 m de marge à l'ouest, 84 m à l'est, 34 m sous les pieds, 34 m
-  // au-dessus des toits, et 87 m devant comme derrière. Rien ne s'approche
-  // d'un bord.
-  bounds: { min: [-300, -40, 900], max: [-100, 40, 1100] },
-
-  boxes: decor(),
-
-  stations: [
-    // 1. Le bord du toit de l'auvent, à 1,47 : trois fois la taille du joueur,
-    //    et l'endroit d'où part la plus longue chute de la salle.
-    [-208.05, 1.5, 1003.9],
-    // 2. La margelle du puits, à 0,53. Le Pinceau s'y pose et regarde l'eau ;
-    //    le joueur, lui, ne la verra pas. C'est le seul endroit de la salle où
-    //    l'écart entre celui qui vole et celui qui marche se voie.
-    [PUITS_X, sol(PUITS_X, PUITS_Z) + PUITS_BORD + 0.05, PUITS_Z],
-    // 3. L'assise du banc, à 0,64 — et celle-là se gagne, par le balai, en
-    //    marchant. C'est le point de vue de la salle.
-    [-194.4, sol(-194.4, 995) + BANC_ASSISE + 0.04, 995.2],
-    // 4. L'avaloir, à trois mètres de la porte de sortie. Dernier mot du
-    //    balisage : l'eau et vous sortez par le même bout.
-    [-186.6, solDalle(12, 5) + 0.35, 1005.2],
-  ],
-
-  // ─── LE RACCORD ────────────────────────────────────────────────────────────
-  // On entre par l'ouest et l'on sort par l'est, sur le même axe z = 1000, à
-  // ×1/4 dans les deux sens : cette salle ne change personne de taille.
-  // Les deux positions sont le MILIEU DU SEUIL, au niveau du dessus de la
-  // pierre — c'est-à-dire l'endroit exact où poser une face de portail.
-  // PALIER, et non multiplicateur : −1 vaut ×1/4. Le contrat était muet
-  // là-dessus et disait donc autant de choses qu'il avait de lecteurs ; il ne
-  // l'est plus.
-  entree: { position: [PORTE_O, solDalle(0, 3) + 0.035, AXE_Z], echelle: -1 },
-  sortie: { position: [PORTE_E, solDalle(NX - 1, 3) + 0.03, AXE_Z], echelle: -1 },
-};
-
-/**
  * OÙ IL PLEUT, ET SUR QUOI ÇA TOMBE.
  *
  * `src/render/gouttes.ts` sait déjà tout faire — une goutte de quatre
@@ -1284,6 +1212,86 @@ export const PLUIE_AVERSE = {
     { nom: 'sous l’auvent', min: [-212.2, 1001.32] as [number, number], max: [AUVENT_X1, 1006.42] as [number, number] },
     { nom: 'sous le banc', min: [BANC_X0, 993.92] as [number, number], max: [BANC_X1, 995.66] as [number, number] },
   ],
+};
+
+/**
+ * LA PLUIE.
+ *
+ * Quatre stations, et pas une n'est une énigme : le Pinceau vole, le joueur
+ * marche, et ici cet écart ne sert qu'à faire regarder. Il se pose sur les
+ * quatre choses qu'on aurait pu ne pas voir — le bord du toit d'où tombe la
+ * nappe, la margelle où l'on ne montera pas, le dossier du banc où l'on peut
+ * monter, et l'avaloir qui dit où l'on sort. Il traverse la cour d'ouest en
+ * est, comme l'eau, comme le joueur.
+ */
+export const PLUIE: SalleModule = {
+  nom: 'pluie',
+
+  // C'EST LE SUJET DE LA SALLE, et il est resté débranché des semaines : la
+  // table ci-dessus était écrite, le moteur de gouttes aussi, et personne ne
+  // les avait présentés l'un à l'autre. Une cour de pluie sans pluie passait
+  // toutes les vérifications — voir `AverseDef`.
+  averse: PLUIE_AVERSE,
+
+  region: {
+    name: 'pluie',
+    min: [-300, -40, 900],
+    max: [-100, 40, 1100],
+    // Le papier d'une averse : un gris bleuté à peine teinté, celui d'un ciel
+    // bas vu depuis une cour fermée.
+    paper: '#e4eaec',
+    colors: [
+      '#cfdde2', // 0 — l'eau, la pierre lavée, tout ce qui luit
+      '#93a8b0', // 1 — le gris trempé du dallage et des murs
+      '#3b525d', // 2 — l'ardoise : les toits, le fond de la rigole, le puits
+      '#a8734a', // 3 — LE BOIS, et il ne dit qu'une chose : c'est sec dessous
+    ],
+    ink: '#141f24',
+    // La cour fait vingt-sept mètres du seuil à la sortie. Le brouillard est
+    // posé quatre fois plus loin : il voile les toits d'en face et ne touche
+    // pas à la ligne de vue. La sortie doit rester nette depuis l'entrée, et
+    // c'est la seule contrainte que ce nombre ait à respecter.
+    brouillard: 110,
+  },
+
+  // La parcelle réservée, telle qu'attribuée. L'emprise RÉELLE des 217 boîtes,
+  // mesurée et non estimée, tient dans
+  //   x ∈ [−214,50 ; −184,53]   y ∈ [−1,69 ; 5,27]   z ∈ [987,70 ; 1012,35]
+  // soit 85 m de marge à l'ouest, 84 m à l'est, 34 m sous les pieds, 34 m
+  // au-dessus des toits, et 87 m devant comme derrière. Rien ne s'approche
+  // d'un bord.
+  bounds: { min: [-300, -40, 900], max: [-100, 40, 1100] },
+
+  boxes: decor(),
+
+  stations: [
+    // 1. Le bord du toit de l'auvent, à 1,47 : trois fois la taille du joueur,
+    //    et l'endroit d'où part la plus longue chute de la salle.
+    [-208.05, 1.5, 1003.9],
+    // 2. La margelle du puits, à 0,53. Le Pinceau s'y pose et regarde l'eau ;
+    //    le joueur, lui, ne la verra pas. C'est le seul endroit de la salle où
+    //    l'écart entre celui qui vole et celui qui marche se voie.
+    [PUITS_X, sol(PUITS_X, PUITS_Z) + PUITS_BORD + 0.05, PUITS_Z],
+    // 3. L'assise du banc, à 0,64 — et celle-là se gagne, par le balai, en
+    //    marchant. C'est le point de vue de la salle.
+    [-194.4, sol(-194.4, 995) + BANC_ASSISE + 0.04, 995.2],
+    // 4. L'avaloir, à trois mètres de la porte de sortie. Dernier mot du
+    //    balisage : l'eau et vous sortez par le même bout.
+    [-186.6, solDalle(12, 5) + 0.35, 1005.2],
+  ],
+
+  // ─── LE RACCORD ────────────────────────────────────────────────────────────
+  // On entre par l'ouest et l'on sort par l'est, sur le même axe z = 1000, à
+  // ×1/4 dans les deux sens : cette salle ne change personne de taille.
+  // Les deux positions sont le MILIEU DU SEUIL, au niveau du dessus de la
+  // pierre — c'est-à-dire l'endroit exact où poser une face de portail.
+  // PALIER, et non multiplicateur : −1 vaut ×1/4. Le contrat était muet
+  // là-dessus et disait donc autant de choses qu'il avait de lecteurs ; il ne
+  // l'est plus.
+  // La porte ouest : on arrive en marchant vers l'est, la cour devant soi, et
+  // non face au piédroit à un mètre. La porte est : on repart vers l'est.
+  entree: { position: [PORTE_O, solDalle(0, 3) + 0.035, AXE_Z], echelle: -1, lacet: Math.PI / 2 },
+  sortie: { position: [PORTE_E, solDalle(NX - 1, 3) + 0.03, AXE_Z], echelle: -1, lacet: Math.PI / 2 },
 };
 
 /**

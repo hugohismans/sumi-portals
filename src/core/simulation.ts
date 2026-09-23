@@ -6,6 +6,7 @@ import {
   JUMP_SPEED,
   MOVE_SPEED,
   PLAYER_HEIGHT,
+  PLAYER_RADIUS,
   SCALE_MAX_LEVEL,
   SCALE_MIN_LEVEL,
   SPRINT_EN_L_AIR,
@@ -32,8 +33,8 @@ import {
   type PortalFace,
 } from './portals.js';
 import type { InputCommand, LevelDef, PlayerState, TickEvents } from './types.js';
-import { World } from './world.js';
-import type { Carryable } from './carryables.js';
+import { World, type Aabb } from './world.js';
+import { aabbOfCarryable, type Carryable } from './carryables.js';
 
 /**
  * Une porte miroir échange la gauche et la droite de ce qui la traverse.
@@ -62,6 +63,13 @@ const retournerLaMain = (c: Carryable, face: PortalFace): void => {
  * cette classe doit pouvoir tourner dans Node pour un serveur autoritaire, avec
  * les clients qui prédisent localement et se réconcilient.
  */
+/** Boîte de travail pour la sortie des pièces par les portes. */
+const seuilScratch: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+
+/** Une pièce passe-t-elle par cette face ? La même marge que pour le joueur. */
+const pieceFits = (face: PortalFace, size: number): boolean =>
+  size <= face.height * 0.96 && size <= face.width * 0.9;
+
 export class Simulation {
   readonly world: World;
   readonly faces: PortalFace[];
@@ -121,6 +129,33 @@ export class Simulation {
    * c'est « tu as le rouge, donc le rouge est ce que tu sais dire ».
    */
   couleurEnMain: string | null = null;
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * LES COULEURS QU'ON SAIT DIRE, dans l'ordre où on les a apprises.
+   *
+   * Dans le village, c'est la fée qui peint : on a réveillé quelqu'un, il nous
+   * suit, et il ne porte que sa couleur — c'est `couleurEnMain`. Mais les fées
+   * n'existent QUE dans le village, et les ateliers sont ailleurs : dans la
+   * descente et dans la montée, personne ne suivait le joueur, `couleurEnMain`
+   * restait nul, et rien ne pouvait être peint. La porte de la vallée, scellée
+   * par le tableau de l'atelier du haut, ne s'ouvrait donc jamais : la montée
+   * était infinissable, et aucune vérification ne jouait ces salles-là.
+   *
+   * La conception le disait pourtant en une phrase : « ce n'est pas "tu as la
+   * clé rouge", c'est "tu as le rouge, donc le rouge est ce que tu sais
+   * dire" ». Ce tableau est ce qu'on sait dire — les pigments rapportés, dans
+   * l'ordre du voyage — et le rendu le remplit depuis la mémoire des couleurs.
+   *
+   * ET ON LES DIT L'UNE APRÈS L'AUTRE. Appuyer sur E devant une famille lui
+   * donne la couleur SUIVANTE de celle qu'elle porte : rouge, puis vert, puis
+   * bleu, puis rouge. Aucune commande nouvelle — le même geste que réveiller,
+   * prendre et poser — et le choix reste au joueur : le tableau montre ce que
+   * chaque famille devrait être, et c'est à lui de s'arrêter sur la bonne. Une
+   * couleur est une décision, donc elle se reprend ; un logement est un
+   * progrès, donc il verrouille. La fée, quand elle est là, a la priorité.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  couleursConnues: string[] = [];
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
@@ -406,6 +441,35 @@ export class Simulation {
         this.teleport(face, newEye, nextLevel);
         events.traversed = { pairId: face.pairId, from: face.kind, newLevel: nextLevel };
       }
+    } else {
+      // ON PASSE AU-DESSUS D'UNE PORTE TROP BASSE, et il faut le dire aussi.
+      // La chatière du blanchiment fait 1,20 : l'œil d'un homme passe
+      // au-dessus de son rectangle, aucune face n'est franchie, et c'est le
+      // mur qui l'arrête sans un mot. Le joueur voyait une ouverture et un
+      // mur, jamais la phrase qui les relie. Si l'œil franchit le plan dans
+      // la largeur de la porte mais au-dessus d'elle, la porte a refusé —
+      // on ne déplace personne, le mur s'en charge.
+      //
+      // Mais seulement s'il y a un mur derrière : un géant qui enjambe un torii
+      // en plein air passe aussi « au-dessus » de sa petite face, et rien ne
+      // l'arrête — lui dire « trop grand pour cette porte » en pleine rue du
+      // village serait faux. On regarde donc s'il y a de la pierre juste
+      // derrière le plan, à portée du corps.
+      const dessus = this.findCrossing(prevEye, newEye, 4);
+      if (dessus && !canPass(dessus.face, scale)) {
+        const n = dessus.face.normal;
+        const t = dessus.t;
+        const hit = vec3(
+          prevEye.x + (newEye.x - prevEye.x) * t,
+          prevEye.y + (newEye.y - prevEye.y) * t,
+          prevEye.z + (newEye.z - prevEye.z) * t,
+        );
+        const portee = PLAYER_RADIUS * scale * 2 + 0.8;
+        const derriere = vec3(hit.x - n.x * portee, hit.y, hit.z - n.z * portee);
+        if (!this.world.segmentLibre(hit, derriere)) {
+          events.refused = { pairId: dessus.face.pairId, face: dessus.face.kind, reason: 'tooBig', versLePetit: false };
+        }
+      }
     }
 
     // --- Caisses : suivi du porteur, puis chute des autres ----------------------
@@ -425,6 +489,19 @@ export class Simulation {
     });
     this.carryables.step(this.world, dt);
     this.carryTraversal(before);
+
+    // ─── UNE PIÈCE TOMBÉE HORS DU MONDE REVIENT, comme le joueur ──────────
+    //
+    // Vingt mètres sous le plancher du monde, comme lui. Le seuil ne suit pas
+    // la taille de la pièce : sa gravité est celle du monde, la chute dure le
+    // même temps pour toutes. On la repose où elle reposait, telle qu'elle y
+    // reposait — voir `Carryable.appui`.
+    for (const c of this.carryables.items) {
+      if (c.held || c.locked) continue;
+      if (c.position.y >= this.world.plancher - 20) continue;
+      this.carryables.rattraper(c);
+      events.pieceRattrapee = { id: c.id };
+    }
 
     // Les caisses reposées cherchent leur logement. Après la chute, donc : une
     // caisse doit avoir atterri avant de pouvoir s'emboîter.
@@ -446,6 +523,18 @@ export class Simulation {
     //
     // Si la pièce trouve son logement entre-temps, la question n'a plus lieu
     // d'être posée : on l'oublie sans rien dire.
+    // UNE PIÈCE LANCÉE QUI S'ARRÊTE DANS LE CREUX N'Y ENTRE PAS — et il faut
+    // le dire, une fois : le joueur la voit reposer au bon endroit et le jeu se
+    // taire, ce qui se lit comme une panne. Le refus doit raconter le monde.
+    for (const c of this.carryables.items) {
+      if (!c.lancee || c.lanceeDite || c.held || c.locked || !c.grounded) continue;
+      if (Math.hypot(c.velocity.x, c.velocity.z) > 1) continue;
+      const s = this.sockets.logementQuiAccepterait(c);
+      if (!s) continue;
+      c.lanceeDite = true;
+      events.logementRefuse = { socketId: s.id, carryableId: c.id, raison: 'lancee' };
+    }
+
     if (this.refusEnAttente) {
       const attente = this.refusEnAttente;
       if (logees.some((l) => l.carryableId === attente.id)) {
@@ -567,7 +656,25 @@ export class Simulation {
         this.player.pitch,
         scale,
       );
-      if (!placed) {
+      // ET UNE PORTE FERMÉE FAIT MUR À CE QU'ON POSE. Une pièce tenue à bout
+      // de bras est souvent DÉJÀ de l'autre côté du plan d'une porte quand on
+      // se tient devant — et l'on se tient devant une porte scellée précisément
+      // avec la clef dans les mains. Posée là, elle revenait à l'œil du porteur
+      // par le rebond de `carryTraversal`, apparaissait dans sa tête et tombait
+      // entre ses pieds, où on ne peut plus la viser. Trouvé par la relecture.
+      // On refuse comme pour un mur : la pièce reste en main.
+      const porteDevant = placed
+        ? this.findCrossing(
+            this.eyePosition(),
+            vec3(held.position.x, held.position.y + held.size * 0.5, held.position.z),
+          )
+        : null;
+      const porteFermee =
+        porteDevant !== null &&
+        (this.portesFermees.has(porteDevant.face.pairId) ||
+          estScelle(porteDevant.face, this.conditionsRemplies) ||
+          !pieceFits(porteDevant.face, held.size));
+      if (!placed || porteFermee) {
         // On garde la caisse en main plutôt que de la faire surgir n'importe
         // où : un refus clair vaut mieux qu'un objet qui pousse le joueur.
         this.carryables.followCarrier(
@@ -581,6 +688,7 @@ export class Simulation {
         return;
       }
       held.held = false;
+      held.lancee = false;
       held.velocity.y = 0;
       held.releasedAt = this.eyePosition();
       events.carry = { id: held.id, taken: false };
@@ -600,7 +708,9 @@ export class Simulation {
       // et désigner un objet à travers la pièce serait une visée — donc
       // quelque chose de pénible au doigt sur un téléphone.
       const famille = this.familles.visee(this.player.position, this.player.yaw, scale);
-      if (!famille || this.couleurEnMain === null) return;
+      if (!famille) return;
+      const couleur = this.couleurEnMain ?? this.couleurSuivante(famille);
+      if (couleur === null) return;
       if (!this.familles.peignable(famille, scale)) {
         // Le refus est une leçon, pas une panne : c'est le seuil du « trop
         // lourd », déjà connu, et il enseigne en une seconde que la palette
@@ -608,8 +718,8 @@ export class Simulation {
         events.peintureRefusee = { famille };
         return;
       }
-      this.familles.peindre(famille, this.couleurEnMain);
-      events.peinte = { famille, pigment: this.couleurEnMain };
+      this.familles.peindre(famille, couleur);
+      events.peinte = { famille, pigment: couleur };
       const neufs = this.familles.verifier();
       if (neufs.length > 0) events.tableauSatisfait = { id: neufs[0] };
       return;
@@ -621,7 +731,18 @@ export class Simulation {
     }
 
     target.held = true;
+    target.lancee = false;
+    target.lanceeDite = false;
     events.carry = { id: target.id, taken: true };
+  }
+
+  /** La couleur qu'on dira ensuite à cette famille. Voir `couleursConnues`. */
+  private couleurSuivante(famille: string): string | null {
+    const connues = this.couleursConnues;
+    if (connues.length === 0) return null;
+    const actuelle = this.familles.teintes.get(famille);
+    const i = actuelle === undefined ? -1 : connues.indexOf(actuelle);
+    return connues[(i + 1) % connues.length];
   }
 
   /**
@@ -649,13 +770,25 @@ export class Simulation {
       if (!crossing) continue;
 
       const face = crossing.face;
-      const fits = c.size <= face.height * 0.96 && c.size <= face.width * 0.9;
+      const fits = pieceFits(face, c.size);
+      // UNE PORTE SCELLÉE FAIT MUR AUX PIÈCES COMME AU JOUEUR. Elle ne le
+      // faisait qu'au joueur : une graine lancée — ou simplement posée — vers
+      // la sortie scellée du grain passait de l'autre côté, dans une salle où
+      // l'on ne pouvait pas encore aller, et le mouvement tout entier était
+      // mort. Trouvé par la relecture, dans la salle qui suit précisément
+      // celle où l'on apprend à lancer sa pièce à travers une porte.
+      const scellee = this.portesFermees.has(face.pairId) || estScelle(face, this.conditionsRemplies);
 
-      if (!fits) {
-        c.position.x = from.x;
-        c.position.y = from.y - c.size * 0.5;
-        c.position.z = from.z;
+      if (!fits || scellee) {
+        // Elle s'arrête DEVANT le plan, là où elle l'a touché — pas à son
+        // point de départ, qui est l'œil du porteur quand on vient de la
+        // lâcher : elle apparaissait dans sa tête et tombait entre ses pieds.
         const n = face.normal;
+        const recul = c.size * 0.5 + 0.02;
+        const t = crossing.t;
+        c.position.x = from.x + (to.x - from.x) * t + n.x * recul;
+        c.position.y = from.y + (to.y - from.y) * t + n.y * recul - c.size * 0.5;
+        c.position.z = from.z + (to.z - from.z) * t + n.z * recul;
         const along = c.velocity.x * n.x + c.velocity.y * n.y + c.velocity.z * n.z;
         if (along < 0) {
           // Rebond amorti sur la face, plutôt qu'un arrêt sec.
@@ -674,8 +807,32 @@ export class Simulation {
       // portée. Rien ne justifierait qu'un objet jeté échappe à la géométrie.
       retournerLaMain(c, face);
       c.position.x = newCenter.x;
-      c.position.y = newCenter.y - c.size * 0.5;
       c.position.z = newCenter.z;
+      // ═══════════════════════════════════════════════════════════════════
+      // ON NE RESSORT JAMAIS DANS LE PLANCHER DE L'AUTRE CÔTÉ.
+      //
+      // Une face est plantée quelques centimètres au-dessus de son sol — deux
+      // plans confondus grésillent. Une pièce qui GLISSE au sol à travers une
+      // petite face a donc son centre un peu au-dessus du seuil ; multiplié
+      // par quatre, cet écart met le bas de la pièce dans le plancher de
+      // l'autre côté. La dépénétration par axe faisait le reste : au premier
+      // pas horizontal, elle résolvait le chevauchement avec la DALLE le long
+      // de cet axe et catapultait la pièce au bord du monde, d'où elle
+      // retraversait la porte à l'envers. Trouvé par le pilote du
+      // blanchiment, qui voyait sa vrille ressortir de la bonne taille et de
+      // la même main, trente mètres plus loin.
+      //
+      // On bornait au « seuil de la jumelle moins cinq centimètres », et
+      // c'était juste pour les faces plantées à cinq centimètres — pas pour
+      // celles de la rive (un), du lavoir (six millimètres) ni de l'atelier
+      // (SOUS son sol). La relecture a revu la catapulte sur la rive. La
+      // borne est donc maintenant la vraie : le dessus du plancher que la
+      // pièce chevauche, quel que soit l'endroit où la face a été plantée.
+      // Le joueur subit le même écart et son corps le rattrape ; une pièce
+      // n'a pas de corps, alors on la pose au ras du sol, jamais dedans.
+      // ═══════════════════════════════════════════════════════════════════
+      c.position.y = newCenter.y - c.size * 0.5;
+      c.position.y = this.world.dessusDuSol(aabbOfCarryable(c, seuilScratch), c.size * 0.5);
       c.velocity.x = newVel.x;
       c.velocity.y = newVel.y;
       c.velocity.z = newVel.z;
@@ -721,14 +878,14 @@ export class Simulation {
   }
 
   /** Première face franchie par le segment [from → to], de l'avant vers l'arrière. */
-  private findCrossing(from: Vec3, to: Vec3): { face: PortalFace; t: number } | null {
+  private findCrossing(from: Vec3, to: Vec3, hauteurs = 1): { face: PortalFace; t: number } | null {
     let best: { face: PortalFace; t: number } | null = null;
     for (const face of this.faces) {
       const d0 = signedDistance(face, from);
       const d1 = signedDistance(face, to);
       if (d0 <= 0 || d1 > 0) continue; // pas de franchissement avant → arrière
       const t = d0 / (d0 - d1);
-      if (!withinFaceRect(face, from, to, t)) continue;
+      if (!withinFaceRect(face, from, to, t, hauteurs)) continue;
       if (!best || t < best.t) best = { face, t };
     }
     return best;

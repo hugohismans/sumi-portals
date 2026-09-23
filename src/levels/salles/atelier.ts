@@ -856,8 +856,11 @@ export const ATELIER: SalleModule = {
   // tête. ON SORT À ×1/4, par le trou de souris du mur est : voir « pourquoi
   // l'on ressort à ×1/4 » plus haut. Le raccord de la salle suivante se plante
   // dans la cour, où l'on arrive haut de quarante-cinq centimètres.
-  entree: { position: [-1.9, SOL + 0.12, 1298.65], echelle: 0 },
-  sortie: { position: [4.2, SOL - 0.04, Z_SOURIS], echelle: -1 },
+  // Par la porte OUEST, on arrive en marchant vers l'est ; par le trou de
+  // souris du mur EST, on repart vers l'est. Le raccord de la cour doit donc
+  // regarder l'ouest, sans quoi on longeait son plan au lieu de le franchir.
+  entree: { position: [-1.9, SOL + 0.12, 1298.65], echelle: 0, lacet: Math.PI / 2 },
+  sortie: { position: [4.2, SOL - 0.04, Z_SOURIS], echelle: -1, lacet: Math.PI / 2 },
 };
 
 /**

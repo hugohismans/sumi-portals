@@ -255,30 +255,30 @@ const objets = (): CarryableDef[] => [
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * LE PIÈGE DES QUATORZE MÈTRES, ET COMMENT JE M'EN SUIS ASSURÉ.
+ * OÙ TOMBE CE QU'UN GÉANT LÂCHE — mesuré, et ce bloc a été faux longtemps.
  *
- * On repose ce qu'on porte à DEUX FOIS SA TAILLE DEVANT SOI : 14,4 m à ×4. Un
- * géant qui lâche un cube au bord de la fosse ne le pose pas au pied de la
- * paroi, il l'envoie quatorze mètres plus loin. Ce nombre a déjà tué une salle
- * du projet sans que rien ne le laisse voir.
+ * Il disait « on repose à deux fois sa taille devant soi : 14,4 m à ×4 », et
+ * la fosse avait été dessinée là-dessus. Le moteur a changé : on tient une
+ * pièce à 0,34 × sa taille + 2 × l'arête devant soi, soit 2,96 m pour un cube
+ * de 0,80 à ×4, et on la POSE là. Un géant qui lâche un cube depuis la lèvre
+ * le pose donc sur les vires, contre la paroi — pas au fond. Et s'il le LANCE,
+ * sa force est celle d'un géant (quatre fois la vitesse, seize fois la
+ * portée) : un jet en regardant le fond survole les 24 m de fosse jusqu'à la
+ * galerie ; seul un jet en regardant presque ses pieds y retombe. Le pilote
+ * de la montée fait ce dernier geste ; un joueur, lui, posera.
  *
- * 1. LA FOSSE FAIT 24 m DE LARGE, ET C'EST POUR ÇA. Un cube lâché depuis la
- *    lèvre nord atterrit à 14,4 m de la paroi, donc en plein fond, à 9,6 m
- *    encore de la bouche de la galerie. Il n'y a nulle part où le perdre.
- * 2. PEUT-ON, À ×4, POSER UN CUBE CONTRE LA PAROI ? Il faut se tenir à 14,4 m
- *    d'elle EN LA REGARDANT ; la fosse en offre 24, et l'on y descend puisque
- *    3,60 est à hauteur de genou pour un géant. La première version lui donnait
- *    dix mètres — une salle où un géant ne pouvait pas travailler.
- * 3. ET À ×1 ON REPOSE À 3,6 m : la vraie construction se fait petit, au
- *    décimètre au lieu du décamètre. D'où des cubes de 0,80, sous les 0,99
- *    qu'on soulève à ×1 — l'erreur se répare EN BAS, à la main, sans repasser
- *    aucune porte.
+ * Ce que ça change à la salle : rien d'essentiel. Les cubes finissent dans la
+ * fosse ou sur ses vires, jamais perdus (la galerie se vide à ×1, à la main),
+ * et 3,60 est à hauteur de genou pour un géant : il descend dans la fosse et
+ * y pose où il veut, à SON œil. L'erreur — des cubes espacés pour un géant —
+ * reste automatique, et elle se répare EN BAS, à ×1, où l'on repose à 3,6 m,
+ * au décimètre : d'où des cubes de 0,80, sous les 0,99 qu'on soulève à ×1.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 const cailloux = (): BoxDef[] => [
   // Le socle du creux, sur le plateau : 0,55, on y pose sans lever les bras.
   b([-216.2, -0.03, 1994.8], [-213.8, 0.55, 1997.2], 3),
-  // Un bloc au fond, à quatorze mètres de la paroi et haut de 0,55 : RIEN DE CE
+  // Un bloc au fond, à quinze mètres de la paroi et haut de 0,55 : RIEN DE CE
   // QU'ON ESCALADE DANS CETTE FOSSE N'A LE DROIT D'AIDER. D'où le décor si nu.
   b([-238, -3.9, 1957], [-233.4, -3.05, 1961.6], 2),
   // Et trois choses qui ne servent à rien : sans elles, cent soixante-seize
@@ -395,5 +395,8 @@ export const ESCALIER: SalleModule = {
    * la personne qui a jeté ces cailloux.
    */
   entree: { position: [-180, 0.05, 2112], echelle: 1 },
-  sortie: { position: [MERIDIEN, 0.05, 2006], echelle: 0 },
+  // Dix mètres au nord du creux : on y va en marchant vers le nord, et c'est
+  // dans ce sens qu'on la franchit. Sans ce mot, la porte regardait le nord
+  // et l'on devait la dépasser pour la reprendre à l'envers.
+  sortie: { position: [MERIDIEN, 0.05, 2006], echelle: 0, lacet: 0 },
 };

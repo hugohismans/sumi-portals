@@ -10,6 +10,7 @@ import { LOBBY } from './levels/lobby.js';
 import { MONDE } from './levels/monde.js';
 import { DESCENTE } from './levels/descente.js';
 import { MONTEE } from './levels/montee.js';
+import { MESURE } from './levels/mesure.js';
 import { FORMES } from './levels/formes.js';
 import { BANC, REPERES_BANC } from './levels/banc.js';
 import { reve } from './levels/reve.js';
@@ -18,6 +19,7 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
+import { Voyage } from './voyage.js';
 import type { Repere } from './debug/reperes.js';
 import {
   REPERES_DESCENTE,
@@ -25,6 +27,7 @@ import {
   REPERES_LOBBY,
   REPERES_MONDE,
   REPERES_MONTEE,
+  REPERES_MESURE,
   changeDeMonde,
 } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
@@ -42,6 +45,7 @@ import { Avatar } from './render/avatar.js';
 import { Brush } from './render/brush.js';
 import { CarryableViews } from './render/carryableViews.js';
 import { Feuilles } from './render/feuilles.js';
+import { Gouttes } from './render/gouttes.js';
 import { SocketViews } from './render/socketViews.js';
 import { RemotePlayers } from './render/remotePlayers.js';
 import { buildGoalMarker, buildWorldView } from './render/worldMesh.js';
@@ -79,6 +83,7 @@ const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   monde: () => MONDE,
   descente: () => DESCENTE,
   montee: () => MONTEE,
+  mesure: () => MESURE,
   formes: () => FORMES,
   banc: () => BANC,
   cour: () => LEVEL_01,
@@ -96,8 +101,39 @@ const NIVEAU_SUIVANT: Record<string, string> = {
   // pas un goût : la montée revisite le village vu d'en haut, et cette lecture
   // ne s'acquiert qu'après y avoir marché longtemps à hauteur d'homme.
   descente: '?niveau=montee',
+  // Puis l'on va se mesurer. Le troisième mouvement ne rapporte pas de
+  // couleur : il retire ce qui permettait de savoir quelle taille on fait, et
+  // le rend. Il s'achève sur la boîte à formes, qui n'enseigne rien et vérifie
+  // tout — elle se disait l'avant-dernière salle du jeu et n'était dans aucune
+  // chaîne.
+  montee: '?niveau=mesure',
+  mesure: '?niveau=formes',
   cour: '?niveau=caisse',
   caisse: '?niveau=monde',
+};
+/**
+ * CE QUE DIT LE LIEN DE FIN. « Niveau suivant » est un mot d'ascenseur, et ce
+ * jeu n'en a pas : on descend chercher le bleu, on monte chercher l'or, on va
+ * se mesurer, puis on passe l'examen. Le lien dit le geste, pas le numéro.
+ */
+const OU_MENE_LA_SUITE: Record<string, string> = {
+  monde: 'Descendre',
+  descente: 'Monter',
+  montee: 'Aller se mesurer',
+  mesure: 'La boîte à formes',
+};
+/**
+ * L'ADRESSE D'UN CHAPITRE, ET ELLE GARDE LE MODE DÉBUG. Les liens de fin et
+ * l'arche du hall écrivaient `?niveau=…` tout court : depuis un hall en
+ * `?debug=1`, on partait dans un monde SANS débug, qui lisait et écrivait la
+ * mémoire du vrai joueur — et entrer dans le monde l'efface. La carte décidait
+ * sur une clé, le jeu écrivait dans l'autre. Trouvé par la relecture.
+ */
+const adresseDe = (niveau: string | null): string => {
+  const parts: string[] = [];
+  if (niveau) parts.push(`niveau=${niveau}`);
+  if (PARAMS.get('debug')) parts.push('debug=1');
+  return parts.length ? `?${parts.join('&')}` : './';
 };
 
 // --- Simulation ---------------------------------------------------------------
@@ -163,6 +199,9 @@ const pigments = new Pigments();
 // voyage.
 if (PARAMS.get('neuf') || (MODE === 'monde' && !PARAMS.get('debug'))) {
   pigments.effacer();
+  // Et l'on oublie aussi les chapitres finis : le monde est le début de
+  // l'aventure, pas une salle parmi d'autres. Voir `src/voyage.ts`.
+  Voyage.effacer();
 }
 const pigmentDe = new Map<string, string>();
 for (const r of LEVEL.regions ?? []) if (r.pigment) pigmentDe.set(r.name, r.pigment);
@@ -330,6 +369,17 @@ const TEINTE_DU_PIGMENT: Record<string, string> = {
   bleu: '#2f6a8c',
   or: '#c99a3c',
 };
+/**
+ * CE QU'ON SAIT DIRE : les pigments rapportés, dans l'ordre du voyage. Voir
+ * `Simulation.couleursConnues` — c'est ce qui permet de peindre dans les
+ * ateliers de la descente et de la montée, où aucune fée ne suit le joueur.
+ * Recalculé quand une couleur revient, pour que la lucarne d'un voyage serve
+ * dès le voyage suivant sans recharger.
+ */
+const direLesCouleursConnues = (): void => {
+  sim.couleursConnues = Object.keys(TEINTE_DU_PIGMENT).filter((p) => pigments.a(p));
+};
+direLesCouleursConnues();
 if (MODE === 'monde') {
   // Chaque pinceau : son socle de repos, sa couleur, ET l'endroit de son monde
   // où il dort, planté, en attendant qu'on vienne le prendre. La taille dont il
@@ -441,6 +491,16 @@ let aTrace = false;
 // douzaine, pas davantage : une planche encrée tire sa force de ses vides.
 const feuilles = new Feuilles();
 scene.add(feuilles.group);
+
+// LA PLUIE, là où une salle en déclare une. Le moteur de gouttes existait
+// depuis le premier commit et n'était branché nulle part : la cour de pluie
+// était livrée, reliée, au protocole — et il n'y pleuvait pas. C'est le décor
+// qui dit où il pleut et sur quoi ça tombe (voir `AverseDef`) ; ici on ne fait
+// que le lui obéir.
+const averses = (LEVEL.averse ?? []).map(
+  (a) => new Gouttes(a.zone, a.zone.min[1], a.surfaces, a.sources),
+);
+for (const g of averses) scene.add(g.group);
 
 // Le sceau de la retrouvaille, entre les deux dalles. Invisible partout
 // ailleurs : il n'a de sens que dans l'aventure à deux.
@@ -617,6 +677,34 @@ overlay.addEventListener('click', () => input.requestLock());
     brosse.classList.toggle('encre', pigment !== undefined && acquis.has(pigment));
   }
 
+  // ET OÙ L'ON EST. Le hall n'a pas de chapitre — c'est la couverture. Un
+  // voyage en a un, et c'est son nom tel que le niveau le porte, pour que le
+  // panneau de fin, le sélecteur de repères et cette carte disent le même mot.
+  //
+  // Dans le hall, la même ligne dit où l'arche mènera — seulement quand il y a
+  // quelque chose à reprendre. Au tout premier lancement, la couverture reste
+  // une couverture.
+  //
+  // « Tout est rapporté » n'est vrai que si les quatre pinceaux le sont : la
+  // mémoire du voyage et celle des couleurs sont deux cases, et la carte ne
+  // doit jamais contredire ses propres pinceaux. Et quand la suite est le
+  // monde — rien de fini, ou tout —, ce n'est pas une suite, c'est un début.
+  const toutesLesCouleurs = ['vert', 'rouge', 'bleu', 'or'].every((c) => acquis.has(c));
+  const prochain = Voyage.prochain();
+  el('chapitre').textContent = EN_AVENTURE
+    ? LEVEL.name
+    : Voyage.finis().size === 0
+      ? ''
+      : prochain === 'monde'
+        ? Voyage.acheve() && toutesLesCouleurs
+          ? 'Tout est rapporté'
+          : 'Reprendre du début'
+        : `Suite : ${NIVEAUX[prochain]().name}`;
+
+  // Les deux liens du carton de fin, dans le même mode que la page.
+  const apres = document.querySelectorAll<HTMLAnchorElement>('#fin .apres a');
+  apres[0]?.setAttribute('href', adresseDe('descente'));
+  apres[1]?.setAttribute('href', adresseDe(null));
 }
 
 // --- Tactile ---------------------------------------------------------------
@@ -696,7 +784,10 @@ const rendreLaSouris = (): void => {
 input.onLockChange = (locked) => {
   // La fin a la priorité sur tout : sans ça, Échap ramène le panneau de reprise
   // par-dessus la carte, et l'on repart pour un tour.
-  if (partieFinie || carnetOuvert) {
+  // Et le sacre aussi : il rend la souris dès son premier plan, et la carte
+  // de titre venait se poser par-dessus le monde repeint — « Lavis / Le
+  // monde / Reprendre le trait » sur la fin du jeu. Trouvé par la relecture.
+  if (partieFinie || carnetOuvert || sacre.actif) {
     overlay.classList.add('hidden');
     return;
   }
@@ -812,9 +903,25 @@ function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
 
   if (mode === 'solo') {
     transitionEnCours = true;
-    flash('Départ pour l’Aventure…', 4);
+    // L'arche reprend l'aventure où on l'a laissée : au premier chapitre qu'on
+    // n'a pas fini. Sans ça, revenir le lendemain ramenait au monde gris, et
+    // les quatre autres chapitres n'étaient joignables que par le lien de fin
+    // de celui d'avant — dans l'onglet même où l'on venait de finir.
+    const chapitre = Voyage.prochain();
+    if (chapitre === 'monde') {
+      flash(
+        Voyage.finis().size === 0
+          ? 'Départ pour l’Aventure…'
+          : Voyage.acheve()
+            ? 'Tout est rapporté. On repart du monde…'
+            : 'On repart du début…',
+        4,
+      );
+    } else {
+      flash(`On reprend : ${NIVEAUX[chapitre]().name.toLowerCase()}…`, 4);
+    }
     void presence.leave().finally(() => {
-      location.search = '?niveau=monde';
+      location.search = adresseDe(chapitre);
     });
     return;
   }
@@ -827,7 +934,7 @@ function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
     transitionEnCours = true;
     flash('Tu t’endors…', 4);
     void presence.leave().finally(() => {
-      location.search = `?niveau=reve&graine=${graine}`;
+      location.search = `${adresseDe('reve')}&graine=${graine}`;
     });
     return;
   }
@@ -972,6 +1079,8 @@ const REPERES: Repere[] =
       ? REPERES_DESCENTE
       : MODE === 'montee'
         ? REPERES_MONTEE
+        : MODE === 'mesure'
+          ? REPERES_MESURE
         : MODE === 'formes'
           ? REPERES_FORMES
           : MODE === 'monde'
@@ -1191,6 +1300,7 @@ const REPERES: Repere[] =
     ['monde', '?niveau=monde&debug=1'],
     ['descente', '?niveau=descente&debug=1'],
     ['montée', '?niveau=montee&debug=1'],
+    ['mesure', '?niveau=mesure&debug=1'],
     ['formes', '?niveau=formes&debug=1'],
     ['banc', '?niveau=banc&debug=1'],
     ['rêve', '?niveau=reve&graine=7&debug=1'],
@@ -1565,8 +1675,13 @@ function frame(now: number): void {
     // rien de plus petit. La porte ne refuse pas le joueur — elle n'a nulle
     // part où le mener. Il suffisait de le dire.
     if (events.refused) {
+      // Et une porte scellée le dit : elle passait pour une porte qui ne mène
+      // nulle part, ce qui est le contraire — elle mène quelque part, il y a
+      // quelque chose à faire d'abord.
       flash(
-        events.refused.reason === 'tooBig'
+        events.refused.reason === 'scelle'
+          ? 'Cette porte est scellée. Quelque chose, ici, l’ouvrira.'
+          : events.refused.reason === 'tooBig'
           ? 'Trop grand pour cette porte. Il faudrait rapetisser.'
           : events.refused.versLePetit
             ? 'Plus petit, il n’y a plus rien. Cette porte ne mène nulle part.'
@@ -1655,6 +1770,7 @@ function frame(now: number): void {
           bornesDeRegion,
         );
         teindreLesObjets();
+        direLesCouleursConnues();
         flash('Il s’éveille — et là-bas, quelque chose reprend sa couleur.', 7);
       } else {
         flash('Il s’éveille, et il te suit. Ramène-le au monde gris.', 6);
@@ -1670,6 +1786,9 @@ function frame(now: number): void {
     if (events.rattrape) {
       flash('Tu es tombé hors du dessin. Le papier te repose où tu étais.', 5);
       ambiance.portail();
+    }
+    if (events.pieceRattrapee) {
+      flash('La pièce est tombée hors du dessin. Elle est revenue où elle reposait.', 4);
     }
     if (events.eveilRefuse) {
       flash(
@@ -1705,6 +1824,7 @@ function frame(now: number): void {
         forme: 'Ce n’est pas ce dessin-là. Le creux en attend un autre.',
         teinte: 'La forme est juste, la couleur non.',
         main: 'Bonne taille, bon dessin, et elle n’entre pas. La tourner n’y changera rien.',
+        lancee: 'Lancée, elle n’entre pas. Reprends-la, et pose-la.',
       };
       const mot = dit[events.logementRefuse.raison];
       if (mot) flash(mot, 5);
@@ -1745,6 +1865,12 @@ function frame(now: number): void {
     if (events.peinte) {
       peindreFamille(events.peinte.famille, events.peinte.pigment);
       ambiance.tache(0);
+      // Hors du village, personne ne vole jusqu'à la famille : on dit la
+      // couleur, et l'on dit qu'appuyer encore en dira une autre.
+      if (sim.couleurEnMain === null) {
+        const autres = sim.couleursConnues.length > 1 ? ' Encore, pour dire la suivante.' : '';
+        flash(`Tu dis le ${events.peinte.pigment}.${autres}`, 3);
+      }
     }
     // Le refus est une leçon, pas une panne : même seuil que le « trop lourd »,
     // et il enseigne en une seconde que la palette dépend de la taille qu'on a.
@@ -1762,17 +1888,37 @@ function frame(now: number): void {
       // traversé pour l'y porter. C'est le seul moment du jeu où on lui retire
       // la maîtrise de son regard.
       if (MODE === 'monde' && pigments.nombre >= AUX_SOCLES_TOTAL) {
+        // Le chapitre est fini, et le hall s'en souviendra — c'est ce qui
+        // permet de revenir un autre jour et de reprendre au suivant.
+        Voyage.finir('monde');
         sceau.declencher();
         sacre.jouer([0, 74, 0], camera.position);
         ambiance.retrouvaille();
         document.exitPointerLock();
+      } else if (MODE === 'monde') {
+        // LA POINTE SANS LES COULEURS N'EST PAS LA FIN. La pointe s'atteint
+        // sans avoir posé un seul pinceau — c'est mesuré —, et l'on marquait
+        // alors le monde fini, on proposait de descendre, et il n'y avait
+        // plus aucun chemin vers ses couleurs ni vers le sacre. On le dit, et
+        // le but se réarme : on reviendra avec les pinceaux.
+        const manque = AUX_SOCLES_TOTAL - pigments.nombre;
+        flash(
+          manque === 1
+            ? 'Il manque une couleur. Le monde n’est pas entier.'
+            : `Il manque ${manque} couleurs. Le monde n’est pas entier.`,
+          6,
+        );
+        setTimeout(() => {
+          sim.goalReached = false;
+        }, 8000);
       } else {
+        if (EN_AVENTURE) Voyage.finir(MODE!);
         // Le lien dit où il va. Il annonçait « niveau suivant » et ramenait au
         // hall dès qu'il n'y avait plus de suite — au bout de la montée, donc
         // à la fin du plus long voyage du jeu, là où mentir coûte le plus cher.
         const suite = NIVEAU_SUIVANT[MODE!];
-        suiteEl.setAttribute('href', suite ?? './');
-        suiteEl.textContent = suite ? 'niveau suivant' : 'retour au hall';
+        suiteEl.setAttribute('href', adresseDe(suite ? suite.slice('?niveau='.length) : null));
+        suiteEl.textContent = suite ? (OU_MENE_LA_SUITE[MODE!] ?? 'niveau suivant') : 'retour au hall';
         winPanel.classList.add('show');
         // On rend la souris, sinon le lien du panneau est inatteignable — et
         // on la rend POUR DE BON, sans quoi le panneau de reprise se pose
@@ -1975,6 +2121,7 @@ function frame(now: number): void {
   canevas.update(aTrace);
   aTrace = false;
   feuilles.update(dt, camera, scale);
+  for (const g of averses) g.update(dt, camera);
   pigments.update(dt, peintreEnCours?.group.position);
 
   // Les coups de pinceau en attente : chacun se pose à son tour, et la famille
@@ -2016,6 +2163,7 @@ function frame(now: number): void {
   }
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
+  for (const g of averses) g.syncInk();
 
   // --- Les autres joueurs -----------------------------------------------------
   if (presenceActive) {

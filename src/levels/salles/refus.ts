@@ -1,28 +1,38 @@
 import type { BoxDef, CarryableDef, PortalPairDef, SocketDef } from '../../core/types.js';
 import type { SalleModule } from './contrat.js';
+import { mainDEncre } from '../mains.js';
 
 /**
  * LE CREUX QUI REFUSE — la première salle où un objet a une MAIN.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * CE QU'ELLE ENSEIGNE, ET CE QU'ELLE CACHE
- *
- * Ce qu'elle enseigne :  une porte corrige la taille.
- * Ce qu'elle cache    :  cette porte-là en a corrigé DEUX.
+ * CE QU'ELLE ENSEIGNE, ET COMMENT ELLE A CHANGÉ DE LEÇON
  *
  * Le joueur trouve une vrille et un creux à sa forme. Il la présente, elle
- * refuse — visiblement trop petite. Il la porte à travers la porte du fond, il
- * revient, elle entre. Il en conclut « la porte l'a agrandie », et il a
- * parfaitement raison.
+ * refuse — visiblement trop petite. Il la porte par la porte du fond, il
+ * ressort quatre fois plus grand, elle a la bonne taille… et elle refuse
+ * encore. Le creux le dit : « bonne taille, bon dessin, et elle n'entre pas ;
+ * la tourner n'y changera rien. » C'est la première fois qu'un objet a une
+ * main, et c'est ici qu'on l'apprend.
  *
- * Il ignore que la porte était un MIROIR, et que le creux exigeait aussi la
- * main droite. Les deux corrections sont arrivées dans le même geste, et rien
- * ne permet de les démêler ici.
+ * LA RÈGLE, DEPUIS QUE LE MONDE BASCULE AVEC SOI : porter une pièce à travers
+ * un miroir ne la retourne PAS. On se réfléchit avec elle, l'écart reste nul,
+ * et prétendre qu'elle a tourné ferait dire au jeu le contraire de ce qu'il
+ * montre. La seule façon de retourner une pièce est de LA LANCER à travers et
+ * de la rattraper de l'autre côté — elle se réfléchit, on ne se réfléchit pas,
+ * et l'écart devient réel. Voir `Simulation.teleport`.
  *
- * C'est délibéré. Une leçon qu'on croit avoir comprise se retient mieux qu'une
- * leçon qu'on subit — et le blanchiment, la salle d'après, sépare les deux
- * effets en exigeant la taille d'origine ET l'autre main. Cette salle-ci est le
- * brouillon de celle-là, et l'erreur du joueur en est le premier trait.
+ * Cette salle a d'abord été écrite autour du portage, et la règle l'a rendue
+ * fausse d'un coup : la vrille portée ressortait de la même main, et le creux
+ * refusait sans que rien dans le monde ne le justifie — le pire défaut que ce
+ * jeu puisse avoir. Elle est réécrite autour du lancer. Ce qu'elle cachait
+ * (« la porte a corrigé DEUX choses ») est devenu ce qu'elle montre : la porte
+ * corrige la taille de tout ce qui passe, et la main de ce qu'on jette.
+ *
+ * LES MAINS SUR LES MURS disent la règle sans un mot : une de chaque côté de
+ * chaque ouverture, de la MÊME main, et en regardant par le miroir on voit
+ * côte à côte celle qui est devant soi et celle d'en face, retournée. Voir
+ * `src/levels/mains.ts`.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * LE LIEU, ET CE QU'IL REVISITE (règle 8). Une cour de tailleur de pierre, à
@@ -34,9 +44,17 @@ import type { SalleModule } from './contrat.js';
  * POURQUOI PAS DE TOIT. Une cour ouverte, jamais un couloir. Le moteur a un
  * défaut connu et documenté — voir `MESURES.md` § « LA CATAPULTE DU LINTEAU » —
  * qui projette sur son linteau un joueur arrêté au ras d'une porte trop basse.
- * Cinq corrections ont été essayées et ont toutes cassé autre chose. Tant qu'il
- * vit, on dessine des salles qui n'ont pas de linteau bas : c'est gratuit, et
- * c'est plus honnête que d'espérer que le joueur ne se colle pas au mur.
+ * Tant qu'il vit, on dessine des salles qui n'ont pas de linteau bas.
+ *
+ * MAIS UN CIEL DE VERRE. Une pièce lancée à travers une porte ressort quatre
+ * fois plus grande ET quatre fois plus vite — c'est la loi du monde, la même
+ * qui fait qu'un géant marche vite. Lancée un peu vers le haut, elle ressort
+ * à quarante mètres par seconde de la grande face et passe par-dessus douze
+ * mètres de mur. Rien ne rattrape une pièce tombée hors du monde, et cette
+ * pièce est la seule clef de la porte de sortie. D'où une coque invisible à
+ * treize mètres, au-dessus de tout ce qu'un joueur atteint (un ×4 qui saute
+ * met sa tête à 12,38) : on s'y cogne, on ne la voit pas, et la vrille
+ * retombe toujours dans la cour. Voir « Le verre » au banc d'essai.
  */
 
 const REGION = {
@@ -58,12 +76,25 @@ const b = (
   opts: { ghost?: boolean; outline?: boolean } = {},
 ): BoxDef => ({ min, max, ink, region: 'refus', ...opts });
 
+/** Verre : ça arrête le corps, ça arrête la pièce, ça ne se dessine pas. */
+const verre = (min: [number, number, number], max: [number, number, number]): BoxDef =>
+  ({ min, max, region: 'refus', invisible: true });
+
 /** La cour : soixante mètres sur soixante, murs à douze. */
 const X0 = -30;
 const X1 = 30;
 const Z0 = 1670;
 const Z1 = 1730;
 const MUR = 12;
+/**
+ * Le ciel de verre. Il était à treize mètres, « au-dessus de la tête d'un ×4
+ * qui saute (12,38) » — et sous la pièce qu'il TIENT : un géant qui lève les
+ * yeux porte sa vrille à plus de quatorze mètres, déjà de l'autre côté du
+ * verre, et la lançait à soixante-dix mètres de haut, hors du monde. Dix-huit
+ * : au-dessus du plus haut point où une main de géant puisse tenir quoi que
+ * ce soit ici (16,2 pour la vrille), et l'on s'y cogne toujours sans le voir.
+ */
+const CIEL = 18;
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -108,13 +139,18 @@ export const VRILLE = [cellule(0, 0, 0), cellule(1, 0, 0), cellule(1, 1, 0), cel
  * cent de marge des deux côtés, et la même marge aux deux étages puisque tout
  * est multiplié par quatre en même temps.
  *
- * Une salle voisine est morte pour deux millimètres et demi sur ce seuil-là.
- * Quarante centimètres est un choix de couard, et c'est le bon.
+ * Et 1,60 ne se soulève PAS à ×1 (0,99) : c'est ce qui oblige à suivre la
+ * pièce par la porte après l'avoir lancée. On ne récupère sa clef qu'en
+ * devenant ce que le lieu demande.
  */
 const VRILLE_PETITE = 0.4;
 const VRILLE_GRANDE = VRILLE_PETITE * 4;
 
 const CREUX = { x: 0, y: 0.9, z: 1676 };
+
+/** Les deux faces du miroir, plantées deux mètres devant leur mur. */
+const PETITE = { x: 28, z: 1700 };
+const GRANDE = { x: -28, z: 1690 };
 
 /**
  * LE DÉCOR. Une dalle, quatre murs, un socle, et rien d'autre.
@@ -135,6 +171,15 @@ const decor = (): BoxDef[] => [
   b([X0, 0, Z0 - 2], [X1, MUR, Z0], 2),
   b([X0, 0, Z1], [X1, MUR, Z1 + 2], 2),
 
+  // LE CIEL DE VERRE, et les rehausses de verre qui le raccordent aux murs.
+  // Elles mordent de dix centimètres dans la pierre : deux faces exactement
+  // confondues se disputent la profondeur, même quand l'une est invisible.
+  verre([X0 - 2, MUR - 0.1, Z0 - 2], [X0, CIEL, Z1 + 2]),
+  verre([X1, MUR - 0.1, Z0 - 2], [X1 + 2, CIEL, Z1 + 2]),
+  verre([X0, MUR - 0.1, Z0 - 2], [X1, CIEL, Z0]),
+  verre([X0, MUR - 0.1, Z1], [X1, CIEL, Z1 + 2]),
+  verre([X0 - 2, CIEL - 0.1, Z0 - 2], [X1 + 2, CIEL + 0.5, Z1 + 2]),
+
   // LE SOCLE DU CREUX. Sa hauteur est l'étalon de la règle 9 : 0,90 m, la
   // hauteur d'un plan de travail, la seule chose de la cour dont un joueur à
   // taille d'homme connaisse la mesure par le corps. Quand il ressort à ×4 et
@@ -147,20 +192,41 @@ const decor = (): BoxDef[] => [
   b([-27.4, 0, 1694.1], [-26.4, 1.0, 1695.1], 1),
   b([-26.3, 0, 1694.2], [-25.3, 1.02, 1695.2], 1),
   b([-27.3, 1.03, 1694.6], [-26.3, 2.03, 1695.6], 1),
+
+  // ─── LES MAINS SUR LES MURS ────────────────────────────────────────────
+  //
+  // Sur le mur EST, de part et d'autre de la petite face, à sa taille : deux
+  // mains de quarante-cinq centimètres, l'encre tournée vers l'ouest d'où l'on
+  // vient. Sur le mur OUEST, de part et d'autre de la grande, quatre fois plus
+  // grandes, l'encre tournée vers l'est. Toutes de la MÊME main : ce qu'on
+  // compare est ici et là-bas, et en regardant par la petite face on voit les
+  // grandes d'en face, retournées.
+  //
+  // Elles sont posées à quelques centimètres devant le mur — quatre pour les
+  // petites, deux pour les grandes, dont le panneau est plus épais — jamais
+  // dessus : une face confondue avec celle du mur grésillerait.
+  ...mainDEncre('refus', X1 - 0.05, 0.125, PETITE.z - 1.6, true, 0.25, -1),
+  ...mainDEncre('refus', X1 - 0.05, 0.125, PETITE.z + 1.6, true, 0.25, -1),
+  ...mainDEncre('refus', X0 + 0.05, 0.5, GRANDE.z - 6.4, true, 1, 1),
+  ...mainDEncre('refus', X0 + 0.05, 0.5, GRANDE.z + 6.4, true, 1, 1),
 ];
 
 /**
- * LE CREUX. Il exige trois choses et n'en montre qu'une.
+ * LE CREUX. Il exige trois choses, et les dit une par une.
  *
  * `forme` — la vrille : elle est dessinée en creux, on voit ce qu'il attend.
  * `size`  — 1,60 : quatre fois ce qu'on tient, et cet écart-là saute aux yeux.
- * `main`  — 'D'  : invisible, et c'est tout le sujet de la salle suivante.
+ * `main`  — 'D'  : invisible, et c'est tout le sujet — le creux ne le dit
+ *           qu'en dernier, quand la taille et le dessin sont justes, au moment
+ *           exact où c'est la seule explication possible.
  *
- * `portee` est large parce qu'un joueur à ×4 repose ce qu'il porte À QUATORZE
- * MÈTRES DEVANT LUI. Viser un socle de trois mètres à quatorze mètres de
- * distance est une épreuve d'adresse, et ce jeu n'en est pas une — encore moins
- * au doigt sur un téléphone. Ce nombre a déjà rendu une salle entière
- * infaisable sans que rien ne le laisse voir.
+ * `portee` est large parce qu'un joueur à ×4 repose ce qu'il porte LOIN DEVANT
+ * LUI — 1,36 de corps plus deux fois l'arête, soit quatre mètres et demi pour
+ * cette vrille. Viser un socle de trois mètres à cette distance est une épreuve
+ * d'adresse, et ce jeu n'en est pas une — encore moins au doigt sur un
+ * téléphone. Huit mètres laissent le géant poser d'où il se tient ; dix-huit,
+ * l'ancienne valeur, faisaient qu'une vrille LANCÉE à travers le miroir et
+ * retombée n'importe où dans la moitié sud de la cour s'y logeait toute seule.
  */
 const SOCKETS: SocketDef[] = [
   {
@@ -169,7 +235,7 @@ const SOCKETS: SocketDef[] = [
     main: 'D',
     position: [CREUX.x, CREUX.y, CREUX.z],
     size: VRILLE_GRANDE,
-    portee: 18,
+    portee: 8,
     ink: 3,
   },
 ];
@@ -196,29 +262,30 @@ const CARRYABLES: CarryableDef[] = [
  * la démonstration la plus courte que le jeu sache faire, et elle ne coûte pas
  * une ligne d'explication.
  *
- * `miroir: true` fait basculer la main de ce qu'on porte. Le joueur ne le voit
- * pas : la vrille gauche et la vrille droite se ressemblent tant qu'on ne les
- * compare pas. Elle vient pourtant de changer de forme dans ses bras.
+ * `miroir: true` retourne ce qu'on LANCE à travers, et ce qu'on lance ressort
+ * par la grande face, quatre fois plus gros, à l'autre bout de la cour — trop
+ * lourd pour un homme. On va le chercher en passant soi-même la porte.
  *
  * ELLE N'A PAS DE `condition` : on la franchit tant qu'on veut, dans les deux
- * sens. Repasser rend la vrille à sa main et à sa taille d'origine, et rien
- * n'est perdu. C'est la règle « ne jamais piéger », appliquée à la lettre — et
- * ici elle est plus qu'une prudence : le joueur qui fait l'aller-retour vient
- * de découvrir tout seul que deux passages s'annulent, ce qui est exactement le
- * théorème dont il aura besoin à la salle suivante.
+ * sens, et l'on peut relancer la vrille autant de fois qu'il faut. Deux
+ * lancers s'annulent, un aller-retour rend la taille : rien n'est jamais
+ * perdu. C'est la règle « ne jamais piéger », appliquée à la lettre — et le
+ * joueur qui essaie tout vient de découvrir seul le théorème dont il aura
+ * besoin à la salle suivante.
  */
 const PORTALS: PortalPairDef[] = [
   {
     id: 'miroir-refus',
     miroir: true,
-    colorBig: 0x8a5a3b,
+    colorBig: 0xc8492e,
     colorSmall: 0x2f4b7c,
     smallHeight: 2.8,
     smallWidth: 1.9,
-    // Normale −x : on marche vers l'est pour la franchir.
-    small: { position: [28, 0.05, 1700], yaw: -Math.PI / 2 },
-    // Normale +x : on en ressort en marchant vers l'est, face à la cour.
-    big: { position: [-28, 0.05, 1690], yaw: Math.PI / 2 },
+    // Normale −x : on marche vers l'est pour la franchir, on lance vers l'est.
+    small: { position: [PETITE.x, 0.05, PETITE.z], yaw: -Math.PI / 2 },
+    // Normale +x : on en ressort en marchant vers l'est, face à la cour — et
+    // la vrille lancée en ressort de même, quatre fois plus vite.
+    big: { position: [GRANDE.x, 0.05, GRANDE.z], yaw: Math.PI / 2 },
   },
 ];
 
@@ -247,5 +314,12 @@ export const REFUS: SalleModule = {
    * `echelle` EST UN PALIER : −1 = ×1/4, 0 = ×1, 1 = ×4, 2 = ×16.
    */
   entree: { position: [-22, 0.05, 1724], echelle: 0 },
-  sortie: { position: [14, 0.05, 1726], echelle: 1 },
+  // La porte est dans le mur nord : on la franchit en marchant vers le nord.
+  // Sans ce mot, l'assemblage la plantait face au nord et l'on ne pouvait
+  // la passer qu'en se glissant entre elle et le mur, puis en revenant.
+  sortie: { position: [14, 0.05, 1726], echelle: 1, lacet: 0 },
 };
+
+/** Les cotes de la vrille, pour les vérifications. */
+export const REFUS_PETITE = VRILLE_PETITE;
+export const REFUS_GRANDE = VRILLE_GRANDE;
