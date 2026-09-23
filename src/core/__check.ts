@@ -23,6 +23,7 @@ import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
 import { MESURE, RACCORDS_MESURE, SALLES_MESURE } from '../levels/mesure.js';
 import { LACET_PAR_DEFAUT } from '../levels/salles/contrat.js';
 import { piloterDescente } from './__pilote_descente.js';
+import { Tracage } from '../render/tracage.js';
 import { piloterMontee } from './__pilote_montee.js';
 import { REFUS_GRANDE, REFUS_PETITE } from '../levels/salles/refus.js';
 import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
@@ -4008,6 +4009,29 @@ console.log('\n— Ce que la relecture finale a trouvé, et qui ne revient pas �
       `lanceur ${[...A.sockets.pourvus].join(',') || 'vide'}, spectateur ${[...B.sockets.pourvus].join(',') || 'vide'}, copie lancée=${piece(B, 'bille-a').lancee}`,
     );
   }
+}
+
+// =============================================================================
+console.log('\n— Le dernier coup de pinceau va à la porte qu’on trace —');
+{
+  // Au dernier coup, la main est rendue avant que l'appelant ne pose le
+  // tracé : il lisait `pairEnCours`, trouvait null, et se rabattait sur la
+  // porte du village. Hors du village, chaque porte dessinée restait à 92 %
+  // pour toujours — un semis de grains de papier à travers la porte, « comme
+  // du sable ». Le coup dit maintenant lui-même à quelle porte il va.
+  const t = new Tracage();
+  t.commencer('une-porte');
+  let dernier: { paire: string; trace: number } | null = null;
+  let finie: string | null = null;
+  for (let i = 0; i < 60 * 30; i++) {
+    const c = t.update(1 / 60, () => {}, (p) => (finie = p));
+    if (c) dernier = c;
+  }
+  check(
+    'le dernier coup porte le nom de la porte, et le tracé vaut un',
+    dernier?.paire === 'une-porte' && dernier.trace === 1 && finie === 'une-porte' && !t.enCours,
+    `${dernier ? `${dernier.paire} à ${dernier.trace}` : 'aucun coup'}, finie ${finie ?? 'non'}`,
+  );
 }
 
 // =============================================================================

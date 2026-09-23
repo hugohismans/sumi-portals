@@ -652,7 +652,20 @@ export class PortalRenderer {
     // minuscule de coller son œil aux choses. Le plan LOINTAIN, lui, mesure une
     // distance dans le monde, et le monde ne change pas de taille : il reste
     // celui qu'aura la vraie caméra une fois qu'on aura traversé.
-    out.near = source.near * s;
+    //
+    // ET IL PEUT S'AVANCER JUSQU'AU PLAN DE LA JUMELLE, OU PRESQUE. Tout ce
+    // qui se trouve entre la caméra virtuelle et la face jumelle est tranché
+    // par le plan de coupe ; rien de visible n'est donc plus près que la face
+    // elle-même, dont le point le plus proche est au moins aux deux tiers de
+    // la distance perpendiculaire (le champ fait 72°). On pose le plan proche
+    // à quatre dixièmes de cette distance : quand on regarde une porte de dix
+    // mètres, la profondeur de la vue à travers est cent fois plus précise
+    // que quand il restait collé à l'œil — et c'est dans les portes qu'on
+    // voyait les couches du décor se disputer la profondeur. Collé à la face,
+    // on retombe sur l'ancien plan, et rien ne change.
+    view.twin.group.getWorldDirection(this.tmpNormal);
+    const recul = Math.abs(this.tmpVec.copy(out.position).sub(view.twin.group.position).dot(this.tmpNormal));
+    out.near = Math.max(source.near * s, 0.03, recul * 0.4);
     out.far = source.far;
     out.updateProjectionMatrix();
     // Une matrice de réflexion posée à la main serait aussitôt recalculée à

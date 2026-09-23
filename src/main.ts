@@ -577,10 +577,15 @@ const portals = new PortalRenderer(
 );
 scene.add(portals.group);
 
-// La toile de la seconde porte part vierge. Il faut le faire ICI, une fois le
-// renderer de portails construit — d'où la séparation avec la déclaration plus
-// haut, qui n'a besoin que de la simulation.
-if (MODE === 'monde') portals.tracer(PORTE_A_DESSINER, 0);
+// LA TOILE D'UNE PORTE À DESSINER PART VIERGE — de toutes, pas seulement de
+// celle du village. Il faut le faire ICI, une fois le renderer de portails
+// construit. Dans les voyages, les portes dessinées naissaient PLEINES : on
+// voyait le monde d'en face à travers une porte qui faisait mur, puis, le
+// verrou levé, le pinceau la vidait pour la redessiner — l'inverse de ce que
+// le geste raconte. Une porte scellée est une feuille tendue dans un cadre.
+for (const paire of LEVEL.portals) {
+  if (paire.dessinee && sim.portesFermees.has(paire.id)) portals.tracer(paire.id, 0);
+}
 // Les cadres des portails se grisent avec le reste : dans ce monde, la couleur
 // est ce qu'on rapporte, jamais ce qui est déjà là.
 if (pigmentDe.size > 0) teindreLesObjets();
@@ -1006,7 +1011,15 @@ function applyScale(force = false): void {
   // œil aux choses — mais avec un plancher, sinon l'écart proche/lointain
   // devient tel que la profondeur perd toute précision et que les surfaces se
   // mettent à clignoter.
-  camera.near = Math.max(0.02, 0.02 * scale);
+  //
+  // Six centimètres à taille d'homme, et jamais moins de trois : rien de ce
+  // qu'on voit n'est plus près de l'œil (une pièce se tient à cinquante
+  // centimètres au moins, le buste à vingt sous l'œil), et la précision de la
+  // profondeur est proportionnelle à ce plan. À deux centimètres, des surfaces
+  // écartées de trois se disputaient la profondeur à vingt mètres sur les
+  // cartes graphiques de téléphone — un scintillement partout où le décor est
+  // fait de couches. Signalé en jouant, sur téléphone.
+  camera.near = Math.max(0.03, 0.06 * scale);
   // Le plan lointain, lui, est FIXE et va au-delà du brouillard : s'il suivait
   // l'échelle, un joueur rapetissé verrait le décor lointain se faire trancher
   // net au lieu de se fondre dans le papier.
@@ -2075,7 +2088,7 @@ function frame(now: number): void {
     }
   }
 
-  const trace = tracage.update(
+  const coup = tracage.update(
     dt,
     () => ambiance.tache(coupsPoses++),
     (paire) => {
@@ -2084,7 +2097,9 @@ function frame(now: number): void {
       flash('La porte est dessinée. Elle s’ouvre.', 5);
     },
   );
-  if (trace !== null) portals.tracer(tracage.pairEnCours ?? PORTE_A_DESSINER, trace);
+  // Le coup dit lui-même à quelle porte il va : au dernier, la main est déjà
+  // rendue, et deviner la porte ici la manquait partout sauf au village.
+  if (coup !== null) portals.tracer(coup.paire, coup.trace);
   // L'image des tableaux, prise à la première image utile — pas avant, parce
   // qu'il faut que le décor soit construit et ses uniformes posés.
   if (LEVEL.tableaux && LEVEL.tableaux.length > 0) {
