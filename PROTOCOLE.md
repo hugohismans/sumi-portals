@@ -242,10 +242,15 @@ la tourner n'y changera rien.* Regarde les **mains** de part et d'autre des
 deux faces : en regardant par le miroir, celle d'en face est retournée. Reviens
 homme, **lance** la vrille dans la petite face (clic) → *elle ressort par la
 grande, à l'autre bout de la cour, retournée et trop lourde.* Suis-la par la
-porte, ramasse-la géant, elle entre.
+porte, ramasse-la géant, **pose-la** près du creux, elle entre. La porte de
+sortie est dans le mur nord : on la passe en marchant vers le nord.
 **Défaut à guetter :** ne pas comprendre qu'il faut lancer ; une phrase de refus
 qui ne vient pas ; une vrille qui passe par-dessus le mur (le ciel est en
-verre à treize mètres, elle DOIT retomber dans la cour).
+verre à dix-huit mètres, au-dessus de tout ce qu'un géant peut tenir : elle
+DOIT retomber dans la cour). Et une chose voulue, à ne pas prendre pour un
+défaut : **une vrille lancée qui s'arrête à côté du creux n'y entre pas** —
+un creux ne prend qu'une pièce qu'on a POSÉE. Il faut la ramasser et la
+poser ; lancer n'est pas une question.
 
 **`3` — Le blanchiment.** Le creux veut la taille d'origine **et** l'autre main.
 Le miroir n'est plus qu'une **chatière** au pied du mur ouest, 1,20 m : on n'y
@@ -255,10 +260,17 @@ nord), grandis, va la chercher, rapporte-la par la grande face ordinaire → *0,
 toujours droite, et le creux est à dix mètres.*
 Le théorème : la main ne change qu'à la chatière, et jamais sans la taille ; la
 taille se corrige à la porte ordinaire, sans toucher à la main.
-**Défaut à guetter :** ne jamais trouver la brèche ; forcer la chatière ; ne pas
-voir que les deux portes ne font pas la même chose. Et l'erreur PARFAITE, à
-faire exprès : lancer, grandir, courir au creux avec la vrille trop grosse,
-la rapporter — et comprendre après coup ce qu'on a fait.
+On arrive par le mur sud, face à la cour ; on repart par le mur nord, vers le
+nord.
+**Défaut à guetter :** ne jamais trouver la brèche ; forcer la chatière (un
+homme qui s'y présente l'entend refuser : « trop grand ») ; ne pas voir que
+les deux portes ne font pas la même chose. Et l'erreur PARFAITE, à faire
+exprès : lancer, grandir, courir au creux avec la vrille trop grosse, la
+rapporter — et comprendre après coup ce qu'on a fait.
+*Deux choses mesurées, voulues :* lancée de trop près (moins de deux mètres
+de la chatière), la vrille est déjà derrière le plan quand on la lâche — elle
+frappe le mur et retombe dans la fente, d'où on la ramasse ; et une vrille
+lancée qui finit près du creux n'y entre pas tant qu'on ne l'a pas posée.
 
 **`4` — L'escalier pour plus tard.** À ×4, en haut d'une falaise de 3,60. Quatre
 cubes de 0,80 traînent là : dispose-les **en escalier pour quelqu'un d'1,80**,
@@ -514,7 +526,21 @@ sont à reprendre** — c'est leur seul critère.
   pièce se soit posée avant de la prendre (il happait une pièce en vol). Une
   pièce posée qui ne rentre plus serait ce correctif qui a trop mordu ;
 - **tout ce qui passe une porte en glissant au sol** : une pièce ne ressort plus
-  jamais sous le seuil de la face jumelle ;
+  jamais dans le plancher de l'autre côté — elle est posée sur le dessus du
+  sol qu'elle chevauche, quelle que soit la hauteur à laquelle la face a été
+  plantée ;
+- **tout ce qu'on lance vers une porte scellée** : la pièce rebondit, comme le
+  joueur. Elle passait (et le grain était mort) ;
+- **tout ce qu'on pose face à un mur, géant** : la pièce reste de ce côté-ci,
+  ou reste en main — on ne pose plus à travers un mur ;
+- **tout ce qu'on lance près d'un creux** : il ne la prend pas tant qu'on ne
+  l'a pas reprise et posée ;
+- **chaque raccord entre deux salles** : on le franchit en marchant droit vers
+  la porte depuis l'intérieur, et l'on arrive face à la salle suivante. Sept
+  portes étaient plantées à l'envers ; le harnais franchit maintenant les
+  quatorze ;
+- **une porte scellée** dit qu'elle est scellée quand on s'y cogne, au lieu de
+  « ne mène nulle part » ;
 - **peindre dans le village** : la fée garde la priorité sur les couleurs
   connues, donc rien ne doit avoir changé là-bas — mais c'est le même geste.
 

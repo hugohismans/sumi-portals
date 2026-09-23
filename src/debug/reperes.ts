@@ -617,7 +617,8 @@ export const REPERES_MONTEE: Repere[] = [
       'ressors quatre fois plus grand, pose-la : bonne taille, et le creux dit qu’elle ' +
       'N’ENTRE PAS, que la tourner n’y changera rien. Regarde les MAINS de part et d’autre ' +
       'des deux faces. Reviens homme, LANCE la vrille dans la petite face : elle ressort ' +
-      'par la grande, retournée, trop lourde. Suis-la par la porte, ramasse-la, elle entre. ' +
+      'par la grande, retournée, trop lourde. Suis-la par la porte, ramasse-la, POSE-LA, ' +
+      'elle entre — lancée à côté du creux, elle n’y entre pas toute seule. ' +
       'Défaut à guetter : ne pas comprendre qu’il faut lancer ; une vrille perdue par-dessus ' +
       'le mur (le ciel est en verre, elle doit retomber dans la cour).',
     5,
