@@ -3891,6 +3891,126 @@ console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule pa
 }
 
 // =============================================================================
+console.log('\n— Ce que la relecture finale a trouvé, et qui ne revient pas —');
+{
+  // UNE PIÈCE LANCÉE QUI S'ARRÊTE DANS LE CREUX OBTIENT UNE RÉPONSE. Le creux
+  // ne la prend pas — lancer n'est pas une question — mais il le dit, une
+  // fois, au lieu de se taire comme une panne. Le hall : bille lancée vers
+  // l'établi.
+  {
+    const H = new Simulation(LOBBY);
+    const b = piece(H, 'bille-a');
+    b.held = true;
+    poserA(H, 3.2, 0.05, 27.3, 0);
+    H.player.yaw = 0;
+    attendre(H, 2);
+    lancer(H, 0, -0.3);
+    let dit: TickEvents['logementRefuse'] | undefined;
+    let fois = 0;
+    for (let i = 0; i < 60 * 5; i++) {
+      const e = H.step(ordre(H), TICK_DT);
+      if (e.logementRefuse) {
+        dit = e.logementRefuse;
+        fois++;
+      }
+    }
+    check(
+      'hall : une bille lancée qui s’arrête au creux s’entend refuser « lancée », une fois, sans y entrer',
+      dit?.raison === 'lancee' && dit.socketId === 'creux-petit' && fois === 1 && !H.sockets.pourvus.has('creux-petit'),
+      `${dit ? `${dit.raison} ×${fois}` : 'aucune réponse'}, bille à (${b.position.x.toFixed(1)}, ${b.position.z.toFixed(1)}), pourvus ${[...H.sockets.pourvus].join(',') || 'aucun'}`,
+    );
+  }
+
+  // UNE PORTE FERMÉE FAIT MUR À CE QU'ON POSE. La graine du grain, tenue
+  // au-delà du plan de la sortie scellée : E la gardait en main ? Non — elle
+  // revenait à l'œil, apparaissait dans la tête et tombait entre les pieds.
+  {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, 3446.3, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    const e = M.step(ordre(M, { yaw: Math.PI, interact: true }), TICK_DT);
+    attendre(M, 60);
+    check(
+      'le grain : E devant la porte scellée, la graine reste en main — la porte fait mur à ce qu’on pose',
+      e.noRoom === true && g.held,
+      `${e.noRoom ? 'refusé' : 'posée'}, ${g.held ? 'en main' : `à (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`}`,
+    );
+  }
+
+  // ET UNE PIÈCE LANCÉE SUR UNE PORTE SCELLÉE S'ARRÊTE DEVANT LE PLAN, pas
+  // dans la tête du lanceur.
+  {
+    const M = new Simulation(MESURE);
+    const g = piece(M, 'graine-grain');
+    g.held = true;
+    poserA(M, -54, 0.05, 3450, 0);
+    M.player.yaw = Math.PI;
+    attendre(M, 2);
+    lancer(M, Math.PI, 0.05);
+    attendre(M, 60 * 4);
+    const d = Math.hypot(g.position.x - M.player.position.x, g.position.z - M.player.position.z);
+    check(
+      'le grain : la graine lancée sur la porte scellée retombe devant la porte, pas entre les pieds',
+      d > 1.5 && g.position.z > 3441 && g.position.z < 3449 && g.grounded,
+      `à ${d.toFixed(1)} m du joueur, (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(1)})`,
+    );
+  }
+
+  // LE REFUS « AU-DESSUS D'UNE PORTE » N'A LIEU QUE CONTRE UN MUR. Un géant
+  // qui enjambe le torii du village en plein air n'a rien à s'entendre dire.
+  {
+    const V = new Simulation(MONDE);
+    poserA(V, 0, 0.05, -20, 1);
+    let refus = 0;
+    for (let i = 0; i < 60 * 4; i++) if (V.step(ordre(V, { forward: 1, yaw: Math.PI }), TICK_DT).refused) refus++;
+    check(
+      'le monde : un géant qui enjambe le torii n’est pas « trop grand pour cette porte »',
+      refus === 0 && V.player.position.z < -45,
+      `${refus} refus, ${pos(V)}`,
+    );
+  }
+
+  // LE LANCER VOYAGE SUR LE RÉSEAU. Deux clients : le lanceur et le
+  // spectateur. Sans le drapeau, la copie du spectateur — posée par le réseau,
+  // vitesse nulle — se logeait dans le creux que le lanceur voyait vide.
+  {
+    const A = new Simulation(LOBBY);
+    const B = new Simulation(LOBBY);
+    const pa = new CaissesPartagees();
+    const pb = new CaissesPartagees();
+    const ba = piece(A, 'bille-a');
+    ba.held = true;
+    pa.reclamer('bille-a');
+    poserA(A, 3.2, 0.05, 27.3, 0);
+    A.player.yaw = 0;
+    poserA(B, 20, 0.05, 20, 0);
+    attendre(A, 2);
+    lancer(A, 0, -0.3);
+    for (let i = 0; i < 60 * 5; i++) {
+      A.step(ordre(A), TICK_DT);
+      B.step(ordre(B), TICK_DT);
+      if (i % 6 === 0) {
+        const lot = pa.aPublier(A.carryables);
+        if (lot) {
+          pb.appliquer(
+            new Map([['a', { uid: 'a', x: 0, y: 0, z: 0, yaw: 0, lvl: 0, mv: 0, sol: 1, t: Date.now(), caisses: lot }]]),
+            B.carryables,
+          );
+        }
+      }
+    }
+    check(
+      'hall à deux : la bille lancée ne se loge ni chez le lanceur ni chez le spectateur',
+      !A.sockets.pourvus.has('creux-petit') && !B.sockets.pourvus.has('creux-petit') && piece(B, 'bille-a').lancee,
+      `lanceur ${[...A.sockets.pourvus].join(',') || 'vide'}, spectateur ${[...B.sockets.pourvus].join(',') || 'vide'}, copie lancée=${piece(B, 'bille-a').lancee}`,
+    );
+  }
+}
+
+// =============================================================================
 // LES DEUX AUTRES VOYAGES, DE BOUT EN BOUT. Chacun dans son fichier, parce
 // qu'un pilote de cinq cents lignes n'a rien à faire au milieu des lois du
 // moteur ; chacun dans une seule simulation, du spawn au but, sans jamais

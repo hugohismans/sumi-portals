@@ -6,6 +6,7 @@ import {
   JUMP_SPEED,
   MOVE_SPEED,
   PLAYER_HEIGHT,
+  PLAYER_RADIUS,
   SCALE_MAX_LEVEL,
   SCALE_MIN_LEVEL,
   SPRINT_EN_L_AIR,
@@ -64,6 +65,10 @@ const retournerLaMain = (c: Carryable, face: PortalFace): void => {
  */
 /** Boîte de travail pour la sortie des pièces par les portes. */
 const seuilScratch: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+
+/** Une pièce passe-t-elle par cette face ? La même marge que pour le joueur. */
+const pieceFits = (face: PortalFace, size: number): boolean =>
+  size <= face.height * 0.96 && size <= face.width * 0.9;
 
 export class Simulation {
   readonly world: World;
@@ -444,9 +449,26 @@ export class Simulation {
       // mur, jamais la phrase qui les relie. Si l'œil franchit le plan dans
       // la largeur de la porte mais au-dessus d'elle, la porte a refusé —
       // on ne déplace personne, le mur s'en charge.
+      //
+      // Mais seulement s'il y a un mur derrière : un géant qui enjambe un torii
+      // en plein air passe aussi « au-dessus » de sa petite face, et rien ne
+      // l'arrête — lui dire « trop grand pour cette porte » en pleine rue du
+      // village serait faux. On regarde donc s'il y a de la pierre juste
+      // derrière le plan, à portée du corps.
       const dessus = this.findCrossing(prevEye, newEye, 4);
       if (dessus && !canPass(dessus.face, scale)) {
-        events.refused = { pairId: dessus.face.pairId, face: dessus.face.kind, reason: 'tooBig', versLePetit: false };
+        const n = dessus.face.normal;
+        const t = dessus.t;
+        const hit = vec3(
+          prevEye.x + (newEye.x - prevEye.x) * t,
+          prevEye.y + (newEye.y - prevEye.y) * t,
+          prevEye.z + (newEye.z - prevEye.z) * t,
+        );
+        const portee = PLAYER_RADIUS * scale * 2 + 0.8;
+        const derriere = vec3(hit.x - n.x * portee, hit.y, hit.z - n.z * portee);
+        if (!this.world.segmentLibre(hit, derriere)) {
+          events.refused = { pairId: dessus.face.pairId, face: dessus.face.kind, reason: 'tooBig', versLePetit: false };
+        }
       }
     }
 
@@ -501,6 +523,18 @@ export class Simulation {
     //
     // Si la pièce trouve son logement entre-temps, la question n'a plus lieu
     // d'être posée : on l'oublie sans rien dire.
+    // UNE PIÈCE LANCÉE QUI S'ARRÊTE DANS LE CREUX N'Y ENTRE PAS — et il faut
+    // le dire, une fois : le joueur la voit reposer au bon endroit et le jeu se
+    // taire, ce qui se lit comme une panne. Le refus doit raconter le monde.
+    for (const c of this.carryables.items) {
+      if (!c.lancee || c.lanceeDite || c.held || c.locked || !c.grounded) continue;
+      if (Math.hypot(c.velocity.x, c.velocity.z) > 1) continue;
+      const s = this.sockets.logementQuiAccepterait(c);
+      if (!s) continue;
+      c.lanceeDite = true;
+      events.logementRefuse = { socketId: s.id, carryableId: c.id, raison: 'lancee' };
+    }
+
     if (this.refusEnAttente) {
       const attente = this.refusEnAttente;
       if (logees.some((l) => l.carryableId === attente.id)) {
@@ -622,7 +656,25 @@ export class Simulation {
         this.player.pitch,
         scale,
       );
-      if (!placed) {
+      // ET UNE PORTE FERMÉE FAIT MUR À CE QU'ON POSE. Une pièce tenue à bout
+      // de bras est souvent DÉJÀ de l'autre côté du plan d'une porte quand on
+      // se tient devant — et l'on se tient devant une porte scellée précisément
+      // avec la clef dans les mains. Posée là, elle revenait à l'œil du porteur
+      // par le rebond de `carryTraversal`, apparaissait dans sa tête et tombait
+      // entre ses pieds, où on ne peut plus la viser. Trouvé par la relecture.
+      // On refuse comme pour un mur : la pièce reste en main.
+      const porteDevant = placed
+        ? this.findCrossing(
+            this.eyePosition(),
+            vec3(held.position.x, held.position.y + held.size * 0.5, held.position.z),
+          )
+        : null;
+      const porteFermee =
+        porteDevant !== null &&
+        (this.portesFermees.has(porteDevant.face.pairId) ||
+          estScelle(porteDevant.face, this.conditionsRemplies) ||
+          !pieceFits(porteDevant.face, held.size));
+      if (!placed || porteFermee) {
         // On garde la caisse en main plutôt que de la faire surgir n'importe
         // où : un refus clair vaut mieux qu'un objet qui pousse le joueur.
         this.carryables.followCarrier(
@@ -680,6 +732,7 @@ export class Simulation {
 
     target.held = true;
     target.lancee = false;
+    target.lanceeDite = false;
     events.carry = { id: target.id, taken: true };
   }
 
@@ -717,7 +770,7 @@ export class Simulation {
       if (!crossing) continue;
 
       const face = crossing.face;
-      const fits = c.size <= face.height * 0.96 && c.size <= face.width * 0.9;
+      const fits = pieceFits(face, c.size);
       // UNE PORTE SCELLÉE FAIT MUR AUX PIÈCES COMME AU JOUEUR. Elle ne le
       // faisait qu'au joueur : une graine lancée — ou simplement posée — vers
       // la sortie scellée du grain passait de l'autre côté, dans une salle où
@@ -727,10 +780,15 @@ export class Simulation {
       const scellee = this.portesFermees.has(face.pairId) || estScelle(face, this.conditionsRemplies);
 
       if (!fits || scellee) {
-        c.position.x = from.x;
-        c.position.y = from.y - c.size * 0.5;
-        c.position.z = from.z;
+        // Elle s'arrête DEVANT le plan, là où elle l'a touché — pas à son
+        // point de départ, qui est l'œil du porteur quand on vient de la
+        // lâcher : elle apparaissait dans sa tête et tombait entre ses pieds.
         const n = face.normal;
+        const recul = c.size * 0.5 + 0.02;
+        const t = crossing.t;
+        c.position.x = from.x + (to.x - from.x) * t + n.x * recul;
+        c.position.y = from.y + (to.y - from.y) * t + n.y * recul - c.size * 0.5;
+        c.position.z = from.z + (to.z - from.z) * t + n.z * recul;
         const along = c.velocity.x * n.x + c.velocity.y * n.y + c.velocity.z * n.z;
         if (along < 0) {
           // Rebond amorti sur la face, plutôt qu'un arrêt sec.
@@ -775,7 +833,6 @@ export class Simulation {
       // ═══════════════════════════════════════════════════════════════════
       c.position.y = newCenter.y - c.size * 0.5;
       c.position.y = this.world.dessusDuSol(aabbOfCarryable(c, seuilScratch), c.size * 0.5);
-      c.velocity.x = newVel.x;
       c.velocity.x = newVel.x;
       c.velocity.y = newVel.y;
       c.velocity.z = newVel.z;

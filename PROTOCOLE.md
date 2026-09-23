@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août, et celle du 22 septembre
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 790 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 795 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 

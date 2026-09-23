@@ -34,7 +34,8 @@ const DEFAULT_TOLERANCE = 0.12;
  * exactement cette raison : on reprend son vocabulaire plutôt que d'en inventer
  * un second.
  */
-export type RaisonDuRefus = 'trop-grand' | 'trop-petit' | 'forme' | 'teinte' | 'main';
+/** `lancee` : tout est juste, mais la pièce a été LANCÉE, pas posée. Voir `Carryable.lancee`. */
+export type RaisonDuRefus = 'trop-grand' | 'trop-petit' | 'forme' | 'teinte' | 'main' | 'lancee';
 
 export interface Socket {
   id: string;
@@ -195,6 +196,23 @@ export class Sockets {
    *
    * On ne parle jamais d'un logement déjà pourvu : il n'attend plus rien.
    */
+  /**
+   * Le logement libre, à portée, qui PRENDRAIT cette pièce si elle avait été
+   * posée. Sert à répondre à une pièce lancée qui s'arrête au bon endroit :
+   * le creux ne la prend pas, et il faut le dire — un silence là-dessus se
+   * lirait comme une panne.
+   */
+  logementQuiAccepterait(c: Carryable): Socket | null {
+    let best: { socket: Socket; d: number } | null = null;
+    for (const socket of this.items) {
+      if (socket.filledBy !== null || !this.fits(socket, c)) continue;
+      const d = Math.hypot(c.position.x - socket.position.x, c.position.z - socket.position.z);
+      if (d > socket.portee || Math.abs(c.position.y - socket.position.y) > socket.portee) continue;
+      if (!best || d < best.d) best = { socket, d };
+    }
+    return best?.socket ?? null;
+  }
+
   refusLePlusProche(c: Carryable): { socket: Socket; raison: RaisonDuRefus } | null {
     let best: { socket: Socket; raison: RaisonDuRefus; d: number } | null = null;
     for (const socket of this.items) {

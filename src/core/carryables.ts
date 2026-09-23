@@ -98,6 +98,8 @@ export interface Carryable {
    * tombe quand on la reprend.
    */
   lancee: boolean;
+  /** Le creux a déjà dit, pour ce lancer, qu'il ne prend pas ce qu'on lance. */
+  lanceeDite: boolean;
   /**
    * Logée dans son réceptacle, donc figée pour de bon.
    *
@@ -206,6 +208,7 @@ export class Carryables {
         appui: null,
         depuisAppui: 0,
         lancee: false,
+        lanceeDite: false,
       });
     }
   }
@@ -398,6 +401,7 @@ export class Carryables {
     const speed = THROW_SPEED * PLAYER_HEIGHT * playerScale;
     c.held = false;
     c.lancee = true;
+    c.lanceeDite = false;
     c.velocity.x = look.x * speed;
     // Un peu de hauteur : sans ça, viser droit devant fait raser le sol.
     c.velocity.y = look.y * speed + speed * 0.18;

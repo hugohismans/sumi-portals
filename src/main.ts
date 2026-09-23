@@ -122,6 +122,19 @@ const OU_MENE_LA_SUITE: Record<string, string> = {
   montee: 'Aller se mesurer',
   mesure: 'La boîte à formes',
 };
+/**
+ * L'ADRESSE D'UN CHAPITRE, ET ELLE GARDE LE MODE DÉBUG. Les liens de fin et
+ * l'arche du hall écrivaient `?niveau=…` tout court : depuis un hall en
+ * `?debug=1`, on partait dans un monde SANS débug, qui lisait et écrivait la
+ * mémoire du vrai joueur — et entrer dans le monde l'efface. La carte décidait
+ * sur une clé, le jeu écrivait dans l'autre. Trouvé par la relecture.
+ */
+const adresseDe = (niveau: string | null): string => {
+  const parts: string[] = [];
+  if (niveau) parts.push(`niveau=${niveau}`);
+  if (PARAMS.get('debug')) parts.push('debug=1');
+  return parts.length ? `?${parts.join('&')}` : './';
+};
 
 // --- Simulation ---------------------------------------------------------------
 const sim = new Simulation(LEVEL);
@@ -671,13 +684,27 @@ overlay.addEventListener('click', () => input.requestLock());
   // Dans le hall, la même ligne dit où l'arche mènera — seulement quand il y a
   // quelque chose à reprendre. Au tout premier lancement, la couverture reste
   // une couverture.
+  //
+  // « Tout est rapporté » n'est vrai que si les quatre pinceaux le sont : la
+  // mémoire du voyage et celle des couleurs sont deux cases, et la carte ne
+  // doit jamais contredire ses propres pinceaux. Et quand la suite est le
+  // monde — rien de fini, ou tout —, ce n'est pas une suite, c'est un début.
+  const toutesLesCouleurs = ['vert', 'rouge', 'bleu', 'or'].every((c) => acquis.has(c));
+  const prochain = Voyage.prochain();
   el('chapitre').textContent = EN_AVENTURE
     ? LEVEL.name
-    : Voyage.acheve()
-      ? 'Tout est rapporté'
-      : Voyage.finis().size > 0
-        ? `Suite : ${NIVEAUX[Voyage.prochain()]().name}`
-        : '';
+    : Voyage.finis().size === 0
+      ? ''
+      : prochain === 'monde'
+        ? Voyage.acheve() && toutesLesCouleurs
+          ? 'Tout est rapporté'
+          : 'Reprendre du début'
+        : `Suite : ${NIVEAUX[prochain]().name}`;
+
+  // Les deux liens du carton de fin, dans le même mode que la page.
+  const apres = document.querySelectorAll<HTMLAnchorElement>('#fin .apres a');
+  apres[0]?.setAttribute('href', adresseDe('descente'));
+  apres[1]?.setAttribute('href', adresseDe(null));
 }
 
 // --- Tactile ---------------------------------------------------------------
@@ -757,7 +784,10 @@ const rendreLaSouris = (): void => {
 input.onLockChange = (locked) => {
   // La fin a la priorité sur tout : sans ça, Échap ramène le panneau de reprise
   // par-dessus la carte, et l'on repart pour un tour.
-  if (partieFinie || carnetOuvert) {
+  // Et le sacre aussi : il rend la souris dès son premier plan, et la carte
+  // de titre venait se poser par-dessus le monde repeint — « Lavis / Le
+  // monde / Reprendre le trait » sur la fin du jeu. Trouvé par la relecture.
+  if (partieFinie || carnetOuvert || sacre.actif) {
     overlay.classList.add('hidden');
     return;
   }
@@ -879,12 +909,19 @@ function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
     // de celui d'avant — dans l'onglet même où l'on venait de finir.
     const chapitre = Voyage.prochain();
     if (chapitre === 'monde') {
-      flash(Voyage.acheve() ? 'Tout est rapporté. On repart du monde…' : 'Départ pour l’Aventure…', 4);
+      flash(
+        Voyage.finis().size === 0
+          ? 'Départ pour l’Aventure…'
+          : Voyage.acheve()
+            ? 'Tout est rapporté. On repart du monde…'
+            : 'On repart du début…',
+        4,
+      );
     } else {
       flash(`On reprend : ${NIVEAUX[chapitre]().name.toLowerCase()}…`, 4);
     }
     void presence.leave().finally(() => {
-      location.search = `?niveau=${chapitre}`;
+      location.search = adresseDe(chapitre);
     });
     return;
   }
@@ -897,7 +934,7 @@ function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
     transitionEnCours = true;
     flash('Tu t’endors…', 4);
     void presence.leave().finally(() => {
-      location.search = `?niveau=reve&graine=${graine}`;
+      location.search = `${adresseDe('reve')}&graine=${graine}`;
     });
     return;
   }
@@ -1787,6 +1824,7 @@ function frame(now: number): void {
         forme: 'Ce n’est pas ce dessin-là. Le creux en attend un autre.',
         teinte: 'La forme est juste, la couleur non.',
         main: 'Bonne taille, bon dessin, et elle n’entre pas. La tourner n’y changera rien.',
+        lancee: 'Lancée, elle n’entre pas. Reprends-la, et pose-la.',
       };
       const mot = dit[events.logementRefuse.raison];
       if (mot) flash(mot, 5);
@@ -1844,25 +1882,42 @@ function frame(now: number): void {
       flash('La pièce ressemble au tableau.', 5);
     }
     if (events.reachedGoal) {
-      // Le chapitre est fini, et le hall s'en souviendra — c'est ce qui permet
-      // de revenir un autre jour et de reprendre au suivant.
-      if (EN_AVENTURE) Voyage.finir(MODE!);
       // LE SACRE, et c'est ici qu'il appartient : en haut, après l'ascension.
       // L'encre remonte à la pointe de l'Aiguille, qui est la plume de ce monde,
       // et la caméra quitte le corps du joueur pour lui montrer tout ce qu'il a
       // traversé pour l'y porter. C'est le seul moment du jeu où on lui retire
       // la maîtrise de son regard.
       if (MODE === 'monde' && pigments.nombre >= AUX_SOCLES_TOTAL) {
+        // Le chapitre est fini, et le hall s'en souviendra — c'est ce qui
+        // permet de revenir un autre jour et de reprendre au suivant.
+        Voyage.finir('monde');
         sceau.declencher();
         sacre.jouer([0, 74, 0], camera.position);
         ambiance.retrouvaille();
         document.exitPointerLock();
+      } else if (MODE === 'monde') {
+        // LA POINTE SANS LES COULEURS N'EST PAS LA FIN. La pointe s'atteint
+        // sans avoir posé un seul pinceau — c'est mesuré —, et l'on marquait
+        // alors le monde fini, on proposait de descendre, et il n'y avait
+        // plus aucun chemin vers ses couleurs ni vers le sacre. On le dit, et
+        // le but se réarme : on reviendra avec les pinceaux.
+        const manque = AUX_SOCLES_TOTAL - pigments.nombre;
+        flash(
+          manque === 1
+            ? 'Il manque une couleur. Le monde n’est pas entier.'
+            : `Il manque ${manque} couleurs. Le monde n’est pas entier.`,
+          6,
+        );
+        setTimeout(() => {
+          sim.goalReached = false;
+        }, 8000);
       } else {
+        if (EN_AVENTURE) Voyage.finir(MODE!);
         // Le lien dit où il va. Il annonçait « niveau suivant » et ramenait au
         // hall dès qu'il n'y avait plus de suite — au bout de la montée, donc
         // à la fin du plus long voyage du jeu, là où mentir coûte le plus cher.
         const suite = NIVEAU_SUIVANT[MODE!];
-        suiteEl.setAttribute('href', suite ?? './');
+        suiteEl.setAttribute('href', adresseDe(suite ? suite.slice('?niveau='.length) : null));
         suiteEl.textContent = suite ? (OU_MENE_LA_SUITE[MODE!] ?? 'niveau suivant') : 'retour au hall';
         winPanel.classList.add('show');
         // On rend la souris, sinon le lien du panneau est inatteignable — et

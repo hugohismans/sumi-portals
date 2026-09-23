@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 23 septembre 2026
 
-`npm run check` : **790 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **795 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -141,6 +141,20 @@ Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
     géant POSE un cube trois mètres devant lui — depuis la lèvre, il tombe sur
     les vires, pas au fond — et un lancer de géant survole la fosse ; le texte
     de la salle disait encore « quatorze mètres », c'est corrigé.
+12. **Une seconde relecture adversariale, sur tout ce qui précède.** Huit
+    trouvailles, toutes corrigées et vérifiées : la pointe du monde sans les
+    couleurs ne « finit » plus rien (le but se réarme, on dit ce qui manque) ;
+    la carte de titre ne se pose plus sur le sacre ; les liens de fin et
+    l'arche gardent le mode débug, donc le hall en débug n'efface plus la
+    vraie partie ; « Reprendre du début » quand la suite est le monde, et
+    « Tout est rapporté » seulement avec les quatre couleurs ; une pièce
+    lancée qui s'arrête dans un creux s'entend refuser (« Lancée, elle
+    n'entre pas. Reprends-la, et pose-la ») ; E devant une porte scellée
+    garde la pièce en main au lieu de la faire apparaître dans la tête ; une
+    pièce lancée sur une porte fermée retombe devant ; le refus « trop grand »
+    au-dessus d'une porte ne parle que contre un mur (plus de message quand
+    un géant enjambe le torii) ; et le lancer voyage sur le réseau, sans quoi
+    le creux se pourvoyait chez le spectateur et pas chez le lanceur.
 
 ## Par où commencer demain matin, dans l'ordre du risque
 
