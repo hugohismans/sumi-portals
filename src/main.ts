@@ -19,6 +19,7 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
+import { Voyage } from './voyage.js';
 import type { Repere } from './debug/reperes.js';
 import {
   REPERES_DESCENTE,
@@ -185,6 +186,9 @@ const pigments = new Pigments();
 // voyage.
 if (PARAMS.get('neuf') || (MODE === 'monde' && !PARAMS.get('debug'))) {
   pigments.effacer();
+  // Et l'on oublie aussi les chapitres finis : le monde est le début de
+  // l'aventure, pas une salle parmi d'autres. Voir `src/voyage.ts`.
+  Voyage.effacer();
 }
 const pigmentDe = new Map<string, string>();
 for (const r of LEVEL.regions ?? []) if (r.pigment) pigmentDe.set(r.name, r.pigment);
@@ -663,7 +667,17 @@ overlay.addEventListener('click', () => input.requestLock());
   // ET OÙ L'ON EST. Le hall n'a pas de chapitre — c'est la couverture. Un
   // voyage en a un, et c'est son nom tel que le niveau le porte, pour que le
   // panneau de fin, le sélecteur de repères et cette carte disent le même mot.
-  el('chapitre').textContent = EN_AVENTURE ? LEVEL.name : '';
+  //
+  // Dans le hall, la même ligne dit où l'arche mènera — seulement quand il y a
+  // quelque chose à reprendre. Au tout premier lancement, la couverture reste
+  // une couverture.
+  el('chapitre').textContent = EN_AVENTURE
+    ? LEVEL.name
+    : Voyage.acheve()
+      ? 'Tout est rapporté'
+      : Voyage.finis().size > 0
+        ? `Suite : ${NIVEAUX[Voyage.prochain()]().name}`
+        : '';
 }
 
 // --- Tactile ---------------------------------------------------------------
@@ -859,9 +873,18 @@ function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
 
   if (mode === 'solo') {
     transitionEnCours = true;
-    flash('Départ pour l’Aventure…', 4);
+    // L'arche reprend l'aventure où on l'a laissée : au premier chapitre qu'on
+    // n'a pas fini. Sans ça, revenir le lendemain ramenait au monde gris, et
+    // les quatre autres chapitres n'étaient joignables que par le lien de fin
+    // de celui d'avant — dans l'onglet même où l'on venait de finir.
+    const chapitre = Voyage.prochain();
+    if (chapitre === 'monde') {
+      flash(Voyage.acheve() ? 'Tout est rapporté. On repart du monde…' : 'Départ pour l’Aventure…', 4);
+    } else {
+      flash(`On reprend : ${NIVEAUX[chapitre]().name.toLowerCase()}…`, 4);
+    }
     void presence.leave().finally(() => {
-      location.search = '?niveau=monde';
+      location.search = `?niveau=${chapitre}`;
     });
     return;
   }
@@ -1816,6 +1839,9 @@ function frame(now: number): void {
       flash('La pièce ressemble au tableau.', 5);
     }
     if (events.reachedGoal) {
+      // Le chapitre est fini, et le hall s'en souviendra — c'est ce qui permet
+      // de revenir un autre jour et de reprendre au suivant.
+      if (EN_AVENTURE) Voyage.finir(MODE!);
       // LE SACRE, et c'est ici qu'il appartient : en haut, après l'ascension.
       // L'encre remonte à la pointe de l'Aiguille, qui est la plume de ce monde,
       // et la caméra quitte le corps du joueur pour lui montrer tout ce qu'il a
