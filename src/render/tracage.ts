@@ -71,26 +71,39 @@ export class Tracage {
   }
 
   /**
-   * Avance d'une image. Renvoie le tracé à appliquer quand il a changé, et
-   * `null` le reste du temps — inutile de toucher aux uniformes à chaque image
-   * pour la même valeur.
+   * Avance d'une image. Renvoie le coup à appliquer — LA PORTE et le tracé —
+   * quand il a changé, et `null` le reste du temps : inutile de toucher aux
+   * uniformes à chaque image pour la même valeur.
+   *
+   * LA PORTE FAIT PARTIE DE LA RÉPONSE, et c'est une correction. Au dernier
+   * coup, la main est rendue (`paire` redevient null) AVANT que l'appelant ne
+   * pose le tracé ; il lisait alors `pairEnCours`, trouvait null, et se
+   * rabattait sur la porte du village. Dans le village ça tombait juste. Dans
+   * les trois voyages, chaque porte dessinée restait à 92 % pour toujours :
+   * sa grille de taches ne s'effaçait jamais, et le joueur voyait, à travers
+   * une porte qu'il venait de regarder se dessiner, un semis de grains de
+   * papier — « comme du sable ». Signalé en jouant, sur téléphone.
    */
-  update(dt: number, onCoup: () => void, onFini: (pairId: string) => void): number | null {
+  update(
+    dt: number,
+    onCoup: () => void,
+    onFini: (pairId: string) => void,
+  ): { paire: string; trace: number } | null {
     if (!this.paire) return null;
 
     this.attente -= dt;
     if (this.attente > 0) return null;
 
+    const paire = this.paire;
     const trace = COUPS[this.coup];
     this.attente = ATTENTES[this.coup];
     this.coup++;
     onCoup();
 
     if (this.coup >= COUPS.length) {
-      const fini = this.paire;
       this.paire = null;
-      onFini(fini);
+      onFini(paire);
     }
-    return trace;
+    return { paire, trace };
   }
 }
