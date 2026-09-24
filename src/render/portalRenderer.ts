@@ -23,10 +23,6 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
       // 0 : rien n'est dessiné, la porte n'est qu'une feuille blanche.
       // 1 : le monde d'en face est entièrement là.
       uTrace: { value: 1 },
-      // La part de la cible réellement rendue : voir `PortalRenderer.rendre`.
-      // Une porte qui fait un dixième de l'écran est rendue dans un dixième
-      // de sa cible, et on la relit à cette échelle.
-      uFraction: { value: new THREE.Vector2(1, 1) },
     },
     vertexShader: /* glsl */ `
       varying vec4 vClip;
@@ -42,7 +38,6 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
       uniform vec3 uInk;
       uniform vec3 uPaper;
       uniform float uTrace;
-      uniform vec2 uFraction;
       varying vec4 vClip;
       varying vec2 vUv;
 
@@ -63,9 +58,10 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
         // un rythme différent de ce qui l'entoure, et l'œil lisait deux feuilles
         // superposées au lieu d'une seule fenêtre. Une feuille, un tremblement.
         vec2 ecran = (vClip.xy / vClip.w) * 0.5 + 0.5;
-        // La cible n'est remplie que sur une fraction de sa surface, celle
-        // qu'il faut pour la taille de la porte à l'écran : on lit dedans.
-        vec2 uv = ecran * uFraction;
+        // À PLEINE RÉSOLUTION, TOUJOURS : la cible n'est remplie que dans le
+        // rectangle de la porte à l'écran (voir PortalRenderer.rectEcran),
+        // mais pixel pour pixel. On la relit donc telle quelle.
+        vec2 uv = ecran;
 
         vec3 col = texture2D(uMap, uv).rgb;
 
@@ -223,7 +219,6 @@ class PortalFaceView {
     this.material = createSurfaceMaterial(this.rt.texture);
     this.materialDeep = createSurfaceMaterial(this.rtDeep.texture);
     this.surface = new THREE.Mesh(geo, this.material);
-    this.surface.frustumCulled = false;
 
     // Le dos regarde vers l'arrière, un centimètre derrière le plan : de face
     // on ne le voit jamais (sa face avant est de l'autre côté), de derrière il
@@ -231,7 +226,6 @@ class PortalFaceView {
     this.dos = new THREE.Mesh(geo, createDosMaterial());
     this.dos.rotation.y = Math.PI;
     this.dos.position.z = -0.01;
-    this.dos.frustumCulled = false;
 
     // ─── LE FOND DU PUITS ─────────────────────────────────────────
     //
@@ -276,8 +270,11 @@ class PortalFaceView {
       polygonOffsetUnits: -2,
     });
     for (let i = 0; i < 4; i++) {
+      // ÉLAGUÉS COMME LE RESTE. Ils ne l'étaient pas : vingt-deux faces, six
+      // maillages chacune, dessinées dans CHAQUE vue de portail, qu'elles
+      // soient dans le champ ou à trois cents mètres derrière. Voir
+      // `renderViews` pour les chiffres.
       const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), i === 3 ? inkMat : frameMat);
-      m.frustumCulled = false;
       this.posts.push(m);
       this.frame.add(m);
     }
@@ -487,6 +484,9 @@ export class PortalRenderer {
 
     for (const view of this.views) {
       if (!this.visibleDepuis(view, camera, ANGLE_MIN_1)) continue;
+      // Le rectangle que la porte occupe à l'écran : c'est tout ce qu'on
+      // rendra de sa vue, à pleine résolution.
+      if (!this.rectEcran(view, camera, view.rt, this.rect1)) continue;
 
       // Niveau 1 : la caméra du joueur passée une fois par le portail.
       this.computeVirtual(view, camera, this.camLevel1);
@@ -499,26 +499,29 @@ export class PortalRenderer {
       // regarde par l'arrière, et sa surface est masquée dans cette vue. La
       // porte elle-même ne l'est pas — dans le hall, les deux faces se font
       // face et le torii se voit à travers la porte indigo.
+      //
+      // ET SEULEMENT CELLES QU'ON VOIT À TRAVERS CETTE PORTE-CI. Une porte
+      // dans le champ de la caméra virtuelle mais hors du rectangle de la
+      // porte qu'on regarde ne s'affichera jamais : on la rendait quand même.
+      // Son rectangle est coupé par celui de la porte parente, et s'il ne
+      // reste rien, elle ne coûte rien.
       const profondes: PortalFaceView[] = [];
       for (const other of this.views) {
         if (other === view.twin) continue;
-        if (this.visibleDepuis(other, this.camLevel1, ANGLE_MIN_2, this.clipPlane)) profondes.push(other);
-      }
-      for (const other of profondes) {
+        if (!this.visibleDepuis(other, this.camLevel1, ANGLE_MIN_2, this.clipPlane)) continue;
+        if (!this.rectEcran(other, this.camLevel1, other.rtDeep, this.rect2)) continue;
+        if (!this.couper(this.rect2, this.rect1)) continue;
         this.computeVirtual(other, this.camLevel1, this.camLevel2);
         // Au troisième emboîtement, un aplat de brume : voir `fallback`.
         for (const v of this.views) v.surface.material = v.fallback;
-        const q = this.fractionPour(other, this.camLevel1);
-        this.rendre(renderer, scene, other, this.camLevel2, other.rtDeep, q);
-        (other.materialDeep.uniforms.uFraction.value as THREE.Vector2).set(q, q);
+        this.rendre(renderer, scene, other, this.camLevel2, other.rtDeep, this.rect2);
+        profondes.push(other);
       }
 
       for (const v of this.views) {
         v.surface.material = profondes.includes(v) ? v.materialDeep : v.fallback;
       }
-      const q = this.fractionPour(view, camera);
-      this.rendre(renderer, scene, view, this.camLevel1, view.rt, q);
-      (view.material.uniforms.uFraction.value as THREE.Vector2).set(q, q);
+      this.rendre(renderer, scene, view, this.camLevel1, view.rt, this.rect1);
     }
 
     // On rétablit les surfaces d'affichage pour le rendu de la scène principale.
@@ -533,43 +536,86 @@ export class PortalRenderer {
 
   /**
    * ═══════════════════════════════════════════════════════════════════════
-   * UNE PORTE SE REND À LA TAILLE QU'ELLE FAIT À L'ÉCRAN.
+   * UNE PORTE SE REND DANS LE RECTANGLE QU'ELLE OCCUPE, À PLEINE RÉSOLUTION.
    *
-   * Chaque vue remplissait sa cible entière — un écran complet par porte
-   * visible, et la cour du refus en montre quinze avec ses portes dans les
-   * portes. Sur une bonne machine : 23 images par seconde là où l'on en
-   * attend 120. Signalé en jouant, et mesuré.
+   * C'est la seconde version, et la première était fausse. Elle rendait
+   * chaque vue ENTIÈRE dans une fraction de sa cible, proportionnelle à la
+   * taille de la porte à l'écran — donc une porte au loin montrait son monde
+   * en gros pixels baveux, et la qualité adaptative, qui baissait encore
+   * cette fraction dès que les images s'allongeaient, finissait de le noyer.
+   * Signalé en jouant : « quand on est loin d'un portail l'image est toute
+   * floue, c'est moche ».
    *
-   * Or une porte qui fait un dixième de l'écran n'a besoin que d'un dixième
-   * de l'image : la surface la relit en coordonnées écran, et ne regarde
-   * jamais ailleurs que dans son rectangle. On rend donc chaque vue dans une
-   * sous-fenêtre de sa cible, proportionnelle à la taille apparente de la
-   * porte, et la surface lit à cette échelle (`uFraction`). Une porte de tout
-   * l'écran garde toute sa cible ; une porte au loin coûte quelques pixels.
-   * Le nombre de rendus ne change pas, leur poids si — et c'est le poids qui
-   * comptait.
+   * Or la surface ne lit jamais sa cible ailleurs que là où elle se dessine.
+   * On calcule donc le rectangle d'écran de la porte (ses quatre coins
+   * projetés), et l'on ne rend QUE lui, pixel pour pixel : le ciseau borne
+   * l'effacement et le remplissage, le reste de la cible n'est pas touché.
+   * Le coût suit la surface de la porte à l'écran, comme avant ; la netteté
+   * est celle du reste de l'image, toujours.
    *
-   * `qualite` est un facteur global posé de l'extérieur : la boucle
-   * principale le baisse quand les images s'allongent, et le remonte quand
-   * elles s'accélèrent. C'est l'autre moitié de la réponse : le jeu tient sa
-   * cadence sur l'appareil qu'on a, au prix d'un peu de flou dans les portes.
+   * Et ce n'était pas le remplissage qui coûtait. Mesuré dans la cour du
+   * refus : 4 336 appels de dessin par image, parce que le décor et les
+   * vingt-deux portes n'étaient jamais élagués — chaque vue redessinait le
+   * niveau entier. C'est l'élagage qui rend la cadence, pas le flou.
    * ═══════════════════════════════════════════════════════════════════════
    */
-  qualite = 1;
+  private readonly rect1 = new THREE.Vector4();
+  private readonly rect2 = new THREE.Vector4();
+  private readonly coin = new THREE.Vector4();
+  private readonly vueProj = new THREE.Matrix4();
 
-  /** Fraction de la cible à rendre pour cette vue, vue de cette caméra. */
-  private fractionPour(view: PortalFaceView, cam: THREE.PerspectiveCamera): number {
-    const w = view.surface.scale.x;
-    const h = view.surface.scale.y;
-    this.tmpVec2.set(0, h * 0.5, 0);
-    view.group.localToWorld(this.tmpVec2);
-    const d = this.tmpVec2.distanceTo(this.tmpVec.setFromMatrixPosition(cam.matrixWorld));
-    const rayon = Math.hypot(w, h) * 0.5;
-    // Part de la hauteur de l'écran que couvre la sphère de la porte.
-    const couverture = rayon / Math.max(d, 1e-3) / Math.tan((cam.fov * Math.PI) / 360);
-    // Un peu plus que la couverture, pour que le filtrage ne floute pas, et
-    // jamais moins qu'un huitième : une porte lointaine reste lisible.
-    return Math.min(1, Math.max(0.125, (couverture * 1.25 + 0.04) * this.qualite));
+  /**
+   * Le rectangle de la surface de `view` vue de `cam`, en pixels de
+   * `target` (x, y, largeur, hauteur). Faux si elle n'y occupe rien.
+   */
+  private rectEcran(
+    view: PortalFaceView,
+    cam: THREE.Camera,
+    target: THREE.WebGLRenderTarget,
+    out: THREE.Vector4,
+  ): boolean {
+    const W = target.width;
+    const H = target.height;
+    view.surface.updateMatrixWorld();
+    this.vueProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse).multiply(view.surface.matrixWorld);
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (let i = 0; i < 4; i++) {
+      // Les coins de la géométrie de surface : un carré unité ancré par le bas.
+      this.coin.set(i & 1 ? 0.5 : -0.5, i & 2 ? 1 : 0, 0, 1).applyMatrix4(this.vueProj);
+      // Un coin derrière l'œil : la porte nous enjambe, elle couvre tout.
+      if (this.coin.w <= 1e-4) {
+        out.set(0, 0, W, H);
+        return true;
+      }
+      const x = (this.coin.x / this.coin.w) * 0.5 + 0.5;
+      const y = (this.coin.y / this.coin.w) * 0.5 + 0.5;
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+    }
+    // Deux pixels de marge : le filtrage lit le voisin du bord.
+    const gx0 = Math.max(0, Math.floor(x0 * W) - 2);
+    const gy0 = Math.max(0, Math.floor(y0 * H) - 2);
+    const gx1 = Math.min(W, Math.ceil(x1 * W) + 2);
+    const gy1 = Math.min(H, Math.ceil(y1 * H) + 2);
+    if (gx1 <= gx0 || gy1 <= gy0) return false;
+    out.set(gx0, gy0, gx1 - gx0, gy1 - gy0);
+    return true;
+  }
+
+  /** Coupe `a` par `b` (mêmes pixels). Faux s'il ne reste rien. */
+  private couper(a: THREE.Vector4, b: THREE.Vector4): boolean {
+    const x0 = Math.max(a.x, b.x);
+    const y0 = Math.max(a.y, b.y);
+    const x1 = Math.min(a.x + a.z, b.x + b.z);
+    const y1 = Math.min(a.y + a.w, b.y + b.w);
+    if (x1 <= x0 || y1 <= y0) return false;
+    a.set(x0, y0, x1 - x0, y1 - y0);
+    return true;
   }
 
   private readonly frustum = new THREE.Frustum();
@@ -620,7 +666,7 @@ export class PortalRenderer {
     view: PortalFaceView,
     renderCamera: THREE.PerspectiveCamera,
     target: THREE.WebGLRenderTarget,
-    fraction: number,
+    rect: THREE.Vector4,
   ): void {
     // On masque la SURFACE de la face jumelle, mais surtout PAS son cadre.
     //
@@ -679,18 +725,16 @@ export class PortalRenderer {
       m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
     }
 
-    // La sous-fenêtre : voir `fractionPour`. Le ciseau borne aussi
-    // l'effacement, on ne paie que ce qu'on dessine.
-    const pw = Math.max(1, Math.round(target.width * fraction));
-    const ph = Math.max(1, Math.round(target.height * fraction));
-    target.viewport.set(0, 0, pw, ph);
-    target.scissor.set(0, 0, pw, ph);
+    // Toute la cible pour la projection, le seul rectangle de la porte pour
+    // les pixels : voir `rectEcran`. Le ciseau borne aussi l'effacement.
+    target.viewport.set(0, 0, target.width, target.height);
+    target.scissor.copy(rect);
     target.scissorTest = true;
     renderer.setRenderTarget(target);
     renderer.clear();
     renderer.render(scene, renderCamera);
     this.rendus++;
-    this.ecrans += (pw * ph) / (target.width * target.height);
+    this.ecrans += (rect.z * rect.w) / (target.width * target.height);
 
     for (const m of retournes) {
       m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;

@@ -12,7 +12,7 @@ import { EYE_FRACTION, PLAYER_HEIGHT, PLAYER_RADIUS, SCALE_MAX_LEVEL, SCALE_MIN_
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
-import { buildFaces, canPass, estScelle, transformPoint, transformVector, traversalLevelDelta } from './portals.js';
+import { buildFaces, canPass, estScelle, transformPoint, transformVector, transporterRotation, traversalLevelDelta } from './portals.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
@@ -1239,6 +1239,44 @@ console.log('\n— Le miroir : la gauche et la droite —');
     near(retour.x, p.x, 1e-9) && near(retour.y, p.y, 1e-9) && near(retour.z, p.z, 1e-9),
     `(${retour.x.toFixed(2)}, ${retour.y.toFixed(2)}, ${retour.z.toFixed(2)})`,
   );
+
+  // ─── CE QUI PASSE UN MIROIR EST DESSINÉ COMME LE MONDE L'A RÉFLÉCHI ─────
+  //
+  // Un objet chiral se dessine par sa rotation et sa main (la main droite
+  // reflète la forme sur son axe x). Après un miroir, le couple (rotation,
+  // main) doit donner EXACTEMENT les points que le miroir a transportés —
+  // sinon la pièce change d'orientation au passage. La première formule
+  // ajoutait un complément au lacet et ne tombait juste que pour 0 et π :
+  // on essaie donc des lacets quelconques, sur des faces de lacets
+  // quelconques.
+  {
+    const rot = (v: { x: number; y: number; z: number }, a: number) => ({
+      x: v.x * Math.cos(a) + v.z * Math.sin(a),
+      y: v.y,
+      z: -v.x * Math.sin(a) + v.z * Math.cos(a),
+    });
+    let pire = 0;
+    for (const [fy, ty] of [[-Math.PI / 2, Math.PI / 2], [Math.PI / 2, Math.PI / 2], [0.3, -2.1], [2.9, 1.2]]) {
+      const [f] = buildFaces([
+        { id: 'essai-rot', colorBig: 0, colorSmall: 0, miroir: true, plane: true, big: { position: [0, 0, 0], yaw: fy }, small: { position: [40, 0, 7], yaw: ty } },
+      ]);
+      for (const theta of [0, 0.7, -1.9, Math.PI / 2, 2.6]) {
+        const r = transporterRotation(f, { x: 0, y: theta, z: 0 });
+        for (const q of [{ x: 0.5, y: 0.2, z: -0.1 }, { x: -0.3, y: 0, z: 0.4 }, { x: 0.1, y: 0.5, z: 0.5 }]) {
+          // Ce que le miroir fait du point de l'objet…
+          const attendu = transformVector(f, rot(q, theta), false);
+          // …et ce que le rendu dessinera : la forme reflétée sur x, tournée.
+          const dessine = rot({ x: -q.x, y: q.y, z: q.z }, r.y);
+          pire = Math.max(pire, Math.hypot(attendu.x - dessine.x, attendu.y - dessine.y, attendu.z - dessine.z));
+        }
+      }
+    }
+    check(
+      'un objet passé au miroir est dessiné exactement comme le monde l’a réfléchi, quel que soit son lacet',
+      pire < 1e-9,
+      `écart ${pire.toExponential(2)}`,
+    );
+  }
 }
 
 // =============================================================================

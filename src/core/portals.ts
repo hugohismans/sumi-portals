@@ -243,29 +243,35 @@ export const yawDelta = (face: PortalFace): number =>
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * CE QUE DEVIENT L'ORIENTATION D'UN OBJET QUI PASSE UN MIROIR.
+ * CE QUE DEVIENT L'ORIENTATION D'UN OBJET QUI PASSE UNE PORTE.
  *
- * Un objet chiral est dessiné à partir de sa forme de référence, reflétée sur
- * SON axe x quand sa main est droite (voir `carryableGeometry`). Mais le
- * miroir ne réfléchit pas le monde sur l'axe x de l'objet : il le réfléchit
- * sur le plan de la porte, puis le pose dans le repère de la jumelle. Pour
- * deux faces qui se font face de part et d'autre d'une cour, c'est le NORD et
- * le SUD qui s'échangent — et une main retournée sur l'est-ouest, vue dans
- * un monde retourné sur le nord-sud, n'est pas la même chose : elle en
- * diffère d'un demi-tour.
+ * Par une porte ordinaire, l'objet tourne comme son porteur : on ajoute
+ * `yawDelta` à son lacet.
+ *
+ * Par un miroir, ce n'est ni l'un ni l'autre. Un objet chiral est dessiné à
+ * partir de sa forme de référence, reflétée sur SON axe x quand sa main est
+ * droite (voir `carryableGeometry`). Le miroir, lui, réfléchit le monde sur
+ * le plan de la porte, puis le pose dans le repère de la jumelle. Écrit en
+ * matrices, avec D la réflexion sur x et Ry une rotation autour de la
+ * verticale :
+ *
+ *     Ry(jumelle) · diag(1, 1, −1) · Ry(−face) · Ry(θ) · forme
+ *   = Ry(π + jumelle + face − θ) · D · forme
+ *
+ * La main bascule (c'est le D), ET le lacet devient π + jumelle + face − θ :
+ * il change de SENS, il ne s'additionne pas. Une première version ajoutait
+ * un complément à θ ; elle ne tombait juste que pour θ = 0 ou π — c'est-à-
+ * dire dans tous les essais, et faux dès qu'on tourne la pièce. Le roulis
+ * autour de z change de signe pour la même raison ; le tangage autour de x,
+ * que la réflexion sur x laisse en paix, reste tel quel.
  *
  * Signalé en jouant : « quand je traverse un portail miroir avec un objet,
  * celui-ci change d'orientation ; il devrait être identique, c'est le monde
- * lui-même qui est en miroir. » Exactement. La réflexion réelle vaut
- * `réflexion sur x` composée avec une rotation autour de la verticale, et
- * c'est cette rotation qu'il faut appliquer à l'objet en plus de basculer sa
- * main : π − lacet de la face − lacet de la jumelle. Pour une porte
- * ordinaire, l'objet tourne simplement comme son porteur (`yawDelta`).
+ * lui-même qui est en miroir. » C'est exactement ce que dit l'égalité : vu
+ * par la caméra réfléchie, l'objet transporté est l'objet d'avant.
  * ═══════════════════════════════════════════════════════════════════════════
  */
-export const yawDeltaMiroir = (face: PortalFace): number =>
-  wrapAngle(Math.PI - face.yaw - face.twin.yaw);
-
-/** La rotation que subit ce qui passe `face`, miroir ou pas. */
-export const deltaDeRotation = (face: PortalFace): number =>
-  face.miroir ? yawDeltaMiroir(face) : yawDelta(face);
+export const transporterRotation = (face: PortalFace, r: Vec3): Vec3 =>
+  face.miroir
+    ? vec3(r.x, wrapAngle(Math.PI + face.twin.yaw + face.yaw - r.y), -r.z)
+    : vec3(r.x, wrapAngle(r.y + yawDelta(face)), r.z);

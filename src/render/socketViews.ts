@@ -104,7 +104,8 @@ export class SocketViews {
         ]);
         group.add(new THREE.Mesh(geo, outline), new THREE.Mesh(geo, cel));
       }
-      for (const m of group.children) (m as THREE.Mesh).frustumCulled = false;
+      // Élagués comme le reste : trois creux, seize maillages chacun, redessinés
+      // dans chaque vue de portail même quand ils étaient derrière elle.
 
       const seal = new THREE.Group();
       const ring = new THREE.Mesh(

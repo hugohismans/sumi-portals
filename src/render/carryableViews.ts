@@ -4,7 +4,7 @@ import {
   faceWorldSize,
   transformPoint,
   traversalScale,
-  deltaDeRotation,
+  transporterRotation,
   type PortalFace,
 } from '../core/portals.js';
 import { PALETTE, createCelMaterial, createOutlineMaterial, syncInkUniforms } from './ink.js';
@@ -40,6 +40,8 @@ interface View {
 
   size: number;
   ghostSize: number;
+  /** Main du double telle qu'il est bâti en ce moment. Voir `updateGhost`. */
+  ghostMain?: 'L' | 'D';
   /** Main dessinée en ce moment. Voir `update`. */
   main?: 'L' | 'D';
   /** Masquée : elle existe et se comporte, mais on ne la dessine jamais. */
@@ -126,8 +128,6 @@ export class CarryableViews {
       const group = new THREE.Group();
       const outlineMesh = new THREE.Mesh(geo, real.outline);
       const mesh = new THREE.Mesh(geo, real.cel);
-      outlineMesh.frustumCulled = false;
-      mesh.frustumCulled = false;
       group.add(outlineMesh, mesh);
 
       // Le double a sa PROPRE géométrie, taillée à la bonne dimension. Le
@@ -139,15 +139,12 @@ export class CarryableViews {
       const ghostGeo = carryableGeometry(item);
       const ghostOutlineMesh = new THREE.Mesh(ghostGeo, spectre.outline);
       const ghostMesh = new THREE.Mesh(ghostGeo, spectre.cel);
-      ghostOutlineMesh.frustumCulled = false;
-      ghostMesh.frustumCulled = false;
       ghost.add(ghostOutlineMesh, ghostMesh);
       ghost.visible = false;
 
       // Le cerne vit à part, à plat : le groupe de la pièce culbute avec elle.
       const halo = new THREE.Mesh(this.haloGeo, this.haloMat);
       halo.rotation.x = -Math.PI / 2;
-      halo.frustumCulled = false;
       halo.renderOrder = 1;
 
       this.group.add(group, ghost, halo);
@@ -163,6 +160,7 @@ export class CarryableViews {
         ghostOutline: spectre.outline,
         size: item.size,
         ghostSize: item.size,
+        ghostMain: item.main,
         main: item.main,
         halo,
       });
@@ -251,30 +249,34 @@ export class CarryableViews {
       // Géométrie retaillée plutôt que mise à l'échelle : c'est ce qui donne au
       // double exactement la même épaisseur de trait que la moitié restée ici.
       const wanted = item.size * s;
-      if (Math.abs(view.ghostSize - wanted) > 1e-6) {
-        // Le double porte la MAIN QU'IL AURA DE L'AUTRE CÔTÉ. Sur un portail
-        // miroir, ce n'est pas la même que celle d'ici — et c'est exactement ce
-        // qu'on veut montrer : la moitié qui a franchi le plan est déjà
-        // retournée, l'autre pas encore. On voit la chiralité s'opérer au
-        // milieu de l'objet.
-        const mainLa = face.miroir && item.main !== undefined
-          ? item.main === 'L' ? 'D' : 'L'
-          : item.main;
+      // Le double porte la MAIN QU'IL AURA DE L'AUTRE CÔTÉ. Sur un portail
+      // miroir, ce n'est pas la même que celle d'ici : la moitié qui a franchi
+      // le plan est déjà retournée dans le monde, et c'est ce qui la fait
+      // paraître INCHANGÉE, vue à travers la porte par une caméra réfléchie.
+      const mainLa = face.miroir && item.main !== undefined
+        ? item.main === 'L' ? 'D' : 'L'
+        : item.main;
+      // ─── ET ON LE REBÂTIT QUAND LA MAIN CHANGE, PAS SEULEMENT LA TAILLE ───
+      //
+      // On ne le rebâtissait que sur un changement de taille. Tous les miroirs
+      // changeaient la taille, donc ça tombait juste — jusqu'au miroir PLAN
+      // du creux qui refuse, où la taille ne bouge pas : le double gardait la
+      // main qu'il avait à sa construction, et la moitié de la vrille déjà
+      // passée apparaissait retournée, puis se remettait d'aplomb une fois le
+      // joueur passé à son tour. Signalé en jouant, capture à l'appui.
+      if (Math.abs(view.ghostSize - wanted) > 1e-6 || view.ghostMain !== mainLa) {
         const geo = carryableGeometry({ ...item, size: wanted, main: mainLa });
         view.ghostMeshes[0].geometry.dispose();
         for (const m of view.ghostMeshes) m.geometry = geo;
         view.ghostSize = wanted;
+        view.ghostMain = mainLa;
       }
 
       view.ghost.position.set(there.x, there.y, there.z);
-      // Le double tourne comme l'objet tournera : par une porte ordinaire,
-      // avec son porteur ; par un miroir, du complément qui, joint à la main
-      // basculée, fait la réflexion entière (voir `yawDeltaMiroir`).
-      view.ghost.rotation.set(
-        item.rotation.x,
-        item.rotation.y + deltaDeRotation(face),
-        item.rotation.z,
-      );
+      // Le double tourne exactement comme l'objet tournera en passant : voir
+      // `transporterRotation`.
+      const r = transporterRotation(face, item.rotation);
+      view.ghost.rotation.set(r.x, r.y, r.z);
       view.ghost.visible = true;
 
       // La vraie garde le côté d'où elle vient ; le double, celui où elle va.

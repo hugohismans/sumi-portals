@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 24 septembre 2026
 
-`npm run check` : **757 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **758 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -314,11 +314,24 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
   qui venait et ont été tournées ou contournées : la seconde porte de la
   terrasse du monde, la sortie de la vallée (elle regarde l'est), et les
   pilotes de la rive et de l'escalier contournent la grande face.
-- **Les portes se rendent à la taille qu'elles font à l'écran**
-  (`PortalRenderer.fractionPour`, `uFraction`) : quinze écrans pleins par
-  image sont devenus un quart d'écran. Et `portals.qualite` suit la cadence
-  mesurée contre l'intervalle de l'écran (dixième centile) ; l'affichage dit
-  « portes 60 % » quand il baisse.
+- **Les portes se rendent dans le rectangle qu'elles occupent à l'écran, à
+  pleine résolution** (`PortalRenderer.rectEcran`, ciseau sur la cible). La
+  première version rendait toute la vue dans une fraction de la cible, et une
+  qualité adaptative la baissait encore : une porte lointaine était floue.
+  Signalé : « quand on est loin d'un portail l'image est toute floue ». Les
+  deux sont retirés.
+- **Ce qui coûtait, c'était l'élagage, pas le remplissage.** Le décor, les
+  portes, les creux et les pièces n'étaient jamais élagués : chaque vue de
+  portail redessinait le niveau entier. Ils le sont (le décor avec une marge
+  pour le trait), et une porte vue à travers une porte n'est rendue que si
+  elle tombe dans le rectangle de la porte parente. Mesuré, par image :
+
+  | Lieu | Appels de dessin avant | après | Vues de portail avant | après |
+  |---|---|---|---|---|
+  | Cour du refus | 4 336 | 851 | 16 | 7 |
+  | Blanchiment | 2 806 | 965 | 10 | 7 |
+  | Départ de la descente | 994 | 206 | 2 | 1 |
+  | Hall | 472 | 164 | 2 | 2 |
 - **Un cerne d'encre au sol** autour de tout ce qui se ramasse
   (`carryableViews.ts`), qui respire.
 - **La fin d'un chapitre** : la peinture attend le but, un accord, un titre,
@@ -330,11 +343,15 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
 - **Les cadres de portail gagnent toujours la profondeur** (décalage de
   polygone) : un montant planté dans un jambage ne clignote plus rouge et
   brun. Les plaques du décor entre elles restent à traiter globalement.
-- **Ce qui passe une porte tourne avec elle** (`tournerAvecLaPorte`,
-  `yawDeltaMiroir`) : une main retournée sur son axe n'est pas la réflexion
-  que le monde a subie, il manquait un demi-tour — la vrille tenue se
-  présentait à l'envers en sortant du miroir. Vérifié à l'écran : identique
-  avant et après, le monde seul est retourné.
+- **Ce qui passe une porte tourne avec elle** (`transporterRotation`) : par
+  un miroir, la main bascule ET le lacet devient π + jumelle + face − θ. La
+  première formule ajoutait un complément et ne tombait juste que pour 0 et
+  π ; le harnais essaie maintenant des lacets quelconques.
+- **La moitié déjà passée d'une pièce tenue garde sa forme.** Le double vu à
+  travers la porte n'était rebâti que si la taille changeait, jamais la main :
+  au miroir plan, la moitié passée apparaissait retournée jusqu'à ce que le
+  joueur passe à son tour. Vérifié à l'écran : identique avant, pendant et
+  après le passage.
 - **Le dos d'une porte le dit** quand on pousse dessus : « C'est le dos de la
   porte. Elle s'ouvre de l'autre côté. » Signalé : « tous les portails sont
   fermés » — c'était la sortie scellée du blanchiment, vue de dos.
@@ -343,8 +360,9 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
 
 Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
 
-- **Rejouer la montée sur le PC** : la cadence (le compteur dit maintenant
-  « portes N % » s'il a dû baisser), le refus à miroir plan, le blanchiment.
+- **Rejouer la montée sur le PC** : la cadence (lire le compteur en haut à
+  gauche), la netteté des portes au loin, le refus à miroir plan, le
+  blanchiment.
 - **Le clignotement rouge-marron** des plaques au même niveau : une réponse
   globale reste à choisir (tampon de profondeur logarithmique, ou décaler les
   cadres devant les jambages).

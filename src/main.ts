@@ -1636,12 +1636,7 @@ let accumulator = 0;
 let boilTimer = 0;
 let fpsFrames = 0;
 let fpsSince = performance.now();
-/** L'intervalle de l'écran, en millisecondes : le plus petit dixième centile jamais mesuré. */
-let intervalleEcran = 1000;
-/** Les durées des dernières images, en anneau. */
-const dureesImages = new Array<number>(180).fill(16);
-let indexDuree = 0;
-let qualiteDepuis = performance.now();
+
 const BOIL_PERIOD = 1 / BOIL_HZ;
 
 function frame(now: number): void {
@@ -2353,43 +2348,11 @@ function frame(now: number): void {
   // appareil donné, et elle vaut mieux qu'une impression.
   fpsFrames++;
   if (now - fpsSince >= 700) {
-    const fps = Math.round((fpsFrames * 1000) / (now - fpsSince));
-    const portes = portals.qualite < 0.999 ? ` · portes ${Math.round(portals.qualite * 100)} %` : '';
-    fpsBox.textContent = `${fps} images/s${portes}`;
+    fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} images/s`;
     fpsFrames = 0;
     fpsSince = now;
   }
 
-  // ─── LA QUALITÉ DES PORTES SUIT LA CADENCE ──────────────────────────────
-  //
-  // Les vues de portail sont ce qui coûte, et ce qui peut se rendre moins
-  // fin sans que le jeu change : voir `PortalRenderer.qualite`. On mesure la
-  // cadence de l'écran lui-même — l'image la plus courte jamais vue, c'est
-  // l'intervalle de rafraîchissement — et l'on ne juge une image lente que
-  // par rapport à elle : à 60 Hz, 16 ms n'est pas lent ; à 120 Hz, si.
-  // Quand les images s'allongent, on baisse ; quand elles retrouvent leur
-  // longueur, on remonte, doucement, pour ne pas osciller.
-  //
-  // L'intervalle de l'écran se lit au DIXIÈME CENTILE d'une fenêtre d'images,
-  // jamais au minimum brut : une image isolée de deux millisecondes — deux
-  // rappels collés par le navigateur — ferait croire à un écran de 500 Hz et
-  // tout paraîtrait lent pour toujours. Le centile ne se laisse pas avoir
-  // par une image, et l'on garde le plus petit centile jamais mesuré : une
-  // scène lourde n'allonge pas l'intervalle de l'écran, elle allonge les
-  // images, et c'est l'écart entre les deux qu'on regarde.
-  const dtMs = dt * 1000;
-  dureesImages[indexDuree++ % dureesImages.length] = dtMs;
-  if (now - qualiteDepuis >= 500 && indexDuree >= 30) {
-    qualiteDepuis = now;
-    const tri = dureesImages.slice(0, Math.min(indexDuree, dureesImages.length)).sort((a, b) => a - b);
-    intervalleEcran = Math.min(intervalleEcran, Math.max(tri[Math.floor(tri.length * 0.1)], 4));
-    const mediane = tri[Math.floor(tri.length * 0.5)];
-    if (mediane > intervalleEcran * 1.35) {
-      portals.qualite = Math.max(0.35, portals.qualite - 0.1);
-    } else if (mediane < intervalleEcran * 1.08) {
-      portals.qualite = Math.min(1, portals.qualite + 0.05);
-    }
-  }
 
   // --- Indices ----------------------------------------------------------------
   updateHints(now);
@@ -2461,6 +2424,8 @@ function frame(now: number): void {
 (window as unknown as Record<string, unknown>).__game = {
   sim,
   camera,
+  /** Pour mesurer : `renderer.info` compte les appels de dessin. */
+  renderer,
   portals,
   avatar,
   brush,

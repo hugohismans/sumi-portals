@@ -28,7 +28,7 @@ import {
   transformVector,
   traversalLevelDelta,
   traversalScale,
-  deltaDeRotation,
+  transporterRotation,
   withinFaceRect,
 
   type PortalFace,
@@ -61,12 +61,16 @@ const retournerLaMain = (c: Carryable, face: PortalFace): void => {
 
 /**
  * Ce qui passe une porte tourne avec elle — comme son porteur. Et par un
- * miroir, la main bascule ET l'objet tourne du complément : voir
- * `yawDeltaMiroir`, qui explique pourquoi une main retournée ne suffit pas.
+ * miroir, la main bascule ET le lacet change de sens : voir
+ * `transporterRotation`, qui explique pourquoi une main retournée ne suffit
+ * pas.
  */
 const tournerAvecLaPorte = (c: Carryable, face: PortalFace): void => {
   retournerLaMain(c, face);
-  c.rotation.y = wrapAngle(c.rotation.y + deltaDeRotation(face));
+  const r = transporterRotation(face, c.rotation);
+  c.rotation.x = r.x;
+  c.rotation.y = r.y;
+  c.rotation.z = r.z;
 };
 
 /**
@@ -1044,7 +1048,7 @@ export class Simulation {
       // subie : il manque un demi-tour, ou un quart, selon la porte. Sans
       // lui, la vrille tenue se présentait à l'envers en ressortant du
       // miroir — signalé : « celui-ci change d'orientation ». Voir
-      // `yawDeltaMiroir`.
+      // `transporterRotation`.
       // ═══════════════════════════════════════════════════════════════════
       tournerAvecLaPorte(held, face);
       this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale);

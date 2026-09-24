@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août, et celle du 22 septembre
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 757 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 758 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -292,10 +292,11 @@ traverse plus jamais un cadre par derrière.
 **Défaut à guetter :** une porte dont tu ne trouves pas le devant ; une feuille
 qui apparaîtrait de FACE (elle ne doit exister que derrière).
 
-**Le compteur, en haut à gauche.** Il dit « N images/s » et, si le jeu a dû
-baisser la finesse des portes pour tenir la cadence de ton écran, « · portes
-60 % ». → *Sur un bon PC il ne devrait jamais apparaître, ou repartir vite à
-100.* Si tu le vois rester bas, dis-le : c'est la mesure qui manquait.
+**Le compteur, en haut à gauche.** Il dit « N images/s ». Les portes sont
+toujours rendues à pleine résolution, dans le seul rectangle qu'elles occupent
+à l'écran. → *Une porte au loin doit être aussi nette que le décor autour
+d'elle.* Si la cadence reste basse dans la cour du refus, dis-le avec le
+chiffre.
 
 **`4` — L'escalier pour plus tard.** À ×4, en haut d'une falaise de 3,60. Quatre
 cubes de 0,80 traînent là : dispose-les **en escalier pour quelqu'un d'1,80**,

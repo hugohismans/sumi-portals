@@ -570,10 +570,13 @@ derrière, en fantôme ; le dos est maintenant une feuille tendue, qu'on voit et
 qu'on ne passe pas (`Simulation.dosDesPortes`). Trois portes du jeu se
 présentaient de dos à qui venait et ont été tournées.
 
-**Les portes se rendent à leur taille à l'écran — FAIT.** Une porte qui fait
-un dixième de l'écran est rendue dans un dixième de sa cible
-(`PortalRenderer.fractionPour`), et la finesse suit la cadence mesurée contre
-l'intervalle de l'écran. Quinze écrans pleins par image sont devenus un quart.
+**Les portes ne coûtent que ce qu'elles montrent — FAIT.** Chaque vue est
+rendue dans le rectangle de la porte à l'écran, à pleine résolution, et tout
+ce qui est hors champ est élagué — décor, portes, creux, pièces. Une porte vue
+à travers une porte n'est rendue que si elle tombe dans le rectangle de sa
+parente. Dans la cour du refus, 4 336 appels de dessin par image sont devenus
+851. (Une première version baissait la résolution des portes lointaines : on
+voyait flou. Retirée.)
 
 **Ce qui se ramasse porte un cerne — FAIT.** Un anneau d'encre au sol, qui
 respire, autour de toute pièce qu'on peut prendre ; rien sur le décor, rien
