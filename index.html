@@ -287,14 +287,24 @@
         background: radial-gradient(ellipse at center, rgba(239,231,214,0) 30%, rgba(239,231,214,.55) 100%);
       }
       #fin.show { opacity: 1; }
-      #fin .mot { text-align: center; }
+      /* UN CARTOUCHE DE PAPIER SOUS LES MOTS. Le voile est nul au centre — là où
+         sont justement les mots — et le dernier plan est sombre : le titre et
+         les deux liens se lisaient à peine. Signalé en jouant. Le papier ne
+         couvre que le cartouche, le monde reste visible autour. */
+      #fin .mot {
+        text-align: center;
+        padding: 34px 48px 30px;
+        background: rgba(239, 231, 214, .9);
+        border: 1.5px solid var(--ink);
+        box-shadow: 8px 8px 0 rgba(27, 23, 20, .12);
+      }
       #fin h2 {
         font-size: clamp(44px, 12vw, 82px);
         font-weight: 400; letter-spacing: .3em;
         margin: 0 0 .4em -.3em; line-height: 1;
         color: var(--ink);
       }
-      #fin p { font-size: 15px; letter-spacing: .05em; opacity: .7; }
+      #fin p { font-size: 15px; letter-spacing: .05em; opacity: .85; }
       /* Les liens n'existent qu'après le plan : voir le commentaire du markup. */
       #fin .apres {
         display: flex; gap: 28px; justify-content: center; margin-top: 40px;
