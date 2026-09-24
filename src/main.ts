@@ -264,7 +264,13 @@ carryableViews.build(sim.carryables.items);
 scene.add(carryableViews.group);
 
 const socketViews = new SocketViews();
-socketViews.build(sim.sockets.items);
+// Les creux qui attendent une forme la dessinent : on leur donne les blocs de
+// chaque forme, pris sur les pièces du niveau. Voir `SocketViews.build`.
+const blocsParForme = new Map<string, NonNullable<NonNullable<typeof LEVEL.carryables>[number]['pieces']>>();
+for (const c of LEVEL.carryables ?? []) {
+  if (c.forme && c.pieces && !blocsParForme.has(c.forme)) blocsParForme.set(c.forme, c.pieces);
+}
+socketViews.build(sim.sockets.items, blocsParForme);
 scene.add(socketViews.group);
 // Les socles suivent le monde : gris tant qu'il l'est, et ils reprennent leur
 // vermillon en même temps que lui. Un socle vide ne porte aucune couleur.

@@ -352,6 +352,11 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
   un rendu de portail — quand les surfaces portent un autre matériau que
   celui de l'écran. Une fois le joueur passé au miroir, toutes les portes
   devenaient transparentes. Le catalogue est refait à chaque appel.
+- **Un creux qui attend une forme la dessine**, au trait, dans la main qu'il
+  exige et l'orientation où la pièce se loge (`SocketViews`,
+  `aretesDeLaForme`) : seules les arêtes du volume, pas celles de chaque cube.
+  Il était cubique quelle que soit la forme, et l'on ne voyait pas pourquoi
+  la vrille n'entrait pas. Logée, la pièce recouvre son dessin, qui s'efface.
 - **Les mains d'encre font la taille d'un homme** au refus (1,80, la paume à
   hauteur d'œil), 0,72 et 2,90 au blanchiment : on voit le pouce changer de
   côté en passant le miroir.

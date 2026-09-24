@@ -16,8 +16,113 @@ import { buildWorldGeometry } from './worldMesh.js';
  * taille, la position ou l'objet qui ne va pas, et il tâtonne au lieu de
  * raisonner.
  */
+/** Les blocs d'une forme, en unités de −0,5 à +0,5 — ceux d'une pièce. */
+type Blocs = { min: [number, number, number]; max: [number, number, number] }[];
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LE CREUX A LA FORME QU'IL ATTEND, ET LA MAIN QU'IL EXIGE.
+ *
+ * Il était dessiné comme un cadre cubique, quelle que soit la forme demandée :
+ * la vrille qu'on tenait et le creux qui l'attendait n'avaient rien à
+ * comparer, et le refus « pour la main » tombait sans que rien, dans le monde,
+ * ne le montre. Signalé en jouant : « ce n'est pas clair que le bloc ne rentre
+ * pas dedans ; le socle est cubique, il devrait avoir la forme chirale
+ * correcte de l'objet ». Le code de la salle affirmait déjà « elle est
+ * dessinée en creux, on voit ce qu'il attend » — c'était faux.
+ *
+ * On dessine donc les ARÊTES de la forme attendue : pas un objet plein, qu'on
+ * prendrait pour une seconde pièce, mais son dessin au trait, posé là où elle
+ * logera. Reflété sur x quand le creux veut la main droite — la même
+ * convention que `carryableGeometry` —, et dans l'orientation que la pièce
+ * prend en se logeant (rotation nulle, voir `Sockets.settle`) : au moment où
+ * elle entre, elle recouvre exactement son dessin.
+ *
+ * Seules les arêtes du VOLUME sont tracées, pas celles de chaque cube : une
+ * arête où deux cubes se touchent à plat n'est pas une arête de la forme, et
+ * la tracer ferait une grille illisible. On pose les blocs sur une grille,
+ * et une arête de la grille est une arête de la forme quand les quatre
+ * cellules qui l'entourent ne sont ni toutes pleines, ni toutes vides, ni
+ * pleines d'un seul côté d'un plan.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const aretesDeLaForme = (
+  blocs: Blocs,
+  taille: number,
+  miroir: boolean,
+  epaisseur: number,
+): { min: [number, number, number]; max: [number, number, number]; ink: number }[] => {
+  // Les blocs se chevauchent d'un centimètre pour ne pas grésiller : on les
+  // ramène sur une grille au vingt-quatrième, qui porte les grilles de 2, 3,
+  // 4, 6 et 8.
+  const g = (v: number) => Math.round(v * 24) / 24;
+  const boites = blocs.map((b) => ({
+    min: [g(b.min[0]), g(b.min[1]), g(b.min[2])],
+    max: [g(b.max[0]), g(b.max[1]), g(b.max[2])],
+  }));
+  const axes = [0, 1, 2].map((a) =>
+    [...new Set(boites.flatMap((b) => [b.min[a], b.max[a]]))].sort((u, v) => u - v),
+  );
+  const [X, Y, Z] = axes;
+  const plein = (i: number, j: number, k: number): boolean => {
+    if (i < 0 || j < 0 || k < 0 || i >= X.length - 1 || j >= Y.length - 1 || k >= Z.length - 1) return false;
+    const c = [(X[i] + X[i + 1]) / 2, (Y[j] + Y[j + 1]) / 2, (Z[k] + Z[k + 1]) / 2];
+    return boites.some((b) => [0, 1, 2].every((a) => c[a] > b.min[a] && c[a] < b.max[a]));
+  };
+  const out: { min: [number, number, number]; max: [number, number, number]; ink: number }[] = [];
+  const h = epaisseur / 2 / taille;
+  for (let a = 0; a < 3; a++) {
+    const [b, c] = a === 0 ? [1, 2] : a === 1 ? [0, 2] : [0, 1];
+    for (let s = 0; s < axes[a].length - 1; s++) {
+      for (let p = 0; p < axes[b].length; p++) {
+        for (let q = 0; q < axes[c].length; q++) {
+          // Les quatre cellules autour de la ligne (p, q), au segment s.
+          const cell = (dp: number, dq: number): boolean => {
+            const idx = [0, 0, 0];
+            idx[a] = s;
+            idx[b] = p + dp;
+            idx[c] = q + dq;
+            return plein(idx[0], idx[1], idx[2]);
+          };
+          const o00 = cell(-1, -1);
+          const o10 = cell(0, -1);
+          const o01 = cell(-1, 0);
+          const o11 = cell(0, 0);
+          const n = +o00 + +o10 + +o01 + +o11;
+          const arete = n === 1 || n === 3 || (n === 2 && o00 === o11);
+          if (!arete) continue;
+          const min: [number, number, number] = [0, 0, 0];
+          const max: [number, number, number] = [0, 0, 0];
+          min[a] = axes[a][s] - h;
+          max[a] = axes[a][s + 1] + h;
+          min[b] = axes[b][p] - h;
+          max[b] = axes[b][p] + h;
+          min[c] = axes[c][q] - h;
+          max[c] = axes[c][q] + h;
+          // À la taille du creux, posée sur son fond, reflétée si la main l'exige.
+          const vers = (v: [number, number, number]): [number, number, number] => [
+            v[0] * taille * (miroir ? -1 : 1),
+            v[1] * taille + taille / 2,
+            v[2] * taille,
+          ];
+          const m0 = vers(min);
+          const m1 = vers(max);
+          out.push({
+            min: [Math.min(m0[0], m1[0]), m0[1], m0[2]],
+            max: [Math.max(m0[0], m1[0]), m1[1], m1[2]],
+            ink: 0,
+          });
+        }
+      }
+    }
+  }
+  return out;
+};
+
 interface View {
   group: THREE.Group;
+  /** Le dessin de la forme attendue, qu'on efface quand la pièce le recouvre. */
+  forme: THREE.Group | null;
   seal: THREE.Group;
   filled: boolean;
   /** Avancement de l'animation de scellement, de 0 à 1. */
@@ -65,7 +170,12 @@ export class SocketViews {
     }
   }
 
-  build(sockets: Socket[]): void {
+  /**
+   * `formes` : pour chaque nom de forme, les blocs qui la composent — pris sur
+   * les pièces du niveau. Un creux dont la forme y figure est dessiné à sa
+   * forme ; sinon, c'est le cadre cubique d'origine.
+   */
+  build(sockets: Socket[], formes: ReadonlyMap<string, Blocs> = new Map()): void {
     for (const s of sockets) {
       const cel = createCelMaterial(PALETTE[s.ink] ?? PALETTE[3]);
       const outline = createOutlineMaterial();
@@ -77,10 +187,25 @@ export class SocketViews {
       const group = new THREE.Group();
       group.position.set(s.position.x, s.position.y, s.position.z);
 
+      const blocs = s.forme !== undefined ? formes.get(s.forme) : undefined;
+      let dessin: THREE.Group | null = null;
+      if (blocs && blocs.length > 0) {
+        // LA FORME ATTENDUE, au trait. Voir `aretesDeLaForme`.
+        dessin = new THREE.Group();
+        const geo = buildWorldGeometry(
+          aretesDeLaForme(blocs, s.size, s.main === 'D', Math.max(0.018, s.size * 0.045)),
+        );
+        dessin.add(new THREE.Mesh(geo, outline), new THREE.Mesh(geo, cel));
+        group.add(dessin);
+      }
+
       // L'empreinte au sol : quatre barreaux qui cernent le vide. On montre le
       // manque, pas un objet — c'est ce qui donne envie d'y mettre quelque chose.
       const t = Math.max(0.04, s.size * 0.09);
       const h = s.size * 0.5;
+      // Un creux qui a sa forme n'a pas besoin du cadre cubique : il le
+      // contredirait. On saute droit au sceau.
+      if (!dessin) {
       const bars: [number, number, number, number, number, number][] = [
         [-h - t, 0, -h - t, h + t, t, -h],
         [-h - t, 0, h, h + t, t, h + t],
@@ -104,6 +229,7 @@ export class SocketViews {
         ]);
         group.add(new THREE.Mesh(geo, outline), new THREE.Mesh(geo, cel));
       }
+      }
       // Élagués comme le reste : trois creux, seize maillages chacun, redessinés
       // dans chaque vue de portail même quand ils étaient derrière elle.
 
@@ -123,7 +249,7 @@ export class SocketViews {
       group.add(seal);
 
       this.group.add(group);
-      this.views.set(s.id, { group, seal, filled: false, bloom: 0, refus: 0 });
+      this.views.set(s.id, { group, forme: dessin, seal, filled: false, bloom: 0, refus: 0 });
     }
   }
 
@@ -163,6 +289,9 @@ export class SocketViews {
 
       const filled = s.filledBy !== null;
       if (filled && !v.filled) v.filled = true;
+      // La pièce logée recouvre son dessin : on l'efface, sinon ses arêtes
+      // perceraient la pièce comme un fil de fer.
+      if (v.forme) v.forme.visible = !filled;
 
       if (v.filled && v.bloom < 1) v.bloom = Math.min(1, v.bloom + dt * 2.2);
       v.seal.visible = v.bloom > 0;
