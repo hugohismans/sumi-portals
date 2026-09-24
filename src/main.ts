@@ -11,6 +11,7 @@ import { MONDE } from './levels/monde.js';
 import { DESCENTE } from './levels/descente.js';
 import { MONTEE } from './levels/montee.js';
 import { MESURE } from './levels/mesure.js';
+import { PLUIE_SEULE } from './levels/pluie.js';
 import { FORMES } from './levels/formes.js';
 import { BANC, REPERES_BANC } from './levels/banc.js';
 import { reve } from './levels/reve.js';
@@ -23,6 +24,7 @@ import { Voyage } from './voyage.js';
 import type { Repere } from './debug/reperes.js';
 import {
   REPERES_DESCENTE,
+  REPERES_PLUIE,
   REPERES_FORMES,
   REPERES_LOBBY,
   REPERES_MONDE,
@@ -86,6 +88,7 @@ const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   mesure: () => MESURE,
   formes: () => FORMES,
   banc: () => BANC,
+  pluie: () => PLUIE_SEULE,
   cour: () => LEVEL_01,
   caisse: () => LEVEL_02,
   duo: () => construireDuo(ROLE),
@@ -1113,6 +1116,8 @@ const REPERES: Repere[] =
           ? REPERES_MESURE
         : MODE === 'formes'
           ? REPERES_FORMES
+          : MODE === 'pluie'
+            ? REPERES_PLUIE
           : MODE === 'monde'
             ? REPERES_MONDE
             : MODE === null
@@ -1333,6 +1338,7 @@ const REPERES: Repere[] =
     ['mesure', '?niveau=mesure&debug=1'],
     ['formes', '?niveau=formes&debug=1'],
     ['banc', '?niveau=banc&debug=1'],
+    ['pluie', '?niveau=pluie&debug=1'],
     ['rêve', '?niveau=reve&graine=7&debug=1'],
   ] as const) {
     const a = document.createElement('a');

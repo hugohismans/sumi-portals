@@ -18,6 +18,7 @@ import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
 import { verifierParcelleSalle, verifierTaillesDistinctes, type SalleModule } from '../levels/salles/contrat.js';
 import { PLUIE, PLUIE_AVERSE } from '../levels/salles/pluie.js';
+import { PLUIE_SEULE } from '../levels/pluie.js';
 import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
 import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
 import { MESURE, RACCORDS_MESURE, SALLES_MESURE } from '../levels/mesure.js';
@@ -1327,6 +1328,7 @@ console.log('\n— Aucune face confondue et exposée —');
     ['la cour', LEVEL_01],
     ['la caisse', LEVEL_02],
     ['un rêve', reve(7)],
+    ['la cour de pluie', PLUIE_SEULE],
   ] as const) {
     const fautes = facesConfondues(niveau.boxes, 0.25);
     check(`${nom} n'a aucune face confondue`, fautes.length === 0, fautes[0] ?? '');
@@ -2029,8 +2031,11 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // règle ne les déclare — seulement un toit et une assise qui ARRÊTENT l'eau.
   {
     console.log('\n— La cour de pluie : il pleut, et il ne pleut pas sous l’auvent —');
-    const averses = DESCENTE.averse ?? [];
-    check('la descente porte une averse, et une seule', averses.length === 1, `${averses.length}`);
+    // La cour vit seule désormais (`?niveau=pluie`) : c'est SON monde qui
+    // porte l'averse — et la descente, qui ne la contient plus, n'en a aucune.
+    const averses = PLUIE_SEULE.averse ?? [];
+    check('la cour de pluie porte une averse, et une seule', averses.length === 1, `${averses.length}`);
+    check('et la descente, qui ne la contient plus, n’en porte aucune', (DESCENTE.averse ?? []).length === 0, `${(DESCENTE.averse ?? []).length}`);
     const a = averses[0] ?? PLUIE_AVERSE;
     const { min, max } = PLUIE.bounds;
     check(

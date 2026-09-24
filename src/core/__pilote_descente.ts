@@ -10,10 +10,10 @@
  * voyage juste : c'est LEUR SUITE que ce pilote vérifie, en une seule partie.
  *
  * Il ne pose jamais le joueur nulle part. Il naît où naît le joueur, à taille
- * d'homme, dans la cour du lavoir, et il marche — y compris le détour par la
- * cour de pluie, aller et retour, parce que c'est ce que fera le joueur qui
- * regarde. Il fait aussi les fautes que la salle prévoit, là où elles coûtent
- * peu : sauter petit dans le puits et manquer, essayer de peindre un mur.
+ * d'homme, dans la cour du lavoir, et il marche. (La cour de pluie n'est plus
+ * un détour de ce voyage : elle vit seule, `?niveau=pluie`.) Il fait aussi
+ * les fautes que la salle prévoit, là où elles coûtent peu : sauter petit
+ * dans le puits et manquer, essayer de peindre un mur.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * LES SEULES LIBERTÉS QU'IL SE DONNE, et elles sont celles du rendu, pas du
@@ -94,12 +94,7 @@ export const piloterDescente = (check: Check): void => {
   sim.couleursConnues = ['rouge', 'vert'];
 
   // ═══════════════════════════════════════════════════════════════════════
-  // LE LAVOIR, D'ABORD LE DÉTOUR — la cour de pluie ne demande rien, et l'on
-  // y va parce qu'on a vu une porte au fond du bassin.
-  //
-  // Sa grande face est plantée dans le bassin et regarde le nord : on entre
-  // dans l'eau, on se retourne, on la franchit vers le sud. On ressort à
-  // quarante-cinq centimètres sur le seuil ouest de la cour, face à l'est.
+  // ON NAÎT DANS LE LAVOIR, homme, dans la cour.
   // ═══════════════════════════════════════════════════════════════════════
   {
     attendre(sim, 30);
@@ -108,48 +103,6 @@ export const piloterDescente = (check: Check): void => {
       sim.player.scaleLevel === 0 && sim.player.grounded && near(sim.player.position.x, -200, 0.5) && near(sim.player.position.z, 692, 0.5),
       pos(sim),
     );
-    walkTo(sim, [-203, 0, 703.5], 60 * 8);
-    walkTo(sim, [-203, 0, 708.5], 60 * 6);
-    check('lavoir : on est entré dans le bassin, la margelle est une marche', sim.player.grounded && sim.player.position.z > 706.5, pos(sim));
-    const t = walkTo(sim, [-203, 0, 702], 60 * 6, { stopOnEvent: true });
-    check(
-      'lavoir → pluie : par la grande face du bassin, on arrive petit sur le seuil ouest de la cour',
-      t.traversed?.pairId === 'raccord-lavoir-pluie' && t.traversed.newLevel === -1,
-      `${t.traversed ? t.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // LA COUR DE PLUIE — rien à résoudre, une seule sortie dans l'axe. On la
-  // traverse en marchant jusqu'au seuil est, puis l'on revient par où l'on
-  // est venu : la petite face du raccord se reprend à rebours, vers l'ouest.
-  // ═══════════════════════════════════════════════════════════════════════
-  {
-    attendre(sim, 30);
-    const y0 = sim.player.position.y;
-    walkTo(sim, [-209, 0, 999.5], 60 * 6);
-    walkTo(sim, [-198, 0, 999.5], 60 * 12);
-    walkTo(sim, [-186.2, 0, 1000], 60 * 14);
-    check(
-      'pluie : on traverse la cour en marchant, sans un saut, jusqu’au seuil est',
-      sim.player.grounded && sim.player.position.x > -187 && sim.player.scaleLevel === -1,
-      `${pos(sim)} (parti de y ${y0.toFixed(2)})`,
-    );
-    walkTo(sim, [-198, 0, 999.5], 60 * 14);
-    walkTo(sim, [-209, 0, 999.5], 60 * 12);
-    walkTo(sim, [-211, 0, 1000], 60 * 6);
-    const t = walkTo(sim, [-215, 0, 1000], 60 * 6, { stopOnEvent: true });
-    check(
-      'pluie → lavoir : la petite face se reprend à rebours, et l’on ressort homme dans le bassin',
-      t.traversed?.pairId === 'raccord-lavoir-pluie' && t.traversed.newLevel === 0,
-      `${t.traversed ? t.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
-    );
-    // La porte est plantée au milieu du bassin : on en sort par le côté, sans
-    // quoi on la retraverserait en marchant vers le sud.
-    walkTo(sim, [-206.5, 0, 708.5], 60 * 4);
-    walkTo(sim, [-206.5, 0, 702], 60 * 8);
-    walkTo(sim, [-200, 0, 700], 60 * 8);
-    check('lavoir : et l’on ressort du bassin dans la cour', sim.player.grounded && sim.player.position.z < 704 && sim.player.scaleLevel === 0, pos(sim));
   }
 
   // ═══════════════════════════════════════════════════════════════════════

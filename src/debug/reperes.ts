@@ -333,6 +333,44 @@ export const changeDeMonde = (voulu: string[], courant: string[]): boolean => {
  * descente n'a pas de couleur à rapporter, donc son état tient tout entier dans
  * la position et l'échelle.
  */
+/**
+ * LA COUR DE PLUIE, SEULE. Elle était un détour de la descente ; jouée, elle
+ * se lisait comme une erreur de chemin. Elle vit à part, et se teste ici.
+ */
+export const REPERES_PLUIE: Repere[] = [
+  {
+    titre: 'La cour de pluie — sous l’averse',
+    pourquoi:
+      'Une respiration, et une leçon de chute : à quarante-cinq centimètres, tout ce ' +
+      'qui n’est pas vous tombe deux fois plus vite que vous. Elle était en détour de la ' +
+      'descente parce qu’un compte de tailles la laissait dehors ; jouée, le détour se ' +
+      'lisait comme une erreur de chemin. Elle vit donc seule, et c’est ici qu’on la juge.',
+    verifier:
+      "Rien à résoudre, une seule sortie en face. De grosses gouttes s'écrasent et laissent " +
+      "un anneau d'encre qui sèche. Sous l'auvent, il ne tombe rien. Regarde les trois " +
+      'chutes : la nappe de l’auvent, le jet de la goulotte, l’égouttement sous le banc.',
+    position: [-212.5, 0.03, 1000],
+    echelle: -1,
+    lacet: Math.PI * 0.5,
+    pigments: [],
+    jalon: 0,
+  },
+  {
+    titre: 'Le seuil est — le but',
+    pourquoi:
+      'La sortie est dans l’axe de l’entrée, à vingt-sept mètres, et le couloir qui les ' +
+      'relie est vide de tout ce qui dépasse l’œil : on doit la voir depuis le seuil.',
+    verifier:
+      'Marche droit : pas un saut nécessaire, aucun creux dont on ne remonte pas. Au bout, ' +
+      'le mouvement s’achève.',
+    position: [-190, 0.03, 1000],
+    echelle: -1,
+    lacet: Math.PI * 0.5,
+    pigments: [],
+    jalon: 3,
+  },
+];
+
 export const REPERES_DESCENTE: Repere[] = [
   {
     titre: 'Le lavoir, à hauteur d’homme',
@@ -480,22 +518,6 @@ export const REPERES_DESCENTE: Repere[] = [
     jalon: 19,
   },
   {
-    titre: 'La cour de pluie — le détour',
-    pourquoi:
-      'Elle est en détour parce qu’un compte l’a voulu : les tailles d’entrée et de ' +
-      'sortie des six salles laissaient forcément l’une d’elles dehors, et aucun ordre ' +
-      'ne l’évitait. Le risque est qu’on la traverse comme du remplissage, alors qu’elle ' +
-      'installe en passant ce qui comptera dans le puits.',
-    verifier:
-      "Rien à résoudre, une seule sortie. De grosses gouttes s'écrasent et laissent " +
-      "un anneau d'encre qui sèche. À cette taille, tout ce qui tombe tombe vite.",
-    position: [-212.5, 0.03, 1000],
-    echelle: -1,
-    lacet: Math.PI * 0.5,
-    pigments: ['rouge', 'vert'],
-    jalon: 24,
-  },
-  {
     titre: 'La lucarne bleue — la couleur se pose',
     pourquoi:
       'C’était le plus gros trou du jeu, et il était invisible : on traversait six salles ' +
@@ -509,11 +531,11 @@ export const REPERES_DESCENTE: Repere[] = [
       'dans le village que tu viens de colorier. Défaut à guetter : que ça bascule d’un coup ' +
       'au lieu de se peindre. Ça mettait 0,2 s, ça devrait en mettre presque quatre.',
     position: [
-      SALLES_DESCENTE[6].entree.position[0],
-      SALLES_DESCENTE[6].entree.position[1] + 0.05,
-      SALLES_DESCENTE[6].entree.position[2],
+      SALLES_DESCENTE[5].entree.position[0],
+      SALLES_DESCENTE[5].entree.position[1] + 0.05,
+      SALLES_DESCENTE[5].entree.position[2],
     ],
-    echelle: SALLES_DESCENTE[6].entree.echelle,
+    echelle: SALLES_DESCENTE[5].entree.echelle,
     lacet: Math.PI,
     pigments: ['rouge', 'vert'],
     jalon: 0,

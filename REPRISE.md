@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 23 septembre 2026
 
-`npm run check` : **795 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **767 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -43,7 +43,9 @@ hall  →  monde (rouge, vert)  →  descente (bleu)  →  montée (or)
   pas fusionnée, il montre l'état du 4 août.*
 - `?niveau=monde` — le voyage d'introduction. Il repart toujours du gris
   (`&neuf=1` ne sert qu'avec `&debug=1`).
-- `?niveau=descente` — sept salles, on y cherche le bleu.
+- `?niveau=descente` — six salles, on y cherche le bleu.
+- `?niveau=pluie` — la cour de pluie, seule : elle était un détour de la
+  descente et se lisait comme une erreur de chemin.
 - `?niveau=montee` — sept salles, on y cherche l'or.
 - `?niveau=mesure` — **NEUF** : trois salles, on y perd la taille.
 - `?niveau=formes` — la boîte à formes, l'examen.
@@ -178,6 +180,7 @@ montée       ?niveau=montee&couleurs=rouge,vert,bleu
 mesure       ?niveau=mesure&couleurs=rouge,vert,bleu,or
 formes       ?niveau=formes&couleurs=rouge,vert,bleu,or
 banc         ?niveau=banc
+pluie        ?niveau=pluie
 rêve         ?niveau=reve&graine=7
 ```
 
@@ -203,8 +206,8 @@ pour le détail de chaque station.
 3. **`?niveau=mesure&debug=1`** — le troisième mouvement, jamais joué. La rive
    (lever les yeux de 23° et lâcher), le grain (est-ce qu'on ne sait VRAIMENT
    plus quelle taille on fait ?), le seuil.
-4. **`?niveau=descente&debug=1`, touche `0`** — la cour de pluie, sous la
-   pluie. La nappe de l'auvent, le jet du puits, l'égouttement du banc.
+4. **`?niveau=pluie&debug=1`** — la cour de pluie, seule, sous la pluie. La
+   nappe de l'auvent, le jet du puits, l'égouttement du banc.
 5. **`?niveau=monde`** — l'introduction de bout en bout, parce que le moteur a
    bougé sous elle (deux correctifs de physique cette nuit).
 6. Les lucarnes, la boîte à formes, le duo à deux machines : voir `RECAP.md`
@@ -245,7 +248,7 @@ couleurs). Voir `veilleurs` dans `src/core/types.ts`.
 
 ```
 descente   lavoir ×1 · conduit ×1/4→×1 · creux ×4 · atelier ×1→×1/4 ·
-           bol ×1→×1/4 · pluie ×1/4 (détour) · lucarne bleue
+           bol ×1→×1/4 · lucarne bleue      (la cour de pluie vit seule)
 montée     toits ×4 · refus ×1→×4 · blanchiment ×1 · escalier ×4→×1 ·
            atelier du haut ×4 · vallée ×16 · lucarne dorée
 mesure     rive ×4 · grain ×1 (on y tombe, on ne remonte pas) · seuil ×1/4

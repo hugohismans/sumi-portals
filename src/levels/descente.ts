@@ -6,7 +6,6 @@ import { CONDUIT } from './salles/conduit.js';
 import { CREUX } from './salles/creux.js';
 import { ATELIER } from './salles/atelier.js';
 import { BOL } from './salles/bol.js';
-import { PLUIE } from './salles/pluie.js';
 import { LUCARNE_BLEUE } from './salles/lucarneBleue.js';
 
 /**
@@ -40,7 +39,7 @@ import { LUCARNE_BLEUE } from './salles/lucarneBleue.js';
  * Chacune est un fichier autonome sous `salles/`, conforme à `salles/contrat.ts`
  * et vérifiée en permanence par `src/core/__check.ts`.
  */
-const SALLES: SalleModule[] = [LAVOIR, CONDUIT, CREUX, ATELIER, BOL, PLUIE, LUCARNE_BLEUE];
+const SALLES: SalleModule[] = [LAVOIR, CONDUIT, CREUX, ATELIER, BOL, LUCARNE_BLEUE];
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -95,8 +94,6 @@ const RACCORDS: Raccord[] = [
   { depuis: 1, vers: 2, cran: +1 },
   { depuis: 2, vers: 3, cran: -1 },
   { depuis: 3, vers: 4, cran: +1 },
-  // ET UN DÉTOUR, qui repart du lavoir. Voir plus bas.
-  { depuis: 0, vers: 5, cran: -1, depart: [-203, 0.05, 706.4] },
   // ─── ET LA LUCARNE, QUI EST LA FIN ───────────────────────────────────────
   //
   // Sans elle, on traversait six salles pour réveiller le bleu au fond du bol
@@ -109,7 +106,7 @@ const RACCORDS: Raccord[] = [
   // autre taille. La porte n'a donc AUCUNE condition : elle est ouverte, on
   // voit la maquette grise à travers, et c'est en réveillant le pinceau qu'on
   // la regarde prendre sa couleur depuis la pièce où l'on se tient.
-  { depuis: 4, vers: 6, cran: +1 },
+  { depuis: 4, vers: 5, cran: +1 },
 ];
 
 /**
@@ -117,27 +114,28 @@ const RACCORDS: Raccord[] = [
  * L'ORDRE N'EST PAS CELUI QUE J'AVAIS PRÉVU, ET C'EST L'ARITHMÉTIQUE QUI L'A
  * DÉCIDÉ.
  *
- * Les six salles ont pour paliers (entrée, sortie) :
+ * Les salles ont pour paliers (entrée, sortie) :
  *
  *     lavoir (×1, ×1) · conduit (×1/4, ×1) · creux (×4, ×4)
- *     atelier (×1, ×1/4) · bol (×1, ×1/4) · pluie (×1/4, ×1/4)
+ *     atelier (×1, ×1/4) · bol (×1, ×1/4)
  *
- * Trois d'entre elles s'abordent par une échelle qui exige un prédécesseur
- * quittant à ×1 — le conduit, les creux et la pluie. Or DEUX SALLES SEULEMENT
- * se quittent à ×1 : le lavoir et le conduit. Une file unique en laisse donc
- * forcément une dehors, et aucune manière d'ordonner les six ne l'évite. Ce
- * n'est pas un manque d'imagination, c'est un compte.
+ * Deux d'entre elles s'abordent par une échelle qui exige un prédécesseur
+ * quittant à ×1 — le conduit et les creux — et DEUX SALLES SEULEMENT se
+ * quittent à ×1 : le lavoir et le conduit. Le compte est juste, et il l'est
+ * de justesse.
  *
- * D'où la cour de pluie en DÉTOUR, à partir du lavoir. Elle ne demande rien,
- * elle ne rapporte rien, et elle installe en douce ce qui comptera dans le
- * puits : à cette taille, tout ce qui tombe tombe vite. Une salle qui
- * n'enseigne qu'en passant est exactement ce qu'on peut se permettre de rendre
- * facultatif — et le joueur qui la manque perdra deux essais de plus dans le
- * conduit, ce qui est une punition juste et douce.
+ * LA COUR DE PLUIE N'EST PLUS DANS LE VOYAGE. Elle s'abordait à ×1/4 elle
+ * aussi, et le compte la laissait forcément dehors : elle avait été mise en
+ * DÉTOUR depuis le lavoir, sans rien demander ni rien rapporter, pour
+ * installer en douce que tout ce qui tombe tombe vite à cette taille. Joué,
+ * ce détour se lisait comme une erreur de chemin — une porte au fond du
+ * bassin, une cour qu'on traverse, et l'on revient par où l'on est venu.
+ * Signalé en jouant : « je ne comprends pas l'intérêt de cette salle ». Elle
+ * vit maintenant seule (`?niveau=pluie`, `src/levels/pluie.ts`), testable
+ * pour ce qu'elle est : une respiration, et une leçon de chute.
  *
- * Le voyage devient donc : le lavoir, puis le puits, puis la cour à trois
- * gradins, puis l'atelier, puis le bol où dort le bleu. Et sur le côté, pour
- * qui regarde, une cour sous la pluie.
+ * Le voyage est donc : le lavoir, puis le puits, puis la cour à trois
+ * gradins, puis l'atelier, puis le bol où dort le bleu, puis la lucarne.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -232,8 +230,6 @@ const assembler = (): LevelDef => ({
    * le guide traverse la pierre et cesse d'être un guide.
    */
   guidePorte: SALLES.flatMap((s) => s.stationsPorte ?? s.stations.map(() => null)),
-  // LE BUT EST LÀ OÙ DORT LE BLEU, et non au bout du tableau : la cour de pluie
-  // est un détour, et finir un voyage dans un détour n'aurait aucun sens.
   // ═══════════════════════════════════════════════════════════════════════
   // LE BUT A DÉMÉNAGÉ, ET C'EST LA LUCARNE QUI L'A RÉVÉLÉ.
   //

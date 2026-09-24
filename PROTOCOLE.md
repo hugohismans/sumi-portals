@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août, et celle du 22 septembre
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 795 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 767 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -61,7 +61,8 @@ start "https://hugohismans.github.io/sumi-portals/"
 - **le hall** — l'adresse nue.
 - **l'introduction** — `?niveau=monde`. Elle repart toujours du gris ;
   `&neuf=1` ne sert qu'avec `&debug=1`, dont la mémoire est séparée.
-- **la descente** (sept salles, on y cherche le bleu) — `?niveau=descente`
+- **la descente** (six salles, on y cherche le bleu) — `?niveau=descente`
+- **la cour de pluie** (seule, une respiration) — `?niveau=pluie`
 - **la montée** (sept salles, on y cherche l'or) — `?niveau=montee`
 - **la mesure** (trois salles, on y perd la taille) — `?niveau=mesure`
 - **la boîte à formes** (cinq pièces, cinq creux) — `?niveau=formes`
@@ -206,13 +207,27 @@ d'homme. *Impossible* — huit cent mille essais le disent.
 **`9` — Le fond, le pinceau bleu.** Une grève sous une pluie qui a cessé. → *E le
 réveille, mais seulement à ×1/4.* À toute autre taille il frémit et refuse.
 
-**`0` — La cour de pluie**, le détour. Rien à résoudre. → *De grosses gouttes
-s'écrasent et laissent un anneau d'encre qui sèche. Sous l'auvent, il ne tombe
-rien.* *(Il ne pleuvait pas jusqu'au 22 septembre : le moteur de gouttes
-n'était branché nulle part.)* Regarde aussi **les trois chutes** : la nappe qui
-tombe du bord de l'auvent, le jet de la goulotte du puits, et l'égouttement
-sous le banc — deux gouttes par seconde, le seul qu'on puisse regarder debout
-dessous et au sec.
+*(La cour de pluie n'est plus dans la descente : voir § 2 ter.)*
+
+---
+
+## 2 ter. La cour de pluie, seule — `?niveau=pluie&debug=1`
+
+Elle était un détour de la descente, depuis le lavoir, et se lisait comme une
+erreur de chemin (« je ne comprends pas l'intérêt de cette salle »). Elle vit
+seule : on y entre par le seuil ouest à ×1/4, on traverse, le seuil est en est
+le but.
+
+**`0` — Sous l'averse.** Rien à résoudre. → *De grosses gouttes s'écrasent et
+laissent un anneau d'encre qui sèche. Sous l'auvent, il ne tombe rien.* Regarde
+**les trois chutes** : la nappe qui tombe du bord de l'auvent, le jet de la
+goulotte du puits, et l'égouttement sous le banc — deux gouttes par seconde, le
+seul qu'on puisse regarder debout dessous et au sec. Et l'échelle des choses
+ordinaires vue de quarante-cinq centimètres : le caniveau est un canal, la
+flaque un lac, le dessous du banc une galerie.
+**`1` — Le seuil est.** La sortie est dans l'axe de l'entrée, à vingt-sept
+mètres : on doit la voir depuis le seuil, et l'atteindre en marchant, sans un
+saut.
 **Défaut à guetter :** des gouttes qui traversent le toit de l'auvent ou
 l'assise du banc ; une pluie qui s'arrête net à une frontière visible ; des
 anneaux qui flottent au-dessus du sol.
