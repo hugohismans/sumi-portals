@@ -747,22 +747,36 @@ export class PortalRenderer {
   }
 
   /**
-   * Tous les matériaux à un seul côté de la scène, trouvés une fois pour toutes.
+   * Tous les matériaux à un seul côté que la scène porte EN CE MOMENT.
    *
-   * Les double face n'ont pas de sens à retourner. On ne parcourt la scène qu'à
-   * la première caméra gauchère rencontrée, et jamais plus : un matériau ne
-   * change pas d'identité une fois bâti, et bien des parties n'ont aucun miroir.
+   * Les double face n'ont pas de sens à retourner.
    *
-   * Statique, parce que la vue principale en a besoin elle aussi dès que le
-   * joueur a franchi un nombre impair de miroirs — et il n'y a aucune raison
-   * de tenir deux catalogues de la même scène.
+   * ═══════════════════════════════════════════════════════════════════════
+   * ON NE LES MET PLUS EN CACHE, ET C'ÉTAIT LE BUG.
+   *
+   * On parcourait la scène une seule fois, à la première caméra gauchère
+   * rencontrée, au motif qu'« un matériau ne change pas d'identité une fois
+   * bâti ». Faux pour les portes : pendant qu'on rend une vue de portail,
+   * leurs surfaces portent l'aplat de brume ou l'image profonde, et c'est
+   * justement là que la première caméra gauchère se présente — en regardant
+   * par le miroir. Le catalogue ne contenait donc jamais le matériau que les
+   * surfaces portent à l'écran. Une fois le joueur passé au miroir, la vue
+   * principale est gauchère ; ce matériau-là n'était pas retourné, ses faces
+   * se présentaient de dos, et toutes les portes du niveau devenaient
+   * transparentes — on voyait le mur à travers le cadre. Signalé en jouant :
+   * « une fois un portail traversé, l'image du portail disparaît ». Et tout ce
+   * qui naît après coup (un pinceau posé, un joueur qui arrive) aurait eu le
+   * même sort.
+   *
+   * On parcourt donc la scène à chaque appel. Trois cents objets, quelques
+   * fois par image : rien, à côté de ce que coûte le rendu qui suit.
+   * ═══════════════════════════════════════════════════════════════════════
    */
-  private static materiaux: THREE.Material[] = [];
-  private static materiauxTrouves = false;
+  private static readonly vus = new Set<THREE.Material>();
+  private static readonly materiaux: THREE.Material[] = [];
   static materiauxDe(scene: THREE.Scene): THREE.Material[] {
-    if (PortalRenderer.materiauxTrouves) return PortalRenderer.materiaux;
-    PortalRenderer.materiauxTrouves = true;
-    const vus = new Set<THREE.Material>();
+    const vus = PortalRenderer.vus;
+    vus.clear();
     scene.traverse((o) => {
       const m = (o as THREE.Mesh).material;
       if (!m) return;
@@ -770,8 +784,10 @@ export class PortalRenderer {
         if (x.side !== THREE.DoubleSide) vus.add(x);
       }
     });
-    PortalRenderer.materiaux = [...vus];
-    return PortalRenderer.materiaux;
+    const liste = PortalRenderer.materiaux;
+    liste.length = 0;
+    for (const x of vus) liste.push(x);
+    return liste;
   }
 
   /**

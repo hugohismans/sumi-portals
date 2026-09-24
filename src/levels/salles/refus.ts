@@ -183,17 +183,23 @@ const decor = (): BoxDef[] => [
 
   // ─── LES MAINS SUR LES MURS ────────────────────────────────────────────
   //
-  // De part et d'autre de chaque face, à sa taille : deux mains de quarante-
-  // cinq centimètres, l'encre tournée vers la cour. Toutes de la MÊME main :
-  // ce qu'on compare est ici et là-bas, et en regardant par une face on voit
-  // celles d'en face, retournées.
+  // De part et d'autre de chaque face, deux mains de LA TAILLE D'UN HOMME —
+  // 1,80 de haut, la paume à hauteur d'œil —, l'encre tournée vers la cour.
+  // Toutes de la MÊME main : ce qu'on compare est ici et là-bas, et en
+  // regardant par une face on voit celles d'en face, retournées.
+  //
+  // Elles faisaient quarante-cinq centimètres, à hauteur de genou : on ne les
+  // lisait pas, et c'étaient elles qui devaient dire la leçon. Signalé en
+  // jouant : « les mains devraient être plus grandes, pour qu'on comprenne
+  // mieux le changement chiral ». Écartées de 2,40 du centre de la porte,
+  // pour que le linteau (2,50 de large) ne les morde pas.
   //
   // Elles sont posées à quelques centimètres devant le mur, jamais dessus :
   // une face confondue avec celle du mur grésillerait.
-  ...mainDEncre('refus', X1 - 0.05, 0.125, EST.z - 1.6, true, 0.25, -1),
-  ...mainDEncre('refus', X1 - 0.05, 0.125, EST.z + 1.6, true, 0.25, -1),
-  ...mainDEncre('refus', X0 + 0.05, 0.125, OUEST.z - 1.6, true, 0.25, 1),
-  ...mainDEncre('refus', X0 + 0.05, 0.125, OUEST.z + 1.6, true, 0.25, 1),
+  ...mainDEncre('refus', X1 - 0.05, 0.4, EST.z - 2.4, true, 1, -1),
+  ...mainDEncre('refus', X1 - 0.05, 0.4, EST.z + 2.4, true, 1, -1),
+  ...mainDEncre('refus', X0 + 0.05, 0.4, OUEST.z - 2.4, true, 1, 1),
+  ...mainDEncre('refus', X0 + 0.05, 0.4, OUEST.z + 2.4, true, 1, 1),
 ];
 
 /**

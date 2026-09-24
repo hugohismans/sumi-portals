@@ -181,14 +181,16 @@ const decor = (): BoxDef[] => [
 
   // ─── LES MAINS SUR LE MUR OUEST ────────────────────────────────────────
   //
-  // De part et d'autre de la petite face, deux mains de quarante-cinq
+  // De part et d'autre de la petite face, deux mains de soixante-douze
   // centimètres ; de part et d'autre de la grande, deux mains quatre fois
-  // plus grandes. Toutes de la MÊME main, l'encre tournée vers l'est d'où
-  // l'on vient. À quelques centimètres devant le mur, jamais dessus.
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.125, PETITE.z - 1.6, true, 0.25, 1),
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.125, PETITE.z + 1.6, true, 0.25, 1),
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.5, GRANDE_FACE.z - 6.4, true, 1, 1),
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.5, GRANDE_FACE.z + 6.4, true, 1, 1),
+  // plus grandes — 2,90, lisibles d'un bout à l'autre de la cour. Toutes de
+  // la MÊME main, l'encre tournée vers l'est d'où l'on vient. Plus grandes
+  // qu'avant, pour la même raison qu'au refus : elles portent la leçon. À
+  // quelques centimètres devant le mur, jamais dessus.
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.2, PETITE.z - 2.0, true, 0.4, 1),
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.2, PETITE.z + 2.0, true, 0.4, 1),
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.5, GRANDE_FACE.z - 6.9, true, 1.6, 1),
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.5, GRANDE_FACE.z + 6.9, true, 1.6, 1),
 ];
 
 /**

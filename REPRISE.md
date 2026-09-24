@@ -347,6 +347,14 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
   un miroir, la main bascule ET le lacet devient π + jumelle + face − θ. La
   première formule ajoutait un complément et ne tombait juste que pour 0 et
   π ; le harnais essaie maintenant des lacets quelconques.
+- **Les portes ne disparaissent plus après un miroir.** Le catalogue des
+  matériaux à retourner pour une caméra gauchère était pris une fois, pendant
+  un rendu de portail — quand les surfaces portent un autre matériau que
+  celui de l'écran. Une fois le joueur passé au miroir, toutes les portes
+  devenaient transparentes. Le catalogue est refait à chaque appel.
+- **Les mains d'encre font la taille d'un homme** au refus (1,80, la paume à
+  hauteur d'œil), 0,72 et 2,90 au blanchiment : on voit le pouce changer de
+  côté en passant le miroir.
 - **La moitié déjà passée d'une pièce tenue garde sa forme.** Le double vu à
   travers la porte n'était rebâti que si la taille changeait, jamais la main :
   au miroir plan, la moitié passée apparaissait retournée jusqu'à ce que le
