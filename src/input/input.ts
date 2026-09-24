@@ -78,10 +78,11 @@ export class InputManager {
       // pièce en toupie.
       if (e.repeat) return;
       if (e.code === 'KeyT') this.crans += e.shiftKey ? -1 : 1;
-      // LES CHIFFRES CHOISISSENT LE PINCEAU, par leur place sur le clavier
-      // (`code`, pas `key`) : la rangée du haut d'un AZERTY donne « & é " »
-      // sans majuscule, mais c'est bien la touche 1, 2, 3.
-      const chiffre = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
+      // LES CHIFFRES DE LA RANGÉE DU HAUT CHOISISSENT LE PINCEAU, par leur
+      // place sur le clavier (`code`, pas `key`) : un AZERTY y donne « & é " »
+      // sans majuscule, mais c'est bien la touche 1, 2, 3. Pas le pavé
+      // numérique : il est aux sauts des repères de débug (`?debug=1`).
+      const chiffre = /^Digit([1-9])$/.exec(e.code);
       if (chiffre) this.choix = Number(chiffre[1]);
       if (this.tenue) {
         if (e.code === 'ArrowLeft') this.lacets -= 1;

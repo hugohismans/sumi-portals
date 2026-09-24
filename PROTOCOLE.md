@@ -67,7 +67,9 @@ start "https://hugohismans.github.io/sumi-portals/"
 - **la mesure** (trois salles, on y perd la taille) — `?niveau=mesure`
 - **la boîte à formes** (cinq pièces, cinq creux) — `?niveau=formes`
 - **le banc d'essai** (treize stations) — `?niveau=banc`
-- **les repères** — ajoute `&debug=1` à l'un ou l'autre. Une touche par moment ;
+- **les repères** — ajoute `&debug=1` à l'un ou l'autre. Une touche **du pavé
+  numérique** par moment (la rangée du haut choisit le pinceau ; sans pavé, clique
+  la ligne dans la liste) ;
   `H` replie la liste. Le mode débug a sa propre sauvegarde : il n'abîme plus ta
   partie.
 
@@ -116,7 +118,7 @@ par les deux bouts : c'est un miroir, pas une serrure.
 
 ## 2. Ce qui a changé dans l'introduction — `?niveau=monde&debug=1`
 
-| touche | ce qu'il faut regarder |
+| touche du pavé | ce qu'il faut regarder |
 |---|---|
 | `1` | **Tout est gris.** La moindre couleur est un défaut — y compris la terrasse et le belvédère, qui naissaient colorés et ne le font plus. |
 | `5` | **Devant la porte, le pinceau rouge te suit.** Un pas en avant, tu franchis, et le geste se joue. |

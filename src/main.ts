@@ -1296,13 +1296,17 @@ const REPERES: Repere[] =
     }
   };
 
-  // Les touches sont lues par `code`, donc par POSITION physique : la rangée du
-  // haut marche à l'identique en AZERTY, où ces touches produisent & é " ' (.
+  // LES SAUTS SONT SUR LE PAVÉ NUMÉRIQUE. Ils étaient sur la rangée du haut,
+  // qui choisit désormais le pinceau de la trousse : en débug, prendre le vert
+  // avec la touche 2 téléportait au deuxième repère. Signalé en jouant. Lues
+  // par `code`, donc par position physique, verrouillage numérique ou non ; et
+  // sans pavé (un portable), chaque ligne de la liste se clique.
   const TOUCHES = [
-    'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
-    'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal', 'BracketLeft', 'BracketRight',
+    'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4', 'Numpad5', 'Numpad6', 'Numpad7',
+    'Numpad8', 'Numpad9', 'Numpad0', 'NumpadSubtract', 'NumpadAdd', 'NumpadDivide',
+    'NumpadMultiply', 'NumpadDecimal',
   ];
-  const LEGENDES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '[', ']'];
+  const LEGENDES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '−', '+', '/', '*', '.'];
 
   // ─── LE PROTOCOLE EST DANS LE JEU, PAS DANS UN FICHIER ───────────────────
   //
@@ -1367,7 +1371,7 @@ const REPERES: Repere[] =
 
   panneau.innerHTML = '';
   const titre = document.createElement('h3');
-  titre.textContent = 'Protocole';
+  titre.textContent = 'Protocole · pavé numérique';
   panneau.appendChild(titre);
 
   // Les autres mondes, en une ligne : sur un téléphone, taper une adresse à la

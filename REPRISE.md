@@ -57,8 +57,9 @@ hall  →  monde (rouge, vert)  →  descente (bleu)  →  montée (or)
 
 **`?debug=1` — LES REPÈRES.** Sur le hall, le monde, la descente, la montée,
 la mesure, la boîte à formes, le banc et la cour de pluie (pas sur la cour, la
-caisse, le duo ni le rêve). Une touche par moment du voyage, chaque ligne dit ce qu'il faut
-regarder là et POURQUOI on le regarde.
+caisse, le duo ni le rêve). Une touche **du pavé numérique** par moment du voyage
+(la rangée du haut choisit le pinceau ; sans pavé, on clique la ligne), chaque ligne
+dit ce qu'il faut regarder là et POURQUOI on le regarde.
 `H` replie la liste. Certains sauts RECHARGENT la page, voir
 `src/debug/reperes.ts`.
 
@@ -388,7 +389,8 @@ fun ».
 
 - **La trousse** (`#trousse`, `majPinceaux` dans `main.ts`) : un pinceau par
   couleur rapportée, et **l'eau** qui lave. Mains vides, la molette, les
-  chiffres 1 à 5 ou un doigt sur la case choisissent ; au doigt, « Lancer »
+  chiffres 1 à 5 de la rangée du haut ou un doigt sur la case choisissent
+  (le pavé numérique reste aux repères de débug) ; au doigt, « Lancer »
   devient « Peindre » et « Tourner » devient « Pinceau ». Une phrase
   l'explique une fois, au premier moment calme.
 - **Le clic peint ce qu'on vise**, n'importe quelle boîte du décor

@@ -12,8 +12,9 @@ import { FORMES } from '../levels/formes.js';
  * refaire quatre minutes de trajet, deux portails et deux détours — donc on ne
  * le vérifiait pas, donc on ne trouvait les défauts qu'en jouant par hasard.
  *
- * `?debug=1` affiche cette liste et lie chaque ligne à une touche. On appuie
- * sur 3, on est devant le pinceau rouge endormi. C'est tout.
+ * `?debug=1` affiche cette liste et lie chaque ligne à une touche du PAVÉ
+ * NUMÉRIQUE (la rangée du haut choisit le pinceau). On appuie sur 3 du pavé,
+ * on est devant le pinceau rouge endormi. C'est tout.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * POURQUOI CERTAINS REPÈRES RECHARGENT LA PAGE
