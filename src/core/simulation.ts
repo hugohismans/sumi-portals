@@ -337,6 +337,7 @@ export class Simulation {
       pl.grounded,
     );
     pl.grounded = move.grounded;
+    this.dosDesPortes(prevPos, scale);
 
     // ═══════════════════════════════════════════════════════════════════════
     // LE RATTRAPAGE — la règle « on ne piège jamais » cesse d'être une promesse
@@ -766,8 +767,12 @@ export class Simulation {
       if (!from || c.held) continue;
 
       const to = vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z);
-      const crossing = this.findCrossing(from, to);
+      // Par l'avant, elle passe ou bute ; par l'arrière, elle bute toujours —
+      // le dos d'une porte fait mur aux pièces comme au joueur.
+      const devant = this.findCrossing(from, to);
+      const crossing = devant ?? this.findCrossing(from, to, 1, -1);
       if (!crossing) continue;
+      const parDerriere = devant === null;
 
       const face = crossing.face;
       const fits = pieceFits(face, c.size);
@@ -779,11 +784,14 @@ export class Simulation {
       // celle où l'on apprend à lancer sa pièce à travers une porte.
       const scellee = this.portesFermees.has(face.pairId) || estScelle(face, this.conditionsRemplies);
 
-      if (!fits || scellee) {
+      if (!fits || scellee || parDerriere) {
         // Elle s'arrête DEVANT le plan, là où elle l'a touché — pas à son
         // point de départ, qui est l'œil du porteur quand on vient de la
         // lâcher : elle apparaissait dans sa tête et tombait entre ses pieds.
-        const n = face.normal;
+        // Vue de derrière, la normale est l'autre : on repart d'où l'on vient.
+        const n = parDerriere
+          ? vec3(-face.normal.x, -face.normal.y, -face.normal.z)
+          : face.normal;
         const recul = c.size * 0.5 + 0.02;
         const t = crossing.t;
         c.position.x = from.x + (to.x - from.x) * t + n.x * recul;
@@ -877,18 +885,78 @@ export class Simulation {
     events.thrown = { id: held.id };
   }
 
-  /** Première face franchie par le segment [from → to], de l'avant vers l'arrière. */
-  private findCrossing(from: Vec3, to: Vec3, hauteurs = 1): { face: PortalFace; t: number } | null {
+  /**
+   * Première face franchie par le segment [from → to], de l'avant vers
+   * l'arrière — ou, avec `sens` à −1, de l'arrière vers l'avant : c'est le
+   * dos de la porte, et l'on ne le franchit pas, on s'y cogne.
+   */
+  private findCrossing(
+    from: Vec3,
+    to: Vec3,
+    hauteurs = 1,
+    sens: 1 | -1 = 1,
+  ): { face: PortalFace; t: number } | null {
     let best: { face: PortalFace; t: number } | null = null;
     for (const face of this.faces) {
-      const d0 = signedDistance(face, from);
-      const d1 = signedDistance(face, to);
-      if (d0 <= 0 || d1 > 0) continue; // pas de franchissement avant → arrière
+      const d0 = signedDistance(face, from) * sens;
+      const d1 = signedDistance(face, to) * sens;
+      if (d0 <= 0 || d1 > 0) continue; // pas de franchissement dans ce sens
       const t = d0 / (d0 - d1);
       if (!withinFaceRect(face, from, to, t, hauteurs)) continue;
       if (!best || t < best.t) best = { face, t };
     }
     return best;
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * LE DOS D'UNE PORTE FAIT MUR.
+   *
+   * On ne franchit une porte que par sa face avant ; par l'arrière, rien ne
+   * se passait — on traversait le cadre comme un fantôme, on se retrouvait
+   * devant, et l'on franchissait en revenant. Toutes les portes plantées en
+   * plein air en souffraient, et la montée en compte une douzaine. Signalé
+   * en jouant : « on traverse les portails par derrière ».
+   *
+   * La règle est celle d'une feuille tendue dans un cadre : de derrière, on
+   * s'y cogne. Un mur À SENS UNIQUE, tout de même : on n'interdit que de se
+   * RAPPROCHER du plan en venant de derrière, dans l'emprise du rectangle,
+   * corps compris ; s'en écarter, ou en sortir par le côté, reste libre —
+   * personne ne reste coincé contre une porte.
+   *
+   * Et personne n'arrive par là : qui franchit une porte ressort DEVANT sa
+   * jumelle, à la distance exacte où il a dépassé le plan (voir
+   * `transformPoint` — c'est ce qui rend le passage continu à l'œil). Le dos
+   * d'une porte n'est donc jamais franchi par personne, dans aucun sens.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  private dosDesPortes(prev: Vec3, scale: number): void {
+    const pl = this.player;
+    const r = PLAYER_RADIUS * scale;
+    const h = PLAYER_HEIGHT * scale;
+    for (const face of this.faces) {
+      const d0 = signedDistance(face, prev);
+      if (d0 >= 0) continue;
+      const d1 = signedDistance(face, pl.position);
+      if (d1 <= d0 || d1 <= -r) continue;
+      const local = rotateY(
+        vec3(pl.position.x - face.position.x, pl.position.y - face.position.y, pl.position.z - face.position.z),
+        -face.yaw,
+      );
+      if (Math.abs(local.x) > face.width * 0.5 + r) continue;
+      if (local.y + h < 0 || local.y > face.height) continue;
+      // On garde la distance d'avant, ou l'on s'arrête le corps contre le
+      // plan si l'on venait de plus loin.
+      const cible = Math.max(d0, -r);
+      const n = face.normal;
+      pl.position.x -= n.x * (d1 - cible);
+      pl.position.z -= n.z * (d1 - cible);
+      const along = pl.velocity.x * n.x + pl.velocity.z * n.z;
+      if (along > 0) {
+        pl.velocity.x -= n.x * along;
+        pl.velocity.z -= n.z * along;
+      }
+    }
   }
 
   private teleport(face: PortalFace, eye: Vec3, nextLevel: number): void {
@@ -927,25 +995,34 @@ export class Simulation {
     if (held) {
       held.size *= traversalScale(face);
       // ═══════════════════════════════════════════════════════════════════
-      // CE QU'ON PORTE NE SE RETOURNE PAS, ET C'EST LA RÈGLE JUSTE.
+      // CE QU'ON PORTE SE RÉFLÉCHIT AVEC SOI, ET C'EST LA RÈGLE JUSTE.
       //
-      // Il se retournait, et c'était un mensonge — mis au jour par le joueur en
-      // une phrase : « si le monde change de forme, la serrure a changé de
-      // forme aussi ; donc porter la pièce à travers ne change rien. »
+      // Elle a été écrite dans les deux sens, et le second était faux. On a
+      // d'abord retourné la pièce portée ; puis, quand le monde s'est mis à
+      // basculer avec le joueur, on a cessé de la retourner — « leur écart
+      // reste nul, donc rien ne change ». L'écart entre la pièce et son
+      // porteur reste nul, c'est vrai. Mais `main` n'est pas mesurée par
+      // rapport au porteur : elle est mesurée dans le monde, comme celle du
+      // creux qui l'attend. Et dans le monde, une pièce qui traverse un miroir
+      // est réfléchie, qu'on la tienne ou qu'on la lance — c'est la géométrie,
+      // elle ne regarde pas qui la porte.
       //
-      // Il a raison, et c'est de la physique élémentaire : depuis qu'un miroir
-      // bascule le MONDE et pas seulement l'objet, celui qu'on tient subit
-      // exactement la même réflexion que soi. Leur écart reste nul. Prétendre
-      // qu'il a tourné serait faire dire au jeu le contraire de ce qu'il montre.
+      // La preuve était sous les yeux du joueur : à l'écran, la pièce portée
+      // CHANGEAIT DE FORME en franchissant le miroir. La caméra devient
+      // gauchère et dessine tout en image miroir ; une pièce dont la main
+      // n'avait pas bougé apparaissait donc retournée, seule dans un monde qui
+      // avait basculé avec le joueur. Signalé : « la forme change toute seule
+      // alors qu'elle devrait ne pas changer — on passe d'un monde de main
+      // gauche à un monde de main droite. » Exactement : c'est le monde qui
+      // doit paraître retourné, et la pièce tenue rester la même. Réfléchie
+      // dans le monde et vue par une caméra réfléchie, elle garde sa forme.
       //
-      // LA SEULE FAÇON DE RETOURNER UNE PIÈCE EST DONC DE LA LANCER À TRAVERS
-      // ET DE LA RATTRAPER DE L'AUTRE CÔTÉ. Elle se réfléchit, on ne se
-      // réfléchit pas, et l'écart devient réel — et visible, ce qui n'était
-      // jamais le cas avant. Le lancer, qui n'avait qu'un usage décoratif,
-      // devient le geste central de la chiralité.
-      //
-      // La bascule d'un objet LANCÉ est intacte : voir `carryTraversal`.
+      // Conséquence sur l'énigme, et elle est plus simple : porter une pièce à
+      // travers un miroir suffit à la retourner par rapport au creux. Le
+      // lancer la retourne aussi (voir `carryTraversal`), sans qu'on ait à
+      // passer soi-même.
       // ═══════════════════════════════════════════════════════════════════
+      retournerLaMain(held, face);
       this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale);
     }
   }

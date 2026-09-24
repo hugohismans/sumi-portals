@@ -18,9 +18,9 @@ style encre et manga. Ça tourne dans un navigateur, y compris sur téléphone.
 Le fil est **le Pinceau** : un personnage qui vole de jalon en jalon. Il passe
 là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
-## État au 23 septembre 2026
+## État au 24 septembre 2026
 
-`npm run check` : **767 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **757 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -77,16 +77,11 @@ Lis les messages de commit : ils disent le pourquoi. En bref, dans l'ordre :
    au protocole, et sèche. La salle déclare son averse (`AverseDef`), les trois
    sources coulent (nappe, jet, égouttement), et le harnais tombe du ciel en
    cent points de chaque abri pour prouver qu'il n'y pleut pas.
-2. **Les deux salles chirales de la montée se jouent au lancer.** Depuis que le
-   monde bascule avec le joueur, PORTER une pièce à travers un miroir ne la
-   retourne plus ; seul LE LANCER le fait. Le creux qui refuse et le
-   blanchiment reposaient sur le portage — le commit qui a posé la règle
-   l'admettait, « à réécrire autour du lancer » — et personne ne l'avait fait.
-   Le blanchiment a maintenant une **chatière** (un miroir de 1,20 qu'on ne
-   franchit pas, qu'on vise), des **mains d'encre** de part et d'autre de
-   chaque ouverture, et un **ciel de verre** sur les deux cours pour qu'une
-   vrille lancée ne parte jamais par-dessus le mur. Un pilote joue les deux
-   salles jusqu'à la porte de sortie.
+2. **Les deux salles chirales de la montée se jouent au lancer.** *(Défait le
+   24 septembre — voir plus bas : la règle était fausse, tout se porte.)* Il
+   en reste les **mains d'encre** de part et d'autre de chaque ouverture, le
+   **ciel de verre** sur les deux cours, et un pilote qui joue les deux salles
+   jusqu'à la porte de sortie.
    *Deux défauts du moteur trouvés en chemin :* une pièce glissée au sol à
    travers une petite face ressortait quinze centimètres dans le plancher
    (corrigé : on ne ressort jamais sous le seuil de la face jumelle) ; un
@@ -257,18 +252,26 @@ mesure     rive ×4 · grain ×1 (on y tombe, on ne remonte pas) · seuil ×1/4
 Une porte ne vaut qu'un cran : la sortie d'une salle et l'entrée de la suivante
 diffèrent d'exactement un palier. C'est vérifié.
 
-## La règle du miroir, telle qu'elle est aujourd'hui
+## La règle du miroir, telle qu'elle est aujourd'hui (24 septembre)
 
-Un miroir bascule le MONDE avec le joueur (`PlayerState.gauchere`). Donc :
+Un miroir bascule le MONDE avec le joueur (`PlayerState.gauchere`), et **ce
+qui le traverse est réfléchi, porté ou lancé** (`Simulation.teleport`). À
+l'écran : le monde se retourne autour de soi, la pièce dans les bras garde sa
+forme — et le creux, qui est du monde, l'accepte désormais. La version
+« porter ne retourne pas » confondait l'écart entre la pièce et soi (nul) avec
+la main de la pièce dans le monde (qui bascule) ; le joueur l'a vue de ses
+yeux : « la forme change toute seule ».
 
-- ce qu'on **porte** à travers un miroir garde sa main (l'écart reste nul) ;
-- ce qu'on **lance** à travers change de main, et de taille comme tout ;
-- une porte ordinaire ne retourne rien, porté ou lancé.
+- **Le refus** a un miroir **plan** (`PortalPairDef.plane`) : même taille des
+  deux côtés, rien d'autre que la réflexion. Le creux veut la vrille à sa
+  taille et de l'autre main ; on la porte à travers, elle entre.
+- **Le blanchiment** couple main et taille : miroir ↑ (D 2,00) puis grande
+  face ordinaire ↓ (D 0,50), ou l'inverse. Plus de chatière.
+- **Le raccord refus → blanchiment est une porte plane** (`cran: 0`), la
+  première : la loi de l'enchaînement admet zéro cran par une paire plane.
 
-D'où le blanchiment : la main ne change qu'à la chatière, et jamais sans la
-taille ; la taille se corrige à la porte ordinaire, sans toucher à la main. Les
-mains d'encre sur les murs (`src/levels/mains.ts`) sont l'étalon de la main,
-comme la petite face de 2,80 est l'étalon de la taille.
+Les mains d'encre sur les murs (`src/levels/mains.ts`) sont l'étalon de la
+main, comme la petite face de 2,80 est l'étalon de la taille.
 
 ## Les pièges appris à la dure
 
@@ -289,9 +292,49 @@ qui ont coûté le plus cher :
    désormais ; là où une pièce est une clef, on met quand même un ciel de
    verre, pour qu'elle retombe dans la cour plutôt qu'à son point de départ.
 
+## Ce qui a changé le 24 septembre, en jouant la montée sur un vrai PC
+
+Signalé : 23 images par seconde là où l'on en attend 120, un « effet miroir
+pas clair » couplé à la taille, une pièce qui « change de forme toute seule »
+au miroir, des portes qu'on traverse par derrière, un voile blanc et un rendu
+faux dans certaines portes, un portail « carrément freeze » au banc.
+
+- **Le bug des miroirs, mesuré et corrigé.** `computeVirtual` décomposait la
+  matrice de la caméra virtuelle pour une porte ordinaire même quand la caméra
+  SOURCE était gauchère (joueur passé par un miroir) : la réflexion se
+  perdait, déterminant +1 pour une source à −1, et le contenu de toute porte
+  ordinaire s'affichait inversé — figé par rapport au monde. La réflexion se
+  lit maintenant sur le déterminant de la matrice composée, jamais sur la
+  porte.
+- **Ce qu'on porte se réfléchit avec soi** (voir la règle ci-dessus).
+- **Les paires planes** : `plane: true`, mêmes faces, aucun cran.
+- **Le dos d'une porte fait mur** (`Simulation.dosDesPortes`, mur à sens
+  unique : on ne se rapproche pas du plan en venant de derrière) et **se
+  dessine** comme une feuille tendue. Trois portes se présentaient de dos à
+  qui venait et ont été tournées ou contournées : la seconde porte de la
+  terrasse du monde, la sortie de la vallée (elle regarde l'est), et les
+  pilotes de la rive et de l'escalier contournent la grande face.
+- **Les portes se rendent à la taille qu'elles font à l'écran**
+  (`PortalRenderer.fractionPour`, `uFraction`) : quinze écrans pleins par
+  image sont devenus un quart d'écran. Et `portals.qualite` suit la cadence
+  mesurée contre l'intervalle de l'écran (dixième centile) ; l'affichage dit
+  « portes 60 % » quand il baisse.
+- **Un cerne d'encre au sol** autour de tout ce qui se ramasse
+  (`carryableViews.ts`), qui respire.
+- **La fin d'un chapitre** : la peinture attend le but, un accord, un titre,
+  et « Continuer : la montée » au lieu de « Monter ».
+
 ## Ce qui reste à faire
 
 Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
+
+- **Rejouer la montée sur le PC** : la cadence (le compteur dit maintenant
+  « portes N % » s'il a dû baisser), le refus à miroir plan, le blanchiment.
+- **L'atelier de la descente** : « il faut étrangement cliquer sur les petits
+  modules » — dire au joueur que E sur une famille lui DIT sa couleur.
+- **Le clignotement rouge-marron** des plaques au même niveau : une réponse
+  globale reste à choisir (tampon de profondeur logarithmique, ou décaler les
+  cadres devant les jambages).
 
 - **Jouer.** Quatorze lieux n'ont jamais été vus par un œil humain qui joue.
 - **Le monde retourné** (les portails de gravité) : la fin que le troisième

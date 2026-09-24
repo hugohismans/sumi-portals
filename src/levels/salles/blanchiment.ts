@@ -13,65 +13,61 @@ import { VRILLE } from './refus.js';
  *
  * Deux portes, et elles n'obéissent pas à la même loi :
  *
- *     le MIROIR   — une chatière, qu'on ne franchit pas mais qu'on peut viser.
- *                   Ce qu'on y LANCE change de main ET de taille.
- *     la porte    — ordinaire. Ce qui la passe, porté ou lancé, change de
- *                   taille et garde sa main.
+ *     le MIROIR   — ce qui le traverse change de main ET de taille. C'est le
+ *                   miroir de la salle d'avant, avec la taille en plus : la
+ *                   main est acquise, on peut coupler.
+ *     la porte    — ordinaire. Ce qui la passe change de taille et garde sa
+ *                   main.
  *
  * La main ne change donc qu'au miroir, et jamais sans la taille ; la taille se
- * corrige à la porte, sans toucher à la main. Un lancer à travers la chatière
- * donne l'autre main et quatre fois la taille ; un passage par la porte
- * ordinaire, en sens inverse, rend la taille et garde la main. Le compte tombe
- * juste, et il ne tombe juste QUE comme ça :
+ * corrige à la porte, sans toucher à la main. Un passage par le miroir donne
+ * l'autre main et quatre fois la taille ; un passage par la porte ordinaire,
+ * en sens inverse, rend la taille et garde la main. Le compte tombe juste, et
+ * il ne tombe juste QUE comme ça :
  *
- *     chatière  ↑  ×4, main basculée       L 0,50  →  D 2,00
+ *     miroir    ↑  ×4, main basculée       L 0,50  →  D 2,00
  *     ordinaire ↓  ×1/4, main intacte      D 2,00  →  D 0,50
+ *
+ * — ou dans l'autre ordre, ordinaire ↑ puis miroir ↓, ce qui revient au même.
  *
  * Le joueur ne calcule pas ça. Il essaie, il constate, et à un moment il VOIT
  * que les deux portes ne font pas la même chose. Ce moment-là est tout le jeu :
  * un système a des lois, et l'on peut les déduire au lieu de les subir.
  *
- * POURQUOI UNE CHATIÈRE, ET NON UNE PORTE. La règle du miroir a changé — voir
- * `refus.ts` : porter une pièce à travers un miroir ne la retourne plus, seul
- * le lancer le fait. Avec un miroir qu'on FRANCHIT, le théorème mourait : on
- * lance la vrille à travers (D 2,00), on la rapporte en la portant par la même
- * porte (D 0,50), et la seconde paire ne sert à rien. Il faut que le miroir
- * soit une chose qu'on ne peut que viser. Sa petite face fait 1,20 : un homme
- * de 1,80 n'y entre pas, un géant encore moins, et l'autre face, de 4,80,
- * n'admet pas un géant de 7,20 — celui qui tient la pièce trop lourde pour un
- * homme. Le refus est visible dans le monde : une ouverture trop basse.
+ * TOUT SE PORTE. Le miroir a été une chatière qu'on ne pouvait que viser,
+ * à l'époque où porter une pièce à travers ne la retournait pas ; cette
+ * règle-là était fausse (voir `Simulation.teleport`), et la chatière n'a plus
+ * de raison d'être. Les deux portes sont des portes, on les franchit avec la
+ * vrille dans les bras, et l'on regarde ce qu'elle devient.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * L'ERREUR QU'ON VA FAIRE, ET ELLE EST PARFAITE. On vient d'apprendre à lancer
- * une vrille dans un miroir. On la lance : elle ressort D 2,00, trop lourde. On
- * cherche comment grandir, on trouve la porte ordinaire, on grandit, on la
- * prend — et l'on court au creux avec une vrille quatre fois trop grosse. Le
- * creux dit « elle déborde ». On la rapporte par la porte ordinaire, dans
- * l'autre sens, sans y penser : elle rentre. On n'a pas calculé, on a corrigé
- * la taille, et la main était déjà juste. C'est en repensant à la salle qu'on
- * comprend ce qu'on a fait.
+ * L'ERREUR QU'ON VA FAIRE, ET ELLE EST PARFAITE. On vient d'apprendre qu'un
+ * miroir retourne. On porte la vrille au miroir : elle ressort droite — et
+ * quatre fois trop grosse. On court au creux, il dit « elle déborde ». On
+ * cherche comment rapetisser, on trouve la porte ordinaire derrière le mur de
+ * refend, on la passe dans l'autre sens sans y penser : elle rentre. On n'a pas
+ * calculé, on a corrigé la taille, et la main était déjà juste. C'est en
+ * repensant à la salle qu'on comprend ce qu'on a fait.
  *
- * Et celui qui commence par porter la vrille intacte par la porte ordinaire
- * apprend la leçon dans l'autre ordre : L 2,00 déborde, L 0,50 « n'entre pas,
- * la tourner n'y changera rien » — la main, dite en dernier, quand c'est la
- * seule explication possible.
+ * Et celui qui commence par la porte ordinaire apprend la leçon dans l'autre
+ * ordre : L 2,00 déborde, L 0,50 « n'entre pas, la tourner n'y changera
+ * rien » — puis le miroir, en descendant, rend la taille et donne la main.
  *
  * LA QUEUE À LA COMÈTE, et il faut la dessiner exprès. On ne finit pas l'énigme
- * là où on l'a commencée : on ressort de la porte ordinaire à l'autre bout de
- * la cour, à taille d'homme, la vrille dans les bras. **LE CREUX EST DE CE
+ * là où on l'a commencée : on ressort de la porte ordinaire au nord-est de la
+ * cour, à taille d'homme, la vrille dans les bras. **LE CREUX EST DE CE
  * CÔTÉ-LÀ**, à dix mètres du débouché, et on le voit en arrivant.
  *
  * LE LIEU, ET CE QU'IL REVISITE (règle 8). La cour du creux qui refuse, en
  * plus long : mêmes murs, même dalle, même absence de toit. On la reconnaît
  * tout de suite, et l'on cherche donc tout de suite le miroir — qui est bien
- * là, à sa place, réduit à une chatière au pied du mur, et qui ne suffit plus.
- * Reprendre le décor d'une salle pour en démentir la leçon vaut mieux qu'un
+ * là, à sa place, contre le mur ouest, et qui fait une chose de plus.
+ * Reprendre le décor d'une salle pour en prolonger la leçon vaut mieux qu'un
  * panneau.
  *
  * UN CIEL DE VERRE, comme à la cour d'avant, et pour la même raison : ce qui
  * sort d'une grande face sort quatre fois plus vite, et la vrille est la seule
- * clef de la porte de sortie. Ici la chatière est au sol et ne laisse passer
- * que des lancers plats, mais on ne parie pas la salle sur un angle.
+ * clef de la porte de sortie. On ne parie pas la salle sur un angle.
  */
 
 const REGION = {
@@ -123,10 +119,6 @@ const TAILLE = 0.5;
  * 0,99 qu'on peut soulever : la même marge exactement, aux deux bouts. Une
  * vrille qui se refuserait à être portée à l'un des deux étages tuerait la
  * salle au moment précis où le joueur croit avoir compris.
- *
- * ET 0,50 PASSE LA CHATIÈRE avec de la marge : une pièce passe une face si elle
- * tient dans 96 % de sa hauteur et 90 % de sa largeur, soit 1,15 sur 1,08 pour
- * une ouverture de 1,20. Un homme de 1,80, lui, ne passe pas.
  */
 const GRANDE = TAILLE * 4;
 
@@ -134,13 +126,15 @@ const GRANDE = TAILLE * 4;
 const CREUX = { x: 216, y: 0.6, z: 1716 };
 
 /**
- * LA CHATIÈRE ET SA GRANDE SŒUR, contre le mur ouest, soixante centimètres
- * devant la pierre — assez pour que le cadre respire, trop peu pour qu'on
- * passe derrière.
+ * LES DEUX FACES DU MIROIR, contre le mur ouest, deux mètres devant la
+ * pierre — comme au refus. Soixante centimètres, la cote d'avant, ne
+ * laissaient pas un géant franchir la grande face : son corps (1,36 de rayon)
+ * butait sur le mur avant que son œil n'atteigne le plan. Le dos d'une porte
+ * fait mur, on ne passe donc pas derrière pour autant. La petite au nord, la
+ * grande au sud.
  */
-const CHATIERE = 1.2;
-const PETITE = { x: X0 + 0.6, z: 1720 };
-const GRANDE_FACE = { x: X0 + 0.6, z: 1682 };
+const PETITE = { x: X0 + 2, z: 1720 };
+const GRANDE_FACE = { x: X0 + 2, z: 1682 };
 
 const decor = (): BoxDef[] => [
   b([X0 - 2, -3, Z0 - 2], [X1 + 2, 0, Z1 + 2], 1),
@@ -171,12 +165,13 @@ const decor = (): BoxDef[] => [
    * au-dessus de la tête à ×1, à mi-cuisse à ×4. Elle sépare le bout du miroir
    * du bout de la porte ordinaire.
    *
-   * Tant qu'on est petit, on ne voit qu'une moitié de cour. On lance la vrille
-   * dans la chatière, elle ressort trop lourde, et l'on cherche comment
-   * grandir sans savoir qu'il existe autre chose que ce miroir. C'est en
-   * longeant le mur qu'on trouve la brèche, et derrière elle la seconde porte —
-   * au moment exact où l'on en a besoin. Une fois grand, la tête au-dessus de
-   * la lame, on voit les deux bouts d'un coup, et la cour se lit entière.
+   * Tant qu'on est petit, on ne voit qu'une moitié de cour. On porte la vrille
+   * au miroir, on ressort géant avec une vrille trop grosse, et l'on cherche
+   * comment rapetisser sans savoir qu'il existe autre chose que ce miroir.
+   * C'est en longeant le mur qu'on trouve la brèche, et derrière elle la
+   * seconde porte — au moment exact où l'on en a besoin. Une fois grand, la
+   * tête au-dessus de la lame, on voit les deux bouts d'un coup, et la cour se
+   * lit entière.
    *
    * Une brèche à son extrémité nord laisse passer à pied depuis le début, pour
    * qui longe le mur : rien n'est fermé, et le joueur qui explore avant de
@@ -186,14 +181,14 @@ const decor = (): BoxDef[] => [
 
   // ─── LES MAINS SUR LE MUR OUEST ────────────────────────────────────────
   //
-  // De part et d'autre de la chatière, deux mains de trente-six centimètres ;
-  // de part et d'autre de la grande face, deux mains quatre fois plus grandes.
-  // Toutes de la MÊME main, l'encre tournée vers l'est d'où l'on vient. À un
-  // ou deux centimètres devant le mur, jamais dessus.
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.1, PETITE.z - 1.05, true, 0.3, 1),
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.1, PETITE.z + 1.05, true, 0.3, 1),
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.4, GRANDE_FACE.z - 4.2, true, 1.2, 1),
-  ...mainDEncre('blanchiment', X0 + 0.05, 0.4, GRANDE_FACE.z + 4.2, true, 1.2, 1),
+  // De part et d'autre de la petite face, deux mains de quarante-cinq
+  // centimètres ; de part et d'autre de la grande, deux mains quatre fois
+  // plus grandes. Toutes de la MÊME main, l'encre tournée vers l'est d'où
+  // l'on vient. À quelques centimètres devant le mur, jamais dessus.
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.125, PETITE.z - 1.6, true, 0.25, 1),
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.125, PETITE.z + 1.6, true, 0.25, 1),
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.5, GRANDE_FACE.z - 6.4, true, 1, 1),
+  ...mainDEncre('blanchiment', X0 + 0.05, 0.5, GRANDE_FACE.z + 6.4, true, 1, 1),
 ];
 
 /**
@@ -204,10 +199,10 @@ const decor = (): BoxDef[] => [
  * côté-là. Le joueur qui présente sa vrille intacte se voit refuser sans qu'un
  * seul écart de dimension soit visible, et il n'a plus qu'une hypothèse.
  *
- * `portee` reste généreux — on arrive ici à taille d'homme, qui repose à 3,6 m
- * devant lui, mais on peut aussi y venir à ×4 en s'étant trompé, et un socle
- * qu'on ne peut pas garnir depuis l'endroit où l'on est ne dit rien de sa
- * raison de refuser.
+ * `portee` reste généreux — on arrive ici à taille d'homme, qui repose à un
+ * mètre devant lui, mais on peut aussi y venir à ×4 en s'étant trompé, et un
+ * socle qu'on ne peut pas garnir depuis l'endroit où l'on est ne dit rien de
+ * sa raison de refuser.
  */
 const SOCKETS: SocketDef[] = [
   {
@@ -234,13 +229,12 @@ const CARRYABLES: CarryableDef[] = [
 ];
 
 /**
- * LES DEUX PORTES, ET ELLES NE SE RESSEMBLENT PLUS.
+ * LES DEUX PORTES, ET ELLES SE RESSEMBLENT — c'est le sujet.
  *
- * Elles se ressemblaient, et c'était le sujet : rien ne devait dire laquelle
- * retourne la gauche et la droite. Depuis que seul le lancer retourne, la
- * différence doit être dans le monde, et elle l'est : l'une est une chatière
- * qu'on ne franchit pas, l'autre une porte. Ce qu'elles FONT reste à
- * découvrir en le faisant — c'est la seule pédagogie que ce jeu accepte.
+ * Rien ne dit laquelle retourne la gauche et la droite : même taille, mêmes
+ * couleurs, chacune contre son mur. Ce qu'elles FONT reste à découvrir en le
+ * faisant — c'est la seule pédagogie que ce jeu accepte. Les mains d'encre
+ * du mur ouest sont le seul indice, et il suffit à qui a joué la cour d'avant.
  *
  * LES QUATRE FACES SONT LOIN LES UNES DES AUTRES — trente-huit mètres en z,
  * cinquante-huit en x. Deux faces plantées au même point se disputent le même
@@ -249,28 +243,26 @@ const CARRYABLES: CarryableDef[] = [
  */
 const PORTALS: PortalPairDef[] = [
   {
-    // LE MIROIR, réduit à une chatière contre le mur ouest. On y lance la
-    // vrille en visant vers l'ouest ; elle ressort par la grande face trente-
-    // huit mètres plus au sud, vers l'est, quatre fois plus grosse et de
-    // l'autre main. Un homme n'y entre pas (1,80 contre 1,20), un géant n'entre
-    // pas dans la grande (7,20 contre 4,80). Un homme entre dans la grande, et
-    // en ressort quart de lui-même par la chatière : ça ne casse rien, et ça se
-    // défait en la repassant.
+    // LE MIROIR, contre le mur ouest. On y entre par la petite face, au nord,
+    // en marchant vers l'ouest ; on ressort par la grande, trente-huit mètres
+    // plus au sud, vers l'est, quatre fois plus grand et de l'autre main. Un
+    // géant y entre par la grande et en ressort homme par la petite : ça ne
+    // casse rien, et ça se défait en la repassant.
     id: 'miroir-blanchiment',
     miroir: true,
     colorBig: 0xc8492e,
     colorSmall: 0x2f4b7c,
-    smallHeight: CHATIERE,
-    smallWidth: CHATIERE,
+    smallHeight: 2.8,
+    smallWidth: 1.9,
     small: { position: [PETITE.x, 0.05, PETITE.z], yaw: Math.PI / 2 },
     big: { position: [GRANDE_FACE.x, 0.05, GRANDE_FACE.z], yaw: Math.PI / 2 },
   },
   {
     // LA PORTE ORDINAIRE, contre le mur est. On la franchit par sa PETITE face
-    // pour aller chercher, géant, la vrille trop lourde ; et par sa GRANDE face
-    // pour la rendre à sa taille de départ sans toucher à sa main. On en
-    // ressort à dix mètres du creux, ce qui n'est pas une commodité mais la
-    // règle : le logement doit être du côté où l'on arrive.
+    // pour grandir, et par sa GRANDE face pour rendre à la vrille sa taille de
+    // départ sans toucher à sa main. On en ressort à dix mètres du creux, ce
+    // qui n'est pas une commodité mais la règle : le logement doit être du
+    // côté où l'on arrive.
     id: 'ordinaire-blanchiment',
     colorBig: 0xc8492e,
     colorSmall: 0x2f4b7c,
@@ -313,4 +305,3 @@ export const BLANCHIMENT: SalleModule = {
 /** La taille attendue par le creux, pour les vérifications. */
 export const BLANCHIMENT_TAILLE = TAILLE;
 export const BLANCHIMENT_GRANDE = GRANDE;
-export const BLANCHIMENT_CHATIERE = CHATIERE;

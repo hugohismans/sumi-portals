@@ -38,13 +38,13 @@
  * modifiée. Un joueur peut faire chaque geste écrit ici.
  * ═══════════════════════════════════════════════════════════════════════════
  */
-import { EYE_FRACTION, PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './constants.js';
+import { TICK_DT, scaleOfLevel } from './constants.js';
 import { Simulation } from './simulation.js';
 import { MONTEE } from '../levels/montee.js';
-import { BLANCHIMENT_CHATIERE, BLANCHIMENT_TAILLE, BLANCHIMENT_GRANDE } from '../levels/salles/blanchiment.js';
-import { REFUS_GRANDE, REFUS_PETITE } from '../levels/salles/refus.js';
+import { BLANCHIMENT_TAILLE, BLANCHIMENT_GRANDE } from '../levels/salles/blanchiment.js';
+import { REFUS_PETITE } from '../levels/salles/refus.js';
 import {
-  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, piece, pos, poserVers, settle, walkTo,
+  agirVers, attendre, bondirVers, lancer, near, ordre, piece, pos, poserVers, settle, walkTo,
   type Check,
 } from './__pilote.js';
 import type { BoxDef } from './types.js';
@@ -171,7 +171,7 @@ export const piloterMontee = (check: Check): void => {
   // ═══════════════════════════════════════════════════════════════════════
   // LE CREUX QUI REFUSE — les gestes du pilote de la salle, tels quels.
   // On arrive au nord-ouest de la cour, face au sud ; la vrille est à vingt-
-  // cinq mètres, au milieu.
+  // cinq mètres, au milieu. Le miroir est PLAN : la main, et rien d'autre.
   // ═══════════════════════════════════════════════════════════════════════
   {
     walkTo(sim, [-14, 0, 1696], 60 * 10);
@@ -180,14 +180,8 @@ export const piloterMontee = (check: Check): void => {
     const v = piece(sim, 'vrille-refus');
     check('refus : on prend la vrille, gauche, 0,40', v.held && v.main === 'L' && near(v.size, REFUS_PETITE, 1e-6), pos(sim));
 
-    // LA FAUTE : portée par le miroir, elle grossit sans changer de main.
-    const t1 = walkTo(sim, [29.5, 0, 1700], 60 * 20, { stopOnEvent: true });
-    check(
-      'refus : portée par le miroir, elle grossit mais ne change PAS de main',
-      t1.traversed?.newLevel === 1 && v.held && near(v.size, REFUS_GRANDE, 1e-6) && v.main === 'L',
-      `${t1.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}`,
-    );
-    walkTo(sim, [0, 0, 1686], 60 * 20);
+    // LA FAUTE : on la présente telle quelle. Bonne taille, bon dessin — la main.
+    walkTo(sim, [0, 0, 1681], 60 * 20);
     agirVers(sim, [0, 0.9, 1676]);
     const e1 = attendre(sim, 60 * 2);
     check(
@@ -196,44 +190,29 @@ export const piloterMontee = (check: Check): void => {
       `${e1.logementRefuse?.raison ?? 'aucun refus'}`,
     );
 
-    // LE GESTE JUSTE : on la rapporte homme, on la LANCE dans la petite face.
+    // LE GESTE JUSTE : on la porte par le miroir plan. Même taille, autre
+    // bout de la cour, le monde retourné, la vrille de l'autre main.
     agirVers(sim, [v.position.x, v.position.y, v.position.z]);
-    check('refus : on reprend la vrille, géant', v.held, pos(sim));
-    const t2 = walkTo(sim, [-31, 0, 1690], 60 * 20, { stopOnEvent: true });
+    check('refus : on la reprend', v.held, pos(sim));
+    walkTo(sim, [26, 0, 1700], 60 * 20);
+    const t1 = walkTo(sim, [30, 0, 1700], 60 * 6, { stopOnEvent: true });
     check(
-      'refus : rapportée par la grande face, elle rapetisse et garde sa main',
-      t2.traversed?.newLevel === 0 && near(v.size, REFUS_PETITE, 1e-6) && v.main === 'L',
-      `${t2.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}`,
+      'refus : portée par le miroir plan, même taille, autre main — et l’on est gauchère',
+      t1.traversed?.pairId === 'miroir-refus' && t1.traversed.newLevel === 0 && v.held && near(v.size, REFUS_PETITE, 1e-6) && v.main === 'D' && sim.player.gauchere,
+      `${t1.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}, ${pos(sim)}`,
     );
-    walkTo(sim, [23, 0, 1700], 60 * 12);
-    lancer(sim, Math.PI / 2, 0.12);
-    attendre(sim, 60 * 6);
-    check(
-      'refus : LANCÉE dans le miroir, elle ressort droite, 1,60, dans la cour',
-      !v.held && v.main === 'D' && near(v.size, REFUS_GRANDE, 1e-6) && v.grounded && dansLaCour(v, -30, 30, 1670, 1730),
-      `main ${v.main ?? '?'}, taille ${v.size}, à ${ou(v)}`,
-    );
-    check('refus : trop lourde pour un homme — il faut la suivre', !sim.carryables.canLift(v, scaleOfLevel(0)), '');
-
-    // ON LA SUIT, géant, jusqu'à elle, puis au creux.
-    const t3 = walkTo(sim, [29.5, 0, 1700], 60 * 12, { stopOnEvent: true });
-    check('refus : on passe la porte derrière elle', t3.traversed?.newLevel === 1, pos(sim));
-    walkTo(sim, [v.position.x, 0, v.position.z - 3.6], 60 * 30);
-    agirVers(sim, [v.position.x, v.position.y, v.position.z]);
-    check('refus : géant, on la ramasse', v.held, `${pos(sim)} pièce à ${ou(v)}`);
-    walkTo(sim, [0, 0, 1686], 60 * 30);
+    walkTo(sim, [0, 0, 1681], 60 * 30);
     agirVers(sim, [0, 0.9, 1676]);
     attendre(sim, 60 * 2);
     check('refus : le creux l’accepte', sim.sockets.pourvus.has('creux-refus'), [...sim.sockets.pourvus].join(',') || 'aucun');
     desceller(sim, check, 'montee-refus-blanchiment', 'creux-refus', 'refus');
 
-    // LA SORTIE : sa grande face est au nord de la cour et regarde le sud, vers
-    // le joueur qui vient. On se poste un pas et demi devant elle et l'on
-    // marche vers le nord — droit, comme la salle le déclare.
+    // LA SORTIE : une porte PLANE au nord de la cour, qui regarde le sud, vers
+    // le joueur qui vient. Un pas et demi devant, puis droit vers le nord.
     walkTo(sim, [14, 0, 1715], 60 * 12);
     const t4 = walkTo(sim, [14, 0, 1732], 60 * 6, { stopOnEvent: true });
     check(
-      'refus → blanchiment : par la grande face, vers le nord, on arrive homme dans la cour lavée',
+      'refus → blanchiment : par la porte plane, vers le nord, on arrive homme dans la cour lavée',
       t4.traversed?.pairId === 'montee-refus-blanchiment' && t4.traversed.newLevel === 0,
       `${t4.traversed ? t4.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
     );
@@ -243,43 +222,32 @@ export const piloterMontee = (check: Check): void => {
   // LE BLANCHIMENT — les gestes du pilote de la salle, tels quels.
   //
   // On arrive au sud-ouest, face au NORD, la cour devant soi et la vrille à
-  // quatorze mètres : on continue tout droit.
+  // quatorze mètres : on continue tout droit. On vient d'apprendre qu'un
+  // miroir retourne : on y porte la vrille — et elle ressort quatre fois trop
+  // grosse. La porte ordinaire, derrière le refend, la ramène à sa taille.
   // ═══════════════════════════════════════════════════════════════════════
   {
     walkTo(sim, [180, 0, 1688.4], 60 * 8);
     agirVers(sim, [180, 0, 1690]);
     const w = piece(sim, 'vrille-blanchiment');
     check('blanchiment : on prend la vrille, gauche, 0,50', w.held && w.main === 'L' && near(w.size, BLANCHIMENT_TAILLE, 1e-6), pos(sim));
-    walkTo(sim, [174.6, 0, 1720], 60 * 20);
-    const oeil = PLAYER_HEIGHT * EYE_FRACTION;
-    lancer(sim, -Math.PI / 2, Math.atan2(BLANCHIMENT_CHATIERE - oeil, 174.6 - 170.6));
-    attendre(sim, 60 * 6);
+    walkTo(sim, [174, 0, 1720], 60 * 20);
+    const t1 = walkTo(sim, [169, 0, 1720], 60 * 6, { stopOnEvent: true });
     check(
-      'blanchiment : lancée dans la chatière, elle ressort droite et 2,00',
-      !w.held && w.main === 'D' && near(w.size, BLANCHIMENT_GRANDE, 1e-6) && w.grounded && dansLaCour(w, 170, 230, 1670, 1730),
-      `main ${w.main ?? '?'}, taille ${w.size}, à ${ou(w)}`,
+      'blanchiment : portée par le miroir, elle ressort droite ET 2,00 — géant',
+      t1.traversed?.pairId === 'miroir-blanchiment' && t1.traversed.newLevel === 1 && w.held && w.main === 'D' && near(w.size, BLANCHIMENT_GRANDE, 1e-6),
+      `${t1.traversed ? 'traversé' : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(sim)}`,
     );
-    check('blanchiment : trop lourde pour un homme', !sim.carryables.canLift(w, scaleOfLevel(0)), '');
-
-    const t4 = walkTo(sim, [227, 0, 1720], 60 * 30, { stopOnEvent: true });
-    check('blanchiment : on grandit par la porte ordinaire', t4.traversed?.newLevel === 1, pos(sim));
-    // Le mur de refend coupe la cour : par la brèche du nord, aller et retour.
-    if (w.position.x < 201) {
-      walkTo(sim, [206, 0, 1724], 60 * 30);
-      walkTo(sim, [195, 0, 1724], 60 * 20);
-    }
-    walkTo(sim, [w.position.x, 0, w.position.z - 3.6], 60 * 40);
-    agirVers(sim, [w.position.x, w.position.y, w.position.z]);
-    check('blanchiment : géant, on la ramasse', w.held, `${pos(sim)} pièce à ${ou(w)}`);
-    if (sim.player.position.x < 201) {
-      walkTo(sim, [195, 0, 1724], 60 * 30);
-      walkTo(sim, [206, 0, 1724], 60 * 20);
-    }
+    // Trop grosse pour le creux. La porte ordinaire, en face, derrière le
+    // refend : par la brèche du nord, géant, jusqu'à sa grande face — de face.
+    walkTo(sim, [190, 0, 1682], 60 * 20);
+    walkTo(sim, [190, 0, 1724], 60 * 20);
+    walkTo(sim, [206, 0, 1724], 60 * 20);
     walkTo(sim, [221, 0, 1682], 60 * 30);
     const t5 = walkTo(sim, [229.5, 0, 1682], 60 * 40, { stopOnEvent: true });
     check(
       'blanchiment : rapportée par la grande face ordinaire, 0,50 et toujours droite',
-      t5.traversed?.newLevel === 0 && w.held && near(w.size, BLANCHIMENT_TAILLE, 1e-6) && w.main === 'D',
+      t5.traversed?.pairId === 'ordinaire-blanchiment' && t5.traversed.newLevel === 0 && w.held && near(w.size, BLANCHIMENT_TAILLE, 1e-6) && w.main === 'D',
       `${t5.traversed ? 'traversé' : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(sim)}`,
     );
     walkTo(sim, [216, 0, 1711.5], 60 * 20);
@@ -298,7 +266,6 @@ export const piloterMontee = (check: Check): void => {
       `${t6.traversed ? t6.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
     );
   }
-
   // ═══════════════════════════════════════════════════════════════════════
   // L'ESCALIER POUR PLUS TARD — on ne le descend pas, on le REMONTE.
   //
@@ -362,7 +329,10 @@ export const piloterMontee = (check: Check): void => {
     // ON RAPETISSE par la grande face de la porte interne : elle regarde le
     // nord, on vient du nord, et l'on ressort plaqué contre la paroi ouest de
     // la fosse, poussé vers l'est.
-    walkTo(sim, [-180, 0, 2075], 60 * 12);
+    // On vient du sud, de la trouée : on la CONTOURNE par l'ouest pour se
+    // présenter devant elle — son dos fait mur, comme celui de toute porte.
+    walkTo(sim, [-192, 0, 2075], 60 * 14);
+    walkTo(sim, [-180, 0, 2075], 60 * 6);
     const d = walkTo(sim, [-180, 0, 2050], 60 * 6, { stopOnEvent: true });
     settle(sim, 40);
     check(
@@ -524,10 +494,12 @@ export const piloterMontee = (check: Check): void => {
 
     // LA SORTIE, entre les deux bornes, regarde le nord : on se poste dans
     // l'alcôve, un pas et demi au nord, et l'on marche vers le sud.
-    walkTo(sim, [-51.4, 0, 2826], 60 * 10);
-    const s = walkTo(sim, [-51.4, 0, 2780], 60 * 8, { stopOnEvent: true });
+    // La porte regarde l'est, vers qui descend la vallée : on la franchit en
+    // continuant vers l'ouest, sans un détour.
+    walkTo(sim, [-44, 0, 2800], 60 * 6);
+    const s = walkTo(sim, [-62, 0, 2800], 60 * 8, { stopOnEvent: true });
     check(
-      'vallée → lucarne dorée : par la grande face, vers le sud, on arrive ×4 au seuil de la chambre',
+      'vallée → lucarne dorée : par la grande face, vers l’ouest, on arrive ×4 au seuil de la chambre',
       s.traversed?.pairId === 'montee-vallee-lucarneDoree' && s.traversed.newLevel === 1,
       `${s.traversed ? s.traversed.pairId : 'pas traversé'} ${pos(sim)}`,
     );

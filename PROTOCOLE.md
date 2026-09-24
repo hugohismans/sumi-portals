@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août, et celle du 22 septembre
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 767 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 757 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -249,43 +249,53 @@ monte dessus sans y penser.
 **Défaut à guetter, et c'est le seul qui compte ici :** ne pas reconnaître le
 village. Si ça arrive, la salle ne vaut rien et il faut la reprendre.
 
-**`2` — Le creux qui refuse.** *(Réécrit le 22 septembre : porter une pièce à
-travers un miroir ne la retourne plus, seul le LANCER le fait.)* Une vrille au
-sol, un creux à sa forme. Porte-la par la porte du fond, ressors quatre fois
-plus grand, pose-la → *bonne taille, et le creux dit qu'elle N'ENTRE PAS, que
-la tourner n'y changera rien.* Regarde les **mains** de part et d'autre des
-deux faces : en regardant par le miroir, celle d'en face est retournée. Reviens
-homme, **lance** la vrille dans la petite face (clic) → *elle ressort par la
-grande, à l'autre bout de la cour, retournée et trop lourde.* Suis-la par la
-porte, ramasse-la géant, **pose-la** près du creux, elle entre. La porte de
-sortie est dans le mur nord : on la passe en marchant vers le nord.
-**Défaut à guetter :** ne pas comprendre qu'il faut lancer ; une phrase de refus
-qui ne vient pas ; une vrille qui passe par-dessus le mur (le ciel est en
-verre à dix-huit mètres, au-dessus de tout ce qu'un géant peut tenir : elle
-DOIT retomber dans la cour). Et une chose voulue, à ne pas prendre pour un
-défaut : **une vrille lancée qui s'arrête à côté du creux n'y entre pas** —
-un creux ne prend qu'une pièce qu'on a POSÉE. Il faut la ramasser et la
-poser ; lancer n'est pas une question.
+**`2` — Le creux qui refuse.** *(Réécrit le 24 septembre : le miroir est PLAN,
+et ce qu'on porte à travers un miroir est réfléchi comme ce qu'on lance.)* Une
+vrille au sol, un creux à sa forme **et à sa taille**. Pose-la → *le creux dit
+qu'elle N'ENTRE PAS, que la tourner n'y changera rien.* Deux portes noires,
+une contre chaque mur, des **mains** de part et d'autre de chacune : en
+regardant par l'une, celles d'en face sont retournées. Porte la vrille par la
+porte est → *tu ressors à l'ouest, à la même taille, et LA COUR EST RETOURNÉE :
+la pile de pierres a changé de côté, les mains aussi ; la vrille dans tes bras,
+elle, n'a pas bougé.* Pose-la : elle entre. La porte de sortie est dans le mur
+nord, noire elle aussi (elle ne change rien) : on la passe vers le nord.
+**Défaut à guetter :** ne pas voir que le monde a basculé (regarde la pile,
+puis tes propres déplacements : à gauche va à gauche à l'écran, c'est voulu) ;
+une phrase de refus qui ne vient pas ; **la vrille en main qui changerait de
+forme au passage** — c'était le défaut, elle doit garder sa forme ; une porte
+ordinaire qui montrerait un monde inversé une fois qu'on est passé par le
+miroir (c'était l'autre défaut, corrigé). Et une chose voulue : **une vrille
+lancée qui s'arrête à côté du creux n'y entre pas** — un creux ne prend qu'une
+pièce POSÉE. Deux passages s'annulent : rien n'est jamais perdu.
 
 **`3` — Le blanchiment.** Le creux veut la taille d'origine **et** l'autre main.
-Le miroir n'est plus qu'une **chatière** au pied du mur ouest, 1,20 m : on n'y
-entre pas, on y lance. → *La vrille en ressort droite et 2,00, trop lourde pour
-un homme.* Trouve la porte ordinaire derrière le mur de refend (la brèche est au
-nord), grandis, va la chercher, rapporte-la par la grande face ordinaire → *0,50,
-toujours droite, et le creux est à dix mètres.*
-Le théorème : la main ne change qu'à la chatière, et jamais sans la taille ; la
+Deux portes qui se ressemblent : le **miroir** contre le mur ouest (il change
+la main ET la taille), la porte **ordinaire** contre le mur est (la taille
+seule), un mur de refend entre les deux, une brèche au nord. Porte la vrille
+par le miroir → *droite et 2,00, géant, « elle déborde ».* Rapporte-la par la
+grande face ordinaire → *0,50, toujours droite, et le creux est à dix mètres.*
+L'autre ordre marche aussi (ordinaire ↑, miroir ↓).
+Le théorème : la main ne change qu'au miroir, et jamais sans la taille ; la
 taille se corrige à la porte ordinaire, sans toucher à la main.
 On arrive par le mur sud, face à la cour ; on repart par le mur nord, vers le
 nord.
-**Défaut à guetter :** ne jamais trouver la brèche ; forcer la chatière (un
-homme qui s'y présente l'entend refuser : « trop grand ») ; ne pas voir que
-les deux portes ne font pas la même chose. Et l'erreur PARFAITE, à faire
-exprès : lancer, grandir, courir au creux avec la vrille trop grosse, la
-rapporter — et comprendre après coup ce qu'on a fait.
-*Deux choses mesurées, voulues :* lancée de trop près (moins de deux mètres
-de la chatière), la vrille est déjà derrière le plan quand on la lâche — elle
-frappe le mur et retombe dans la fente, d'où on la ramasse ; et une vrille
-lancée qui finit près du creux n'y entre pas tant qu'on ne l'a pas posée.
+**Défaut à guetter :** ne jamais trouver la brèche ; ne pas voir que les deux
+portes ne font pas la même chose ; rester géant sans savoir comment
+redescendre (la grande face ordinaire, ou la grande face du miroir). Et
+l'erreur PARFAITE, à faire exprès : miroir, courir au creux avec la vrille trop
+grosse, la rapporter par la porte ordinaire — et comprendre après coup.
+
+**Partout dans la montée — le dos des portes.** Une porte vue de derrière est
+une **feuille tendue** dans son cadre : on ne voit rien à travers, on ne passe
+pas. → *Tu la contournes, et de face elle montre l'autre côté.* On ne
+traverse plus jamais un cadre par derrière.
+**Défaut à guetter :** une porte dont tu ne trouves pas le devant ; une feuille
+qui apparaîtrait de FACE (elle ne doit exister que derrière).
+
+**Le compteur, en haut à gauche.** Il dit « N images/s » et, si le jeu a dû
+baisser la finesse des portes pour tenir la cadence de ton écran, « · portes
+60 % ». → *Sur un bon PC il ne devrait jamais apparaître, ou repartir vite à
+100.* Si tu le vois rester bas, dis-le : c'est la mesure qui manquait.
 
 **`4` — L'escalier pour plus tard.** À ×4, en haut d'une falaise de 3,60. Quatre
 cubes de 0,80 traînent là : dispose-les **en escalier pour quelqu'un d'1,80**,

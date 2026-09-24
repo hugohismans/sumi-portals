@@ -26,8 +26,8 @@ import { LACET_PAR_DEFAUT } from '../levels/salles/contrat.js';
 import { piloterDescente } from './__pilote_descente.js';
 import { Tracage } from '../render/tracage.js';
 import { piloterMontee } from './__pilote_montee.js';
-import { REFUS_GRANDE, REFUS_PETITE } from '../levels/salles/refus.js';
-import { BLANCHIMENT_CHATIERE, BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
+import { REFUS_PETITE } from '../levels/salles/refus.js';
+import { BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
 
 /**
  * Les salles déjà bâties, les deux mouvements confondus. On en ajoute une ligne
@@ -56,7 +56,7 @@ import {
 } from '../levels/duo.js';
 import { Simulation } from './simulation.js';
 import {
-  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, piece, pos, poserA, poserVers, settle, versLePoint, walkTo,
+  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, piece, pos, poserA, poserVers, settle, walkTo,
 } from './__pilote.js';
 import type { BoxDef, LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
@@ -496,8 +496,10 @@ console.log('\n— Le monde : la spirale monte, et chaque étage voit le précé
   // ailleurs. Une porte scellée qui s'ouvrait toute seule était le défaut ;
   // qu'elle casse ce test est la preuve qu'il est corrigé.
   sim.portesFermees.delete('ascension-2');
-  walkTo(sim, [0, 30, 60], 60 * 16);
-  const t2 = walkTo(sim, [0, 30, 88], 60 * 14, { stopOnEvent: true });
+  // Elle regarde le nord, vers qui vient du torii : on y entre en marchant
+  // vers le sud, sans se retourner.
+  walkTo(sim, [0, 30, 78], 60 * 16);
+  const t2 = walkTo(sim, [0, 30, 60], 60 * 14, { stopOnEvent: true });
   check('la seconde porte fait grandir encore', t2.traversed?.newLevel === 2, pos(sim));
   check('on ressort sur le belvédère', near(sim.player.position.y, 120, 3), pos(sim));
   check(
@@ -1397,15 +1399,15 @@ console.log('\n— Les pinceaux endormis : une couleur vit à une TAILLE —');
   const vierge = new Simulation(MONDE);
   vierge.portesFermees.add('ascension-2');
   vierge.player.scaleLevel = 1;
-  vierge.player.position = { x: 0, y: 30.3, z: 62 };
-  const barre = walkTo(vierge, [0, 30, 80], 60 * 20, { stopOnEvent: true });
+  vierge.player.position = { x: 0, y: 30.3, z: 78 };
+  const barre = walkTo(vierge, [0, 30, 60], 60 * 20, { stopOnEvent: true });
   check(
     'une porte non dessinée ne se traverse pas',
     barre.refused?.reason === 'scelle' && vierge.player.scaleLevel === 1,
     `${barre.refused?.reason ?? 'aucun refus'}`,
   );
   vierge.portesFermees.delete('ascension-2');
-  const ouverte = walkTo(vierge, [0, 30, 80], 60 * 20, { stopOnEvent: true });
+  const ouverte = walkTo(vierge, [0, 30, 60], 60 * 20, { stopOnEvent: true });
   check(
     'une fois dessinée, elle laisse passer',
     ouverte.traversed?.pairId === 'ascension-2',
@@ -2107,9 +2109,13 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       const a = salles[r.depuis];
       const b = salles[r.vers];
       const ecart = ecartDeRaccord(a, b);
+      // ZÉRO CRAN EST DEVENU FRANCHISSABLE — par une porte PLANE, qui ne
+      // change rien. Le raccord la déclare en écrivant `cran: 0`, et
+      // l'assembleur doit alors bâtir une paire plane ; on le vérifie plus
+      // bas, sur la porte construite.
       check(
         `de ${a.nom} à ${b.nom}, une seule porte suffit`,
-        Math.abs(ecart) === 1 && ecart === r.cran,
+        Math.abs(ecart) <= 1 && ecart === r.cran,
         `écart de ${ecart} cran(s), raccord déclaré à ${r.cran}`,
       );
     }
@@ -2520,15 +2526,15 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   console.log('\n— La montée : la main est une serrure qu’aucune taille n’ouvre —');
 
   // ═══════════════════════════════════════════════════════════════════════
-  // LA RÈGLE DU MIROIR A CHANGÉ, ET CES DEUX SALLES ONT DÛ CHANGER AVEC ELLE.
+  // LA RÈGLE DU MIROIR A CHANGÉ DEUX FOIS, ET CES DEUX SALLES AVEC ELLE.
   //
-  // Depuis que le monde bascule avec le joueur, PORTER une pièce à travers un
-  // miroir ne la retourne plus ; seul LE LANCER le fait. Les deux salles
-  // chirales reposaient sur le portage. Le commit qui a posé la règle l'a
-  // admis en toutes lettres — « ils sont à réécrire autour du lancer » — et
-  // rien ici ne le disait : l'ancienne vérification se contentait de compter
-  // un miroir et une porte ordinaire, ce qui restait vrai d'une salle devenue
-  // impossible.
+  // D'abord « porter ne retourne pas, seul le lancer retourne » — faux, et
+  // le joueur l'a vu : la pièce tenue changeait de forme à l'écran en
+  // franchissant le miroir. Ce qui traverse un miroir est réfléchi, porté ou
+  // lancé (voir `Simulation.teleport`). Le refus s'est du même coup allégé :
+  // son miroir est PLAN, il ne fait que retourner, et la taille attend la
+  // salle suivante — « il ne devrait pas être couplé avec un changement de
+  // taille dans un premier temps ».
   //
   // On ne compte plus, on JOUE. Le pilote fait la faute que fera le joueur,
   // entend le creux la nommer, puis fait le geste juste et voit la porte de
@@ -2537,6 +2543,11 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
   // ─── LE CREUX QUI REFUSE ────────────────────────────────────────────────
   {
+    const miroir = MONTEE.portals.find((p) => p.id === 'miroir-refus')!;
+    check('refus : le miroir est plan — la main, et rien d’autre', miroir.miroir === true && miroir.plane === true, '');
+    const sortie = MONTEE.portals.find((p) => p.id === 'montee-refus-blanchiment')!;
+    check('refus → blanchiment : le raccord à zéro cran est une porte plane', sortie.plane === true, '');
+
     const R = new Simulation(MONTEE);
     poserA(R, -14, 0.05, 1696, 0);
     walkTo(R, [-14, 0, 1698.4], 60 * 3);
@@ -2544,17 +2555,9 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     const v = piece(R, 'vrille-refus');
     check('refus : on prend la vrille, gauche, 0,40', v.held && v.main === 'L' && near(v.size, REFUS_PETITE, 1e-6), pos(R));
 
-    // LA FAUTE. On la porte par la petite face : on ressort géant, elle est
-    // quatre fois plus grosse — et toujours de la même main.
-    const t1 = walkTo(R, [29.5, 0, 1700], 60 * 20, { stopOnEvent: true });
-    check(
-      'refus : portée par le miroir, elle grossit mais ne change PAS de main',
-      t1.traversed?.newLevel === 1 && v.held && near(v.size, REFUS_GRANDE, 1e-6) && v.main === 'L',
-      `${t1.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}`,
-    );
-    // Un géant pose à quatre mètres et demi devant lui : on se poste à dix
-    // mètres du creux, et la vrille tombe à cinq.
-    walkTo(R, [0, 0, 1686], 60 * 20);
+    // LA FAUTE, et elle est immédiate : bonne taille, bon dessin, et le creux
+    // refuse — pour la main, la seule chose qui reste.
+    walkTo(R, [0, 0, 1681], 60 * 20);
     agirVers(R, [0, 0.9, 1676]);
     const e1 = attendre(R, 60 * 2);
     check(
@@ -2563,34 +2566,20 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       `${e1.logementRefuse?.raison ?? 'aucun refus'}`,
     );
 
-    // LE GESTE JUSTE. On la reprend, on revient homme par la grande face, et
-    // on la LANCE dans la petite : elle ressort par la grande, droite, 1,60.
+    // LE GESTE JUSTE : on la reprend, on la PORTE par le miroir. Il est
+    // plan : même taille, l'autre bout de la cour, le monde retourné — et la
+    // vrille, dans le monde, de l'autre main.
     agirVers(R, [v.position.x, v.position.y, v.position.z]);
-    check('refus : on reprend la vrille, géant', v.held, pos(R));
-    // Un géant s'arrête à deux mètres de sa cible : on vise AU-DELÀ du plan.
-    const t2 = walkTo(R, [-31, 0, 1690], 60 * 20, { stopOnEvent: true });
+    check('refus : on la reprend', v.held, pos(R));
+    walkTo(R, [26, 0, 1700], 60 * 20);
+    const t1 = walkTo(R, [30, 0, 1700], 60 * 6, { stopOnEvent: true });
     check(
-      'refus : rapportée par la grande face, elle rapetisse et garde sa main',
-      t2.traversed?.newLevel === 0 && near(v.size, REFUS_PETITE, 1e-6) && v.main === 'L',
-      `${t2.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}`,
+      'refus : portée par le miroir plan, elle garde sa taille et CHANGE de main — et l’on devient gauchère',
+      t1.traversed?.pairId === 'miroir-refus' && t1.traversed.newLevel === 0 && v.held && near(v.size, REFUS_PETITE, 1e-6) && v.main === 'D' && R.player.gauchere,
+      `${t1.traversed ? `traversé ${t1.traversed.pairId}` : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}, ${R.player.gauchere ? 'gauchère' : 'droitière'}, ${pos(R)}`,
     );
-    walkTo(R, [23, 0, 1700], 60 * 12);
-    lancer(R, Math.PI / 2, 0.12);
-    attendre(R, 60 * 6);
-    check(
-      'refus : LANCÉE dans le miroir, elle ressort droite, 1,60, dans la cour',
-      !v.held && v.main === 'D' && near(v.size, REFUS_GRANDE, 1e-6) && v.grounded && dansLaCour(v, -30, 30, 1670, 1730),
-      `main ${v.main ?? '?'}, taille ${v.size}, à (${v.position.x.toFixed(1)}, ${v.position.y.toFixed(2)}, ${v.position.z.toFixed(1)})`,
-    );
-    check('refus : trop lourde pour un homme — il faut la suivre', !R.carryables.canLift(v, scaleOfLevel(0)), '');
-
-    // ON LA SUIT. Par la petite face, géant, jusqu'à elle, puis au creux.
-    const t3 = walkTo(R, [29.5, 0, 1700], 60 * 12, { stopOnEvent: true });
-    check('refus : on passe la porte derrière elle', t3.traversed?.newLevel === 1, pos(R));
-    walkTo(R, [v.position.x, 0, v.position.z - 3.6], 60 * 30);
-    agirVers(R, [v.position.x, v.position.y, v.position.z]);
-    check('refus : géant, on la ramasse', v.held, `${pos(R)} pièce à (${v.position.x.toFixed(1)}, ${v.position.z.toFixed(1)})`);
-    walkTo(R, [0, 0, 1686], 60 * 30);
+    check('refus : on ressort devant la face ouest, à taille d’homme', R.player.position.x < -20 && R.player.scaleLevel === 0, pos(R));
+    walkTo(R, [0, 0, 1681], 60 * 30);
     agirVers(R, [0, 0.9, 1676]);
     attendre(R, 60 * 2);
     check(
@@ -2600,68 +2589,72 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     );
   }
 
+  // ─── DEUX PASSAGES S'ANNULENT, ET LE LANCER RETOURNE AUSSI ─────────────
+  {
+    // Rien n'est jamais perdu : repassée par la face ouest, la vrille
+    // redevient gauche, et l'on redevient droitier.
+    const D = new Simulation(MONTEE);
+    const u = piece(D, 'vrille-refus');
+    u.held = true;
+    poserA(D, 24, 0.05, 1700, 0);
+    walkTo(D, [30, 0, 1700], 60 * 6, { stopOnEvent: true });
+    check('refus : un passage — droite, gauchère', u.main === 'D' && D.player.gauchere, `main ${u.main ?? '?'} ${pos(D)}`);
+    const t2 = walkTo(D, [-31, 0, 1690], 60 * 8, { stopOnEvent: true });
+    check(
+      'refus : deux passages — gauche, droitier, et de retour à l’est',
+      t2.traversed?.pairId === 'miroir-refus' && u.main === 'L' && !D.player.gauchere && D.player.position.x > 20,
+      `main ${u.main ?? '?'}, ${D.player.gauchere ? 'gauchère' : 'droitier'}, ${pos(D)}`,
+    );
+
+    // LANCÉE dans la face est, elle ressort par la face ouest, droite, à sa
+    // taille — c'est la géométrie, elle ne regarde pas qui la porte.
+    const L = new Simulation(MONTEE);
+    const w = piece(L, 'vrille-refus');
+    w.held = true;
+    poserA(L, 23, 0.05, 1700, 0);
+    L.player.yaw = Math.PI / 2;
+    attendre(L, 2);
+    lancer(L, Math.PI / 2, 0.12);
+    attendre(L, 60 * 6);
+    check(
+      'refus : LANCÉE dans le miroir, elle ressort droite, 0,40, dans la cour',
+      !w.held && w.main === 'D' && near(w.size, REFUS_PETITE, 1e-6) && w.grounded && dansLaCour(w, -30, 30, 1670, 1730),
+      `main ${w.main ?? '?'}, taille ${w.size}, à (${w.position.x.toFixed(1)}, ${w.position.y.toFixed(2)}, ${w.position.z.toFixed(1)})`,
+    );
+  }
+
   // ─── CE QUE LE LANCER NE FAIT PAS, ET CE QUE LE VERRE RETIENT ──────────
   {
-    // La relecture a balayé cent soixante-quinze lancers d'homme dans le
-    // miroir : vingt-trois fois la vrille s'arrêtait à portée du creux, et le
-    // creux la prenait — l'énigme résolue sans rien porter, le joueur resté
-    // homme, et arrivé quart d'homme au blanchiment. Une pièce LANCÉE n'est
-    // plus une question, même arrêtée au bon endroit ; reprise et posée,
-    // elle en redevient une.
+    // Une pièce LANCÉE n'est pas une question, même arrêtée au bon endroit ;
+    // reprise et posée, elle en redevient une.
     const R = new Simulation(MONTEE);
     const v = piece(R, 'vrille-refus');
-    v.size = REFUS_GRANDE;
     v.main = 'D';
     v.lancee = true;
     v.position = { x: 3, y: 0.05, z: 1679 };
     v.velocity = { x: 0, y: 0, z: 0 };
-    poserA(R, 0, 0.05, 1700, 1);
+    poserA(R, 0, 0.05, 1700, 0);
     attendre(R, 60 * 3);
     check(
       'refus : une vrille lancée, arrêtée à trois mètres du creux, n’y entre pas toute seule',
       !R.sockets.pourvus.has('creux-refus') && v.grounded,
       `pourvus : ${[...R.sockets.pourvus].join(',') || 'aucun'}`,
     );
-    walkTo(R, [3, 0, 1687], 60 * 12);
+    walkTo(R, [3, 0, 1681.5], 60 * 12);
     agirVers(R, [v.position.x, v.position.y, v.position.z]);
-    check('refus : reprise en main par le géant', v.held && !v.lancee, pos(R));
-    // Et posée d'où le pilote de la salle pose : à dix mètres, la vrille
-    // tombe à cinq, à portée.
-    walkTo(R, [0, 0, 1686], 60 * 12);
+    check('refus : reprise en main', v.held && !v.lancee, pos(R));
+    walkTo(R, [0, 0, 1681], 60 * 12);
     agirVers(R, [0, 0.9, 1676]);
     attendre(R, 60 * 2);
     check('refus : posée, le creux la prend', R.sockets.pourvus.has('creux-refus'), pos(R));
 
-    // Et un vrai lancer, le plus heureux du balayage : depuis (21, 1696),
-    // à 0,3 d'inclinaison, la vrille ressortait à 4,5 m du creux et s'y
-    // logeait. Elle reste au sol, et l'homme reste homme.
-    const L = new Simulation(MONTEE);
-    const w = piece(L, 'vrille-refus');
-    w.held = true;
-    poserA(L, 21, 0.05, 1696, 0);
-    const visee = versLePoint(L, [28, 0, 1700]);
-    L.player.yaw = visee;
-    attendre(L, 2);
-    lancer(L, visee, 0.3);
-    attendre(L, 60 * 8);
-    const dCreux = Math.hypot(w.position.x, w.position.z - 1676);
-    check(
-      'refus : le lancer le plus heureux ne résout rien',
-      !L.sockets.pourvus.has('creux-refus') && near(w.size, REFUS_GRANDE, 1e-6) && w.grounded && dCreux < 8,
-      `pourvus : ${[...L.sockets.pourvus].join(',') || 'aucun'}, vrille ${w.size} à ${dCreux.toFixed(1)} m du creux`,
-    );
-
-    // LE CIEL DE VERRE retient la vrille d'un géant qui lève les yeux. Il
-    // était à treize mètres, sous la main qui la tient : lancée, elle montait
-    // à soixante-dix mètres et le papier la rattrapait — la clef de la porte
-    // « tombée hors du dessin » sous les yeux du joueur.
+    // LE CIEL DE VERRE retient une vrille lancée vers le haut : elle retombe
+    // dans la cour, jamais hors du dessin.
     for (const pitch of [0.9, 1.1, 1.3]) {
       const V = new Simulation(MONTEE);
       const u = piece(V, 'vrille-refus');
-      u.size = REFUS_GRANDE;
-      u.main = 'D';
       u.held = true;
-      poserA(V, 0, 0.05, 1700, 1);
+      poserA(V, 0, 0.05, 1700, 0);
       V.player.yaw = 0;
       attendre(V, 2);
       lancer(V, 0, pitch);
@@ -2673,28 +2666,25 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
         if (e.pieceRattrapee) ratt = true;
       }
       check(
-        `refus : lancée vers le haut par un géant (inclinaison ${pitch}), la vrille se cogne au verre et retombe dans la cour`,
+        `refus : lancée vers le haut (inclinaison ${pitch}), la vrille retombe dans la cour`,
         haut < 18.6 && !ratt && u.grounded && dansLaCour(u, -30, 30, 1670, 1730),
         `sommet ${haut.toFixed(1)} m${ratt ? ', rattrapée' : ''}, fin (${u.position.x.toFixed(1)}, ${u.position.y.toFixed(2)}, ${u.position.z.toFixed(1)})`,
       );
     }
 
-    // ET ON NE POSE PAS À TRAVERS UN MUR. Un géant face au mur est, à deux
-    // pas, tient sa vrille de l'autre côté ; E la posait dehors, et elle
-    // tombait du monde.
+    // ET ON NE POSE PAS À TRAVERS UN MUR. Face au mur est, à un pas, on tient
+    // la vrille de l'autre côté ; E la posait dehors, et elle tombait du monde.
     {
       const M = new Simulation(MONTEE);
       const u = piece(M, 'vrille-refus');
-      u.size = REFUS_GRANDE;
-      u.main = 'D';
       u.held = true;
-      poserA(M, 27, 0.05, 1690, 1);
+      poserA(M, 29.3, 0.05, 1690, 0);
       M.player.yaw = Math.PI / 2;
       attendre(M, 2);
       const e = M.step(ordre(M, { yaw: Math.PI / 2, interact: true }), TICK_DT);
       attendre(M, 60 * 3);
       check(
-        'refus : face au mur, un géant ne pose pas sa vrille de l’autre côté',
+        'refus : face au mur, on ne pose pas sa vrille de l’autre côté',
         (u.held && e.noRoom === true) || (!u.held && dansLaCour(u, -30, 30, 1670, 1730)),
         `${u.held ? 'gardée en main' : 'posée'} à (${u.position.x.toFixed(1)}, ${u.position.y.toFixed(2)}, ${u.position.z.toFixed(1)})`,
       );
@@ -2703,84 +2693,57 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
   // ─── LE BLANCHIMENT ─────────────────────────────────────────────────────
   {
-    // LE THÉORÈME EN NOMBRES. La chatière est trop basse pour quiconque peut
-    // soulever la grande vrille, et assez large pour la petite.
+    // LE THÉORÈME EN NOMBRES : la vrille passe les deux portes, portée, aux
+    // deux tailles — sinon la salle mourrait au moment où l'on croit avoir
+    // compris.
     check(
-      'blanchiment : un homme n’entre pas dans la chatière, un géant pas dans sa grande sœur',
-      PLAYER_HEIGHT > BLANCHIMENT_CHATIERE * 0.96 && PLAYER_HEIGHT * 4 > BLANCHIMENT_CHATIERE * 4 * 0.96,
-      '',
-    );
-    check(
-      'blanchiment : la vrille, elle, passe la chatière',
-      BLANCHIMENT_TAILLE <= BLANCHIMENT_CHATIERE * 0.9 && BLANCHIMENT_GRANDE <= BLANCHIMENT_CHATIERE * 4 * 0.9,
+      'blanchiment : la vrille passe une petite face à 0,50 et une grande à 2,00',
+      BLANCHIMENT_TAILLE <= 1.9 * 0.9 && BLANCHIMENT_GRANDE <= 7.6 * 0.9,
       '',
     );
 
-    // Un homme qui marche dans la chatière bute ; un géant qui marche dans la
-    // grande face bute. Ni l'un ni l'autre ne passe.
-    //
-    // Et l'homme s'entend REFUSER. Son œil passe au-dessus du rectangle de
-    // la chatière et c'est le mur, derrière, qui l'arrêtait sans un mot —
-    // cette vérification passait « pour une mauvaise raison », dit la
-    // relecture. On refuse maintenant celui qui passe AU-DESSUS d'une porte
-    // trop basse, dans sa largeur : le monde le dit, et le mur fait le reste.
-    const H = new Simulation(MONTEE);
-    poserA(H, 176, 0.05, 1720, 0);
-    const h = walkTo(H, [170.2, 0, 1720], 60 * 8, { stopOnEvent: true });
-    check(
-      'blanchiment : un homme bute sur la chatière, et elle le lui dit',
-      !h.traversed && H.player.scaleLevel === 0 && h.refused?.reason === 'tooBig',
-      `${h.refused ? `refusé : ${h.refused.reason}` : 'aucun refus'}, ${pos(H)}`,
-    );
-    const G = new Simulation(MONTEE);
-    poserA(G, 176, 0.05, 1682, 1);
-    const g = walkTo(G, [170.2, 0, 1682], 60 * 8, { stopOnEvent: true });
-    check('blanchiment : un géant bute sur la grande face du miroir', !g.traversed && G.player.scaleLevel === 1, pos(G));
-
-    // LE PARCOURS. On prend la vrille, on la lance dans la chatière — en la
-    // regardant, simplement — et elle ressort droite, 2,00, trop lourde.
+    // LE PARCOURS. On prend la vrille, on la présente : « la main ». On la
+    // porte au miroir : droite et 2,00, géant. On la rapporte par la grande
+    // face ordinaire : 0,50, toujours droite. Le creux la prend.
     const B = new Simulation(MONTEE);
     poserA(B, 180, 0.05, 1686, 0);
     walkTo(B, [180, 0, 1688.4], 60 * 3);
     agirVers(B, [180, 0, 1690]);
     const w = piece(B, 'vrille-blanchiment');
     check('blanchiment : on prend la vrille, gauche, 0,50', w.held && w.main === 'L' && near(w.size, BLANCHIMENT_TAILLE, 1e-6), pos(B));
-    walkTo(B, [174.6, 0, 1720], 60 * 20);
-    const oeil = PLAYER_HEIGHT * EYE_FRACTION;
-    // On regarde le haut de la chatière et l'on lance : la vrille y entre en cloche.
-    lancer(B, -Math.PI / 2, Math.atan2(BLANCHIMENT_CHATIERE - oeil, 174.6 - 170.6));
-    attendre(B, 60 * 6);
+    // Le creux d'abord, par la brèche du refend — c'est ce que fera le joueur.
+    walkTo(B, [195, 0, 1724], 60 * 20);
+    walkTo(B, [206, 0, 1724], 60 * 10);
+    walkTo(B, [216, 0, 1711.5], 60 * 12);
+    agirVers(B, [216, 0.6, 1716]);
+    const e1 = attendre(B, 60 * 2);
     check(
-      'blanchiment : lancée dans la chatière, elle ressort droite et 2,00',
-      !w.held && w.main === 'D' && near(w.size, BLANCHIMENT_GRANDE, 1e-6) && w.grounded && dansLaCour(w, 170, 230, 1670, 1730),
-      `main ${w.main ?? '?'}, taille ${w.size}, à (${w.position.x.toFixed(1)}, ${w.position.y.toFixed(2)}, ${w.position.z.toFixed(1)})`,
+      'blanchiment : intacte, le creux la refuse pour la MAIN — rien d’autre ne cloche',
+      !B.sockets.pourvus.has('creux-blanchiment') && e1.logementRefuse?.raison === 'main',
+      `${e1.logementRefuse?.raison ?? 'aucun refus'}`,
     );
-    check('blanchiment : trop lourde pour un homme', !B.carryables.canLift(w, scaleOfLevel(0)), '');
-
-    // On grandit par la porte ordinaire, on va la chercher, on la rapporte
-    // par la grande face : elle rapetisse et GARDE sa main.
-    const t4 = walkTo(B, [227, 0, 1720], 60 * 30, { stopOnEvent: true });
-    check('blanchiment : on grandit par la porte ordinaire', t4.traversed?.newLevel === 1, pos(B));
-    // Le mur de refend coupe la cour : on passe par la brèche du nord, à
-    // l'aller comme au retour — c'est le chemin que fera le joueur.
-    if (w.position.x < 201) {
-      walkTo(B, [206, 0, 1724], 60 * 30);
-      walkTo(B, [195, 0, 1724], 60 * 20);
-    }
-    walkTo(B, [w.position.x, 0, w.position.z - 3.6], 60 * 40);
     agirVers(B, [w.position.x, w.position.y, w.position.z]);
-    check('blanchiment : géant, on la ramasse', w.held, `${pos(B)} pièce à (${w.position.x.toFixed(1)}, ${w.position.z.toFixed(1)})`);
-    if (B.player.position.x < 201) {
-      walkTo(B, [195, 0, 1724], 60 * 30);
-      walkTo(B, [206, 0, 1724], 60 * 20);
-    }
-    // On aborde la porte DE FACE : en diagonale, l'œil coupe le plan hors du cadre.
+    check('blanchiment : on la reprend', w.held, pos(B));
+    // Le miroir, au nord du mur ouest.
+    walkTo(B, [206, 0, 1724], 60 * 10);
+    walkTo(B, [195, 0, 1724], 60 * 10);
+    walkTo(B, [174, 0, 1720], 60 * 20);
+    const t1 = walkTo(B, [169, 0, 1720], 60 * 6, { stopOnEvent: true });
+    check(
+      'blanchiment : portée par le miroir, elle ressort droite ET 2,00 — géant, on la tient encore',
+      t1.traversed?.pairId === 'miroir-blanchiment' && t1.traversed.newLevel === 1 && w.held && w.main === 'D' && near(w.size, BLANCHIMENT_GRANDE, 1e-6),
+      `${t1.traversed ? `traversé ${t1.traversed.pairId}` : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(B)}`,
+    );
+    // Géant, par la brèche, jusqu'à la grande face ordinaire — de face.
+    walkTo(B, [190, 0, 1682], 60 * 20);
+    walkTo(B, [190, 0, 1724], 60 * 20);
+    walkTo(B, [206, 0, 1724], 60 * 20);
     walkTo(B, [221, 0, 1682], 60 * 30);
-    const t5 = walkTo(B, [229.5, 0, 1682], 60 * 40, { stopOnEvent: true });
+    const t2 = walkTo(B, [229.5, 0, 1682], 60 * 40, { stopOnEvent: true });
     check(
       'blanchiment : rapportée par la grande face ordinaire, 0,50 et toujours droite',
-      t5.traversed?.newLevel === 0 && w.held && near(w.size, BLANCHIMENT_TAILLE, 1e-6) && w.main === 'D',
-      `${t5.traversed ? 'traversé' : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(B)}`,
+      t2.traversed?.pairId === 'ordinaire-blanchiment' && t2.traversed.newLevel === 0 && w.held && near(w.size, BLANCHIMENT_TAILLE, 1e-6) && w.main === 'D',
+      `${t2.traversed ? `traversé ${t2.traversed.pairId}` : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(B)}`,
     );
     walkTo(B, [216, 0, 1711.5], 60 * 20);
     agirVers(B, [216, 0.6, 1716]);
@@ -2791,23 +2754,45 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       [...B.sockets.pourvus].join(',') || 'aucun',
     );
 
-    // CONTRE-PREUVE : la porte ordinaire ne retourne rien, même à une pièce
-    // lancée. C'est elle qui fait de la chatière la seule serrure de la main.
+    // L'AUTRE ORDRE MARCHE AUSSI : ordinaire ↑ puis miroir ↓. Un géant entre
+    // dans la grande face du miroir et en ressort homme, droite, 0,50.
     const O = new Simulation(MONTEE);
     const o = piece(O, 'vrille-blanchiment');
-    o.position = { x: 223.2, y: 0, z: 1720 };
+    o.held = true;
     poserA(O, 221, 0.05, 1720, 0);
-    agirVers(O, [223.2, 0, 1720]);
-    check('blanchiment : on prend la vrille près de la porte ordinaire', o.held, pos(O));
-    lancer(O, Math.PI / 2, Math.atan2(1.4 - oeil, 226 - 221));
-    attendre(O, 60 * 6);
+    walkTo(O, [229.5, 0, 1720], 60 * 8, { stopOnEvent: true });
+    check(
+      'blanchiment : par la petite face ordinaire, gauche et 2,00',
+      O.player.scaleLevel === 1 && o.main === 'L' && near(o.size, BLANCHIMENT_GRANDE, 1e-6),
+      `main ${o.main ?? '?'}, taille ${o.size}, ${pos(O)}`,
+    );
+    walkTo(O, [206, 0, 1724], 60 * 20);
+    walkTo(O, [190, 0, 1724], 60 * 20);
+    walkTo(O, [176, 0, 1682], 60 * 30);
+    const t3 = walkTo(O, [169, 0, 1682], 60 * 8, { stopOnEvent: true });
+    check(
+      'blanchiment : par la grande face du miroir, droite et 0,50 — et l’on est homme au nord',
+      t3.traversed?.pairId === 'miroir-blanchiment' && O.player.scaleLevel === 0 && o.main === 'D' && near(o.size, BLANCHIMENT_TAILLE, 1e-6),
+      `main ${o.main ?? '?'}, taille ${o.size}, ${pos(O)}`,
+    );
+
+    // CONTRE-PREUVE : la porte ordinaire ne retourne rien, même à une pièce
+    // lancée. C'est elle qui fait du miroir la seule serrure de la main.
+    const P = new Simulation(MONTEE);
+    const q = piece(P, 'vrille-blanchiment');
+    q.position = { x: 223.2, y: 0, z: 1720 };
+    poserA(P, 221, 0.05, 1720, 0);
+    agirVers(P, [223.2, 0, 1720]);
+    check('blanchiment : on prend la vrille près de la porte ordinaire', q.held, pos(P));
+    const oeil = PLAYER_HEIGHT * EYE_FRACTION;
+    lancer(P, Math.PI / 2, Math.atan2(1.4 - oeil, 226 - 221));
+    attendre(P, 60 * 6);
     check(
       'blanchiment : lancée par la porte ordinaire, elle grossit mais garde sa main',
-      !o.held && o.main === 'L' && near(o.size, BLANCHIMENT_GRANDE, 1e-6),
-      `main ${o.main ?? '?'}, taille ${o.size}`,
+      !q.held && q.main === 'L' && near(q.size, BLANCHIMENT_GRANDE, 1e-6),
+      `main ${q.main ?? '?'}, taille ${q.size}`,
     );
   }
-
   // ─── LES FILS QUI PENDENT ENTRE DEUX FICHIERS ───────────────────────────
   //
   // Une salle déclare son logement et son tableau ; l'assemblage décide ce
@@ -3826,7 +3811,12 @@ console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule pa
 
   // LA RIVE. Un galet de 0,90 ne se présente pas à une serrure de 3,60 : il
   // faut le faire grandir, donc rapetisser d'abord par la grande porte.
-  walkTo(M, [176, 0, 3462], 60 * 30);
+  // LA GRANDE FACE REGARDE L'EST, et l'on vient de l'ouest : on la contourne
+  // par le sud pour se présenter DEVANT elle. Son dos fait mur, comme celui
+  // de toute porte — le pilote la traversait par-derrière, en fantôme, ce
+  // qu'aucun joueur ne devrait avoir à faire.
+  walkTo(M, [176, 0, 3452], 60 * 30);
+  walkTo(M, [176, 0, 3462], 60 * 8);
   const d1 = walkTo(M, [167, 0, 3462], 60 * 10, { stopOnEvent: true });
   check('la rive : par la grande porte, on redevient homme', d1.traversed?.newLevel === 0, pos(M));
   walkTo(M, [232, 0, 3458.6], 60 * 30);

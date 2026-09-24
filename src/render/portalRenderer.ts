@@ -23,6 +23,10 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
       // 0 : rien n'est dessiné, la porte n'est qu'une feuille blanche.
       // 1 : le monde d'en face est entièrement là.
       uTrace: { value: 1 },
+      // La part de la cible réellement rendue : voir `PortalRenderer.rendre`.
+      // Une porte qui fait un dixième de l'écran est rendue dans un dixième
+      // de sa cible, et on la relit à cette échelle.
+      uFraction: { value: new THREE.Vector2(1, 1) },
     },
     vertexShader: /* glsl */ `
       varying vec4 vClip;
@@ -38,6 +42,7 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
       uniform vec3 uInk;
       uniform vec3 uPaper;
       uniform float uTrace;
+      uniform vec2 uFraction;
       varying vec4 vClip;
       varying vec2 vUv;
 
@@ -57,7 +62,10 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
         // le mettait AUSSI sur la surface du portail, le contenu frémissait à
         // un rythme différent de ce qui l'entoure, et l'œil lisait deux feuilles
         // superposées au lieu d'une seule fenêtre. Une feuille, un tremblement.
-        vec2 uv = (vClip.xy / vClip.w) * 0.5 + 0.5;
+        vec2 ecran = (vClip.xy / vClip.w) * 0.5 + 0.5;
+        // La cible n'est remplie que sur une fraction de sa surface, celle
+        // qu'il faut pour la taille de la porte à l'écran : on lit dedans.
+        vec2 uv = ecran * uFraction;
 
         vec3 col = texture2D(uMap, uv).rgb;
 
@@ -77,12 +85,12 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
         // quand la trace le dépasse, la cellule bascule d'un coup. Le bord de
         // chaque tache est bruité, pour qu'aucune ne soit un carré.
         if (uTrace < 0.999) {
-          vec2 cell = uv * vec2(11.0, 15.0);
+          vec2 cell = ecran * vec2(11.0, 15.0);
           vec2 id = floor(cell);
           vec2 f = fract(cell) - 0.5;
           float seuil = hash12(id);
           // Les taches naissent plutôt du bas, comme un pinceau qui remonte.
-          seuil = seuil * 0.72 + (1.0 - uv.y) * 0.28;
+          seuil = seuil * 0.72 + (1.0 - ecran.y) * 0.28;
           float bord = 0.5 - length(f) * (0.75 + hash12(id + 7.3) * 0.5);
           // PAS D'ACCENT DANS UN NOM DE VARIABLE GLSL. Ce fichier est écrit en
           // français comme tout le projet, et cette variable s'appelait
@@ -108,11 +116,48 @@ const createSurfaceMaterial = (map: THREE.Texture): THREE.ShaderMaterial =>
     `,
   });
 
+/**
+ * LE DOS D'UNE PORTE : une feuille tendue dans le cadre.
+ *
+ * La surface ne se voit que de face ; de derrière, on voyait à travers le
+ * cadre, comme par une fenêtre ouverte — et l'on pouvait y passer. Depuis que
+ * le dos fait mur (voir `Simulation.dosDesPortes`), il doit se lire comme une
+ * chose pleine : du papier, un liseré d'encre, et rien derrière.
+ */
+const createDosMaterial = (): THREE.ShaderMaterial =>
+  new THREE.ShaderMaterial({
+    uniforms: { uInk: { value: INK }, uPaper: { value: PAPER } },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uInk;
+      uniform vec3 uPaper;
+      varying vec2 vUv;
+      void main() {
+        // Un papier un peu plus sourd que le ciel, pour qu'il se détache, et
+        // une ombre portée par le cadre le long du bord.
+        vec2 e = min(vUv, 1.0 - vUv);
+        float bord = smoothstep(0.0, 0.025, min(e.x, e.y));
+        float ombre = smoothstep(0.0, 0.18, min(e.x, e.y));
+        vec3 col = mix(uPaper, uInk, 0.08 + 0.10 * (1.0 - ombre));
+        col = mix(uInk, col, bord);
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+
 /** Une face de portail côté rendu : sa surface, son cadre, sa cible de rendu. */
 class PortalFaceView {
   readonly face: PortalFace;
   readonly group = new THREE.Group();
   readonly surface: THREE.Mesh;
+  /** Le dos : voir `createDosMaterial`. */
+  readonly dos: THREE.Mesh;
   readonly frame = new THREE.Group();
   /** Image finale, celle qu'on affiche. */
   readonly rt: THREE.WebGLRenderTarget;
@@ -180,6 +225,14 @@ class PortalFaceView {
     this.surface = new THREE.Mesh(geo, this.material);
     this.surface.frustumCulled = false;
 
+    // Le dos regarde vers l'arrière, un centimètre derrière le plan : de face
+    // on ne le voit jamais (sa face avant est de l'autre côté), de derrière il
+    // ferme le cadre.
+    this.dos = new THREE.Mesh(geo, createDosMaterial());
+    this.dos.rotation.y = Math.PI;
+    this.dos.position.z = -0.01;
+    this.dos.frustumCulled = false;
+
     // ─── LE FOND DU PUITS ─────────────────────────────────────────
     //
     // Deux niveaux d'imbrication sont rendus pour de vrai. Au troisième, il faut
@@ -209,12 +262,13 @@ class PortalFaceView {
       this.frame.add(m);
     }
 
-    this.group.add(this.surface, this.frame);
+    this.group.add(this.surface, this.dos, this.frame);
   }
 
   /** Redimensionne la face. Appelé quand le joueur change d'échelle. */
   setSize(width: number, height: number): void {
     this.surface.scale.set(width, height, 1);
+    this.dos.scale.set(width, height, 1);
 
     const t = width * 0.07;
     const [left, right, lintel, nuki] = this.posts;
@@ -406,6 +460,7 @@ export class PortalRenderer {
     const previousTarget = renderer.getRenderTarget();
     this.ambience = ambience;
     this.rendus = 0;
+    this.ecrans = 0;
 
     camera.updateMatrixWorld(true);
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
@@ -433,13 +488,17 @@ export class PortalRenderer {
         this.computeVirtual(other, this.camLevel1, this.camLevel2);
         // Au troisième emboîtement, un aplat de brume : voir `fallback`.
         for (const v of this.views) v.surface.material = v.fallback;
-        this.rendre(renderer, scene, other, this.camLevel2, other.rtDeep);
+        const q = this.fractionPour(other, this.camLevel1);
+        this.rendre(renderer, scene, other, this.camLevel2, other.rtDeep, q);
+        (other.materialDeep.uniforms.uFraction.value as THREE.Vector2).set(q, q);
       }
 
       for (const v of this.views) {
         v.surface.material = profondes.includes(v) ? v.materialDeep : v.fallback;
       }
-      this.rendre(renderer, scene, view, this.camLevel1, view.rt);
+      const q = this.fractionPour(view, camera);
+      this.rendre(renderer, scene, view, this.camLevel1, view.rt, q);
+      (view.material.uniforms.uFraction.value as THREE.Vector2).set(q, q);
     }
 
     // On rétablit les surfaces d'affichage pour le rendu de la scène principale.
@@ -449,6 +508,49 @@ export class PortalRenderer {
 
   /** Scènes rendues dans les portails à la dernière image. Pour mesurer. */
   rendus = 0;
+  /** Pixels rendus dans les portails à la dernière image, en écrans entiers. */
+  ecrans = 0;
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * UNE PORTE SE REND À LA TAILLE QU'ELLE FAIT À L'ÉCRAN.
+   *
+   * Chaque vue remplissait sa cible entière — un écran complet par porte
+   * visible, et la cour du refus en montre quinze avec ses portes dans les
+   * portes. Sur une bonne machine : 23 images par seconde là où l'on en
+   * attend 120. Signalé en jouant, et mesuré.
+   *
+   * Or une porte qui fait un dixième de l'écran n'a besoin que d'un dixième
+   * de l'image : la surface la relit en coordonnées écran, et ne regarde
+   * jamais ailleurs que dans son rectangle. On rend donc chaque vue dans une
+   * sous-fenêtre de sa cible, proportionnelle à la taille apparente de la
+   * porte, et la surface lit à cette échelle (`uFraction`). Une porte de tout
+   * l'écran garde toute sa cible ; une porte au loin coûte quelques pixels.
+   * Le nombre de rendus ne change pas, leur poids si — et c'est le poids qui
+   * comptait.
+   *
+   * `qualite` est un facteur global posé de l'extérieur : la boucle
+   * principale le baisse quand les images s'allongent, et le remonte quand
+   * elles s'accélèrent. C'est l'autre moitié de la réponse : le jeu tient sa
+   * cadence sur l'appareil qu'on a, au prix d'un peu de flou dans les portes.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  qualite = 1;
+
+  /** Fraction de la cible à rendre pour cette vue, vue de cette caméra. */
+  private fractionPour(view: PortalFaceView, cam: THREE.PerspectiveCamera): number {
+    const w = view.surface.scale.x;
+    const h = view.surface.scale.y;
+    this.tmpVec2.set(0, h * 0.5, 0);
+    view.group.localToWorld(this.tmpVec2);
+    const d = this.tmpVec2.distanceTo(this.tmpVec.setFromMatrixPosition(cam.matrixWorld));
+    const rayon = Math.hypot(w, h) * 0.5;
+    // Part de la hauteur de l'écran que couvre la sphère de la porte.
+    const couverture = rayon / Math.max(d, 1e-3) / Math.tan((cam.fov * Math.PI) / 360);
+    // Un peu plus que la couverture, pour que le filtrage ne floute pas, et
+    // jamais moins qu'un huitième : une porte lointaine reste lisible.
+    return Math.min(1, Math.max(0.125, (couverture * 1.25 + 0.04) * this.qualite));
+  }
 
   private readonly frustum = new THREE.Frustum();
   private readonly projScreen = new THREE.Matrix4();
@@ -498,6 +600,7 @@ export class PortalRenderer {
     view: PortalFaceView,
     renderCamera: THREE.PerspectiveCamera,
     target: THREE.WebGLRenderTarget,
+    fraction: number,
   ): void {
     // On masque la SURFACE de la face jumelle, mais surtout PAS son cadre.
     //
@@ -511,6 +614,9 @@ export class PortalRenderer {
     // Sa surface, elle, n'a rien à faire là : la caméra la regarde par
     // l'arrière.
     view.twin.surface.visible = false;
+    // Et son dos : la caméra virtuelle se tient précisément derrière elle, et
+    // c'est de là que le dos se voit. Il fermerait la vue.
+    view.twin.dos.visible = false;
 
     // ─── ET SON CADRE AVEC, SINON IL BARRE L'OUVERTURE ─────────────────
     //
@@ -553,10 +659,18 @@ export class PortalRenderer {
       m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
     }
 
+    // La sous-fenêtre : voir `fractionPour`. Le ciseau borne aussi
+    // l'effacement, on ne paie que ce qu'on dessine.
+    const pw = Math.max(1, Math.round(target.width * fraction));
+    const ph = Math.max(1, Math.round(target.height * fraction));
+    target.viewport.set(0, 0, pw, ph);
+    target.scissor.set(0, 0, pw, ph);
+    target.scissorTest = true;
     renderer.setRenderTarget(target);
     renderer.clear();
     renderer.render(scene, renderCamera);
     this.rendus++;
+    this.ecrans += (pw * ph) / (target.width * target.height);
 
     for (const m of retournes) {
       m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
@@ -564,6 +678,7 @@ export class PortalRenderer {
 
     renderer.clippingPlanes = [];
     view.twin.surface.visible = true;
+    view.twin.dos.visible = true;
     view.twin.setCadreVisible(true);
   }
 
@@ -631,15 +746,34 @@ export class PortalRenderer {
     const s = traversalScale(view.face);
     this.tmpScaleMatrix.makeScale(s, s, s);
 
-    const reflechi = view.face.miroir === true;
-
     this.tmpInverse.copy(view.group.matrixWorld).invert();
     this.tmpMatrix
       .copy(view.twin.group.matrixWorld)
-      .multiply(reflechi ? MIROIR : FLIP)
+      .multiply(view.face.miroir === true ? MIROIR : FLIP)
       .multiply(this.tmpScaleMatrix)
       .multiply(this.tmpInverse)
       .multiply(source.matrixWorld);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LA RÉFLEXION SE LIT SUR LA MATRICE, JAMAIS SUR LA PORTE.
+    //
+    // On la lisait sur la porte — « miroir : oui ou non » —, et c'était faux
+    // dès que la caméra SOURCE était elle-même gauchère : le joueur qui a
+    // franchi un miroir, ou une caméra virtuelle déjà passée par un. Une porte
+    // ordinaire prenait alors le chemin ordinaire, `decompose` négociait le
+    // déterminant négatif en inversant une échelle qu'on remettait à 1, et la
+    // réflexion disparaissait : la caméra virtuelle redevenait droitière, et
+    // le contenu de la porte s'affichait inversé par rapport au monde qui
+    // l'entoure. Signalé en jouant après la première salle chirale de la
+    // montée : « voile blanc et bug de rendu sur le portail », « de gros soucis
+    // sur les portails qui ont un effet miroir ». Mesuré : déterminant +1 en
+    // sortie pour une source à −1.
+    //
+    // Le déterminant de la matrice composée dit la vérité dans tous les cas :
+    // miroir ou pas, source gauchère ou pas, et même deux miroirs qui
+    // s'annulent.
+    // ═══════════════════════════════════════════════════════════════════════
+    const reflechi = this.tmpMatrix.determinant() < 0;
 
     if (reflechi) {
       // ON NE DÉCOMPOSE PAS UNE RÉFLEXION.

@@ -395,5 +395,10 @@ export const VALLEE: SalleModule = {
   // l'entrée on se pose sur le parvis à 0,1895 ; à la sortie, sur la côte à 0,12.
   // ═══════════════════════════════════════════════════════════════════════════
   entree: { position: [58, 0.24, 2800], echelle: 2 },
-  sortie: { position: [-51.4, 0.18, 2800], echelle: 2 },
+  // ON LA FRANCHIT EN MARCHANT VERS L'OUEST, dans le sens de la vallée. Sans
+  // ce mot, la porte regardait le nord et l'on arrivait dessus PAR LA
+  // TRANCHE, le corps à cheval sur son plan — un géant de ×16 a cinq mètres
+  // de rayon. Depuis que le dos d'une porte fait mur, on finissait bloqué
+  // derrière elle sans l'avoir vue de face.
+  sortie: { position: [-51.4, 0.18, 2800], echelle: 2, lacet: -Math.PI / 2 },
 };

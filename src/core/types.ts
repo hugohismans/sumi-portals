@@ -125,6 +125,27 @@ export interface PortalPairDef {
    * qu'un cours.
    */
   miroir?: boolean;
+  /**
+   * UNE PAIRE PLANE : ses deux faces ont la même taille, et la franchir ne
+   * change pas d'échelle.
+   *
+   * Jusqu'ici toute porte multipliait ou divisait par quatre — « le verbe
+   * unique du jeu ». Il manquait pourtant la porte qui ne conjugue rien : le
+   * premier miroir de la montée couplait la réflexion et la taille, et le
+   * joueur ne pouvait pas savoir laquelle des deux venait de lui arriver.
+   * Signalé en jouant : « l'effet miroir n'est pas très clair, il ne devrait
+   * pas être couplé avec un changement de taille dans un premier temps. »
+   *
+   * Une paire plane sépare les deux leçons. Un miroir plan ne fait QUE
+   * retourner la gauche et la droite ; une porte plane ne fait que relier
+   * deux endroits — ce qui autorise aussi un raccord entre deux salles de
+   * même échelle, impossible jusque-là.
+   *
+   * `big` et `small` gardent leurs noms par commodité d'écriture ; elles sont
+   * de la taille de `small`. Leurs couleurs disent toujours ce qu'on subit en
+   * passant : à une paire plane, on donne la même aux deux faces.
+   */
+  plane?: boolean;
   /** Grande face : la traverser rend PLUS PETIT. */
   big: PortalFaceDef;
   /** Petite face : la traverser rend PLUS GRAND. */
@@ -673,16 +694,15 @@ export interface PlayerState {
    *
    * POURQUOI IL A FALLU L'INVENTER. Sans elle, franchir un miroir n'inversait
    * que l'objet porté, jamais le monde. Or si le monde ne bascule pas, la
-   * réflexion ne s'applique qu'à une moitié des choses, et le jeu ment : il
-   * prétend qu'un aller-retour au miroir « corrige » une pièce alors que rien
-   * n'a bougé dans le repère où on la regarde.
+   * réflexion ne s'applique qu'à une moitié des choses, et le jeu ment.
    *
-   * ET ELLE CHANGE L'ÉNIGME, ce qui est le meilleur signe qu'elle est juste.
-   * Si le monde bascule avec soi, **porter** une pièce à travers un miroir ne
-   * peut plus rien résoudre : on subit la même réflexion qu'elle, et leur écart
-   * reste nul. La seule façon de retourner une pièce est donc de **la lancer à
-   * travers et de la rattraper de l'autre côté**. Le geste devient un vrai
-   * geste, et il se voit.
+   * CE QU'ELLE NE CHANGE PAS : la main de ce qu'on porte, mesurée dans le
+   * monde. On a cru un temps que porter une pièce à travers un miroir « ne
+   * pouvait plus rien résoudre » puisqu'on se réfléchit avec elle — c'était
+   * confondre l'écart entre la pièce et soi, qui reste nul, avec la main de
+   * la pièce dans le monde, qui bascule. À l'écran, c'est exactement ce
+   * qu'on voit : le monde retourné, la pièce tenue inchangée, et le creux —
+   * qui est du monde — qui l'accepte désormais. Voir `Simulation.teleport`.
    * ═══════════════════════════════════════════════════════════════════════
    */
   gauchere: boolean;

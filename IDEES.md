@@ -176,8 +176,16 @@ C'est la meilleure piste du carnet, pour trois raisons :
   ET redimensionner, c'est déjà un puzzle à deux temps sans rien ajouter d'autre.
 
 Note technique : le miroir n'est pas gratuit côté rendu — une transformation
-qui inverse la chiralité inverse aussi le sens des faces, donc il faudra
-retourner le tri des faces dans la vue du portail. À prévoir, pas à craindre.
+qui inverse la chiralité inverse aussi le sens des faces, donc il faut
+retourner le tri des faces dans la vue du portail. FAIT — et la leçon qui a
+coûté : la réflexion se lit sur le **déterminant de la matrice composée**,
+jamais sur la porte, parce que la caméra source peut déjà être gauchère.
+
+**La règle, arrêtée le 24 septembre :** ce qui traverse un miroir est
+réfléchi, porté ou lancé ; le monde bascule avec le joueur ; la pièce dans les
+bras garde donc sa forme à l'écran, et c'est le monde — et le creux — qui se
+retournent. Le premier miroir du jeu est **plan** (`PortalPairDef.plane`), pour
+enseigner la main sans la taille.
 
 ### Le clin d'œil à la biologie
 
@@ -556,6 +564,23 @@ c'est cette mémoire qu'il lira.
 des salles porte un `lacet` par porte ; l'assemblage plantait tout face au
 nord. Une salle nouvelle doit le déclarer si sa porte n'est pas dans un mur
 sud (sortie) ou nord (entrée).
+
+**Le dos d'une porte fait mur — FAIT.** On traversait les cadres par
+derrière, en fantôme ; le dos est maintenant une feuille tendue, qu'on voit et
+qu'on ne passe pas (`Simulation.dosDesPortes`). Trois portes du jeu se
+présentaient de dos à qui venait et ont été tournées.
+
+**Les portes se rendent à leur taille à l'écran — FAIT.** Une porte qui fait
+un dixième de l'écran est rendue dans un dixième de sa cible
+(`PortalRenderer.fractionPour`), et la finesse suit la cadence mesurée contre
+l'intervalle de l'écran. Quinze écrans pleins par image sont devenus un quart.
+
+**Ce qui se ramasse porte un cerne — FAIT.** Un anneau d'encre au sol, qui
+respire, autour de toute pièce qu'on peut prendre ; rien sur le décor, rien
+sur une pièce tenue ou logée.
+
+**Une paire plane — FAIT.** Deux faces de même taille, aucun cran
+(`plane: true`) : le miroir du refus, et le premier raccord à zéro cran.
 
 **Un portail à sens unique.** Une face qu'on peut franchir, l'autre qui fait
 mur. Change complètement la lecture d'un niveau : on ne peut plus revenir sur

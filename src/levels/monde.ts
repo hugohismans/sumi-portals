@@ -720,7 +720,16 @@ export const MONDE: LevelDef = {
       // derrière lui, on le retraversait en allant la chercher — et l'on
       // rapetissait aussitôt, renvoyé au village. Un portail déjà franchi doit
       // toujours rester DERRIÈRE soi.
-      small: { position: [0, TERRASSE_Y, 70], yaw: Math.PI }, // normale -Z, prise en montant
+      //
+      // ET ELLE REGARDE LE NORD, VERS CELUI QUI VIENT. Elle regardait le sud,
+      // « prise en montant » : on arrivait du torii par son dos, on le
+      // traversait en fantôme, on se retournait, et on la franchissait vers le
+      // nord. Depuis que le dos d'une porte fait mur (voir
+      // `Simulation.dosDesPortes`), une porte se présente de face à qui vient
+      // — on la franchit vers le sud, et l'on ressort sur le belvédère en
+      // marchant vers le sud, le village dans le dos, ce qui ne change rien
+      // à ce qu'on y voit.
+      small: { position: [0, TERRASSE_Y, 70], yaw: 0 }, // normale +Z, regarde qui vient du torii
       big: { position: [0, BELVEDERE_Y, 300], yaw: Math.PI }, // normale -Z, regarde tout
     },
     {

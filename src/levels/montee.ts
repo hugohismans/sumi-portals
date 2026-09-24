@@ -41,26 +41,31 @@ import { LUCARNE_DOREE } from './salles/lucarneDoree.js';
 
 const SALLES: SalleModule[] = [TOITS, REFUS, BLANCHIMENT, ESCALIER, ATELIER_HAUT, VALLEE, LUCARNE_DOREE];
 
+/** La couleur des portes planes : l'encre du trait, qui n'annonce aucune taille. */
+const ENCRE = 0x22201c;
+
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * LA LOI DE L'ENCHAÎNEMENT : UNE PORTE NE VAUT QU'UN CRAN
  *
  * L'échelle de sortie d'une salle et l'échelle d'entrée de la suivante
- * diffèrent d'exactement un cran. Deux crans demandent deux portes, donc une
- * salle intermédiaire ; zéro cran n'est franchissable par aucune porte du tout.
- * C'est vérifié automatiquement — sans quoi l'on découvrirait le défaut en
- * jouant, devant une porte qui refuse sans aucune raison visible dans le monde.
+ * diffèrent d'AU PLUS un cran. Deux crans demandent deux portes, donc une
+ * salle intermédiaire ; zéro cran demande une porte PLANE, qui ne change rien
+ * (voir `PortalPairDef.plane`) — et c'est neuf : jusqu'ici zéro cran n'était
+ * franchissable par rien. C'est vérifié automatiquement — sans quoi l'on
+ * découvrirait le défaut en jouant, devant une porte qui refuse sans aucune
+ * raison visible dans le monde.
  *
  * LA MONTÉE, EN PALIERS :
  *
  *     toits       (×4,   ×4)      on reconnaît le village par en haut
- *     refus       (×1,   ×4)      ↑ miroir interne
+ *     refus       (×1,   ×1)      miroir PLAN interne : la main, et rien d'autre
  *     blanchiment (×1,   ×1)      ↑ miroir + ↓ porte ordinaire, net zéro
  *     escalier    (×4,   ×1)      ↓ porte interne, et l'on bâtit avant
  *     atelierHaut (×4,   ×4)      la couleur, paliers 2 et 3
  *     vallee      (×16,  ×16)     la maquette, et l'or au bout
  *
- *         1 → 0 → 0 → 1 → 1 → 2       et entre chaque, exactement un cran.
+ *         1 → 0 → 0 → 0 → 1 → 1 → 2       un cran, une porte plane, un cran…
  *
  * TROIS DE CES SALLES CHANGENT L'ÉCHELLE CHEZ ELLES, par une porte qu'elles
  * déclarent elles-mêmes — c'est neuf, la descente n'en avait aucune. C'est ce
@@ -93,7 +98,10 @@ export interface Raccord {
  */
 const RACCORDS: Raccord[] = [
   { depuis: 0, vers: 1, cran: -1 },
-  { depuis: 1, vers: 2, cran: -1, condition: 'creux-refus' },
+  // ZÉRO CRAN : une porte PLANE. Le refus se joue entièrement à taille
+  // d'homme depuis que son miroir est plan, et le blanchiment commence à
+  // taille d'homme ; entre les deux, une porte qui ne change rien.
+  { depuis: 1, vers: 2, cran: 0, condition: 'creux-refus' },
   { depuis: 2, vers: 3, cran: +1, condition: 'creux-blanchiment' },
   // ─── ET CE `condition`-CI N'EST PAS UNE DÉCORATION ────────────────────────
   //
@@ -151,13 +159,17 @@ const raccorder = (r: Raccord): PortalPairDef => {
   const lacetArrivee = b.entree.lacet ?? LACET_PAR_DEFAUT;
 
   const departEstGrand = r.cran < 0;
+  // Une porte plane n'a ni grande ni petite face : ses deux faces sont de la
+  // même taille et de la même couleur — l'encre, qui ne promet rien.
+  const plane = r.cran === 0;
 
   return {
     id: `montee-${a.nom}-${b.nom}`,
     condition: r.condition,
     dessinee: r.condition !== undefined,
-    colorBig: 0xc8492e,
-    colorSmall: 0x2f4b7c,
+    plane,
+    colorBig: plane ? ENCRE : 0xc8492e,
+    colorSmall: plane ? ENCRE : 0x2f4b7c,
     // La taille de la petite face suit celle du joueur qui la franchit : une
     // porte taillée pour un géant est infranchissable par qui vient petit, et
     // c'est la faute la plus facile à commettre en assemblant.

@@ -44,11 +44,43 @@ interface View {
   main?: 'L' | 'D';
   /** Masquée : elle existe et se comporte, mais on ne la dessine jamais. */
   masque?: boolean;
+  /** Le cerne au sol qui dit « ça se ramasse ». Voir `createHaloMaterial`. */
+  halo: THREE.Mesh;
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LE CERNE — ce qui se ramasse se distingue du décor.
+ *
+ * Une pièce posée est dessinée exactement comme une pierre du décor : même
+ * cel, même trait, même palette. C'est voulu pour l'image, et c'est un
+ * problème pour le jeu. Signalé en jouant : « c'est pas très clair ce qui est
+ * ramassable ou non, faudrait une espèce de mini halo pour qu'on comprenne
+ * que c'est pas un élément du décor mais un objet ramassable. »
+ *
+ * Un cerne d'encre au sol, autour de la pièce, qui respire lentement — comme
+ * le trait qu'un pinceau laisse en tournant autour d'une chose posée sur le
+ * papier. Il n'existe que pour ce qu'on peut prendre : une pièce tenue, une
+ * pièce logée dans son creux ou une pièce en l'air n'en ont pas. Double face
+ * et sans écriture de profondeur, pour qu'il se pose sur n'importe quel sol
+ * sans grésiller et se lise d'où qu'on soit — y compris gauchère.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const createHaloMaterial = (): THREE.MeshBasicMaterial =>
+  new THREE.MeshBasicMaterial({
+    color: 0x22201c,
+    transparent: true,
+    opacity: 0.3,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
 
 export class CarryableViews {
   readonly group = new THREE.Group();
   private readonly views = new Map<string, View>();
+  /** Un seul matériau pour tous les cernes : ils respirent ensemble. */
+  private readonly haloMat = createHaloMaterial();
+  private readonly haloGeo = new THREE.RingGeometry(0.66, 0.84, 48);
 
   /**
    * REND UNE CAISSE INVISIBLE, en la laissant exister.
@@ -69,6 +101,7 @@ export class CarryableViews {
     if (!v) return;
     v.group.visible = false;
     v.ghost.visible = false;
+    v.halo.visible = false;
     v.masque = true;
   }
   private readonly planeHere = new THREE.Plane();
@@ -111,7 +144,13 @@ export class CarryableViews {
       ghost.add(ghostOutlineMesh, ghostMesh);
       ghost.visible = false;
 
-      this.group.add(group, ghost);
+      // Le cerne vit à part, à plat : le groupe de la pièce culbute avec elle.
+      const halo = new THREE.Mesh(this.haloGeo, this.haloMat);
+      halo.rotation.x = -Math.PI / 2;
+      halo.frustumCulled = false;
+      halo.renderOrder = 1;
+
+      this.group.add(group, ghost, halo);
       this.views.set(item.id, {
         group,
         mesh,
@@ -125,17 +164,32 @@ export class CarryableViews {
         size: item.size,
         ghostSize: item.size,
         main: item.main,
+        halo,
       });
     }
   }
 
-  update(items: Carryable[], faces: PortalFace[]): void {
+  update(items: Carryable[], faces: PortalFace[], temps = 0): void {
+    // La respiration du cerne : lente, et jamais éteinte — un cerne qui
+    // disparaît par moments se lirait comme un clignotement.
+    const souffle = 0.5 + 0.5 * Math.sin(temps * 2.2);
+    this.haloMat.opacity = 0.22 + 0.16 * souffle;
+    const ampleur = 1 + 0.07 * souffle;
+
     for (const item of items) {
       const view = this.views.get(item.id);
       if (!view) continue;
       // Masquée : elle continue d'exister et de se comporter, on ne la dessine
       // simplement jamais. C'est un pinceau de couleur qui la représente.
       if (view.masque) continue;
+
+      // Le cerne : seulement autour de ce qu'on peut prendre, posé au sol.
+      view.halo.visible = !item.held && !item.locked && item.grounded;
+      if (view.halo.visible) {
+        view.halo.position.set(item.position.x, item.position.y + 0.02 + item.size * 0.01, item.position.z);
+        const r = item.size * ampleur;
+        view.halo.scale.set(r, r, 1);
+      }
 
       // On rebâtit quand la taille change, mais aussi quand la MAIN bascule :
       // c'est ce passage-là qui rend la chiralité visible, et il arrive au

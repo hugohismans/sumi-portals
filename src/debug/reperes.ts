@@ -599,15 +599,16 @@ const POURQUOI_MONTEE: Record<string, string> = {
     'des heures, vu d’une taille qu’on n’avait jamais eue. Si la reconnaissance ne se ' +
     'fait pas, la salle ne vaut rien — et aucune vérification ne peut me le dire.',
   'Le creux qui refuse — la vrille':
-    'La règle du miroir a changé : porter une pièce à travers ne la retourne plus, seul ' +
-    'le LANCER le fait — et cette salle reposait sur le portage. Elle est réécrite ' +
-    'autour du lancer, prouvée par un pilote, jamais regardée. Les mains sur les murs ' +
-    'sont l’étalon de la main, comme la petite face est celui de la taille.',
+    'Le premier miroir du jeu, et il est PLAN : il ne fait que retourner, la taille ' +
+    'viendra après. Signalé en jouant : couplé à un changement de taille, l’effet ' +
+    'miroir n’était pas lisible. Ce qu’on regarde : le monde bascule autour de soi ' +
+    '(la pile de pierres change de côté), la vrille dans les bras ne change pas, et ' +
+    'le creux la prend. Les mains sur les murs sont l’étalon de la main.',
   'Le blanchiment — le théorème':
     'La meilleure sensation que ce jeu puisse produire, si elle passe : comprendre ' +
-    'qu’un système a des lois et qu’on peut les DÉDUIRE au lieu de les subir. Avec un ' +
-    'miroir qu’on franchit, le théorème mourait sous la règle nouvelle ; d’où la ' +
-    'chatière. Le risque est qu’on force au hasard sans jamais comprendre.',
+    'qu’un système a des lois et qu’on peut les DÉDUIRE au lieu de les subir. Tout se ' +
+    'porte désormais — le miroir se franchit avec la vrille dans les bras. Le risque ' +
+    'est qu’on force au hasard sans jamais comprendre.',
   'L’escalier pour plus tard':
     'La salle a été retournée après qu’on a mesuré que rien ne blesse une chute : on la ' +
     'gravit maintenant au lieu de la descendre. On vérifie que le verrou est réel et que ' +
@@ -635,25 +636,25 @@ export const REPERES_MONTEE: Repere[] = [
   auSeuil(
     SALLES_MONTEE[1],
     'Le creux qui refuse — la vrille',
-    'Une vrille au sol, un creux à sa forme dans la cour. Porte-la par la porte du fond, ' +
-      'ressors quatre fois plus grand, pose-la : bonne taille, et le creux dit qu’elle ' +
+    'Une vrille au sol, un creux à sa forme et à sa taille. Pose-la : le creux dit qu’elle ' +
       'N’ENTRE PAS, que la tourner n’y changera rien. Regarde les MAINS de part et d’autre ' +
-      'des deux faces. Reviens homme, LANCE la vrille dans la petite face : elle ressort ' +
-      'par la grande, retournée, trop lourde. Suis-la par la porte, ramasse-la, POSE-LA, ' +
-      'elle entre — lancée à côté du creux, elle n’y entre pas toute seule. ' +
-      'Défaut à guetter : ne pas comprendre qu’il faut lancer ; une vrille perdue par-dessus ' +
-      'le mur (le ciel est en verre, elle doit retomber dans la cour).',
+      'des deux portes noires. Porte la vrille par la porte est : tu ressors à l’ouest, ' +
+      'même taille, et LA COUR EST RETOURNÉE — la pile de pierres a changé de côté, la ' +
+      'vrille dans tes bras non. Pose-la : elle entre. Deux passages s’annulent. ' +
+      'Défaut à guetter : ne pas voir que le monde a basculé (regarde la pile) ; ' +
+      'chercher une porte qui grandit — il n’y en a pas ici.',
     5,
   ),
   auSeuil(
     SALLES_MONTEE[2],
     'Le blanchiment — le théorème',
-    'Le creux veut la taille d’origine ET l’autre main. Le miroir n’est plus qu’une ' +
-      'CHATIÈRE au pied du mur ouest : on n’y entre pas, on y lance. La vrille en ressort ' +
-      'droite et 2,00, trop lourde. Trouve la porte ordinaire derrière le mur de refend, ' +
-      'grandis, va la chercher, rapporte-la par la grande face ordinaire : 0,50, toujours ' +
-      'droite, et le creux est à dix mètres. Défaut à guetter : ne jamais trouver la brèche ' +
-      'du refend ; forcer la chatière ; ne pas voir la différence entre les deux portes.',
+    'Le creux veut la taille d’origine ET l’autre main. Deux portes qui se ressemblent : ' +
+      'le miroir au mur ouest (main ET taille), la porte ordinaire au mur est (taille ' +
+      'seule), un mur de refend entre les deux, une brèche au nord. Porte la vrille par le ' +
+      'miroir : droite et 2,00, trop grosse — « elle déborde ». Rapporte-la par la grande ' +
+      'face ordinaire : 0,50, toujours droite, et le creux est à dix mètres. L’autre ordre ' +
+      'marche aussi. Défaut à guetter : ne jamais trouver la brèche ; ne pas voir la ' +
+      'différence entre les deux portes ; rester géant sans savoir comment redescendre.',
     10,
   ),
   auSeuil(

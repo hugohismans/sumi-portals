@@ -37,6 +37,8 @@ export interface PortalFace {
   dessinee?: boolean;
   /** Cette paire échange la gauche et la droite. Voir `mainDe`. */
   miroir?: boolean;
+  /** Les deux faces ont la même taille : rien ne change en passant. Voir `PortalPairDef.plane`. */
+  plane?: boolean;
 }
 
 const makeFace = (
@@ -45,14 +47,16 @@ const makeFace = (
   def: PortalFaceDef,
   smallW: number,
   smallH: number,
+  plane: boolean,
 ): Omit<PortalFace, 'twin'> => ({
   pairId,
   kind,
   position: vec3(def.position[0], def.position[1], def.position[2]),
   yaw: def.yaw,
   normal: yawToForward(def.yaw),
-  width: kind === 'big' ? smallW * SCALE_RATIO : smallW,
-  height: kind === 'big' ? smallH * SCALE_RATIO : smallH,
+  width: kind === 'big' && !plane ? smallW * SCALE_RATIO : smallW,
+  height: kind === 'big' && !plane ? smallH * SCALE_RATIO : smallH,
+  plane,
 });
 
 /**
@@ -90,8 +94,9 @@ export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
     // une spirale : une porte par étage, taillée pour qui l'atteint.
     const w = pair.smallWidth ?? PORTAL_SMALL_W;
     const h = pair.smallHeight ?? PORTAL_SMALL_H;
-    const big = makeFace(pair.id, 'big', pair.big, w, h) as PortalFace;
-    const small = makeFace(pair.id, 'small', pair.small, w, h) as PortalFace;
+    const plane = pair.plane === true;
+    const big = makeFace(pair.id, 'big', pair.big, w, h, plane) as PortalFace;
+    const small = makeFace(pair.id, 'small', pair.small, w, h, plane) as PortalFace;
     big.twin = small;
     small.twin = big;
     const verrous = conditionsDe(pair);
@@ -117,11 +122,14 @@ export const buildFaces = (pairs: PortalPairDef[]): PortalFace[] => {
  * sont gouvernés par la même constante. Une seule source de vérité.
  */
 export const traversalScale = (face: PortalFace): number =>
-  face.kind === 'big' ? 1 / SCALE_RATIO : SCALE_RATIO;
+  face.plane ? 1 : face.kind === 'big' ? 1 / SCALE_RATIO : SCALE_RATIO;
 
-/** Variation de palier d'échelle : -1 par la grande face, +1 par la petite. */
+/**
+ * Variation de palier d'échelle : -1 par la grande face, +1 par la petite.
+ * Zéro par une face plane — c'est même sa définition.
+ */
 export const traversalLevelDelta = (face: PortalFace): number =>
-  face.kind === 'big' ? -1 : +1;
+  face.plane ? 0 : face.kind === 'big' ? -1 : +1;
 
 /**
  * Taille de la face dans le monde. Elle ne dépend PAS du joueur : un portail
