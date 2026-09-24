@@ -115,15 +115,18 @@ const NIVEAU_SUIVANT: Record<string, string> = {
   caisse: '?niveau=monde',
 };
 /**
- * CE QUE DIT LE LIEN DE FIN. « Niveau suivant » est un mot d'ascenseur, et ce
- * jeu n'en a pas : on descend chercher le bleu, on monte chercher l'or, on va
- * se mesurer, puis on passe l'examen. Le lien dit le geste, pas le numéro.
+ * CE QUE DIT LA FIN D'UN CHAPITRE. « Résolu » était le mot d'un banc d'essai,
+ * pas d'un voyage : on avait traversé six salles pour aller chercher le bleu,
+ * et le jeu disait « Résolu · Monter ». Signalé en jouant : « pas très clair,
+ * pas récompensant ». Chaque chapitre a sa phrase, celle qui dit ce qu'on
+ * vient de faire ; et le lien dit « Continuer » suivi du nom du chapitre
+ * suivant, parce que « Monter » tout seul ne se lit pas comme une suite.
  */
-const OU_MENE_LA_SUITE: Record<string, string> = {
-  monde: 'Descendre',
-  descente: 'Monter',
-  montee: 'Aller se mesurer',
-  mesure: 'La boîte à formes',
+const FIN_DU_CHAPITRE: Record<string, { titre: string; regarde: string }> = {
+  descente: { titre: 'Le bleu est rendu', regarde: 'Regarde le village en bas : l’eau prend le bleu.' },
+  montee: { titre: 'L’or est rendu', regarde: 'Regarde le village en bas : la lumière prend l’or.' },
+  mesure: { titre: 'La mesure est rendue', regarde: 'Tu sais de nouveau quelle taille tu fais.' },
+  formes: { titre: 'Tout est vérifié', regarde: 'Cinq creux, cinq pièces, et rien à expliquer.' },
 };
 /**
  * L'ADRESSE D'UN CHAPITRE, ET ELLE GARDE LE MODE DÉBUG. Les liens de fin et
@@ -640,6 +643,7 @@ const input = new InputManager(renderer.domElement, LEVEL.spawnYaw);
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const overlay = el('overlay');
 const winPanel = el('win');
+const winTitre = winPanel.querySelector('h2')!;
 const scaleValue = el('scale-value');
 const scaleSub = el('scale-sub');
 const hintBox = el('hint');
@@ -774,6 +778,10 @@ overlay.addEventListener('touchstart', () => input.enableTouchMode(), { passive:
  * ═══════════════════════════════════════════════════════════════════════════
  */
 let partieFinie = false;
+/** La couleur qui attend le balcon pour se poser. Voir l'éveil, plus bas. */
+let peintureAuBut: string | null = null;
+/** Les chapitres dont la couleur se pose à la fin, sous les yeux, et non à l'éveil. */
+const PEINTURE_AU_BUT = MODE === 'descente' || MODE === 'montee';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -1796,7 +1804,22 @@ function frame(now: number): void {
         ? events.eveil.id.slice('pinceau-'.length)
         : null;
       const attendu = pigment !== null && [...pigmentDe.values(), ...pigmentAccentDe.values()].includes(pigment);
-      if (attendu && !socle) {
+      if (attendu && !socle && PEINTURE_AU_BUT) {
+        // ═══════════════════════════════════════════════════════════════════
+        // LA LUCARNE SE PEINT QUAND ON EST LÀ POUR LA VOIR.
+        //
+        // Dans la descente et la montée, ce qui attend la couleur est une
+        // maquette du village posée dans la dernière salle, faite pour qu'on
+        // la regarde prendre sa couleur. Or on réveillait le pinceau au fond
+        // du bol, à cent mètres de là : la maquette se peignait en quatre
+        // secondes sans personne devant, et l'on arrivait sur le balcon devant
+        // un village déjà fait, avec « Résolu » par-dessus. Signalé en jouant :
+        // une fin ni claire ni récompensante. La couleur attend donc le
+        // balcon : elle se pose au moment où l'on arrive, sous les yeux.
+        // ═══════════════════════════════════════════════════════════════════
+        peintureAuBut = pigment;
+        flash('Il s’éveille, et il te suit. Va le montrer au village.', 6);
+      } else if (attendu && !socle) {
         pigments.rendre(
           pigment,
           worldView.parRegion,
@@ -1949,17 +1972,51 @@ function frame(now: number): void {
         }, 8000);
       } else {
         if (EN_AVENTURE) Voyage.finir(MODE!);
-        // Le lien dit où il va. Il annonçait « niveau suivant » et ramenait au
-        // hall dès qu'il n'y avait plus de suite — au bout de la montée, donc
-        // à la fin du plus long voyage du jeu, là où mentir coûte le plus cher.
+        // ═══════════════════════════════════════════════════════════════════
+        // LA FIN D'UN CHAPITRE SE REGARDE AVANT DE SE LIRE.
+        //
+        // Le panneau tombait dans la même image que le but, sur un balcon
+        // qu'on venait d'atteindre, devant un village qu'on n'avait pas eu le
+        // temps de voir. Maintenant : la couleur qu'on rapporte se pose sous
+        // les yeux (si le pinceau nous suit), l'accord du sacre sonne, une
+        // phrase dit où regarder, et l'on garde la maîtrise du regard sept
+        // secondes. Le carton vient après, avec la phrase du chapitre et un
+        // lien qui dit « Continuer » vers le suivant.
+        // ═══════════════════════════════════════════════════════════════════
+        const fin = FIN_DU_CHAPITRE[MODE!];
+        if (peintureAuBut) {
+          const oeil = sim.eyePosition();
+          pigments.rendre(
+            peintureAuBut,
+            worldView.parRegion,
+            pigmentDe,
+            pigmentAccentDe,
+            new THREE.Vector3(oeil.x, oeil.y, oeil.z),
+            bornesDeRegion,
+          );
+          teindreLesObjets();
+          direLesCouleursConnues();
+          peintureAuBut = null;
+        }
+        ambiance.retrouvaille();
+        if (fin) flash(fin.regarde, 7);
         const suite = NIVEAU_SUIVANT[MODE!];
-        suiteEl.setAttribute('href', adresseDe(suite ? suite.slice('?niveau='.length) : null));
-        suiteEl.textContent = suite ? (OU_MENE_LA_SUITE[MODE!] ?? 'niveau suivant') : 'retour au hall';
-        winPanel.classList.add('show');
-        // On rend la souris, sinon le lien du panneau est inatteignable — et
-        // on la rend POUR DE BON, sans quoi le panneau de reprise se pose
-        // par-dessus et reprend le premier clic qui vise le lien.
-        rendreLaSouris();
+        const suivant = suite ? suite.slice('?niveau='.length) : null;
+        suiteEl.setAttribute('href', adresseDe(suivant));
+        suiteEl.textContent = suivant
+          ? `Continuer : ${NIVEAUX[suivant]().name.toLowerCase()}`
+          : 'Revenir au hall';
+        if (fin) winTitre.textContent = fin.titre;
+        setTimeout(
+          () => {
+            winPanel.classList.add('show');
+            // On rend la souris, sinon le lien du panneau est inatteignable —
+            // et on la rend POUR DE BON, sans quoi le panneau de reprise se
+            // pose par-dessus et reprend le premier clic qui vise le lien.
+            rendreLaSouris();
+          },
+          fin ? 7000 : 1500,
+        );
       }
     }
   }
