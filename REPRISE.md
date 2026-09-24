@@ -39,8 +39,8 @@ hall  →  monde (rouge, vert)  →  descente (bleu)  →  montée (or)
 ```
 
 - **https://hugohismans.github.io/sumi-portals/** — le hall, trois arches.
-  *Le site se publie depuis `main` ; tant que la branche de cette nuit n'y est
-  pas fusionnée, il montre l'état du 4 août.*
+  *Le site se publie depuis `main` à chaque poussée (`.github/workflows/deploy.yml`) ;
+  depuis le 24 septembre on pousse directement sur `main`, le site est donc à jour.*
 - `?niveau=monde` — le voyage d'introduction. Il repart toujours du gris
   (`&neuf=1` ne sert qu'avec `&debug=1`).
 - `?niveau=descente` — six salles, on y cherche le bleu.
@@ -49,15 +49,15 @@ hall  →  monde (rouge, vert)  →  descente (bleu)  →  montée (or)
 - `?niveau=montee` — sept salles, on y cherche l'or.
 - `?niveau=mesure` — **NEUF** : trois salles, on y perd la taille.
 - `?niveau=formes` — la boîte à formes, l'examen.
-- `?niveau=banc` — le banc d'essai, treize stations, une par chose que personne
-  n'a vue. **C'est par là qu'il faut commencer.**
+- `?niveau=banc` — le banc d'essai, douze stations (treize jalons du Pinceau),
+  une par chose que personne n'a vue. **C'est par là qu'il faut commencer.**
 - `?niveau=reve&graine=7` — le rêve génératif.
 - `?niveau=duo&salon=…&role=geant|minuscule` — l'aventure à deux, jamais
   essayée à deux vraies machines.
 
 **`?debug=1` — LES REPÈRES.** Sur le hall, le monde, la descente, la montée,
-la mesure, la boîte à formes et le banc (pas sur la cour, la caisse, le duo ni
-le rêve). Une touche par moment du voyage, chaque ligne dit ce qu'il faut
+la mesure, la boîte à formes, le banc et la cour de pluie (pas sur la cour, la
+caisse, le duo ni le rêve). Une touche par moment du voyage, chaque ligne dit ce qu'il faut
 regarder là et POURQUOI on le regarde.
 `H` replie la liste. Certains sauts RECHARGENT la page, voir
 `src/debug/reperes.ts`.
@@ -189,13 +189,13 @@ pour le détail de chaque station.
    monde jusqu'au sacre, « Descendre », la descente jusqu'au bleu, « Monter »…
    et, entre deux, fermer l'onglet, rouvrir le hall, voir la carte dire
    « Suite : la montée » et l'arche y mener.
-1. **`?niveau=banc&debug=1`** — le banc d'essai, treize stations en une marche.
+1. **`?niveau=banc&debug=1`** — le banc d'essai, douze stations en une marche.
    Il dit en une demi-heure si les corrections du moteur tiennent à l'œil.
 2. **`?niveau=montee&debug=1`, touches `2` et `3`** — le creux qui refuse et le
-   blanchiment, réécrits l'avant-veille et relus la veille. Le geste à juger :
-   lancer la vrille dans une porte, la voir ressortir retournée ; la ramasser,
-   la POSER (lancée à côté du creux, elle n'y entre pas toute seule). Et le
-   refus qui parle, phrase par phrase. Puis la touche `5`, l'atelier du haut :
+   blanchiment, réécrits le 24 septembre. Le geste à juger : porter la vrille
+   par le miroir plan, voir la cour basculer et la vrille garder sa forme, la
+   POSER, elle entre ; puis au blanchiment, miroir et porte ordinaire dans
+   l'ordre qu'on veut. Et le refus qui parle, phrase par phrase. Puis la touche `5`, l'atelier du haut :
    dire le rouge aux pots, le bleu aux tuiles, et voir la porte de la vallée
    se dessiner.
 3. **`?niveau=mesure&debug=1`** — le troisième mouvement, jamais joué. La rive

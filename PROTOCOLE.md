@@ -13,14 +13,14 @@ la mauvaise chose.
 
 ## PAR OÙ COMMENCER, SI TU N'AS QU'UNE DEMI-HEURE
 
-Rien de ce document n'a encore été suivi une seule fois. Dans l'ordre du risque,
+Seule la montée a été jouée sur un vrai PC (le 24 septembre). Dans l'ordre du risque,
 du plus gros au plus petit :
 
-1. **Le banc d'essai**, `?niveau=banc&debug=1` — treize stations en une marche,
+1. **Le banc d'essai**, `?niveau=banc&debug=1` — douze stations en une marche,
    une par chose que le moteur prétend faire et que personne n'a regardée.
 2. **Les deux salles chirales de la montée**, `?niveau=montee&debug=1`, touches
-   `2` et `3` — réécrites autour du LANCER (voir § 3 bis). C'est le chantier
-   le plus récent, donc le moins vu.
+   `2` et `3` — réécrites le 24 septembre : miroir PLAN au refus, tout se
+   porte (voir § 3 bis). C'est le chantier le plus récent, donc le moins vu.
 3. **La mesure**, `?niveau=mesure&debug=1` — le troisième mouvement, assemblé
    la nuit du 22 septembre, jamais joué (voir § 3 septies).
 4. **Le voyage de l'introduction, de bout en bout** — `?niveau=monde`. Le
