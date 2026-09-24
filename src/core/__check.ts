@@ -8,7 +8,7 @@
  *
  *   npm run check
  */
-import { EYE_FRACTION, PLAYER_HEIGHT, PLAYER_RADIUS, SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
+import { EYE_FRACTION, GRAVITY, JUMP_SPEED, PLAYER_HEIGHT, PLAYER_RADIUS, SCALE_MAX_LEVEL, SCALE_MIN_LEVEL, TICK_DT, scaleOfLevel } from './constants.js';
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
@@ -2618,6 +2618,152 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       Math.abs(sim.player.position.y - 1) < 0.05,
       `y = ${sim.player.position.y.toFixed(1)}`,
     );
+  }
+}
+
+{
+  console.log('\n— Sous un plafond bas, un saut cogne la tête, et c’est tout —');
+
+  // SIGNALÉ EN JOUANT LA MONTÉE : sous le surplomb de l'escalier, un plafond à
+  // 2,60, « quand je saute, ça m'éjecte à l'extérieur, je devrais juste me
+  // cogner la tête ». La tête touchait la dalle, la virgule flottante la
+  // laissait dedans de 2·10⁻¹⁶, et le pas horizontal suivant « résolvait » la
+  // dalle comme un mur qu'on venait de percuter : sur sa face, douze mètres et
+  // demi plus loin, puis sur la falaise, à onze mètres. 1 124 sauts sur 3 270
+  // éjectaient, dans cette seule salle.
+  const ordreSaut = (yaw: number, avance: number, saute: boolean) => ({
+    forward: avance, strafe: 0, jump: saute, sprint: false, interact: false, throwIt: false, yaw, pitch: 0,
+  });
+  /** Pose, saute en avançant six pas, retombe : rend l'écart au départ et le plus haut atteint. */
+  const sauter = (sim: Simulation, p: { x: number; y: number; z: number }, palier: number, yaw: number, avance: number) => {
+    sim.reset();
+    sim.player.position = { ...p };
+    sim.player.velocity = { x: 0, y: 0, z: 0 };
+    sim.player.scaleLevel = palier;
+    sim.player.grounded = true;
+    for (let t = 0; t < 3; t++) sim.step(ordreSaut(yaw, 0, false), TICK_DT);
+    const depart = { ...sim.player.position };
+    let haut = -Infinity;
+    let traverse = false;
+    for (let t = 0; t < 70; t++) {
+      const e = sim.step(ordreSaut(yaw, t < 6 ? avance : 0, t < 2), TICK_DT);
+      if (e.traversed) traverse = true;
+      haut = Math.max(haut, sim.player.position.y);
+    }
+    const f = sim.player.position;
+    return { depart, dy: f.y - depart.y, dh: Math.hypot(f.x - depart.x, f.z - depart.z), haut, traverse };
+  };
+
+  // LE LIEU DU SIGNALEMENT, dans les quatre directions.
+  {
+    const sim = new Simulation(MONTEE);
+    const ecarts: string[] = [];
+    for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+      const r = sauter(sim, { x: -222.57, y: -3.6, z: 1920 }, 0, yaw, 1);
+      if (Math.abs(r.dy) > 0.01 || r.dh > 1.5 || r.haut > -2.8 + 1e-6) ecarts.push(`lacet ${yaw.toFixed(2)} : dy ${r.dy.toFixed(2)}, dh ${r.dh.toFixed(2)}, haut ${r.haut.toFixed(2)}`);
+    }
+    check(
+      'escalier : sous le surplomb, un saut cogne la dalle et retombe là, dans les quatre directions',
+      ecarts.length === 0,
+      ecarts.join(' · ') || 'rien ne bouge qu’un pas',
+    );
+  }
+
+  // PARTOUT : chaque plafond bas de chaque niveau, aux trois tailles qu'on y
+  // prend, sur place et dans les quatre directions. Un échantillon (trois sur
+  // trois par recouvrement) et non le balayage entier, qui prend cinq secondes.
+  {
+    const niveaux: [string, LevelDef][] = [
+      ['la montée', MONTEE], ['la descente', DESCENTE], ['la mesure', MESURE], ['le monde', MONDE],
+      ['le hall', LOBBY], ['le banc', BANC], ['la boîte à formes', FORMES], ['la cour de pluie', PLUIE_SEULE],
+    ];
+    const jump = (JUMP_SPEED * 1) ** 2 / (2 * GRAVITY);
+    let essais = 0;
+    const fautes: string[] = [];
+    for (const [nom, L] of niveaux) {
+      const sim = new Simulation(L);
+      for (const palier of [-1, 0, 1]) {
+        const s = scaleOfLevel(palier);
+        const h = PLAYER_HEIGHT * s;
+        const r = PLAYER_RADIUS * s;
+        const apex = jump * s;
+        for (const sol of L.boxes) {
+          if (sol.ghost) continue;
+          const y0 = sol.max[1];
+          for (const pl of L.boxes) {
+            if (pl.ghost || pl === sol) continue;
+            const marge = pl.min[1] - (y0 + h);
+            if (marge < -1e-6 || marge > apex) continue;
+            const x0 = Math.max(sol.min[0], pl.min[0]) + r, x1 = Math.min(sol.max[0], pl.max[0]) - r;
+            const z0 = Math.max(sol.min[2], pl.min[2]) + r, z1 = Math.min(sol.max[2], pl.max[2]) - r;
+            if (x1 < x0 || z1 < z0) continue;
+            for (const fx of [0.5, 0.1, 0.9]) for (const fz of [0.5, 0.1, 0.9]) {
+              const p = { x: x0 + (x1 - x0) * fx, y: y0, z: z0 + (z1 - z0) * fz };
+              if (!isClear(sim.world, p, s)) continue;
+              for (const [yaw, avance] of [[0, 0], [0, 1], [Math.PI / 2, 1], [Math.PI, 1], [-Math.PI / 2, 1]]) {
+                const res = sauter(sim, p, palier, yaw, avance);
+                if (Math.abs(res.depart.y - y0) > 0.05 * s || res.traverse) continue;
+                essais++;
+                const plafondY = pl.min[1] - h;
+                const faux = res.haut > plafondY + 0.05 * s || res.dy > marge + 0.05 * s || res.dy < -3 * s || res.dh > 2.5 * s ||
+                  (avance === 0 && (Math.abs(res.dy) > 0.02 * s || res.dh > 0.05 * s));
+                if (faux && fautes.length < 6) fautes.push(`${nom} ×${s} (${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}) : dy ${res.dy.toFixed(2)}, dh ${res.dh.toFixed(2)}`);
+              }
+            }
+          }
+        }
+      }
+    }
+    check(
+      `aucun plafond bas d’aucun niveau n’éjecte au saut (${essais} sauts)`,
+      fautes.length === 0 && essais > 200,
+      fautes.join(' · ') || `${essais} sauts`,
+    );
+  }
+
+  // LA RÈGLE, SUR UN TERRAIN D'ESSAI : ce qu'on chevauchait déjà avant un pas
+  // n'est pas un mur qu'on vient de percuter.
+  {
+    const terrain: LevelDef = {
+      name: 'chevauchements',
+      spawn: [0, 0, 0],
+      spawnYaw: 0,
+      boxes: [
+        { min: [-20, -1, -20], max: [20, 0, 20], ink: 0 },
+        // Un mur épais de dix mètres, à l'est.
+        { min: [2, 0, -20], max: [12, 4, 20], ink: 1 },
+      ],
+      portals: [],
+      goal: { position: [0, -900, 0], radius: 1 },
+    };
+    const sim = new Simulation(terrain);
+    const poser = (x: number, y: number) => {
+      sim.player.position = { x, y, z: 0 };
+      sim.player.velocity = { x: 0, y: 0, z: 0 };
+      sim.player.scaleLevel = 0;
+      sim.player.grounded = true;
+    };
+    // Enfoncé de 5 cm dans le mur (une porte l'y aurait déposé) : avancer
+    // dedans ne l'enfonce pas et ne le téléporte pas de l'autre côté…
+    poser(2 - PLAYER_RADIUS + 0.05, 0);
+    for (let t = 0; t < 30; t++) sim.step(ordreSaut(Math.PI / 2, 1, false), TICK_DT);
+    const x1 = sim.player.position.x;
+    check('enfoncé dans un mur, avancer ne s’y enfonce pas davantage', x1 <= 2 - PLAYER_RADIUS + 0.05 + 1e-9 && x1 > 1, `x = ${x1.toFixed(3)}`);
+    // …longer le mur reste possible…
+    for (let t = 0; t < 30; t++) sim.step(ordreSaut(0, 1, false), TICK_DT);
+    check('on peut encore le longer', sim.player.position.z > 1, `z = ${sim.player.position.z.toFixed(2)}`);
+    // …et reculer en sort.
+    for (let t = 0; t < 30; t++) sim.step(ordreSaut(-Math.PI / 2, 1, false), TICK_DT);
+    check('et reculer en sort', sim.player.position.x < 2 - PLAYER_RADIUS - 0.5, `x = ${sim.player.position.x.toFixed(2)}`);
+    // Les pieds enfoncés d'un cheveu dans le sol : sauter monte, au lieu de
+    // passer SOUS la dalle comme la résolution le faisait.
+    poser(-5, -1e-9);
+    let haut = -Infinity;
+    for (let t = 0; t < 40; t++) {
+      sim.step(ordreSaut(0, 0, t < 2), TICK_DT);
+      haut = Math.max(haut, sim.player.position.y);
+    }
+    check('les pieds d’un cheveu dans le sol, un saut monte quand même', haut > 1 && Math.abs(sim.player.position.y) < 0.01, `plus haut ${haut.toFixed(2)}, fin ${sim.player.position.y.toFixed(3)}`);
   }
 }
 

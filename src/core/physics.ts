@@ -1,6 +1,6 @@
 import { PLAYER_HEIGHT, PLAYER_RADIUS, STEP_FRACTION } from './constants.js';
 import type { Vec3 } from './math.js';
-import type { Aabb, World } from './world.js';
+import { overlaps, type Aabb, type World } from './world.js';
 
 /** Boîte de collision du joueur. `p` est la position des PIEDS. */
 export const playerAabb = (p: Vec3, scale: number, out: Aabb): Aabb => {
@@ -16,6 +16,7 @@ export const playerAabb = (p: Vec3, scale: number, out: Aabb): Aabb => {
 };
 
 const scratchBox: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+const scratchAvant: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
 const scratchHits: Aabb[] = [];
 
 /** Le joueur tient-il à cette position sans chevaucher un solide ? */
@@ -46,6 +47,7 @@ const moveAxis = (
   plafond?: number,
 ): boolean => {
   if (amount === 0) return false;
+  const debut = p[axis];
   p[axis] += amount;
 
   const half = PLAYER_RADIUS * scale;
@@ -60,6 +62,43 @@ const moveAxis = (
 
   const minKey = axis === 'x' ? 'minX' : axis === 'y' ? 'minY' : 'minZ';
   const maxKey = axis === 'x' ? 'maxX' : axis === 'y' ? 'maxY' : 'maxZ';
+
+  // ─── CE QU'ON CHEVAUCHAIT DÉJÀ N'EST PAS UN OBSTACLE QU'ON VIENT DE HEURTER ──
+  //
+  // Signalé en jouant la montée : sous le surplomb de l'escalier, un plafond à
+  // 2,60, « quand je saute, ça m'éjecte à l'extérieur, je devrais juste me
+  // cogner la tête ». Mesuré : la tête touche la dalle, la résolution la pose
+  // à `dessous − 1,80`, et la virgule flottante la laisse DEDANS de 2·10⁻¹⁶.
+  // Au pas suivant, un millimètre d'élan vers le nord « résolvait » cette
+  // dalle comme un mur qu'on venait de percuter — sur sa face sud, douze
+  // mètres et demi plus loin. Le corps s'y retrouvait dans la falaise, et le
+  // secours de la chute le posait dessus, à onze mètres.
+  //
+  // Une résolution sur un axe suppose que le chevauchement vient du pas fait
+  // SUR CET AXE. Pour une boîte qu'on chevauchait déjà avant ce pas, c'est
+  // faux, et la « résoudre » téléporte. On la juge donc à part, par l'axe où
+  // l'on y est le MOINS enfoncé — celui par lequel on la touche vraiment :
+  //   — un autre axe (la tête qui frôle un plafond) : elle ne gêne pas ce pas ;
+  //   — cet axe, en s'y enfonçant : on refuse d'avancer, sans reculer ;
+  //   — cet axe, en en sortant : on la laisse faire.
+  // La descente garde sa propre règle (voir plus bas et `moveAndCollide`) :
+  // c'est elle qui rattrape un corps déposé dans le sol par une porte.
+  const avant = playerAabb(
+    { x: axis === 'x' ? debut : p.x, y: axis === 'y' ? debut : p.y, z: axis === 'z' ? debut : p.z },
+    scale,
+    scratchAvant,
+  );
+  /** −1 : ignorer ; 0 : bloquer sans reculer ; 1 : une boîte neuve, à résoudre. */
+  const jugement = (h: Aabb): -1 | 0 | 1 => {
+    if (!overlaps(avant, h)) return 1;
+    const pen = (a: 'X' | 'Y' | 'Z'): number =>
+      Math.min(avant[`max${a}`] - h[`min${a}`], h[`max${a}`] - avant[`min${a}`]);
+    const ici = pen(axis === 'x' ? 'X' : axis === 'y' ? 'Y' : 'Z');
+    if (ici > Math.min(pen('X'), pen('Y'), pen('Z'))) return -1;
+    // Du côté min de la boîte, avancer en + s'y enfonce ; du côté max, en −.
+    const coteMin = avant[maxKey] - h[minKey] <= h[maxKey] - avant[minKey];
+    return coteMin === amount > 0 ? 0 : -1;
+  };
 
   // ─── ON NE SE POSE QUE SUR CE QU'ON AVAIT SOUS LES PIEDS ─────────────────
   //
@@ -83,8 +122,21 @@ const moveAxis = (
   // on annule simplement la descente, et le corps reste où il était.
   // On prend la résolution la plus extrême : gère plusieurs boîtes en une passe.
   let resolved = p[axis];
+  let bloque = false;
   if (amount > 0) {
-    for (const h of hits) resolved = Math.min(resolved, h[minKey] - posExtent);
+    for (const h of hits) {
+      const j = jugement(h);
+      if (j < 0) continue;
+      bloque = true;
+      resolved = Math.min(resolved, j === 0 ? debut : h[minKey] - posExtent);
+    }
+  } else if (axis !== 'y') {
+    for (const h of hits) {
+      const j = jugement(h);
+      if (j < 0) continue;
+      bloque = true;
+      resolved = Math.max(resolved, j === 0 ? debut : h[maxKey] + negExtent);
+    }
   } else {
     // ─── DEUX CANDIDATS, ET L'ON PRÉFÈRE LE PLUS BAS QUI SUFFISE ────────────
     //
@@ -108,9 +160,10 @@ const moveAxis = (
       if (plafond !== undefined && r <= plafond + 1e-6) bas = Math.max(bas, r);
     }
     resolved = bas > -Infinity ? Math.max(resolved, bas) : haut;
+    bloque = true;
   }
   p[axis] = resolved;
-  return true;
+  return bloque;
 };
 
 export interface MoveResult {
