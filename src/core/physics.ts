@@ -27,6 +27,38 @@ export const isClear = (world: World, p: Vec3, scale: number): boolean => {
 
 type Axis = 'x' | 'y' | 'z';
 
+// ─── UNE RÉSOLUTION POSE AU CONTACT, JAMAIS DEDANS D'UN ULP ──────────────────
+//
+// `face − demiLargeur`, puis `+ demiLargeur` pour bâtir la boîte du corps, ne
+// retombe pas toujours sur `face` : quand la somme change de binade, le corps
+// reste DEDANS d'un ulp — 2·10⁻¹⁶. Cet ulp était la source du saut qui éjectait
+// sous le surplomb de l'escalier, et, une fois la première correction faite,
+// d'une catapulte sur les murs, les piliers et les linteaux qu'on touchait en
+// sautant (mesuré par la chasse aux régressions du 24 septembre : un poteau du
+// hall de 6,40 m, un pilier du belvédère de 21 m). On avance donc d'un ulp à
+// la fois jusqu'au contact exact : on touche, on ne chevauche pas.
+const f64 = new Float64Array(1);
+const i64 = new BigInt64Array(f64.buffer);
+/** Le flottant voisin de `x`, vers le haut (`sens` = 1) ou vers le bas (−1). */
+const unUlp = (x: number, sens: 1 | -1): number => {
+  if (x === 0) return sens > 0 ? Number.MIN_VALUE : -Number.MIN_VALUE;
+  f64[0] = x;
+  i64[0] += x > 0 === sens > 0 ? 1n : -1n;
+  return f64[0];
+};
+/** La plus grande position `r` telle que `r + debord <= face`. */
+const auRasDessous = (face: number, debord: number): number => {
+  let r = face - debord;
+  while (r + debord > face) r = unUlp(r, -1);
+  return r;
+};
+/** La plus petite position `r` telle que `r - debord >= face`. */
+const auRasDessus = (face: number, debord: number): number => {
+  let r = face + debord;
+  while (r - debord < face) r = unUlp(r, 1);
+  return r;
+};
+
 /**
  * Déplace le joueur sur un seul axe puis le ressort de tout solide pénétré.
  * Résoudre axe par axe est moins exact qu'un balayage continu, mais c'est
@@ -79,7 +111,8 @@ const moveAxis = (
   // faux, et la « résoudre » téléporte. On la juge donc à part, par l'axe où
   // l'on y est le MOINS enfoncé — celui par lequel on la touche vraiment :
   //   — un autre axe (la tête qui frôle un plafond) : elle ne gêne pas ce pas ;
-  //   — cet axe, en s'y enfonçant : on refuse d'avancer, sans reculer ;
+  //   — cet axe, en s'y enfonçant : on est repoussé jusqu'à sa face, qui est
+  //     à moins que l'enfoncement le plus faible — jamais une téléportation ;
   //   — cet axe, en en sortant : on la laisse faire.
   // La descente garde sa propre règle (voir plus bas et `moveAndCollide`) :
   // c'est elle qui rattrape un corps déposé dans le sol par une porte.
@@ -128,14 +161,16 @@ const moveAxis = (
       const j = jugement(h);
       if (j < 0) continue;
       bloque = true;
-      resolved = Math.min(resolved, j === 0 ? debut : h[minKey] - posExtent);
+      const face = auRasDessous(h[minKey], posExtent);
+      resolved = Math.min(resolved, j === 0 ? Math.min(debut, face) : face);
     }
   } else if (axis !== 'y') {
     for (const h of hits) {
       const j = jugement(h);
       if (j < 0) continue;
       bloque = true;
-      resolved = Math.max(resolved, j === 0 ? debut : h[maxKey] + negExtent);
+      const face = auRasDessus(h[maxKey], negExtent);
+      resolved = Math.max(resolved, j === 0 ? Math.max(debut, face) : face);
     }
   } else {
     // ─── DEUX CANDIDATS, ET L'ON PRÉFÈRE LE PLUS BAS QUI SUFFISE ────────────
@@ -152,13 +187,24 @@ const moveAxis = (
     // dans la roche par une porte n'a que cette sortie-là, et la lui retirer,
     // c'est le faire tomber jusqu'à moins deux cent mille. Mesuré, cette
     // nuit-là comme les précédentes.
+    //
+    // ET UN MUR N'EST PAS UN SOL. Une boîte qu'on chevauchait déjà avant de
+    // descendre, et qu'on touche par le CÔTÉ (ou par-dessous : une tête dans un
+    // linteau), n'a rien à rattraper : la retenir dans `haut` posait le joueur
+    // sur le dessus d'un mur, d'un pilier ou d'un linteau qu'il frôlait en
+    // retombant d'un saut. Ne restent que les boîtes neuves et celles où l'on
+    // est enfoncé PAR LE DESSUS — le sol où une porte a déposé les pieds.
     let haut = resolved;
     let bas = -Infinity;
+    let retenues = 0;
     for (const h of hits) {
+      if (jugement(h) < 0) continue;
+      retenues++;
       const r = h[maxKey] + negExtent;
       haut = Math.max(haut, r);
       if (plafond !== undefined && r <= plafond + 1e-6) bas = Math.max(bas, r);
     }
+    if (retenues === 0) return false;
     resolved = bas > -Infinity ? Math.max(resolved, bas) : haut;
     bloque = true;
   }
@@ -252,6 +298,30 @@ export const moveAndCollide = (
   // l'époque disaient pourtant noir sur blanc : « le saut ne vient pas de
   // l'accroche mais de la gravité elle-même ». C'est ici, et nulle part
   // ailleurs.
+  // ─── DES PIEDS ENFONCÉS DANS UN SOL BAS REMONTENT DESSUS ──────────────────
+  //
+  // Une porte dépose parfois les pieds DANS l'estrade d'arrivée (0,135, 0,20,
+  // 0,50 m au monde). L'ancienne résolution les en sortait par hasard, au
+  // premier pas, en « heurtant » l'estrade et en montant la marche ; depuis
+  // qu'un chevauchement préexistant ne se heurte plus, on marchait enfoncé. On
+  // les repose donc sur le dessus — seulement debout, seulement de moins
+  // d'une marche, seulement si c'est bien PAR LE DESSUS qu'on y est enfoncé
+  // (et non contre son flanc), et seulement si le corps y est libre.
+  if (wasGrounded) {
+    const marche = PLAYER_HEIGHT * STEP_FRACTION * scale;
+    const corps = playerAabb(p, scale, scratchAvant);
+    let dessus = -Infinity;
+    for (const h of world.query(corps, scratchHits)) {
+      const pied = h.maxY - p.y;
+      const flanc = Math.min(
+        corps.maxX - h.minX, h.maxX - corps.minX,
+        corps.maxZ - h.minZ, h.maxZ - corps.minZ,
+      );
+      if (pied > 0 && pied <= marche && pied <= flanc) dessus = Math.max(dessus, h.maxY);
+    }
+    if (dessus > p.y && isClear(world, { x: p.x, y: dessus, z: p.z }, scale)) p.y = dessus;
+  }
+
   const departY = p.y;
   const dy = velocity.y * dt;
   if (moveAxis(world, p, scale, 'y', dy, dy < 0 ? departY : undefined)) {
