@@ -730,6 +730,8 @@ import type { RaisonDuRefus } from './sockets.js';
 export interface TickEvents {
   /** Le joueur a traversé un portail ce tick. */
   traversed?: { pairId: string; from: 'big' | 'small'; newLevel: number };
+  /** On a buté sur le DOS d'une porte : il fait mur, elle s'ouvre de l'autre côté. */
+  dos?: { pairId: string };
   /** Le portail a refusé le passage. */
   refused?: {
     pairId: string;

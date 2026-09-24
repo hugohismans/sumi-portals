@@ -1739,6 +1739,10 @@ function frame(now: number): void {
         3.4,
       );
     }
+    // Le dos d'une porte fait mur, et il le dit : sans un mot, une feuille
+    // tendue dans un cadre passe pour une porte fermée de plus. Signalé en
+    // jouant, dans le blanchiment : « tous les portails sont fermés ».
+    if (events.dos) flash('C’est le dos de la porte. Elle s’ouvre de l’autre côté.', 2.5);
     if (events.carry && !events.carry.taken) ambiance.caisse();
     if (events.socketFilled) ambiance.caisse();
     if (events.carry) {

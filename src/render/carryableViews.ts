@@ -4,7 +4,7 @@ import {
   faceWorldSize,
   transformPoint,
   traversalScale,
-  yawDelta,
+  deltaDeRotation,
   type PortalFace,
 } from '../core/portals.js';
 import { PALETTE, createCelMaterial, createOutlineMaterial, syncInkUniforms } from './ink.js';
@@ -267,9 +267,12 @@ export class CarryableViews {
       }
 
       view.ghost.position.set(there.x, there.y, there.z);
+      // Le double tourne comme l'objet tournera : par une porte ordinaire,
+      // avec son porteur ; par un miroir, du complément qui, joint à la main
+      // basculée, fait la réflexion entière (voir `yawDeltaMiroir`).
       view.ghost.rotation.set(
         item.rotation.x,
-        item.rotation.y + yawDelta(face),
+        item.rotation.y + deltaDeRotation(face),
         item.rotation.z,
       );
       view.ghost.visible = true;

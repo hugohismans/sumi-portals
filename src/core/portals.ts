@@ -240,3 +240,32 @@ export const mainDe = (face: PortalFace): 1 | -1 => (face.miroir ? 1 : -1);
  */
 export const yawDelta = (face: PortalFace): number =>
   wrapAngle(face.twin.yaw + Math.PI - face.yaw);
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CE QUE DEVIENT L'ORIENTATION D'UN OBJET QUI PASSE UN MIROIR.
+ *
+ * Un objet chiral est dessiné à partir de sa forme de référence, reflétée sur
+ * SON axe x quand sa main est droite (voir `carryableGeometry`). Mais le
+ * miroir ne réfléchit pas le monde sur l'axe x de l'objet : il le réfléchit
+ * sur le plan de la porte, puis le pose dans le repère de la jumelle. Pour
+ * deux faces qui se font face de part et d'autre d'une cour, c'est le NORD et
+ * le SUD qui s'échangent — et une main retournée sur l'est-ouest, vue dans
+ * un monde retourné sur le nord-sud, n'est pas la même chose : elle en
+ * diffère d'un demi-tour.
+ *
+ * Signalé en jouant : « quand je traverse un portail miroir avec un objet,
+ * celui-ci change d'orientation ; il devrait être identique, c'est le monde
+ * lui-même qui est en miroir. » Exactement. La réflexion réelle vaut
+ * `réflexion sur x` composée avec une rotation autour de la verticale, et
+ * c'est cette rotation qu'il faut appliquer à l'objet en plus de basculer sa
+ * main : π − lacet de la face − lacet de la jumelle. Pour une porte
+ * ordinaire, l'objet tourne simplement comme son porteur (`yawDelta`).
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const yawDeltaMiroir = (face: PortalFace): number =>
+  wrapAngle(Math.PI - face.yaw - face.twin.yaw);
+
+/** La rotation que subit ce qui passe `face`, miroir ou pas. */
+export const deltaDeRotation = (face: PortalFace): number =>
+  face.miroir ? yawDeltaMiroir(face) : yawDelta(face);

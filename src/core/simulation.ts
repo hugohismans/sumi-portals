@@ -28,6 +28,7 @@ import {
   transformVector,
   traversalLevelDelta,
   traversalScale,
+  deltaDeRotation,
   withinFaceRect,
 
   type PortalFace,
@@ -56,6 +57,16 @@ const REFUS_DELAI = 30;
 const retournerLaMain = (c: Carryable, face: PortalFace): void => {
   if (!face.miroir || c.main === undefined) return;
   c.main = c.main === 'L' ? 'D' : 'L';
+};
+
+/**
+ * Ce qui passe une porte tourne avec elle — comme son porteur. Et par un
+ * miroir, la main bascule ET l'objet tourne du complément : voir
+ * `yawDeltaMiroir`, qui explique pourquoi une main retournée ne suffit pas.
+ */
+const tournerAvecLaPorte = (c: Carryable, face: PortalFace): void => {
+  retournerLaMain(c, face);
+  c.rotation.y = wrapAngle(c.rotation.y + deltaDeRotation(face));
 };
 
 /**
@@ -337,7 +348,8 @@ export class Simulation {
       pl.grounded,
     );
     pl.grounded = move.grounded;
-    this.dosDesPortes(prevPos, scale);
+    const dos = this.dosDesPortes(prevPos, scale);
+    if (dos) events.dos = { pairId: dos.pairId };
 
     // ═══════════════════════════════════════════════════════════════════════
     // LE RATTRAPAGE — la règle « on ne piège jamais » cesse d'être une promesse
@@ -813,7 +825,7 @@ export class Simulation {
       c.size *= s;
       // Lancée à travers un miroir, elle change de main comme si on l'y avait
       // portée. Rien ne justifierait qu'un objet jeté échappe à la géométrie.
-      retournerLaMain(c, face);
+      tournerAvecLaPorte(c, face);
       c.position.x = newCenter.x;
       c.position.z = newCenter.z;
       // ═══════════════════════════════════════════════════════════════════
@@ -930,10 +942,11 @@ export class Simulation {
    * d'une porte n'est donc jamais franchi par personne, dans aucun sens.
    * ═══════════════════════════════════════════════════════════════════════
    */
-  private dosDesPortes(prev: Vec3, scale: number): void {
+  private dosDesPortes(prev: Vec3, scale: number): PortalFace | null {
     const pl = this.player;
     const r = PLAYER_RADIUS * scale;
     const h = PLAYER_HEIGHT * scale;
+    let bute: PortalFace | null = null;
     for (const face of this.faces) {
       const d0 = signedDistance(face, prev);
       if (d0 >= 0) continue;
@@ -949,6 +962,9 @@ export class Simulation {
       // plan si l'on venait de plus loin.
       const cible = Math.max(d0, -r);
       const n = face.normal;
+      // On ne le dit que si l'on poussait vraiment dessus : un joueur qui
+      // frôle le plan par-derrière n'a pas besoin qu'on lui parle.
+      if (d1 - cible > 1e-4) bute = face;
       pl.position.x -= n.x * (d1 - cible);
       pl.position.z -= n.z * (d1 - cible);
       const along = pl.velocity.x * n.x + pl.velocity.z * n.z;
@@ -957,6 +973,7 @@ export class Simulation {
         pl.velocity.z -= n.z * along;
       }
     }
+    return bute;
   }
 
   private teleport(face: PortalFace, eye: Vec3, nextLevel: number): void {
@@ -1021,8 +1038,15 @@ export class Simulation {
       // travers un miroir suffit à la retourner par rapport au creux. Le
       // lancer la retourne aussi (voir `carryTraversal`), sans qu'on ait à
       // passer soi-même.
+      //
+      // ET ELLE TOURNE AVEC SOI. Sa main bascule, mais une main retournée
+      // sur son propre axe n'est pas encore la réflexion que le monde a
+      // subie : il manque un demi-tour, ou un quart, selon la porte. Sans
+      // lui, la vrille tenue se présentait à l'envers en ressortant du
+      // miroir — signalé : « celui-ci change d'orientation ». Voir
+      // `yawDeltaMiroir`.
       // ═══════════════════════════════════════════════════════════════════
-      retournerLaMain(held, face);
+      tournerAvecLaPorte(held, face);
       this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale);
     }
   }

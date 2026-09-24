@@ -330,6 +330,14 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
 - **Les cadres de portail gagnent toujours la profondeur** (décalage de
   polygone) : un montant planté dans un jambage ne clignote plus rouge et
   brun. Les plaques du décor entre elles restent à traiter globalement.
+- **Ce qui passe une porte tourne avec elle** (`tournerAvecLaPorte`,
+  `yawDeltaMiroir`) : une main retournée sur son axe n'est pas la réflexion
+  que le monde a subie, il manquait un demi-tour — la vrille tenue se
+  présentait à l'envers en sortant du miroir. Vérifié à l'écran : identique
+  avant et après, le monde seul est retourné.
+- **Le dos d'une porte le dit** quand on pousse dessus : « C'est le dos de la
+  porte. Elle s'ouvre de l'autre côté. » Signalé : « tous les portails sont
+  fermés » — c'était la sortie scellée du blanchiment, vue de dos.
 
 ## Ce qui reste à faire
 
