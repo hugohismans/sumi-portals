@@ -251,10 +251,30 @@ class PortalFaceView {
     });
 
     // Cadre façon torii : deux montants et deux linteaux.
-    const frameMat = new THREE.MeshBasicMaterial({ color });
+    //
+    // ─── LE CADRE GAGNE TOUJOURS LA PROFONDEUR ─────────────────────────────
+    //
+    // Un montant planté dans un jambage dessiné par la salle partage des
+    // faces avec lui, au millimètre près : les deux se disputent chaque pixel
+    // et l'on voit le poteau clignoter rouge et brun. Signalé en jouant : « ce
+    // poteau devrait être tout rouge ». Aucune précision de profondeur ne
+    // départage deux faces confondues ; on tranche donc à la main, par un
+    // décalage de polygone qui tire le cadre d'un cheveu vers la caméra.
+    // Invisible partout ailleurs — un cheveu, c'est moins qu'un trait.
+    const frameMat = new THREE.MeshBasicMaterial({
+      color,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -2,
+    });
     this.frameMat = frameMat;
     this.teinteCadre = new THREE.Color(color);
-    const inkMat = new THREE.MeshBasicMaterial({ color: INK });
+    const inkMat = new THREE.MeshBasicMaterial({
+      color: INK,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -2,
+    });
     for (let i = 0; i < 4; i++) {
       const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), i === 3 ? inkMat : frameMat);
       m.frustumCulled = false;

@@ -109,13 +109,26 @@ export class Familles {
    * pouvoir le dire au joueur plutôt que de laisser la touche sans effet — un
    * refus énoncé est une leçon, une touche muette est une panne.
    */
-  visee(playerPos: Vec3, yaw: number, playerScale: number): string | null {
+  visee(playerPos: Vec3, yaw: number, playerScale: number, pitch = 0): string | null {
     const portee = PLAYER_HEIGHT * playerScale * REACH;
     const oeilY = playerPos.y + PLAYER_HEIGHT * playerScale * 0.6;
     const fwd = lookDirection(yaw, 0);
+    const regard = lookDirection(yaw, pitch);
 
+    // ─── LA PLUS PROCHE DU REGARD, PAS LA PLUS PROCHE DU CORPS ─────────────
+    //
+    // On prenait le membre le plus près de soi. Une claie de l'atelier est
+    // posée contre le mur : le centre du pan de mur, à un mètre quarante,
+    // battait la claie à un mètre cinquante-cinq, et l'on s'entendait dire
+    // « trop grand » en regardant la claie qu'on voulait peindre. Il fallait
+    // trouver l'angle où la claie gagnait. Signalé en jouant : « il faut
+    // étrangement cliquer sur les petits modules ».
+    //
+    // On retient donc, parmi ce qui est à portée et devant soi, le membre le
+    // plus près de la LIGNE DU REGARD, inclinaison comprise : on baisse les
+    // yeux sur la claie, c'est elle ; on lève les yeux sur le mur, c'est lui.
     let meilleure: string | null = null;
-    let meilleureDist = Infinity;
+    let meilleurCos = -Infinity;
     for (const [nom, lot] of this.membres) {
       for (const m of lot) {
         const dx = m.cx - playerPos.x;
@@ -125,8 +138,9 @@ export class Familles {
         if (dist > portee + m.taille * 0.5) continue;
         const plat = Math.hypot(dx, dz) || 1;
         if ((dx / plat) * fwd.x + (dz / plat) * fwd.z < 0.25) continue;
-        if (dist < meilleureDist) {
-          meilleureDist = dist;
+        const cos = (dx * regard.x + dy * regard.y + dz * regard.z) / (dist || 1);
+        if (cos > meilleurCos) {
+          meilleurCos = cos;
           meilleure = nom;
         }
       }

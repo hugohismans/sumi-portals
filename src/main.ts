@@ -2561,7 +2561,37 @@ function updateHints(now: number): void {
       break;
     }
   }
+
+  // ─── CE QU'ON VISE, ET CE QU'ON PEUT EN FAIRE ──────────────────────────
+  //
+  // Une claie de l'atelier se dessine exactement comme une pierre du décor, et
+  // rien ne disait qu'elle attendait la touche. Signalé en jouant : « il faut
+  // étrangement cliquer sur les petits modules, c'est pas clair pour le
+  // joueur ». Le jeu refuse les panneaux, mais pas un mot au moment où l'on
+  // regarde la chose : la même touche que partout, et ce qu'elle fera ICI.
+  // Deux mots, jamais une phrase — et seulement quand la simulation répondrait
+  // vraiment à la touche.
+  if (!found && !partieFinie) {
+    const scale = scaleOfLevel(sim.player.scaleLevel);
+    if (!sim.carryables.held) {
+      const cible = sim.carryables.targeted(p, sim.player.yaw, scale, sim.world);
+      if (cible && !cible.locked) {
+        if (sim.carryables.canLift(cible, scale)) found = `${TOUCHE_ACTION}Prendre`;
+      } else {
+        const famille = sim.familles.visee(p, sim.player.yaw, scale, sim.player.pitch);
+        if (famille) {
+          const couleur = sim.couleurEnMain ?? sim.couleurSuivante(famille);
+          if (couleur !== null && sim.familles.peignable(famille, scale)) {
+            found = `${TOUCHE_ACTION}Dire le ${couleur}`;
+          }
+        }
+      }
+    }
+  }
   setHint(found);
 }
+
+/** Le nom de la touche d'action, quand il y en a une : au doigt, c'est un bouton, on ne le nomme pas. */
+const TOUCHE_ACTION = window.matchMedia?.('(pointer: coarse)').matches ? '' : 'E — ';
 
 requestAnimationFrame(frame);

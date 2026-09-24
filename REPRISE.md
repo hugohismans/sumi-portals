@@ -323,6 +323,13 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
   (`carryableViews.ts`), qui respire.
 - **La fin d'un chapitre** : la peinture attend le but, un accord, un titre,
   et « Continuer : la montée » au lieu de « Monter ».
+- **Deux mots quand on vise** (`updateHints`) : « E — Prendre » devant une
+  pièce, « E — Dire le rouge » devant une famille qu'on peut peindre. Et une
+  famille se vise par la ligne du regard, inclinaison comprise
+  (`Familles.visee`) : une claie contre un mur n'est plus battue par le mur.
+- **Les cadres de portail gagnent toujours la profondeur** (décalage de
+  polygone) : un montant planté dans un jambage ne clignote plus rouge et
+  brun. Les plaques du décor entre elles restent à traiter globalement.
 
 ## Ce qui reste à faire
 
@@ -330,8 +337,6 @@ Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
 
 - **Rejouer la montée sur le PC** : la cadence (le compteur dit maintenant
   « portes N % » s'il a dû baisser), le refus à miroir plan, le blanchiment.
-- **L'atelier de la descente** : « il faut étrangement cliquer sur les petits
-  modules » — dire au joueur que E sur une famille lui DIT sa couleur.
 - **Le clignotement rouge-marron** des plaques au même niveau : une réponse
   globale reste à choisir (tampon de profondeur logarithmique, ou décaler les
   cadres devant les jambages).

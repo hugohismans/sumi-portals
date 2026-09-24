@@ -708,7 +708,7 @@ export class Simulation {
       // commande de plus pour peindre serait une commande de plus à apprendre,
       // et désigner un objet à travers la pièce serait une visée — donc
       // quelque chose de pénible au doigt sur un téléphone.
-      const famille = this.familles.visee(this.player.position, this.player.yaw, scale);
+      const famille = this.familles.visee(this.player.position, this.player.yaw, scale, this.player.pitch);
       if (!famille) return;
       const couleur = this.couleurEnMain ?? this.couleurSuivante(famille);
       if (couleur === null) return;
@@ -738,7 +738,7 @@ export class Simulation {
   }
 
   /** La couleur qu'on dira ensuite à cette famille. Voir `couleursConnues`. */
-  private couleurSuivante(famille: string): string | null {
+  couleurSuivante(famille: string): string | null {
     const connues = this.couleursConnues;
     if (connues.length === 0) return null;
     const actuelle = this.familles.teintes.get(famille);
