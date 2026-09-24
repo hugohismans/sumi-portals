@@ -46,7 +46,7 @@ import { REFUS_PETITE } from '../levels/salles/refus.js';
 import {
   agirVers, attendre, bondirVers, lancer, near, ordre, piece, pos, poserVers, settle, walkTo,
   type Check,
-} from './__pilote.js';
+ orienterPour } from './__pilote.js';
 import type { BoxDef } from './types.js';
 import type { Carryable } from './carryables.js';
 
@@ -202,6 +202,7 @@ export const piloterMontee = (check: Check): void => {
       `${t1.traversed ? 'traversé' : 'pas traversé'}, taille ${v.size}, main ${v.main ?? '?'}, ${pos(sim)}`,
     );
     walkTo(sim, [0, 0, 1681], 60 * 30);
+    check('refus : à la molette, la vrille droite épouse le dessin', orienterPour(sim, 'creux-refus') >= 0, '');
     agirVers(sim, [0, 0.9, 1676]);
     attendre(sim, 60 * 2);
     check('refus : le creux l’accepte', sim.sockets.pourvus.has('creux-refus'), [...sim.sockets.pourvus].join(',') || 'aucun');
@@ -251,6 +252,7 @@ export const piloterMontee = (check: Check): void => {
       `${t5.traversed ? 'traversé' : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(sim)}`,
     );
     walkTo(sim, [216, 0, 1711.5], 60 * 20);
+    check('blanchiment : à la molette, la vrille droite épouse le dessin', orienterPour(sim, 'creux-blanchiment') >= 0, '');
     agirVers(sim, [216, 0.6, 1716]);
     attendre(sim, 60 * 2);
     check('blanchiment : le creux l’accepte', sim.sockets.pourvus.has('creux-blanchiment'), [...sim.sockets.pourvus].join(',') || 'aucun');

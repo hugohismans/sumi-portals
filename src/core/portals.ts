@@ -5,7 +5,19 @@ import {
   PORTAL_SMALL_W,
   SCALE_RATIO,
 } from './constants.js';
-import { rotateY, sub, vec3, wrapAngle, yawToForward, type Vec3 } from './math.js';
+import {
+  REFLEXION_X,
+  eulerVersMat,
+  matLacet,
+  matVersEuler,
+  mulMat,
+  rotateY,
+  sub,
+  vec3,
+  wrapAngle,
+  yawToForward,
+  type Vec3,
+} from './math.js';
 import type { PortalFaceDef, PortalPairDef } from './types.js';
 
 export type FaceKind = 'big' | 'small';
@@ -271,7 +283,14 @@ export const yawDelta = (face: PortalFace): number =>
  * par la caméra réfléchie, l'objet transporté est l'objet d'avant.
  * ═══════════════════════════════════════════════════════════════════════════
  */
-export const transporterRotation = (face: PortalFace, r: Vec3): Vec3 =>
-  face.miroir
-    ? vec3(r.x, wrapAngle(Math.PI + face.twin.yaw + face.yaw - r.y), -r.z)
-    : vec3(r.x, wrapAngle(r.y + yawDelta(face)), r.z);
+export const transporterRotation = (face: PortalFace, r: Vec3): Vec3 => {
+  // EN MATRICES, parce que la pièce peut maintenant être tournée dans tous
+  // les sens (voir `Simulation.tournerLaPiece`) : ajouter un lacet à des
+  // angles d'Euler n'est juste que tant que la pièce n'est pas basculée. La
+  // porte ordinaire tourne tout autour de la verticale : Ry(δ)·R. Le miroir
+  // retourne la main et le lacet : Ry(π + jumelle + face)·D·R·D.
+  const R = eulerVersMat(r);
+  if (!face.miroir) return matVersEuler(mulMat(matLacet(yawDelta(face)), R));
+  const phi = Math.PI + face.twin.yaw + face.yaw;
+  return matVersEuler(mulMat(matLacet(phi), mulMat(REFLEXION_X, mulMat(R, REFLEXION_X))));
+};

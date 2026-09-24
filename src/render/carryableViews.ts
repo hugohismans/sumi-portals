@@ -48,6 +48,16 @@ interface View {
   masque?: boolean;
   /** Le cerne au sol qui dit « ça se ramasse ». Voir `createHaloMaterial`. */
   halo: THREE.Mesh;
+  /**
+   * L'orientation AFFICHÉE, et le compteur de quarts de tour qu'elle suit.
+   * Un quart de tour donné à la main se voit tourner ; un changement de
+   * rotation venu d'ailleurs — un passage de porte — se pose d'un coup, sinon
+   * la pièce pivoterait sous les yeux au moment où la porte doit être
+   * invisible. Voir `Carryable.tourne`.
+   */
+  quat: THREE.Quaternion;
+  tourne: number;
+  enRotation: boolean;
 }
 
 /**
@@ -163,11 +173,20 @@ export class CarryableViews {
         ghostMain: item.main,
         main: item.main,
         halo,
+        quat: new THREE.Quaternion(),
+        tourne: item.tourne,
+        enRotation: false,
       });
     }
   }
 
+  private dernierTemps = 0;
+  private readonly euler = new THREE.Euler();
+  private readonly cible = new THREE.Quaternion();
+
   update(items: Carryable[], faces: PortalFace[], temps = 0): void {
+    const dt = Math.min(0.1, Math.max(0, temps - this.dernierTemps));
+    this.dernierTemps = temps;
     // La respiration du cerne : lente, et jamais éteinte — un cerne qui
     // disparaît par moments se lirait comme un clignotement.
     const souffle = 0.5 + 0.5 * Math.sin(temps * 2.2);
@@ -209,7 +228,21 @@ export class CarryableViews {
       const cz = item.position.z;
       view.group.position.set(cx, cy, cz);
       // La rotation est purement visuelle : la collision reste une boîte droite.
-      view.group.rotation.set(item.rotation.x, item.rotation.y, item.rotation.z);
+      this.euler.set(item.rotation.x, item.rotation.y, item.rotation.z);
+      this.cible.setFromEuler(this.euler);
+      if (item.tourne !== view.tourne) {
+        view.tourne = item.tourne;
+        view.enRotation = true;
+      }
+      if (view.enRotation) {
+        // Un quart de tour en un dixième de seconde environ : assez vite pour
+        // qu'on passe les vingt-quatre à la molette sans attendre, assez
+        // lentement pour que l'œil suive chaque bascule.
+        view.quat.slerp(this.cible, 1 - Math.exp(-dt * 22));
+        if (view.quat.angleTo(this.cible) < 0.01) view.enRotation = false;
+      }
+      if (!view.enRotation) view.quat.copy(this.cible);
+      view.group.quaternion.copy(view.quat);
 
       this.updateGhost(view, item, faces, cx, cy, cz);
     }

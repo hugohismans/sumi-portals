@@ -139,6 +139,11 @@ interface View {
 
 export class SocketViews {
   readonly group = new THREE.Group();
+  /**
+   * Les creux que la pièce tenue ÉPOUSE en ce moment — forme, taille, main et
+   * sens. Leur dessin respire. Posé par la boucle à chaque image.
+   */
+  epouses: ReadonlySet<string> = new Set();
   private readonly views = new Map<string, View>();
   private readonly materials: THREE.ShaderMaterial[] = [];
   /** Les matériaux de chaque logement, pour pouvoir le teindre seul. */
@@ -291,7 +296,16 @@ export class SocketViews {
       if (filled && !v.filled) v.filled = true;
       // La pièce logée recouvre son dessin : on l'efface, sinon ses arêtes
       // perceraient la pièce comme un fil de fer.
-      if (v.forme) v.forme.visible = !filled;
+      if (v.forme) {
+        v.forme.visible = !filled;
+        // ET IL RESPIRE quand la pièce en main l'épouse : il enfle et
+        // désenfle doucement, comme une invitation. Avec la mauvaise main,
+        // aucune des vingt-quatre orientations ne le fait bouger — c'est
+        // tout ce que la leçon demande de voir.
+        const k = this.epouses.has(s.id) ? 1 + 0.09 * (0.5 + 0.5 * Math.sin(time * 7)) : 1;
+        v.forme.scale.setScalar(k);
+        v.forme.position.y = (k - 1) * s.size * 0.5;
+      }
 
       if (v.filled && v.bloom < 1) v.bloom = Math.min(1, v.bloom + dt * 2.2);
       v.seal.visible = v.bloom > 0;

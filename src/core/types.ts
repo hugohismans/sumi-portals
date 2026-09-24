@@ -722,6 +722,21 @@ export interface InputCommand {
   throwIt: boolean;
   yaw: number;
   pitch: number;
+  /**
+   * Pas de la molette depuis le tick précédent : chacun fait avancer (ou
+   * reculer, s'il est négatif) la pièce tenue d'un cran dans le tour des
+   * vingt-quatre orientations. Voir `Simulation.tournerLaPiece`.
+   */
+  tourner?: number;
+  /**
+   * Quarts de tour libres autour de la verticale, en IMPULSIONS : positif, la
+   * face tournée vers le joueur part vers sa droite. Le signe tient déjà
+   * compte d'un monde en miroir — c'est l'entrée qui sait ce que « droite »
+   * veut dire à l'écran.
+   */
+  quartLacet?: number;
+  /** Quarts de tour libres vers l'avant : positif, le haut de la pièce s'éloigne. */
+  quartBascule?: number;
 }
 
 /** Événements émis par un tick, pour que le rendu et l'UI puissent réagir. */
@@ -732,6 +747,8 @@ export interface TickEvents {
   traversed?: { pairId: string; from: 'big' | 'small'; newLevel: number };
   /** On a buté sur le DOS d'une porte : il fait mur, elle s'ouvre de l'autre côté. */
   dos?: { pairId: string };
+  /** La pièce tenue a tourné d'un quart de tour. */
+  tourne?: { id: string };
   /** Le portail a refusé le passage. */
   refused?: {
     pairId: string;

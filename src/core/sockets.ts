@@ -1,6 +1,42 @@
-import { vec3, type Vec3 } from './math.js';
+import { IDENTITE, appliquerMat, eulerVersMat, vec3, type Mat3, type Vec3 } from './math.js';
 import type { Carryable } from './carryables.js';
 import type { SocketDef } from './types.js';
+
+/** Les blocs d'une forme, en unités de −0,5 à +0,5 — ceux d'une pièce. */
+export type Blocs = { min: [number, number, number]; max: [number, number, number] }[];
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA FORME TELLE QU'ELLE EST POSÉE — pour comparer une pièce à son dessin.
+ *
+ * Deux pièces de même forme et de même main coïncident dans un creux si leurs
+ * blocs, une fois tournés, occupent les mêmes places. On ne compare donc pas
+ * des angles — une forme symétrique a plusieurs bonnes orientations, et des
+ * angles d'Euler différents peuvent décrire la même —, mais des ENSEMBLES de
+ * blocs : chacun réduit à son centre et à ses demi-côtés, arrondis, triés.
+ *
+ * La main droite reflète la forme sur son axe x AVANT la rotation : c'est la
+ * convention du rendu (`carryableGeometry`) et du dessin du creux.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const cleDeForme = (blocs: Blocs, droite: boolean, R: Mat3): string => {
+  // Une rotation quelconque (une pièce qui roule encore) ne coïncide avec
+  // rien : on n'arrondit que ce qui est déjà presque un quart de tour.
+  const r = R.map((v) => (Math.abs(v - Math.round(v)) < 0.02 ? Math.round(v) : v)) as Mat3;
+  const g = (v: number) => Math.round(v * 24) / 24;
+  const cles = blocs.map((b) => {
+    const mn = [g(b.min[0]), g(b.min[1]), g(b.min[2])];
+    const mx = [g(b.max[0]), g(b.max[1]), g(b.max[2])];
+    const centre = vec3((mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2);
+    const demi = vec3((mx[0] - mn[0]) / 2, (mx[1] - mn[1]) / 2, (mx[2] - mn[2]) / 2);
+    if (droite) centre.x = -centre.x;
+    const c = appliquerMat(r, centre);
+    const d = appliquerMat(r, demi);
+    const k = (v: number) => Math.round(v * 48);
+    return [k(c.x), k(c.y), k(c.z), Math.abs(k(d.x)), Math.abs(k(d.y)), Math.abs(k(d.z))].join(',');
+  });
+  return cles.sort().join(';');
+};
 
 /**
  * Les réceptacles — la boîte à formes.
@@ -35,7 +71,8 @@ const DEFAULT_TOLERANCE = 0.12;
  * un second.
  */
 /** `lancee` : tout est juste, mais la pièce a été LANCÉE, pas posée. Voir `Carryable.lancee`. */
-export type RaisonDuRefus = 'trop-grand' | 'trop-petit' | 'forme' | 'teinte' | 'main' | 'lancee';
+/** `orientation` : tout est juste, mais la pièce n'est pas dans le sens de son dessin. */
+export type RaisonDuRefus = 'trop-grand' | 'trop-petit' | 'forme' | 'teinte' | 'main' | 'orientation' | 'lancee';
 
 export interface Socket {
   id: string;
@@ -62,10 +99,44 @@ export interface Socket {
 export class Sockets {
   readonly items: Socket[] = [];
   private readonly defs: SocketDef[];
+  /** Les blocs de chaque forme connue du niveau. Voir `dansLeSens`. */
+  private readonly formes: ReadonlyMap<string, Blocs>;
+  /** La clé du dessin de chaque creux à forme, calculée une fois. */
+  private readonly dessins = new Map<string, string>();
 
-  constructor(defs: SocketDef[] = []) {
+  constructor(defs: SocketDef[] = [], formes: ReadonlyMap<string, Blocs> = new Map()) {
     this.defs = defs;
+    this.formes = formes;
     this.reset();
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * LA PIÈCE EST-ELLE DANS LE SENS DE SON DESSIN ?
+   *
+   * Un creux qui attend une forme la dessine (voir `SocketViews`), et il la
+   * dessine dans UNE orientation : il faut y poser la pièce dans ce sens-là.
+   * C'est ce qui rend la main lisible. Tant qu'on ne pouvait pas tourner la
+   * pièce, « la tourner n'y changera rien » était une phrase qu'on devait
+   * croire sur parole ; maintenant on la tourne, on passe les vingt-quatre
+   * orientations, et l'on VOIT qu'aucune n'épouse le dessin. Signalé en
+   * jouant : « on devrait pouvoir faire des rotations… puis il faut poser
+   * avec la bonne orientation également ».
+   *
+   * Vrai pour tout creux qui n'attend pas de forme connue : un cube n'a pas
+   * de sens.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  dansLeSens(socket: Socket, c: Carryable): boolean {
+    if (socket.forme === undefined || !c.pieces) return true;
+    const blocs = this.formes.get(socket.forme);
+    if (!blocs) return true;
+    let dessin = this.dessins.get(socket.id);
+    if (dessin === undefined) {
+      dessin = cleDeForme(blocs, socket.main === 'D', IDENTITE);
+      this.dessins.set(socket.id, dessin);
+    }
+    return cleDeForme(c.pieces, c.main === 'D', eulerVersMat(c.rotation)) === dessin;
   }
 
   reset(): void {
@@ -136,7 +207,9 @@ export class Sockets {
     // être un trait d'encre autour d'un vide, ce qui est plus joli et plus
     // lisible qu'une tache de la couleur qu'on attend.
     if (socket.teinte !== undefined && c.ink !== socket.teinte) return false;
-    return Math.abs(c.size - socket.size) <= socket.size * socket.tolerance;
+    if (Math.abs(c.size - socket.size) > socket.size * socket.tolerance) return false;
+    // LE SENS, en dernier : voir `dansLeSens`.
+    return this.dansLeSens(socket, c);
   }
 
   /**
@@ -183,6 +256,11 @@ export class Sockets {
     if (socket.forme !== undefined && c.forme !== socket.forme) return 'forme';
     if (socket.teinte !== undefined && c.ink !== socket.teinte) return 'teinte';
     if (socket.main !== undefined && c.main !== socket.main) return 'main';
+    // 5. LE SENS, après la main : une pièce de la mauvaise main n'a pas de bon
+    //    sens, et le dire serait mentir — elle passerait les vingt-quatre sans
+    //    jamais entrer. On ne parle du sens que quand c'est la dernière chose
+    //    qui cloche, c'est-à-dire quand tourner la pièce suffira.
+    if (!this.dansLeSens(socket, c)) return 'orientation';
     return null;
   }
 

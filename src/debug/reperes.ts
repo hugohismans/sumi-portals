@@ -636,25 +636,25 @@ export const REPERES_MONTEE: Repere[] = [
   auSeuil(
     SALLES_MONTEE[1],
     'Le creux qui refuse — la vrille',
-    'Une vrille au sol, un creux à sa forme et à sa taille. Pose-la : le creux dit qu’elle ' +
-      'N’ENTRE PAS, que la tourner n’y changera rien. Regarde les MAINS de part et d’autre ' +
-      'des deux portes noires. Porte la vrille par la porte est : tu ressors à l’ouest, ' +
-      'même taille, et LA COUR EST RETOURNÉE — la pile de pierres a changé de côté, la ' +
-      'vrille dans tes bras non. Pose-la : elle entre. Deux passages s’annulent. ' +
-      'Défaut à guetter : ne pas voir que le monde a basculé (regarde la pile) ; ' +
-      'chercher une porte qui grandit — il n’y en a pas ici.',
+    'Une vrille au sol, un creux qui DESSINE la vrille attendue. Tiens-la devant le creux ' +
+      'et tourne-la : molette pour passer les 24 orientations, flèches pour des quarts de ' +
+      'tour. Le dessin ne respire JAMAIS — c’est l’autre main. Porte la vrille par la porte ' +
+      'est : tu ressors à l’ouest, même taille, LA COUR EST RETOURNÉE (la pile de pierres, ' +
+      'les mains d’encre). Reviens au creux, tourne-la : à une orientation, le dessin ' +
+      'respire. Pose-la : elle entre. Défaut à guetter : ne pas comprendre qu’il faut ' +
+      'tourner ; ne pas voir que le monde a basculé.',
     5,
   ),
   auSeuil(
     SALLES_MONTEE[2],
     'Le blanchiment — le théorème',
-    'Le creux veut la taille d’origine ET l’autre main. Deux portes qui se ressemblent : ' +
-      'le miroir au mur ouest (main ET taille), la porte ordinaire au mur est (taille ' +
-      'seule), un mur de refend entre les deux, une brèche au nord. Porte la vrille par le ' +
-      'miroir : droite et 2,00, trop grosse — « elle déborde ». Rapporte-la par la grande ' +
-      'face ordinaire : 0,50, toujours droite, et le creux est à dix mètres. L’autre ordre ' +
-      'marche aussi. Défaut à guetter : ne jamais trouver la brèche ; ne pas voir la ' +
-      'différence entre les deux portes ; rester géant sans savoir comment redescendre.',
+    'Le creux veut la taille d’origine ET l’autre main, dans le sens de son dessin. Deux ' +
+      'portes qui se ressemblent : le miroir au mur ouest (main ET taille), la porte ' +
+      'ordinaire au mur est (taille seule), un mur de refend entre les deux, une brèche au ' +
+      'nord. Porte la vrille par le miroir : droite et 2,00, trop grosse. Rapporte-la par la ' +
+      'grande face ordinaire : 0,50, toujours droite. Tourne-la jusqu’à ce que le dessin ' +
+      'respire, pose-la. Défaut à guetter : ne jamais trouver la brèche ; ne pas voir la ' +
+      'différence entre les deux portes.',
     10,
   ),
   auSeuil(

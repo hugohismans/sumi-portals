@@ -1,6 +1,6 @@
 # Protocole de test — les nuits du 2 et du 3 août, et celle du 22 septembre
 
-Tout ce qui suit a été **mesuré, simulé, prouvé** : 758 vérifications passent.
+Tout ce qui suit a été **mesuré, simulé, prouvé** : 773 vérifications passent.
 Rien de tout cela ne dit si c'est **beau**, ni si l'on **comprend** ce qu'on doit
 faire. C'est ce que tu vas chercher.
 
@@ -249,26 +249,25 @@ monte dessus sans y penser.
 **Défaut à guetter, et c'est le seul qui compte ici :** ne pas reconnaître le
 village. Si ça arrive, la salle ne vaut rien et il faut la reprendre.
 
-**`2` — Le creux qui refuse.** *(Réécrit le 24 septembre : le miroir est PLAN,
-et ce qu'on porte à travers un miroir est réfléchi comme ce qu'on lance.)* Une
-vrille au sol, un creux à sa forme **et à sa taille**. Pose-la → *le creux dit
-qu'elle N'ENTRE PAS, que la tourner n'y changera rien.* Deux portes noires,
-une contre chaque mur, des **mains** de part et d'autre de chacune : en
-regardant par l'une, celles d'en face sont retournées. Porte la vrille par la
-porte est → *tu ressors à l'ouest, à la même taille, et LA COUR EST RETOURNÉE :
-la pile de pierres a changé de côté, les mains aussi ; la vrille dans tes bras,
-elle, n'a pas bougé.* Pose-la : elle entre. La porte de sortie est dans le mur
-nord, noire elle aussi (elle ne change rien) : on la passe vers le nord.
-**Défaut à guetter :** ne pas voir que le monde a basculé (regarde la pile,
-puis tes propres déplacements : à gauche va à gauche à l'écran, c'est voulu) ;
-une phrase de refus qui ne vient pas ; **la vrille en main qui changerait de
-forme au passage** — c'était le défaut, elle doit garder sa forme ; une porte
-ordinaire qui montrerait un monde inversé une fois qu'on est passé par le
-miroir (c'était l'autre défaut, corrigé). Et une chose voulue : **une vrille
-lancée qui s'arrête à côté du creux n'y entre pas** — un creux ne prend qu'une
-pièce POSÉE. Deux passages s'annulent : rien n'est jamais perdu.
+**`2` — Le creux qui refuse.** *(Réécrit le 24 septembre : miroir PLAN, ce
+qu'on porte à travers un miroir est réfléchi, et l'on TOURNE la pièce tenue.)*
+Une vrille au sol, et un creux qui **dessine au trait** la vrille qu'il attend.
+Prends la vrille, tiens-la devant le creux et tourne-la : **molette** pour
+passer en revue les 24 orientations (un cran, un quart de tour), **flèches**
+pour des quarts de tour précis (← → autour de la verticale, ↑ ↓ en basculant ;
+pendant qu'on tient une pièce, les flèches ne déplacent plus), **T** ou le
+bouton « Tourner » au doigt. → *Le dessin ne respire jamais : aucune des 24
+n'épouse le creux.* Posée, elle est refusée : « la tourner n'y changera rien ».
+Porte-la par la porte est → *tu ressors à l'ouest, même taille, la cour est
+retournée ; la vrille dans tes bras garde sa forme.* Reviens, tourne-la →
+*à une orientation, le dessin du creux respire.* Pose-la : elle entre.
+**Défaut à guetter :** un cran de molette qui ferait deux quarts de tour ; le
+dessin qui respirerait avec la vrille gauche (ce serait faux) ; une vrille
+droite dans le mauvais sens refusée sans la phrase « pas dans ce sens » ; ne
+pas comprendre qu'il faut tourner.
 
-**`3` — Le blanchiment.** Le creux veut la taille d'origine **et** l'autre main.
+**`3` — Le blanchiment.** Le creux veut la taille d'origine **et** l'autre main,
+dans le sens de son dessin (tourne-la jusqu'à ce qu'il respire).
 Deux portes qui se ressemblent : le **miroir** contre le mur ouest (il change
 la main ET la taille), la porte **ordinaire** contre le mur est (la taille
 seule), un mur de refend entre les deux, une brèche au nord. Porte la vrille

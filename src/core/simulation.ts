@@ -17,7 +17,7 @@ import { Carryables } from './carryables.js';
 import { Sockets } from './sockets.js';
 import { Familles } from './familles.js';
 import { surLaGomme, viser } from './canevas.js';
-import { clamp, rotateY, vec3, wrapAngle, yawToForward, type Vec3 } from './math.js';
+import { clamp, eulerVersMat, matVersEuler, mulMat, quartDeTour, rotateY, vec3, wrapAngle, yawToForward, type Mat3, type Vec3 } from './math.js';
 import { moveAndCollide } from './physics.js';
 import {
   buildFaces,
@@ -53,6 +53,14 @@ import { aabbOfCarryable, type Carryable } from './carryables.js';
  * laquelle une phrase ressemble à un clignotement plutôt qu'à une réponse.
  */
 const REFUS_DELAI = 30;
+
+/**
+ * L'ordre de la molette : douze quarts de tour autour des axes du monde, deux
+ * fois, et l'on a vu les vingt-quatre orientations d'un cube, chacune une
+ * seule fois. Voir `Simulation.tournerLaPiece` — et le harnais, qui le
+ * vérifie.
+ */
+export const TOUR_DE_MOLETTE: readonly ('x' | 'y' | 'z')[] = ['y', 'y', 'y', 'x', 'y', 'x', 'y', 'z', 'y', 'x', 'y', 'x'];
 
 const retournerLaMain = (c: Carryable, face: PortalFace): void => {
   if (!face.miroir || c.main === undefined) return;
@@ -180,7 +188,13 @@ export class Simulation {
     this.world = new World(level);
     this.faces = buildFaces(level.portals);
     this.carryables = new Carryables(level.carryables);
-    this.sockets = new Sockets(level.sockets);
+    // Les creux à forme comparent la pièce à leur dessin : ils ont besoin des
+    // blocs de chaque forme, qu'on prend sur les pièces du niveau.
+    const formes = new Map<string, NonNullable<Carryable['pieces']>>();
+    for (const c of level.carryables ?? []) {
+      if (c.forme && c.pieces && !formes.has(c.forme)) formes.set(c.forme, c.pieces);
+    }
+    this.sockets = new Sockets(level.sockets, formes);
     this.familles = new Familles(level.boxes, level.tableaux);
     this.player = this.spawnState();
     this.scellerLesPortesADessiner();
@@ -276,6 +290,7 @@ export class Simulation {
     this.carryables.publishSolids(this.world);
     this.handleInteract(input.interact, scale, events);
     this.handleThrow(input.throwIt, scale, events);
+    this.tournerLaPiece(input, events);
 
     // --- Direction souhaitée ---------------------------------------------------
     const forward = yawToForward(pl.yaw);
@@ -899,6 +914,71 @@ export class Simulation {
     held.releasedAt = this.eyePosition();
     this.carryables.throwIt(held, this.player.yaw, this.player.pitch, scale);
     events.thrown = { id: held.id };
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * TOURNER LA PIÈCE QU'ON TIENT — par quarts de tour, et c'est tout.
+   *
+   * Deux gestes, parce qu'ils ne servent pas à la même chose :
+   *
+   *   LA MOLETTE passe EN REVUE. Chaque cran est un quart de tour autour d'un
+   *   axe du monde, dans un ordre qui visite les vingt-quatre orientations
+   *   d'un cube avant de revenir au départ : « yyyxyxyzyxyx », deux fois. On
+   *   l'a cherché : avec la verticale et un seul axe couché, aucun ordre ne
+   *   passe une fois et une seule par chacune — il en faut trois. C'est le
+   *   geste de la leçon : avec la mauvaise main, on les essaie toutes, et
+   *   aucune n'épouse le dessin.
+   *
+   *   LES FLÈCHES tournent À VOLONTÉ, par rapport à ce qu'on voit : gauche et
+   *   droite autour de la verticale, haut et bas en basculant la pièce vers
+   *   l'avant ou vers soi — autour de l'axe du monde le plus proche de la
+   *   droite du joueur, pour que le quart de tour reste exact.
+   *
+   * L'orientation vit dans le monde, pas dans la main : se retourner en tenant
+   * la pièce ne la tourne pas, et c'est ce qui permet de la comparer au
+   * dessin du creux en tournant autour.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  private tournerLaPiece(input: InputCommand, events: TickEvents): void {
+    const c = this.carryables.held;
+    const crans = input.tourner ?? 0;
+    const lacet = input.quartLacet ?? 0;
+    const bascule = input.quartBascule ?? 0;
+    if (!c || (crans === 0 && lacet === 0 && bascule === 0)) return;
+
+    let R = eulerVersMat(c.rotation);
+    // On part d'un quart de tour exact : les angles d'Euler portent un peu de
+    // bruit, et il ne doit pas s'accumuler cran après cran.
+    R = R.map((v) => (Math.abs(v - Math.round(v)) < 0.02 ? Math.round(v) : v)) as Mat3;
+
+    for (let i = 0; i < Math.abs(crans); i++) {
+      if (crans > 0) {
+        R = mulMat(quartDeTour(TOUR_DE_MOLETTE[c.tour % 12], 1), R);
+        c.tour = (c.tour + 1) % 24;
+      } else {
+        c.tour = (c.tour + 23) % 24;
+        R = mulMat(quartDeTour(TOUR_DE_MOLETTE[c.tour % 12], -1), R);
+      }
+    }
+    for (let i = 0; i < Math.abs(lacet); i++) R = mulMat(quartDeTour('y', lacet > 0 ? 1 : -1), R);
+    if (bascule !== 0) {
+      // L'axe couché le plus proche de la droite du joueur, orienté pour que
+      // le haut de la pièce parte vers l'avant.
+      const f = yawToForward(this.player.yaw);
+      const [axe, sens]: ['x' | 'z', 1 | -1] =
+        Math.abs(f.z) >= Math.abs(f.x) ? ['x', f.z >= 0 ? 1 : -1] : ['z', f.x >= 0 ? -1 : 1];
+      for (let i = 0; i < Math.abs(bascule); i++) {
+        R = mulMat(quartDeTour(axe, (bascule > 0 ? sens : -sens) as 1 | -1), R);
+      }
+    }
+
+    const r = matVersEuler(R);
+    c.rotation.x = r.x;
+    c.rotation.y = r.y;
+    c.rotation.z = r.z;
+    c.tourne++;
+    events.tourne = { id: c.id };
   }
 
   /**

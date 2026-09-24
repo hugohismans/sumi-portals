@@ -13,6 +13,7 @@ import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
 import { buildFaces, canPass, estScelle, transformPoint, transformVector, transporterRotation, traversalLevelDelta } from './portals.js';
+import { appliquerMat, eulerVersMat } from './math.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues } from './coplanaires.js';
@@ -56,7 +57,7 @@ import {
 } from '../levels/duo.js';
 import { Simulation } from './simulation.js';
 import {
-  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, piece, pos, poserA, poserVers, settle, walkTo,
+  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, orienterPour, piece, pos, poserA, poserVers, settle, walkTo,
 } from './__pilote.js';
 import type { BoxDef, LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
@@ -1240,39 +1241,40 @@ console.log('\n— Le miroir : la gauche et la droite —');
     `(${retour.x.toFixed(2)}, ${retour.y.toFixed(2)}, ${retour.z.toFixed(2)})`,
   );
 
-  // ─── CE QUI PASSE UN MIROIR EST DESSINÉ COMME LE MONDE L'A RÉFLÉCHI ─────
+  // ─── CE QUI PASSE UNE PORTE EST DESSINÉ COMME LE MONDE L'A TRANSPORTÉ ───
   //
-  // Un objet chiral se dessine par sa rotation et sa main (la main droite
-  // reflète la forme sur son axe x). Après un miroir, le couple (rotation,
-  // main) doit donner EXACTEMENT les points que le miroir a transportés —
-  // sinon la pièce change d'orientation au passage. La première formule
-  // ajoutait un complément au lacet et ne tombait juste que pour 0 et π :
-  // on essaie donc des lacets quelconques, sur des faces de lacets
-  // quelconques.
+  // Un objet se dessine par sa rotation et sa main (la main droite reflète la
+  // forme sur son axe x). Après une porte, le couple (rotation, main) doit
+  // donner EXACTEMENT les points que la porte a transportés — sinon la pièce
+  // change d'orientation au passage. La première formule ajoutait un
+  // complément au lacet et ne tombait juste que pour 0 et π ; et depuis que
+  // la pièce se tourne dans tous les sens, il faut des rotations quelconques
+  // sur les trois axes, par des miroirs ET par des portes ordinaires.
   {
-    const rot = (v: { x: number; y: number; z: number }, a: number) => ({
-      x: v.x * Math.cos(a) + v.z * Math.sin(a),
-      y: v.y,
-      z: -v.x * Math.sin(a) + v.z * Math.cos(a),
-    });
     let pire = 0;
-    for (const [fy, ty] of [[-Math.PI / 2, Math.PI / 2], [Math.PI / 2, Math.PI / 2], [0.3, -2.1], [2.9, 1.2]]) {
-      const [f] = buildFaces([
-        { id: 'essai-rot', colorBig: 0, colorSmall: 0, miroir: true, plane: true, big: { position: [0, 0, 0], yaw: fy }, small: { position: [40, 0, 7], yaw: ty } },
-      ]);
-      for (const theta of [0, 0.7, -1.9, Math.PI / 2, 2.6]) {
-        const r = transporterRotation(f, { x: 0, y: theta, z: 0 });
-        for (const q of [{ x: 0.5, y: 0.2, z: -0.1 }, { x: -0.3, y: 0, z: 0.4 }, { x: 0.1, y: 0.5, z: 0.5 }]) {
-          // Ce que le miroir fait du point de l'objet…
-          const attendu = transformVector(f, rot(q, theta), false);
-          // …et ce que le rendu dessinera : la forme reflétée sur x, tournée.
-          const dessine = rot({ x: -q.x, y: q.y, z: q.z }, r.y);
-          pire = Math.max(pire, Math.hypot(attendu.x - dessine.x, attendu.y - dessine.y, attendu.z - dessine.z));
+    for (const miroir of [true, false]) {
+      for (const [fy, ty] of [[-Math.PI / 2, Math.PI / 2], [Math.PI / 2, Math.PI / 2], [0.3, -2.1], [2.9, 1.2]]) {
+        const [f] = buildFaces([
+          { id: 'essai-rot', colorBig: 0, colorSmall: 0, miroir, plane: true, big: { position: [0, 0, 0], yaw: fy }, small: { position: [40, 0, 7], yaw: ty } },
+        ]);
+        for (const r0 of [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0.7, z: 0 }, { x: Math.PI / 2, y: -1.9, z: 0 }, { x: 0.4, y: 2.6, z: -Math.PI / 2 }, { x: Math.PI, y: 0.2, z: Math.PI / 2 }]) {
+          const r = transporterRotation(f, r0);
+          for (const main of ['L', 'D'] as const) {
+            const mainApres = miroir ? (main === 'L' ? 'D' : 'L') : main;
+            const reflet = (q: { x: number; y: number; z: number }, m: 'L' | 'D') => (m === 'D' ? { x: -q.x, y: q.y, z: q.z } : q);
+            for (const q of [{ x: 0.5, y: 0.2, z: -0.1 }, { x: -0.3, y: 0, z: 0.4 }, { x: 0.1, y: 0.5, z: 0.5 }]) {
+              // Ce que la porte fait du point de l'objet…
+              const attendu = transformVector(f, appliquerMat(eulerVersMat(r0), reflet(q, main)), false);
+              // …et ce que le rendu dessinera : la forme de sa nouvelle main, tournée.
+              const dessine = appliquerMat(eulerVersMat(r), reflet(q, mainApres));
+              pire = Math.max(pire, Math.hypot(attendu.x - dessine.x, attendu.y - dessine.y, attendu.z - dessine.z));
+            }
+          }
         }
       }
     }
     check(
-      'un objet passé au miroir est dessiné exactement comme le monde l’a réfléchi, quel que soit son lacet',
+      'un objet passé par une porte ou un miroir est dessiné exactement comme le monde l’a transporté, dans n’importe quelle orientation',
       pire < 1e-9,
       `écart ${pire.toExponential(2)}`,
     );
@@ -2618,6 +2620,8 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     );
     check('refus : on ressort devant la face ouest, à taille d’homme', R.player.position.x < -20 && R.player.scaleLevel === 0, pos(R));
     walkTo(R, [0, 0, 1681], 60 * 30);
+    // Elle a la bonne main ; reste à la mettre dans le sens du dessin.
+    check('refus : à la molette, la vrille droite finit par épouser le dessin', orienterPour(R, 'creux-refus') >= 0, '');
     agirVers(R, [0, 0.9, 1676]);
     attendre(R, 60 * 2);
     check(
@@ -2729,6 +2733,84 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     }
   }
 
+  // ─── LA MOLETTE ET LES FLÈCHES : TOURNER LA PIÈCE TENUE ─────────────────
+  //
+  // La vrille du refus, prise en main, et tournée cran par cran. On vérifie
+  // ce que le joueur éprouvera : que la molette passe par les vingt-quatre
+  // orientations avant de revenir, que la mauvaise main n'en épouse AUCUNE,
+  // que la bonne en épouse au moins une, et que le creux dit « le sens »
+  // quand c'est la seule chose qui cloche.
+  {
+    const T = new Simulation(MONTEE);
+    const v = piece(T, 'vrille-refus');
+    v.held = true;
+    poserA(T, 0, 0.05, 1681, 0);
+    const creux = T.sockets.items.find((s) => s.id === 'creux-refus')!;
+    const cle = () => eulerVersMat(v.rotation).map((x) => Math.round(x)).join(',');
+    const vues = new Set<string>();
+    const depart = cle();
+    let gauches = 0;
+    for (let i = 0; i < 24; i++) {
+      vues.add(cle());
+      if (T.sockets.dansLeSens(creux, v)) gauches++;
+      T.step(ordre(T, { tourner: 1 }), TICK_DT);
+    }
+    check(
+      'la molette passe par les vingt-quatre orientations, une fois chacune, et revient au départ',
+      vues.size === 24 && cle() === depart,
+      `${vues.size} orientations, ${cle() === depart ? 'revenue' : 'pas revenue'}`,
+    );
+    check('la vrille gauche n’épouse le dessin droit dans AUCUNE des vingt-quatre', gauches === 0, `${gauches}`);
+    T.step(ordre(T, { tourner: 1 }), TICK_DT);
+    T.step(ordre(T, { tourner: -1 }), TICK_DT);
+    check('un cran en arrière défait le cran en avant', cle() === depart, cle());
+
+    v.main = 'D';
+    let droites = 0;
+    let premier = -1;
+    for (let i = 0; i < 24; i++) {
+      if (T.sockets.dansLeSens(creux, v)) {
+        droites++;
+        if (premier < 0) premier = i;
+      }
+      T.step(ordre(T, { tourner: 1 }), TICK_DT);
+    }
+    check('la vrille droite, elle, l’épouse dans une orientation au moins', droites >= 1, `${droites} sur 24`);
+    // Une orientation fausse : le creux dit le SENS, pas la main.
+    while (T.sockets.dansLeSens(creux, v)) T.step(ordre(T, { tourner: 1 }), TICK_DT);
+    check(
+      'bonne main, mauvais sens : le creux dit « le sens »',
+      T.sockets.raisonDuRefus(creux, v) === 'orientation',
+      `${T.sockets.raisonDuRefus(creux, v)}`,
+    );
+    v.main = 'L';
+    check(
+      'mauvaise main : il dit « la main », quel que soit le sens',
+      T.sockets.raisonDuRefus(creux, v) === 'main',
+      `${T.sockets.raisonDuRefus(creux, v)}`,
+    );
+
+    // Les flèches : quatre quarts de tour ramènent au départ, et basculer vers
+    // l'avant envoie le haut de la pièce dans la direction du regard.
+    v.rotation = { x: 0, y: 0, z: 0 };
+    const zero = cle();
+    for (let i = 0; i < 4; i++) T.step(ordre(T, { quartLacet: 1 }), TICK_DT);
+    const lacetBoucle = cle() === zero;
+    for (let i = 0; i < 4; i++) T.step(ordre(T, { quartBascule: -1 }), TICK_DT);
+    check('quatre quarts de tour, autour de la verticale ou en bascule, ramènent au départ', lacetBoucle && cle() === zero, cle());
+    for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+      v.rotation = { x: 0, y: 0, z: 0 };
+      T.step(ordre(T, { yaw, quartBascule: 1 }), TICK_DT);
+      const haut = appliquerMat(eulerVersMat(v.rotation), { x: 0, y: 1, z: 0 });
+      const f = { x: Math.sin(yaw), z: Math.cos(yaw) };
+      check(
+        `basculer vers l’avant envoie le haut de la pièce devant soi (lacet ${yaw.toFixed(2)})`,
+        Math.abs(haut.x - f.x) < 1e-6 && Math.abs(haut.z - f.z) < 1e-6 && Math.abs(haut.y) < 1e-6,
+        `haut → (${haut.x.toFixed(2)}, ${haut.y.toFixed(2)}, ${haut.z.toFixed(2)})`,
+      );
+    }
+  }
+
   // ─── LE BLANCHIMENT ─────────────────────────────────────────────────────
   {
     // LE THÉORÈME EN NOMBRES : la vrille passe les deux portes, portée, aux
@@ -2784,6 +2866,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
       `${t2.traversed ? `traversé ${t2.traversed.pairId}` : 'pas traversé'}, taille ${w.size}, main ${w.main ?? '?'}, ${pos(B)}`,
     );
     walkTo(B, [216, 0, 1711.5], 60 * 20);
+    check('blanchiment : à la molette, la vrille droite finit par épouser le dessin', orienterPour(B, 'creux-blanchiment') >= 0, '');
     agirVers(B, [216, 0.6, 1716]);
     attendre(B, 60 * 2);
     check(

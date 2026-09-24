@@ -71,7 +71,46 @@ export class InputManager {
       if (e.code === 'KeyR') this.onReset?.();
       if (e.code === 'KeyC') this.onCapture?.();
       if (e.code === 'Space') e.preventDefault();
+      // TOURNER LA PIÈCE TENUE — voir `Simulation.tournerLaPiece`. La touche T
+      // fait ce que fait la molette ; les flèches, tant qu'on tient quelque
+      // chose, donnent des quarts de tour au lieu de déplacer. Une impulsion
+      // par appui : la répétition automatique du clavier ferait tourner la
+      // pièce en toupie.
+      if (e.repeat) return;
+      if (e.code === 'KeyT') this.crans += e.shiftKey ? -1 : 1;
+      if (this.tenue) {
+        if (e.code === 'ArrowLeft') this.lacets -= 1;
+        if (e.code === 'ArrowRight') this.lacets += 1;
+        if (e.code === 'ArrowUp') this.bascules += 1;
+        if (e.code === 'ArrowDown') this.bascules -= 1;
+        if (e.code.startsWith('Arrow')) e.preventDefault();
+      }
     });
+    // LA MOLETTE, UN CRAN PAR CRAN. Une souris envoie un événement par cran,
+    // de cent pixels environ (ou trois lignes) : c'est un quart de tour, ni
+    // plus ni moins — la première version en comptait deux. Un pavé tactile,
+    // lui, envoie des pas minuscules et nombreux : on les accumule, et l'on
+    // ne tourne qu'une fois le glissement équivalent à un cran, pour qu'un
+    // effleurement ne fasse pas tourner la pièce six fois.
+    window.addEventListener(
+      'wheel',
+      (e) => {
+        if (!this.locked) return;
+        e.preventDefault();
+        const d = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY;
+        if (Math.abs(d) >= 50) {
+          this.crans += Math.sign(d);
+          this.molette = 0;
+          return;
+        }
+        this.molette += d;
+        if (Math.abs(this.molette) >= 100) {
+          this.crans += Math.sign(this.molette);
+          this.molette = 0;
+        }
+      },
+      { passive: false },
+    );
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
 
@@ -256,6 +295,8 @@ export class InputManager {
       e.preventDefault();
       this.keys.add(code);
       if (code === 'Mouse0') this.mouseDown = true;
+      // « Tourner » est une impulsion, comme la touche T : un toucher, un cran.
+      if (code === 'KeyT') this.crans += 1;
     };
     const up = (): void => {
       this.keys.delete(code);
@@ -348,12 +389,39 @@ export class InputManager {
     this.sensLateral = v ? -1 : 1;
   }
 
+  /** Impulsions de rotation en attente, vidées à chaque échantillon. */
+  private crans = 0;
+  private lacets = 0;
+  private bascules = 0;
+  private molette = 0;
+  /**
+   * Tient-on une pièce ? Les flèches la tournent alors au lieu de déplacer
+   * le joueur ; ZQSD ou WASD, eux, marchent toujours.
+   */
+  private tenue = false;
+  setTenue(v: boolean): void {
+    this.tenue = v;
+  }
+
   sample(): InputCommand {
+    const crans = this.crans;
+    const lacets = this.lacets;
+    const bascules = this.bascules;
+    this.crans = 0;
+    this.lacets = 0;
+    this.bascules = 0;
+    // Pendant qu'on tient une pièce, les flèches sont à elle.
+    const avant = this.tenue ? ['KeyW'] : ['KeyW', 'ArrowUp'];
+    const arriere = this.tenue ? ['KeyS'] : ['KeyS', 'ArrowDown'];
+    const gauche = this.tenue ? ['KeyA'] : ['KeyA', 'ArrowLeft'];
+    const droite = this.tenue ? ['KeyD'] : ['KeyD', 'ArrowRight'];
     return {
-      forward: this.moveY || this.axis(['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']),
-      strafe:
-        (this.moveX || this.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight'])) *
-        this.sensLateral,
+      forward: this.moveY || this.axis(arriere, avant),
+      strafe: (this.moveX || this.axis(gauche, droite)) * this.sensLateral,
+      tourner: crans,
+      // La droite de l'écran, même dans un monde en miroir : voir `sensLateral`.
+      quartLacet: lacets * this.sensLateral,
+      quartBascule: bascules,
       jump: this.keys.has('Space'),
       sprint: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'),
       // Maintenue telle quelle : c'est la simulation qui détecte le front, pour

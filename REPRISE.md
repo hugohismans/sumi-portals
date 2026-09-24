@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 24 septembre 2026
 
-`npm run check` : **758 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **773 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -352,6 +352,17 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
   un rendu de portail — quand les surfaces portent un autre matériau que
   celui de l'écran. Une fois le joueur passé au miroir, toutes les portes
   devenaient transparentes. Le catalogue est refait à chaque appel.
+- **On tourne la pièce tenue, et un creux à forme exige le bon sens.**
+  Molette : un cran, un quart de tour, dans un ordre qui passe par les 24
+  orientations et revient (`TOUR_DE_MOLETTE`, « yyyxyxyzyxyx » deux fois ; avec
+  la verticale et un seul axe couché, aucun ordre ne le fait). Flèches, tant
+  qu'on tient une pièce : quarts de tour libres par rapport à ce qu'on voit. T
+  et le bouton « Tourner » au doigt. Le creux compare les blocs tournés à son
+  dessin (`cleDeForme`), refuse « pas dans ce sens » quand seule l'orientation
+  cloche, et son dessin respire quand la pièce en main l'épouse. Avec la
+  mauvaise main, aucune des 24 : le harnais le vérifie. Le transport par les
+  portes et les miroirs passe en matrices (`transporterRotation`), exact pour
+  toute orientation.
 - **Un creux qui attend une forme la dessine**, au trait, dans la main qu'il
   exige et l'orientation où la pièce se loge (`SocketViews`,
   `aretesDeLaForme`) : seules les arêtes du volume, pas celles de chaque cube.

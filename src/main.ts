@@ -753,6 +753,7 @@ input.onTouchMode = () => {
   document.body.classList.add('touch');
   input.bindTouchButton(el('btn-take'), 'KeyE');
   input.bindTouchButton(el('btn-throw'), 'Mouse0');
+  input.bindTouchButton(el('btn-turn'), 'KeyT');
   input.bindTouchButton(el('btn-jump'), 'Space');
 };
 
@@ -1744,6 +1745,9 @@ function frame(now: number): void {
     // tendue dans un cadre passe pour une porte fermée de plus. Signalé en
     // jouant, dans le blanchiment : « tous les portails sont fermés ».
     if (events.dos) flash('C’est le dos de la porte. Elle s’ouvre de l’autre côté.', 2.5);
+    // Un quart de tour s'entend : un petit coup de pinceau, le même que pour
+    // une couleur posée, plus bas.
+    if (events.tourne) ambiance.tache(0);
     if (events.carry && !events.carry.taken) ambiance.caisse();
     if (events.socketFilled) ambiance.caisse();
     if (events.carry) {
@@ -1751,7 +1755,19 @@ function frame(now: number): void {
       // publie cette caisse, et l'autre joueur suit ce que j'en fais.
       if (events.carry.taken) caisses.reclamer(events.carry.id);
 
-      flash(events.carry.taken ? 'Caisse en main. E pour la reposer.' : 'Caisse reposée.', 1.6);
+      // Une pièce à forme se TOURNE : on le dit au moment où on la prend, et
+      // seulement là — c'est le seul moment où la phrase sert.
+      const tenue = sim.carryables.items.find((c) => c.id === events.carry!.id);
+      const aForme = tenue?.pieces !== undefined && tenue.pieces.length > 0;
+      const tourner = input.touchOnly ? '« Tourner » pour la tourner' : 'Molette ou flèches pour la tourner';
+      flash(
+        events.carry.taken
+          ? aForme
+            ? `En main. ${tourner}, E pour la poser.`
+            : 'Caisse en main. E pour la reposer.'
+          : 'Caisse reposée.',
+        aForme && events.carry.taken ? 3.2 : 1.6,
+      );
     }
     // LE SACRE. L'encrier se pose sur la pointe de l'Aiguille, et le monde
     // répond. C'est la seule fin du jeu, et la seule fois où l'on retire au
@@ -1894,6 +1910,7 @@ function frame(now: number): void {
         forme: 'Ce n’est pas ce dessin-là. Le creux en attend un autre.',
         teinte: 'La forme est juste, la couleur non.',
         main: 'Bonne taille, bon dessin, et elle n’entre pas. La tourner n’y changera rien.',
+        orientation: 'Bonne main, pas dans ce sens. Tourne-la jusqu’à ce qu’elle épouse le dessin.',
         lancee: 'Lancée, elle n’entre pas. Reprends-la, et pose-la.',
       };
       const mot = dit[events.logementRefuse.raison];
@@ -2130,6 +2147,23 @@ function frame(now: number): void {
   avatar.syncInk();
   carryableViews.update(sim.carryables.items, sim.faces, inkUniforms.uTime.value as number);
   carryableViews.syncInk();
+  // Le dessin du creux RESPIRE quand la pièce qu'on tient l'épouse — forme,
+  // taille, main ET sens. C'est la réponse visible à la molette : avec la
+  // mauvaise main, on passe les vingt-quatre orientations et rien ne bouge.
+  {
+    const tenue = sim.carryables.held;
+    const epouses = new Set<string>();
+    if (tenue) {
+      const p = sim.player.position;
+      const loin = 12 * scaleOfLevel(sim.player.scaleLevel);
+      for (const s of sim.sockets.items) {
+        if (s.filledBy !== null || s.forme === undefined) continue;
+        if (Math.hypot(s.position.x - p.x, s.position.z - p.z) > loin) continue;
+        if (sim.sockets.fits(s, tenue)) epouses.add(s.id);
+      }
+    }
+    socketViews.epouses = epouses;
+  }
   socketViews.update(sim.sockets.items, dt, inkUniforms.uTime.value);
   socketViews.syncInk();
   // LA COULEUR QU'ON SAIT DIRE, à cette image : celle de la fée qui nous
@@ -2407,6 +2441,7 @@ function frame(now: number): void {
   const gauchere = sim.player.gauchere;
   // Les commandes suivent la main du monde : voir `InputManager.setGauchere`.
   input.setGauchere(gauchere);
+  input.setTenue(sim.carryables.held !== null);
   camera.scale.x = gauchere ? -1 : 1;
   camera.updateMatrixWorld(true);
   const retournes = gauchere ? PortalRenderer.materiauxDe(scene) : [];

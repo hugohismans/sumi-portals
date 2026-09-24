@@ -179,3 +179,20 @@ export const poserVers = (sim: Simulation, cible: [number, number, number]): Tic
   return tout;
 };
 
+
+/**
+ * Le geste d'un joueur devant un creux à forme : faire défiler la molette
+ * jusqu'à ce que la pièce tenue épouse le dessin. Rend le nombre de crans
+ * donnés, ou −1 si les vingt-quatre orientations y sont passées sans succès —
+ * ce qui arrive, et c'est la leçon, avec la mauvaise main.
+ */
+export const orienterPour = (sim: Simulation, socketId: string): number => {
+  const socket = sim.sockets.items.find((s) => s.id === socketId)!;
+  const c = sim.carryables.held;
+  if (!c) return -1;
+  for (let i = 0; i < 24; i++) {
+    if (sim.sockets.dansLeSens(socket, c)) return i;
+    sim.step(ordre(sim, { tourner: 1 }), TICK_DT);
+  }
+  return sim.sockets.dansLeSens(socket, c) ? 24 : -1;
+};

@@ -83,7 +83,7 @@ export interface Carryable {
    * puis perdue doit revenir telle qu'elle était AVANT le lancer, sinon le
    * rattrapage garde la moitié d'un geste qu'il annule.
    */
-  appui: { x: number; y: number; z: number; size: number; main?: 'L' | 'D' } | null;
+  appui: { x: number; y: number; z: number; size: number; main?: 'L' | 'D'; rotation: Vec3 } | null;
   /** Images passées au sol depuis le dernier appui noté. */
   depuisAppui: number;
   /**
@@ -100,6 +100,17 @@ export interface Carryable {
   lancee: boolean;
   /** Le creux a déjà dit, pour ce lancer, qu'il ne prend pas ce qu'on lance. */
   lanceeDite: boolean;
+  /**
+   * Où l'on en est du tour complet de la molette : voir
+   * `Simulation.tournerLaPiece`. Un indice de 0 à 23.
+   */
+  tour: number;
+  /**
+   * Compteur des quarts de tour donnés À LA MAIN. Le rendu anime la rotation
+   * quand il change, et la pose d'un coup sinon — un passage de porte change
+   * aussi la rotation, et celui-là ne doit surtout pas se voir tourner.
+   */
+  tourne: number;
   /**
    * Logée dans son réceptacle, donc figée pour de bon.
    *
@@ -209,6 +220,8 @@ export class Carryables {
         depuisAppui: 0,
         lancee: false,
         lanceeDite: false,
+        tour: 0,
+        tourne: 0,
       });
     }
   }
@@ -242,9 +255,11 @@ export class Carryables {
     c.spin.x = 0;
     c.spin.y = 0;
     c.spin.z = 0;
-    c.rotation.x = 0;
-    c.rotation.y = 0;
-    c.rotation.z = 0;
+    // Et dans le SENS où elle reposait : depuis qu'on tourne les pièces à la
+    // main, l'orientation fait partie de ce qu'on a mérité.
+    c.rotation.x = a ? a.rotation.x : 0;
+    c.rotation.y = a ? a.rotation.y : 0;
+    c.rotation.z = a ? a.rotation.z : 0;
     c.grounded = false;
     c.depuisAppui = 0;
   }
@@ -455,7 +470,7 @@ export class Carryables {
         // pas un repos.
         if (++c.depuisAppui > 12 && Math.hypot(c.velocity.x, c.velocity.z) < 1) {
           c.depuisAppui = 0;
-          c.appui = { x: c.position.x, y: c.position.y, z: c.position.z, size: c.size, main: c.main };
+          c.appui = { x: c.position.x, y: c.position.y, z: c.position.z, size: c.size, main: c.main, rotation: vec3(c.rotation.x, c.rotation.y, c.rotation.z) };
         }
       } else {
         c.depuisAppui = 0;
