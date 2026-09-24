@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 24 septembre 2026
 
-`npm run check` : **787 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **793 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -413,6 +413,20 @@ fun ».
   village) et `couleurSuivante` ont disparu. Les pilotes de la descente et de
   la montée jouent « pour le fun » avant de résoudre : le mur en vert, les
   claies en vert, puis en rouge.
+
+### Puis : un saut sous un plafond bas éjectait
+
+Signalé sous le surplomb de l'escalier (dalle à 2,60 du sol) : « quand je
+saute, ça m'éjecte à l'extérieur ». La tête touchait la dalle et la virgule
+flottante la laissait dedans de 2·10⁻¹⁶ ; le pas horizontal suivant
+« résolvait » la dalle comme un mur percuté, sur sa face, douze mètres et demi
+plus loin, puis le rattrapage des chutes posait le joueur sur la falaise.
+**`moveAxis` ne résout plus comme un choc neuf une boîte qu'on chevauchait
+déjà avant le pas** : par l'axe où l'on y est le moins enfoncé, elle ne gêne
+pas un autre axe, et sur le sien elle refuse seulement qu'on s'y enfonce
+davantage. La descente garde sa règle (linteau, rattrapage). Balayage de
+chaque plafond bas de chaque niveau aux trois tailles : 1 124 sauts sur
+43 145 éjectaient, aucun maintenant ; le harnais en rejoue un échantillon.
 
 ## Ce qui reste à faire
 
