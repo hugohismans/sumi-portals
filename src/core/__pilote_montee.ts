@@ -44,9 +44,9 @@ import { MONTEE } from '../levels/montee.js';
 import { BLANCHIMENT_TAILLE, BLANCHIMENT_GRANDE } from '../levels/salles/blanchiment.js';
 import { REFUS_PETITE } from '../levels/salles/refus.js';
 import {
-  agirVers, attendre, bondirVers, lancer, near, ordre, piece, pos, poserVers, settle, walkTo,
+  agirVers, attendre, bondirVers, lancer, near, ordre, orienterPour, peindreVers, piece, pos, poserVers, settle, walkTo,
   type Check,
- orienterPour } from './__pilote.js';
+} from './__pilote.js';
 import type { BoxDef } from './types.js';
 import type { Carryable } from './carryables.js';
 
@@ -431,41 +431,52 @@ export const piloterMontee = (check: Check): void => {
     walkTo(sim, [96, 14, 2026], 60 * 10);
     const d1 = walkTo(sim, [96, 14, 2014], 60 * 10, { stopOnEvent: true });
     check('atelier du haut : on descend dans la cour, homme', d1.traversed?.newLevel === 0, pos(sim));
-    // La pile de tuiles de la cour se refuse à un homme : c'est là que la loi enseigne.
+    // Dans la cour, tout ce qu'on atteint se peint : la pile de tuiles d'abord,
+    // en bleu — et c'est TOUTE la famille, jusqu'aux tuiles du toit.
     // La porte est au milieu de la cour : on la contourne au lieu de la
     // repasser — un pas de côté, c'est ce que fait un joueur qui la voit.
     walkTo(sim, [44, 0, 1923], 60 * 6);
     walkTo(sim, [44, 0, 1934], 60 * 8);
     const pile = plusProche('haut-tuiles', [40, 0, 1922], (b) => b.max[1] < 5);
     walkTo(sim, [pile[0], 0, pile[2] - 2.2], 60 * 12);
-    const r = agirVers(sim, pile);
-    check('atelier du haut : la pile de tuiles est trop grande pour un homme', r.peintureRefusee !== undefined, `${r.peinte ? 'peinte !' : r.peintureRefusee ? 'refusée' : 'rien'} ${pos(sim)}`);
-    // Les pots, eux, se peignent en bas : rouge du premier coup.
+    const r = peindreVers(sim, pile, 'bleu');
+    check(
+      'atelier du haut : la pile de tuiles se peint d’en bas, et toute la famille avec',
+      r.peinte?.famille === 'haut-tuiles' && sim.familles.teintes.get('haut-tuiles') === 'bleu',
+      `${r.peinte ? r.peinte.famille : r.boitePeinte ? `boîte ${r.boitePeinte.index}` : r.peintureTropLoin ? 'trop loin' : 'rien'} ${pos(sim)}`,
+    );
+    // Les pots : en vert pour voir, puis en rouge, comme au tableau.
     const pot = plusProche('haut-pots', [pile[0], 0, pile[2]]);
     walkTo(sim, [pot[0], 0, pot[2] - 1.6], 60 * 12);
-    const e = agirVers(sim, pot);
-    check('atelier du haut : on dit le rouge aux pots', e.peinte?.pigment === 'rouge', `${e.peinte?.pigment ?? (e.peintureRefusee ? 'refusé' : 'rien')} ${pos(sim)}`);
-    // Remonter par la petite face, et peindre les tuiles du toit : rouge, vert, puis bleu.
-    walkTo(sim, [44, 0, 1934], 60 * 12);
-    walkTo(sim, [44, 0, 1922], 60 * 8);
-    walkTo(sim, [40, 0, 1921], 60 * 8);
-    const d2 = walkTo(sim, [40, 0, 1931], 60 * 10, { stopOnEvent: true });
-    check('atelier du haut : on remonte sur le toit, géant', d2.traversed?.newLevel === 1, pos(sim));
-    const tuile = plusProche('haut-tuiles', [96, 14, 2030], (b) => b.min[1] > 10);
-    walkTo(sim, [tuile[0], 14, tuile[2] - 5], 60 * 15);
-    const t1 = agirVers(sim, tuile);
-    const t2 = agirVers(sim, tuile);
-    const t3 = agirVers(sim, tuile);
-    check(
-      'atelier du haut : aux tuiles on dit rouge, puis vert, puis bleu',
-      t1.peinte?.pigment === 'rouge' && t2.peinte?.pigment === 'vert' && t3.peinte?.pigment === 'bleu',
-      `${t1.peinte?.pigment ?? '?'}, ${t2.peinte?.pigment ?? '?'}, ${t3.peinte?.pigment ?? '?'} ${pos(sim)}`,
-    );
+    const v = peindreVers(sim, pot, 'vert');
+    check('atelier du haut : les pots en vert, et le tableau se tait', v.peinte?.pigment === 'vert' && !sim.familles.satisfaits.has('haut-tableau-cour'), `${v.peinte?.pigment ?? 'rien'} ${pos(sim)}`);
+    const e = peindreVers(sim, pot, 'rouge');
+    check('atelier du haut : les pots en rouge', e.peinte?.pigment === 'rouge', `${e.peinte?.pigment ?? 'rien'} ${pos(sim)}`);
     check(
       'atelier du haut : le tableau de la cour est satisfait',
       sim.familles.satisfaits.has('haut-tableau-cour'),
       [...sim.familles.satisfaits].join(', ') || 'aucun',
     );
+    // Remonter par la petite face : c'est par le toit qu'on repart.
+    walkTo(sim, [44, 0, 1934], 60 * 12);
+    walkTo(sim, [44, 0, 1922], 60 * 8);
+    walkTo(sim, [40, 0, 1921], 60 * 8);
+    const d2 = walkTo(sim, [40, 0, 1931], 60 * 10, { stopOnEvent: true });
+    check('atelier du haut : on remonte sur le toit, géant', d2.traversed?.newLevel === 1, pos(sim));
+    // D'en haut, un géant porte son pinceau à quarante mètres — et ne voit
+    // pourtant pas la cour : les parapets la cachent. Les pots ne se repeignent
+    // que d'en bas.
+    const tuile = plusProche('haut-tuiles', [96, 14, 2030], (b) => b.min[1] > 10);
+    walkTo(sim, [tuile[0], 14, tuile[2] - 5], 60 * 15);
+    const t1 = peindreVers(sim, tuile, 'vert');
+    const t2 = peindreVers(sim, tuile, 'bleu');
+    check(
+      'atelier du haut : sur le toit, les tuiles se repeignent à volonté',
+      t1.peinte?.famille === 'haut-tuiles' && t2.peinte?.pigment === 'bleu' && sim.familles.teintes.get('haut-tuiles') === 'bleu',
+      `${t1.peinte?.pigment ?? '?'}, ${t2.peinte?.pigment ?? '?'} ${pos(sim)}`,
+    );
+    const d = peindreVers(sim, pot, 'bleu');
+    check('atelier du haut : d’en haut, les pots restent hors d’atteinte', d.peinte?.famille !== 'haut-pots' && sim.familles.teintes.get('haut-pots') === 'rouge', `${d.peinte ? d.peinte.famille : d.boitePeinte ? `boîte ${d.boitePeinte.index}` : d.peintureTropLoin ? 'trop loin' : 'rien'}`);
     desceller(sim, check, 'montee-atelierHaut-vallee', 'haut-tableau-cour', 'atelier du haut');
 
     // LA SORTIE, soixante-seize mètres à l'ouest, regarde l'est d'où l'on

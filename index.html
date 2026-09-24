@@ -41,6 +41,67 @@
         width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
         background: var(--ink); border-radius: 50%; opacity: .5;
       }
+      /* Le viseur prend la teinte du pinceau quand ce qu'on vise est à portée :
+         c'est tout ce qu'il faut pour savoir qu'un clic peindra, et où. */
+      #crosshair.pinceau {
+        width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+        border: 2px solid var(--ink); opacity: .95;
+      }
+      #crosshair.pinceau.eau { background: rgba(239, 231, 214, .6); border-style: dashed; }
+
+      /* --- La trousse : les pinceaux qu'on a, et celui qu'on tient ---------- */
+      #trousse {
+        position: fixed; left: 50%; bottom: 16px; z-index: 6;
+        transform: translateX(-50%);
+        display: flex; gap: 8px; align-items: flex-end;
+        pointer-events: none;
+        transition: opacity .3s ease;
+      }
+      #trousse:empty { display: none; }
+      /* Les mains prises, la molette tourne la pièce : la trousse s'efface. */
+      #trousse.mains-prises { opacity: .3; }
+      #trousse button {
+        pointer-events: auto; cursor: pointer;
+        position: relative; width: 46px; height: 46px; padding: 0;
+        display: flex; align-items: center; justify-content: center;
+        font: 600 10px/1 "Segoe UI", system-ui, sans-serif; color: var(--ink);
+        background: rgba(239, 231, 214, .78);
+        border: 2px solid rgba(27, 23, 20, .55); border-radius: 3px;
+        box-shadow: 2px 2px 0 rgba(27, 23, 20, .18);
+        touch-action: none; -webkit-user-select: none; user-select: none;
+        transition: transform .15s ease, border-color .15s ease;
+      }
+      #trousse button.tenu {
+        transform: translateY(-6px);
+        border-color: var(--ink); border-width: 3px;
+        box-shadow: 3px 3px 0 rgba(27, 23, 20, .28);
+      }
+      #trousse kbd {
+        position: absolute; left: 3px; top: 2px;
+        font: 600 9px/1 "Segoe UI", system-ui, sans-serif; opacity: .55;
+      }
+      /* Une touche de pinceau, pas une pastille : un coup posé de biais. */
+      #trousse .tache {
+        width: 26px; height: 14px; border-radius: 60% 40% 55% 45% / 70% 50% 50% 30%;
+        background: var(--teinte); transform: rotate(-14deg);
+        box-shadow: inset 0 0 0 1px rgba(27, 23, 20, .35);
+      }
+      #trousse button[data-pigment="eau"] .tache {
+        background: rgba(239, 231, 214, .4);
+        box-shadow: none; border: 1.5px dashed rgba(27, 23, 20, .6);
+      }
+      #trousse .nom {
+        position: absolute; left: 50%; top: calc(100% + 3px); transform: translateX(-50%);
+        font-size: 10px; letter-spacing: .06em; white-space: nowrap; opacity: 0;
+        text-shadow: 0 0 4px var(--paper), 0 0 4px var(--paper);
+      }
+      #trousse button.tenu .nom { opacity: .8; }
+      /* Le mot du jeu remonte au-dessus de la trousse. */
+      body.a-pinceaux #hint { margin-bottom: 86px; }
+      /* Au doigt, le bas de l'écran est aux pouces : la trousse monte en haut. */
+      body.touch #trousse { top: 14px; bottom: auto; align-items: flex-start; }
+      body.touch #trousse button.tenu { transform: translateY(4px); }
+      body.touch.a-pinceaux #hint { margin-bottom: 30px; }
 
       #scale-readout {
         /* Il reçoit le toucher : trois coups dessus ouvrent le protocole. Le
@@ -340,6 +401,8 @@
   </head>
   <body>
     <div id="crosshair"></div>
+    <!-- La trousse : un pinceau par couleur rapportée, et l'eau. Voir src/main.ts. -->
+    <div id="trousse"></div>
 
     <!-- Commandes tactiles. Masquées tant qu'on joue au clavier. -->
     <div id="touch-surface"></div>

@@ -78,6 +78,11 @@ export class InputManager {
       // pièce en toupie.
       if (e.repeat) return;
       if (e.code === 'KeyT') this.crans += e.shiftKey ? -1 : 1;
+      // LES CHIFFRES CHOISISSENT LE PINCEAU, par leur place sur le clavier
+      // (`code`, pas `key`) : la rangée du haut d'un AZERTY donne « & é " »
+      // sans majuscule, mais c'est bien la touche 1, 2, 3.
+      const chiffre = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
+      if (chiffre) this.choix = Number(chiffre[1]);
       if (this.tenue) {
         if (e.code === 'ArrowLeft') this.lacets -= 1;
         if (e.code === 'ArrowRight') this.lacets += 1;
@@ -394,6 +399,11 @@ export class InputManager {
   private lacets = 0;
   private bascules = 0;
   private molette = 0;
+  /** Le pinceau désigné par un chiffre, ou par un doigt sur l'inventaire. 0 : aucun. */
+  private choix = 0;
+  choisirPinceau(n: number): void {
+    this.choix = n;
+  }
   /**
    * Tient-on une pièce ? Les flèches la tournent alors au lieu de déplacer
    * le joueur ; ZQSD ou WASD, eux, marchent toujours.
@@ -407,6 +417,8 @@ export class InputManager {
     const crans = this.crans;
     const lacets = this.lacets;
     const bascules = this.bascules;
+    const choix = this.choix;
+    this.choix = 0;
     this.crans = 0;
     this.lacets = 0;
     this.bascules = 0;
@@ -422,6 +434,7 @@ export class InputManager {
       // La droite de l'écran, même dans un monde en miroir : voir `sensLateral`.
       quartLacet: lacets * this.sensLateral,
       quartBascule: bascules,
+      ...(choix > 0 ? { choisir: choix } : {}),
       jump: this.keys.has('Space'),
       sprint: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'),
       // Maintenue telle quelle : c'est la simulation qui détecte le front, pour

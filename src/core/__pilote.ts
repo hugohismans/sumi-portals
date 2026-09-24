@@ -179,6 +179,23 @@ export const poserVers = (sim: Simulation, cible: [number, number, number]): Tic
   return tout;
 };
 
+/**
+ * Mains vides, choisir un pinceau puis cliquer en visant un point : c'est tout
+ * le geste de peindre. Le pinceau se choisit par son rang, comme au clavier.
+ */
+export const peindreVers = (sim: Simulation, cible: [number, number, number], pinceau: string): TickEvents => {
+  const tout: TickEvents = {};
+  const rang = sim.pinceaux.indexOf(pinceau);
+  if (rang >= 0) Object.assign(tout, sim.step(ordre(sim, { choisir: rang + 1 }), TICK_DT));
+  const p = sim.player.position;
+  const oeilY = p.y + PLAYER_HEIGHT * EYE_FRACTION * scaleOfLevel(sim.player.scaleLevel);
+  const yaw = Math.atan2(cible[0] - p.x, cible[2] - p.z);
+  const pitch = Math.atan2(cible[1] - oeilY, Math.hypot(cible[0] - p.x, cible[2] - p.z));
+  sim.step(ordre(sim, { yaw, pitch }), TICK_DT);
+  Object.assign(tout, sim.step(ordre(sim, { yaw, pitch, throwIt: true }), TICK_DT));
+  Object.assign(tout, sim.step(ordre(sim, { yaw, pitch }), TICK_DT));
+  return tout;
+};
 
 /**
  * Le geste d'un joueur devant un creux à forme : faire défiler la molette

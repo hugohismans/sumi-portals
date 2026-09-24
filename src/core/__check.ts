@@ -57,7 +57,7 @@ import {
 } from '../levels/duo.js';
 import { Simulation } from './simulation.js';
 import {
-  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, orienterPour, piece, pos, poserA, poserVers, settle, walkTo,
+  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, orienterPour, peindreVers, piece, pos, poserA, poserVers, settle, walkTo,
 } from './__pilote.js';
 import type { BoxDef, LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
@@ -1858,21 +1858,18 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
 
 {
-  console.log('\n— On ne peint que ce qu’on pourrait tenir —');
+  console.log('\n— On peint tout ce qu’on atteint, et un tableau n’est que le même geste —');
 
-  // La couleur devient une mécanique par UNE loi, et c'est celle-ci. Le seuil
-  // est exactement celui de la caisse : le joueur a passé une heure à apprendre
-  // que ce qui dépasse un peu la moitié de sa hauteur ne se soulève pas, et il
-  // apprend en une seconde que ça ne se peint pas non plus.
-  const boites = [
-    // Sept pots de 0,90 : peignables à 1,80, pas à 45 cm.
-    ...Array.from({ length: 7 }, (_, i) => ({
-      min: [i * 2, 0, 0] as [number, number, number],
-      max: [i * 2 + 0.9, 0.9, 0.9] as [number, number, number],
+  // LES FAMILLES, d'abord seules. Une famille est ce qu'un tableau nomme d'un
+  // mot ; on en peint un membre, elle prend toute la couleur. Plus aucune loi
+  // de taille : c'est la PORTÉE du pinceau qui décide, plus bas.
+  const boites: BoxDef[] = [
+    { min: [-50, -1, -50], max: [50, 0, 50] },
+    ...Array.from({ length: 3 }, (_, i) => ({
+      min: [4 + i * 1.5, 0, 3] as [number, number, number],
+      max: [4.8 + i * 1.5, 0.8, 3.8] as [number, number, number],
       famille: 'pots',
     })),
-    // Une claie de 3,60 : hors de portée à 1,80, peignable à ×4.
-    { min: [-1, 0, -1] as [number, number, number], max: [2.6, 3.6, -0.6] as [number, number, number], famille: 'mur' },
   ];
   const tableau = {
     id: 'atelier',
@@ -1882,30 +1879,8 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     hauteur: 0.9,
     attendu: { pots: 'rouge' },
   };
-
   const f = new Familles(boites, [tableau]);
-
-  check('une famille regroupe tous ses membres', f.noms.length === 2, f.noms.join(', '));
-  check('et sa taille est celle du PLUS GRAND', Math.abs(f.taille('mur') - 3.6) < 0.001, `${f.taille('mur')}`);
-
-  check('à 1,80 on peint des pots de 0,90', f.peignable('pots', 1), '');
-  check('et l’on ne peint pas une claie de 3,60', !f.peignable('mur', 1), '');
-  check('à 45 cm, même les pots sont hors de portée', !f.peignable('pots', 0.25), '');
-  check('et à ×4 la claie devient peignable', f.peignable('mur', 4), 'la palette est partitionnée par la taille');
-
-  // LE SEUIL EXACT, écrit une fois pour qu'on cesse de le deviner : un peu plus
-  // de la moitié de sa propre hauteur. C'est ce nombre qui décide, pour chaque
-  // salle, quelle taille il faut être pour y peindre quoi.
-  //   ×1/4 → 0,2475   ×1 → 0,99   ×4 → 3,96   ×16 → 15,84
-  const grand = new Familles(
-    [{ min: [0, 0, 0], max: [3.97, 1, 1], famille: 'juste-trop' }],
-    [],
-  );
-  check(
-    'et le seuil est exactement 0,55 fois sa hauteur',
-    !grand.peignable('juste-trop', 4) && new Familles([{ min: [0, 0, 0], max: [3.95, 1, 1], famille: 'x' }], []).peignable('x', 4),
-    '3,96 m à ×4 : 3,95 passe, 3,97 non',
-  );
+  check('une famille regroupe tous ses membres, par leur rang', f.noms.length === 1 && f.membres.get('pots')?.join(',') === '1,2,3', `${f.membres.get('pots')}`);
 
   // LE TABLEAU. Tant que la pièce ne lui ressemble pas, il ne dit rien.
   check('un tableau non satisfait ne descelle rien', f.verifier().length === 0, '');
@@ -1915,13 +1890,99 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   const neufs = f.verifier();
   check('la bonne couleur satisfait le tableau', neufs.includes('atelier'), neufs.join(','));
   check('et il ne se satisfait qu’une fois', f.verifier().length === 0, '');
-
-  // ON REPEINT AUTANT QU'ON VEUT, mais une porte ouverte reste ouverte. Une
-  // couleur est une décision, donc elle se reprend ; un passage gagné par la
-  // réflexion ne doit pas se refermer parce qu'on a continué à jouer après.
+  // ON REPEINT AUTANT QU'ON VEUT, mais une porte ouverte reste ouverte.
   f.peindre('pots', 'vert');
   check('repeindre par-dessus est permis', f.teintes.get('pots') === 'vert', '');
+  f.laver('pots');
+  check('l’eau rend la famille au lavis', !f.teintes.has('pots'), '');
   check('mais le tableau reste satisfait', f.satisfaits.has('atelier'), 'un progrès ne se défait pas par accident');
+
+  // ─── ET DANS LE MONDE : l'inventaire, le clic, la portée ─────────────────
+  //
+  // Un sol, trois pots d'une famille, une vitre et un mur à vingt mètres.
+  const MUR = boites.length;
+  const VITRE = MUR + 1;
+  const atelier: LevelDef = {
+    name: 'atelier-d-essai',
+    spawn: [0, 0.05, 0],
+    spawnYaw: 0,
+    boxes: [
+      ...boites,
+      { min: [-10, 0, 20], max: [10, 14, 21] },
+      { min: [-10, 0, 10], max: [10, 14, 10.2], invisible: true },
+    ],
+    tableaux: [tableau],
+    portals: [],
+    goal: { position: [0, -100, 0], radius: 0.1 },
+  };
+  const S = new Simulation(atelier);
+  poserA(S, 0, 0.05, 0, 0);
+  attendre(S, 10);
+
+  // Sans couleur rapportée, pas de pinceau, et le clic ne fait rien.
+  check('sans couleur rapportée, l’inventaire est vide', S.pinceaux.length === 0 && S.pinceauTenu === null, '');
+  const rien = peindreVers(S, [4.4, 0.4, 3.4], 'rouge');
+  check('et le clic mains vides ne peint rien', rien.peinte === undefined && rien.boitePeinte === undefined, '');
+
+  S.couleursConnues = ['rouge', 'vert'];
+  check(
+    'un pinceau par couleur rapportée, et l’eau en dernier',
+    S.pinceaux.join(',') === 'rouge,vert,eau' && S.pinceauTenu === 'rouge',
+    S.pinceaux.join(','),
+  );
+  // Choisir : la molette fait défiler, le chiffre désigne.
+  const m = S.step(ordre(S, { tourner: 1 }), TICK_DT);
+  check('mains vides, la molette choisit le pinceau suivant', S.pinceauTenu === 'vert' && m.pinceauChoisi?.pinceau === 'vert', `${S.pinceauTenu}`);
+  S.step(ordre(S, { tourner: -2 }), TICK_DT);
+  check('et elle boucle à rebours', S.pinceauTenu === 'eau', `${S.pinceauTenu}`);
+  S.step(ordre(S, { choisir: 1 }), TICK_DT);
+  check('le chiffre 1 prend le premier pinceau', S.pinceauTenu === 'rouge', `${S.pinceauTenu}`);
+  S.step(ordre(S, { choisir: 9 }), TICK_DT);
+  check('et un chiffre sans pinceau ne change rien', S.pinceauTenu === 'rouge', `${S.pinceauTenu}`);
+
+  // TOUT SE PEINT : le sol lui-même, qui n'est d'aucune famille.
+  const sol = peindreVers(S, [1, 0, 3], 'vert');
+  check(
+    'n’importe quelle boîte du décor se peint — le sol aussi',
+    sol.boitePeinte?.index === 0 && S.peintures.get(0) === 'vert' && sol.peinte === undefined,
+    `${sol.boitePeinte ? `boîte ${sol.boitePeinte.index}` : 'rien'}`,
+  );
+  // Un pot peint toute sa famille, et le tableau se satisfait du même geste.
+  const pot = peindreVers(S, [5.9, 0.4, 3.0], 'rouge');
+  check(
+    'un pot peint toute la famille — et c’est l’énigme, par le même geste',
+    pot.peinte?.famille === 'pots' && pot.peinte.pigment === 'rouge' && pot.tableauSatisfait?.id === 'atelier',
+    `${pot.peinte?.famille ?? 'rien'} ${pot.tableauSatisfait?.id ?? ''}`,
+  );
+  check('et la boîte de famille ne se note pas à part', !S.peintures.has(2), '');
+  // L'eau lave : la boîte, puis la famille. Le tableau reste satisfait.
+  const lave = peindreVers(S, [1, 0, 3], 'eau');
+  check('l’eau lave une boîte peinte', lave.boitePeinte?.pigment === 'eau' && !S.peintures.has(0), '');
+  const laveFamille = peindreVers(S, [4.4, 0.4, 3.0], 'eau');
+  check(
+    'et lave une famille, sans défaire le tableau',
+    laveFamille.peinte?.pigment === 'eau' && !S.familles.teintes.has('pots') && S.familles.satisfaits.has('atelier'),
+    '',
+  );
+
+  // LA PORTÉE. Le mur est à vingt mètres, derrière une vitre qu'on ne peint
+  // pas : un homme ne l'atteint pas, un géant si.
+  const loin = peindreVers(S, [0, 3, 20], 'rouge');
+  check(
+    'à 1,80, le mur à vingt mètres est hors de portée — et la vitre ne compte pas',
+    loin.peintureTropLoin?.index === MUR && !S.peintures.has(MUR) && !S.peintures.has(VITRE),
+    `${loin.peintureTropLoin ? `trop loin : ${loin.peintureTropLoin.index}` : loin.boitePeinte ? `peint ${loin.boitePeinte.index}` : 'rien'}`,
+  );
+  poserA(S, 0, 0.05, -6, 1);
+  attendre(S, 10);
+  const geant = peindreVers(S, [0, 8, 20], 'rouge');
+  check(
+    'à ×4, le pinceau porte quatre fois plus loin, et le mur se peint',
+    geant.boitePeinte?.index === MUR && S.peintures.get(MUR) === 'rouge',
+    `${geant.boitePeinte ? `peint ${geant.boitePeinte.index}` : geant.peintureTropLoin ? 'trop loin' : 'rien'} ${pos(S)}`,
+  );
+  S.reset();
+  check('et tout redevient lavis quand on recommence', S.peintures.size === 0 && S.familles.teintes.size === 0, '');
 }
 
 
@@ -4301,15 +4362,16 @@ console.log('\n— Chaque raccord se franchit depuis l’intérieur, et l’on a
 }
 
 // =============================================================================
-console.log('\n— On sait dire les couleurs qu’on a rapportées, et les ateliers se peignent —');
+console.log('\n— On peint avec les couleurs qu’on a rapportées, et les ateliers se résolvent —');
 {
   // Les fées n'existent que dans le village. Dans la descente et la montée,
   // personne ne suivait le joueur, rien ne pouvait être peint, et la porte de
   // la vallée — scellée par le tableau de l'atelier du haut — ne s'ouvrait
   // jamais : la montée était infinissable. Rien ici ne jouait ces salles.
   //
-  // Désormais on sait dire les couleurs qu'on a rapportées, l'une après
-  // l'autre. Le pilote peint les deux ateliers avec ce seul geste.
+  // Désormais chaque couleur rapportée est un pinceau de l'inventaire, et
+  // l'on peint au clic ce qu'on vise. Le pilote résout les deux ateliers par
+  // ce seul geste — le même qu'on fait pour le plaisir.
   const centre = (b: BoxDef): [number, number, number] => [
     (b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2,
   ];
@@ -4331,72 +4393,71 @@ console.log('\n— On sait dire les couleurs qu’on a rapportées, et les ateli
     const D = new Simulation(DESCENTE);
     D.couleursConnues = ['rouge', 'vert'];
     poserA(D, -1.9, 0.12, 1298.65, 0);
-    // Une claie du côté est, abordée depuis l'allée en regardant vers l'est :
-    // le mur est derrière elle, pas devant. Le mur se vise aussi — c'est
-    // l'erreur prévue — mais le pilote fait le geste juste.
     const claie = plusProche(DESCENTE.boxes, 'atelier-claies', [-1.9, 0, 1298.65], (b) => b.min[0] > 0);
     walkTo(D, [claie[0] - 1.6, 0, claie[2]], 60 * 10);
-    const e = agirVers(D, claie);
+    const v = peindreVers(D, claie, 'vert');
     check(
-      'atelier : on dit le rouge à une claie — la première couleur qu’on connaisse',
-      e.peinte?.pigment === 'rouge' && D.familles.teintes.get('atelier-claies') === 'rouge',
-      `${e.peinte ? e.peinte.pigment : e.peintureRefusee ? 'refusé' : 'rien'} ${pos(D)}`,
+      'atelier : une claie en vert peint toutes les claies — mais ce n’est pas le tableau',
+      v.peinte?.famille === 'atelier-claies' && !D.familles.satisfaits.has('atelier-tableau'),
+      `${v.peinte ? v.peinte.pigment : 'rien'} ${pos(D)}`,
     );
-    check('atelier : et la pièce ressemble au tableau', D.familles.satisfaits.has('atelier-tableau'), '');
-    const e2 = agirVers(D, claie);
-    check('atelier : appuyer encore dit la couleur suivante', e2.peinte?.pigment === 'vert', `${e2.peinte?.pigment ?? 'rien'}`);
-    check('atelier : et un tableau réussi ne se dé-satisfait pas', D.familles.satisfaits.has('atelier-tableau'), '');
+    const e = peindreVers(D, claie, 'rouge');
+    check(
+      'atelier : en rouge, la pièce ressemble au tableau',
+      e.peinte?.pigment === 'rouge' && D.familles.satisfaits.has('atelier-tableau') && e.tableauSatisfait?.id === 'atelier-tableau',
+      `${e.peinte ? e.peinte.pigment : 'rien'} ${pos(D)}`,
+    );
+    const e2 = peindreVers(D, claie, 'eau');
+    check('atelier : l’eau lave, et un tableau réussi ne se dé-satisfait pas', e2.peinte?.pigment === 'eau' && D.familles.satisfaits.has('atelier-tableau'), `${e2.peinte?.pigment ?? 'rien'}`);
+    // UNE PORTE ARRÊTE LE PINCEAU : on y voit un autre lieu, et le rayon
+    // peindrait sinon ce qui est derrière le cadre, qu'on ne voit pas.
+    const f = D.faces.find((x) => x.pairId === 'atelier-porte' && x.kind === 'big')!;
+    poserA(D, f.position.x + f.normal.x * 3, 0.05, f.position.z + f.normal.z * 3, 0);
+    const o = D.eyePosition();
+    const cible: [number, number, number] = [f.position.x, f.position.y + f.height * 0.5, f.position.z];
+    D.step(ordre(D, {
+      yaw: Math.atan2(cible[0] - o.x, cible[2] - o.z),
+      pitch: Math.atan2(cible[1] - o.y, Math.hypot(cible[0] - o.x, cible[2] - o.z)),
+    }), TICK_DT);
+    check('atelier : on ne peint pas à travers une porte', D.viserPeinture() === null, JSON.stringify(D.viserPeinture()));
   }
 
-  // ─── L'ATELIER DU HAUT (montée) : deux familles, deux couleurs, deux tailles
+  // ─── L'ATELIER DU HAUT (montée) : deux familles, deux tailles ───────────
   {
     const H = new Simulation(MONTEE);
     H.couleursConnues = ['rouge', 'vert', 'bleu'];
     poserA(H, 92, 14.05, 2076, 1);
-    // Descendre dans la cour par la grande face de la porte interne.
     walkTo(H, [96, 14, 2026], 60 * 10);
     const d1 = walkTo(H, [96, 14, 2014], 60 * 10, { stopOnEvent: true });
     check('atelier du haut : on descend dans la cour, homme', d1.traversed?.newLevel === 0, pos(H));
-    // La pile de tuiles de la cour se refuse à un homme : c'est là que la loi enseigne.
-    // La porte est au milieu de la cour : on la contourne au lieu de la
-    // repasser — un pas de côté, c'est ce que fait un joueur qui la voit.
     walkTo(H, [44, 0, 1923], 60 * 6);
     walkTo(H, [44, 0, 1934], 60 * 8);
     const pile = plusProche(MONTEE.boxes, 'haut-tuiles', [40, 0, 1922], (b) => b.max[1] < 5);
     walkTo(H, [pile[0], 0, pile[2] - 2.2], 60 * 12);
-    const r = agirVers(H, pile);
-    check('atelier du haut : la pile de tuiles est trop grande pour un homme', r.peintureRefusee !== undefined, `${r.peinte ? 'peinte !' : r.peintureRefusee ? 'refusée' : 'rien'} ${pos(H)}`);
-    // Les pots, eux, se peignent en bas : rouge du premier coup.
+    const r = peindreVers(H, pile, 'bleu');
+    check('atelier du haut : la pile de tuiles se peint d’en bas', r.peinte?.famille === 'haut-tuiles' && r.peinte.pigment === 'bleu', `${r.peinte ? r.peinte.famille : r.peintureTropLoin ? 'trop loin' : 'rien'} ${pos(H)}`);
+    // LA PORTÉE, là où elle compte : le four, au bout de la cour, est trop loin
+    // pour un homme. On ne l'interdit pas, on ne l'atteint pas.
+    const four = peindreVers(H, [36, 20, 1958], 'vert');
+    check(
+      'atelier du haut : de la cour, le four est hors de portée d’un homme',
+      four.peintureTropLoin !== undefined && four.boitePeinte === undefined,
+      `${four.peintureTropLoin ? 'trop loin' : four.boitePeinte ? `peint ${four.boitePeinte.index}` : 'rien'} ${pos(H)}`,
+    );
     const pot = plusProche(MONTEE.boxes, 'haut-pots', [pile[0], 0, pile[2]]);
     walkTo(H, [pot[0], 0, pot[2] - 1.6], 60 * 12);
-    const e = agirVers(H, pot);
-    check('atelier du haut : on dit le rouge aux pots', e.peinte?.pigment === 'rouge', `${e.peinte?.pigment ?? (e.peintureRefusee ? 'refusé' : 'rien')} ${pos(H)}`);
-    // Remonter par la petite face, et peindre les tuiles du toit : rouge, vert, puis bleu.
-    walkTo(H, [44, 0, 1934], 60 * 12);
-    walkTo(H, [44, 0, 1922], 60 * 8);
-    walkTo(H, [40, 0, 1921], 60 * 8);
-    const d2 = walkTo(H, [40, 0, 1931], 60 * 10, { stopOnEvent: true });
-    check('atelier du haut : on remonte sur le toit, géant', d2.traversed?.newLevel === 1, pos(H));
-    const tuile = plusProche(MONTEE.boxes, 'haut-tuiles', [96, 14, 2030], (b) => b.min[1] > 10);
-    walkTo(H, [tuile[0], 14, tuile[2] - 5], 60 * 15);
-    const t1 = agirVers(H, tuile);
-    const t2 = agirVers(H, tuile);
-    const t3 = agirVers(H, tuile);
-    check(
-      'atelier du haut : aux tuiles on dit rouge, puis vert, puis bleu',
-      t1.peinte?.pigment === 'rouge' && t2.peinte?.pigment === 'vert' && t3.peinte?.pigment === 'bleu',
-      `${t1.peinte?.pigment ?? '?'}, ${t2.peinte?.pigment ?? '?'}, ${t3.peinte?.pigment ?? '?'} ${pos(H)}`,
-    );
+    const e = peindreVers(H, pot, 'rouge');
+    check('atelier du haut : les pots en rouge', e.peinte?.pigment === 'rouge', `${e.peinte?.pigment ?? 'rien'} ${pos(H)}`);
     check(
       'atelier du haut : le tableau de la cour est satisfait, et la porte de la vallée se libère',
       H.familles.satisfaits.has('haut-tableau-cour') && H.conditionsRemplies.has('haut-tableau-cour'),
       [...H.familles.satisfaits].join(', ') || 'aucun',
     );
-    // Sans couleur connue, rien ne se peint : la mémoire des couleurs est la clef.
+    // Sans couleur rapportée, pas de pinceau : la mémoire des couleurs est la clef.
     const V = new Simulation(MONTEE);
     poserA(V, pot[0], 0.05, pot[2] - 1.6, 0);
-    const v = agirVers(V, pot);
-    check('et sans couleur rapportée, on ne dit rien', v.peinte === undefined && v.peintureRefusee === undefined, '');
+    const v = peindreVers(V, pot, 'rouge');
+    check('et sans couleur rapportée, on ne peint rien', v.peinte === undefined && v.boitePeinte === undefined, '');
   }
 }
 

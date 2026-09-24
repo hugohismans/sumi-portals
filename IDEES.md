@@ -132,6 +132,13 @@ deuxième. Il faut les trois, sinon rien.
 n'importe où, on voit une famille entière basculer, on a compris sans un mot.
 Deux au suivant, et c'est déjà un choix. Trois, et c'est une énigme.
 
+**Fait le 24 septembre, et plus large que prévu** : une trousse (un pinceau par
+couleur rapportée, et l'eau qui lave), le clic peint ce qu'on vise — **tout le
+décor**, pas seulement les familles. L'énigme n'est que le geste qu'on fait pour
+le plaisir. Suite possible : **peindre les pièces qu'on porte** (l'objet chiral
+et coloré ci-dessous en a besoin), garder la peinture d'une partie à l'autre, et
+la partager dans le hall.
+
 Note technique : le tableau peut être **littéralement une photo**. Un rendu de la
 pièce fait une seule fois au chargement, depuis un point fixe, avec la palette
 cible. La machinerie existe déjà — c'est ce que fait un portail. Coût ponctuel,

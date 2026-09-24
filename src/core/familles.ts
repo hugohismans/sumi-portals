@@ -1,54 +1,44 @@
-import { PLAYER_HEIGHT } from './constants.js';
-import { LIFT_RATIO, REACH, lookDirection } from './carryables.js';
-import type { Vec3 } from './math.js';
 import type { BoxDef, TableauDef } from './types.js';
 
 /**
  * LES FAMILLES DE COULEUR — et le tableau qui dit ce qu'on attend d'elles.
  *
- * On ne peint jamais un objet : on peint une FAMILLE. Les sept pots d'un
- * séchoir, les douze tuiles d'un toit. Le joueur s'approche d'un seul membre,
- * appuie sur la touche d'action, et tous basculent — l'un après l'autre, sous
- * ses yeux, portés par la fée qui traverse la pièce.
- *
- * Sept objets qui changeraient au même instant se liraient comme un
- * interrupteur. Sept objets peints un par un disent ce qu'est une famille sans
- * qu'un mot ait été prononcé, et le délai empêche de marteler la touche — donc
- * de résoudre par tâtonnement au lieu de raisonner.
+ * Une famille est un groupe de boîtes qu'un tableau nomme d'un seul mot : les
+ * sept pots d'un séchoir, les douze tuiles d'un toit. On en peint un membre,
+ * TOUTE la famille prend la couleur — un tableau parle de « les pots », pas du
+ * troisième pot en partant de la gauche.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * ON NE PEINT QUE CE QU'ON POURRAIT TENIR
+ * ON PEINT TOUT, ET L'ÉNIGME N'EST QUE LE MÊME GESTE
  *
- * Le seuil est CELUI DE LA CAISSE, au nombre près. Ce n'est pas une économie de
- * code : c'est ce qui fait que le refus est déjà connu du joueur au moment où
- * il le rencontre pour la première fois ici. Il a passé une heure à apprendre
- * que ce qui dépasse un peu la moitié de sa hauteur ne se soulève pas ; il
- * apprend en une seconde que ça ne se peint pas non plus.
+ * La couleur se posait par une touche d'action qui « disait » la couleur
+ * suivante, et seulement sur ce qu'on aurait pu soulever. Signalé en jouant :
+ * « l'étape où il y a un tableau et qu'on doit peindre des éléments, c'est pas
+ * super clair ; ce serait cool qu'on ait un inventaire de nos pinceaux, qu'on
+ * puisse absolument tout colorer comme on le souhaite, et que lors des
+ * énigmes à couleur on doive juste peindre comme on le fait pour le fun. »
  *
- * Et la conséquence est toute la mécanique : un pot se peint à ×1, un toit à
- * ×4, une falaise à ×16. **La palette accessible est partitionnée par la
- * taille**, et un tableau qui demande trois familles est une liste de trois
- * tailles à devenir. La couleur cesse d'être une couche posée sur le jeu et
- * devient une raison de plus de changer de grandeur.
+ * C'est donc ainsi. On choisit un pinceau dans l'inventaire, on vise, on
+ * clique : la boîte prend la couleur — n'importe quelle boîte du décor. Une
+ * boîte qui appartient à une famille la peint tout entière, et c'est tout ce
+ * qu'une énigme de couleur demande : que la pièce ressemble à son tableau.
+ *
+ * La « loi de la main » (on ne peignait que ce qu'on pourrait tenir) a cédé
+ * la place à une loi de PORTÉE : on peint ce qu'on atteint, et l'on atteint
+ * plus loin quand on est plus grand (voir `Simulation.PORTEE_PINCEAU`). Un
+ * homme ne touche pas les tuiles d'un toit à quatorze mètres ; un géant, si.
+ * Changer de taille reste une façon d'atteindre, sans plus jamais être une
+ * interdiction qu'on doit deviner.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * ET L'ON REPEINT AUTANT QU'ON VEUT. C'est la seule chose du jeu qui se défait,
  * délibérément à l'inverse d'un logement : un logement est un progrès, donc il
  * verrouille ; une couleur est une décision, donc elle se reprend.
  */
-
-interface Membre {
-  cx: number;
-  cy: number;
-  cz: number;
-  /** Plus grande arête : c'est elle qui décide si l'on peut la peindre. */
-  taille: number;
-}
-
 export class Familles {
-  /** Les membres de chaque famille, pour la visée et pour la loi de la main. */
-  private readonly membres = new Map<string, Membre[]>();
-  /** Teinte courante de chaque famille. Vide = encore en lavis. */
+  /** Les boîtes de chaque famille, par leur rang dans le décor du niveau. */
+  readonly membres = new Map<string, number[]>();
+  /** Teinte courante de chaque famille. Absente = encore en lavis. */
   readonly teintes = new Map<string, string>();
   /** Tableaux dont la pièce a fini par leur ressembler. */
   readonly satisfaits = new Set<string>();
@@ -57,21 +47,12 @@ export class Familles {
 
   constructor(boxes: BoxDef[] = [], tableaux: TableauDef[] = []) {
     this.tableaux = tableaux;
-    for (const b of boxes) {
-      if (!b.famille) continue;
-      const w = b.max[0] - b.min[0];
-      const h = b.max[1] - b.min[1];
-      const d = b.max[2] - b.min[2];
-      const m: Membre = {
-        cx: (b.min[0] + b.max[0]) * 0.5,
-        cy: (b.min[1] + b.max[1]) * 0.5,
-        cz: (b.min[2] + b.max[2]) * 0.5,
-        taille: Math.max(w, h, d),
-      };
+    boxes.forEach((b, i) => {
+      if (!b.famille) return;
       const lot = this.membres.get(b.famille);
-      if (lot) lot.push(m);
-      else this.membres.set(b.famille, [m]);
-    }
+      if (lot) lot.push(i);
+      else this.membres.set(b.famille, [i]);
+    });
   }
 
   reset(): void {
@@ -84,73 +65,14 @@ export class Familles {
     return [...this.membres.keys()];
   }
 
-  /**
-   * La plus grande arête de la famille.
-   *
-   * On prend le PLUS GRAND membre, et non le plus proche : peindre est un geste
-   * qui porte sur toute la famille, donc le refus doit porter sur toute la
-   * famille aussi. Un joueur qui peut peindre le petit pot du bord et pas les
-   * six autres vivrait une règle incompréhensible.
-   */
-  taille(famille: string): number {
-    let max = 0;
-    for (const m of this.membres.get(famille) ?? []) max = Math.max(max, m.taille);
-    return max;
-  }
-
-  /** La loi de la main, au nombre près celle de `CarryableSet.canLift`. */
-  peignable(famille: string, playerScale: number): boolean {
-    return this.taille(famille) <= PLAYER_HEIGHT * playerScale * LIFT_RATIO;
-  }
-
-  /**
-   * La famille visée : celle dont un membre est le plus proche devant soi, à
-   * portée de bras. On renvoie MÊME celles qu'on ne peut pas peindre, pour
-   * pouvoir le dire au joueur plutôt que de laisser la touche sans effet — un
-   * refus énoncé est une leçon, une touche muette est une panne.
-   */
-  visee(playerPos: Vec3, yaw: number, playerScale: number, pitch = 0): string | null {
-    const portee = PLAYER_HEIGHT * playerScale * REACH;
-    const oeilY = playerPos.y + PLAYER_HEIGHT * playerScale * 0.6;
-    const fwd = lookDirection(yaw, 0);
-    const regard = lookDirection(yaw, pitch);
-
-    // ─── LA PLUS PROCHE DU REGARD, PAS LA PLUS PROCHE DU CORPS ─────────────
-    //
-    // On prenait le membre le plus près de soi. Une claie de l'atelier est
-    // posée contre le mur : le centre du pan de mur, à un mètre quarante,
-    // battait la claie à un mètre cinquante-cinq, et l'on s'entendait dire
-    // « trop grand » en regardant la claie qu'on voulait peindre. Il fallait
-    // trouver l'angle où la claie gagnait. Signalé en jouant : « il faut
-    // étrangement cliquer sur les petits modules ».
-    //
-    // On retient donc, parmi ce qui est à portée et devant soi, le membre le
-    // plus près de la LIGNE DU REGARD, inclinaison comprise : on baisse les
-    // yeux sur la claie, c'est elle ; on lève les yeux sur le mur, c'est lui.
-    let meilleure: string | null = null;
-    let meilleurCos = -Infinity;
-    for (const [nom, lot] of this.membres) {
-      for (const m of lot) {
-        const dx = m.cx - playerPos.x;
-        const dy = m.cy - oeilY;
-        const dz = m.cz - playerPos.z;
-        const dist = Math.hypot(dx, dy, dz);
-        if (dist > portee + m.taille * 0.5) continue;
-        const plat = Math.hypot(dx, dz) || 1;
-        if ((dx / plat) * fwd.x + (dz / plat) * fwd.z < 0.25) continue;
-        const cos = (dx * regard.x + dy * regard.y + dz * regard.z) / (dist || 1);
-        if (cos > meilleurCos) {
-          meilleurCos = cos;
-          meilleure = nom;
-        }
-      }
-    }
-    return meilleure;
-  }
-
   /** Donne une couleur à une famille. Toujours permis, toujours réversible. */
   peindre(famille: string, pigment: string): void {
     this.teintes.set(famille, pigment);
+  }
+
+  /** Rend une famille au lavis : c'est ce que fait l'eau. */
+  laver(famille: string): void {
+    this.teintes.delete(famille);
   }
 
   /**

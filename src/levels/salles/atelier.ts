@@ -6,7 +6,25 @@ import type { SalleModule } from './contrat.js';
  * couleur est une énigme.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * CE QU'ELLE ENSEIGNE, ET C'EST TOUT CE QU'ELLE ENSEIGNE
+ * RÉVISION DU 24 SEPTEMBRE — ON PEINT TOUT, ET L'ÉNIGME EST LE MÊME GESTE
+ *
+ * Signalé en jouant : « l'étape où il y a un tableau et qu'on doit peindre des
+ * éléments, c'est pas super clair ; ce serait cool qu'on ait un inventaire de
+ * nos pinceaux, qu'on puisse absolument tout colorer comme on le souhaite, et
+ * que lors des énigmes à couleur on doive juste peindre comme on le fait pour
+ * le fun. » C'est donc ainsi : une trousse (un pinceau par couleur rapportée,
+ * et l'eau qui lave), un clic sur ce qu'on vise, et TOUT le décor se peint.
+ * Les claies restent la seule FAMILLE de la salle — la seule chose que le
+ * tableau regarde — et peindre une claie les peint toutes.
+ *
+ * Ce qui suit, la « loi de la main » et le refus du mur, est l'histoire de la
+ * salle : on la garde parce qu'elle explique ses cotes, mais le mur se peint
+ * désormais comme le reste, le tableau n'en dit simplement rien. La seule
+ * limite est la PORTÉE du pinceau, dix mètres à taille d'homme, qui grandit
+ * avec soi (`Simulation.PORTEE_PINCEAU`).
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * CE QU'ELLE ENSEIGNAIT (avant la révision)
  *
  *     On ne peint que ce qu'on pourrait tenir.
  *
@@ -351,7 +369,7 @@ const Z_JARRE = 1306.6;
 const H_LINTEAU = 3.0;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// LES SEPT CLAIES — la seule chose peignable de la salle
+// LES SEPT CLAIES — la seule famille de la salle, la seule chose que le tableau regarde
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // QUATRE À GAUCHE, TROIS À DROITE, et l'asymétrie n'est pas un caprice : c'est
@@ -364,8 +382,8 @@ const H_LINTEAU = 3.0;
 // leur hauteur. En les enfonçant, ce flanc-là est enterré et ne se voit jamais.
 // Cela garantit aussi qu'aucun joueur ne peut se glisser ENTRE la claie et le
 // mur, donc qu'il n'existe pas de position d'où le mur soit plus proche que la
-// claie devant laquelle on se tient (voir `Familles.visee`, qui départage à la
-// distance du centre).
+// claie devant laquelle on se tient (c'était la visée de l'ancienne touche E ;
+// on peint désormais ce que le regard touche, voir `Simulation.viserPeinture`).
 //
 const CLAIE_X = 1.82;
 
@@ -377,8 +395,8 @@ const CLAIE_X = 1.82;
  * MARCHE que le joueur franchit sans sauter (`STEP_FRACTION`) : à 0,72, on ne
  * bute pas dans une claie, ON MONTE DESSUS, sans l'avoir voulu, simplement en
  * longeant le mur d'un peu trop près. Et debout sur le plateau, la claie est
- * sous ses pieds : `Familles.visee` écarte tout ce qui n'est pas devant soi
- * (produit scalaire < 0,25), donc la seule famille encore visée est LE MUR. Le
+ * sous ses pieds : la visée d'alors écartait tout ce qui n'était pas devant soi
+ * (produit scalaire < 0,25), donc la seule famille encore visée était LE MUR. Le
  * joueur appuie sur la touche en croyant peindre la claie sur laquelle il se
  * tient, et reçoit le refus. Le banc d'essai l'a fait trois fois de suite avant
  * qu'on le cherche.
@@ -406,8 +424,9 @@ const CLAIES_EST = [1301.5, 1302.65, 1303.8];
  * piles sont de la maçonnerie, elles restent grises dans le tableau, et cette
  * distinction se voit sans qu'on l'explique.
  *
- * AUCUNE ARÊTE NE DÉPASSE 0,90, ce qui est la seule contrainte dure de la
- * salle : `Familles.taille` prend le PLUS GRAND membre, donc une ridelle de
+ * AUCUNE ARÊTE NE DÉPASSE 0,90, ce qui ÉTAIT la seule contrainte dure de la
+ * salle sous la loi de la main (retirée, voir l'en-tête) : la taille d'une
+ * famille était celle de son PLUS GRAND membre, donc une ridelle de
  * 0,94 aurait porté la famille entière au-dessus du seuil et rendu la salle
  * insoluble. Le plateau fait 0,90 en z (la cote de la famille), les ridelles
  * 0,86 — retirées de 2 cm à chaque bout, ce qui les met du même coup hors du
@@ -417,7 +436,7 @@ const claie = (cx: number, cz: number, i: number): BoxDef[] => {
   const bas = SOL + CLAIE_H;
   // La longueur se CONSTRUIT — z0, puis z0 + CLAIE — au lieu de se déduire de
   // deux bornes symétriques. À mille trois cents mètres de l'origine, un double
-  // ne distingue plus que 2,3·10⁻¹³ : la cote lue par `Familles.taille` vaut
+  // ne distingue plus que 2,3·10⁻¹³ : la cote que lisait la loi de la main valait
   // 0,900000000000091 et non 0,900000000000000, et aucune écriture ne la rendra
   // exacte ici. Le résidu est de 9·10⁻¹⁴ pour une marge de 0,09 sous le seuil —
   // un milliard de fois plus petit — donc il ne décide de rien. On l'écrit pour
@@ -545,7 +564,8 @@ const decor = (): BoxDef[] => {
   //
   // Les jambages font toujours 4,00 de haut : ils appartiennent au mur, ils ne
   // changent pas sa taille. Le linteau, lui, fait 3,14 — plus grand que la
-  // claie, mais sans effet, puisque `Familles.taille` ne retient que le maximum.
+  // claie, mais c'était sans effet sous la loi de la main, qui ne retenait que
+  // le maximum — et c'est sans objet depuis qu'elle est retirée.
   const [rs0, rs1] = rangEO(RANG_SOURIS);
   const ySouris = 3.935 - 0.0035 * RANG_SOURIS;
   const xs0 = X_INT - 0.002 * RANG_SOURIS;

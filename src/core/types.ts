@@ -37,15 +37,12 @@ export interface BoxDef {
   /**
    * FAMILLE DE COULEUR à laquelle cette boîte appartient.
    *
-   * Les sept pots d'un séchoir, les douze tuiles d'un toit. On ne peint jamais
-   * un objet : on peint une FAMILLE, et tous ses membres basculent l'un après
-   * l'autre sous les yeux du joueur. Sept objets qui changeraient au même
-   * instant se liraient comme un interrupteur ; sept objets peints un par un
-   * par quelqu'un qui traverse la pièce disent ce qu'est une famille sans
-   * qu'un mot ait été prononcé.
-   *
-   * Une famille reçoit ses propres matériaux au rendu, exactement comme une
-   * région reçoit les siens — c'est la même idée appliquée plus finement.
+   * Les sept pots d'un séchoir, les douze tuiles d'un toit. Toute boîte se
+   * peint ; peindre UN membre d'une famille peint la famille entière, et ses
+   * membres basculent l'un après l'autre, de proche en proche, sous les yeux
+   * du joueur. Sept objets qui changeraient au même instant se liraient comme
+   * un interrupteur ; sept objets peints un par un disent ce qu'est une
+   * famille sans qu'un mot ait été prononcé. C'est ce qu'un tableau regarde.
    */
   famille?: string;
   /** Région dont cette boîte emprunte les couleurs. Voir RegionDef. */
@@ -229,36 +226,29 @@ export interface CarryableDef {
 /**
  * UN TABLEAU AU MUR — la couleur qui devient une énigme.
  *
- * Il montre la pièce telle qu'elle devrait être. On s'approche d'un objet, on
- * appuie sur la touche d'action, et toute sa famille prend la couleur qu'on
- * porte. Quand la pièce ressemble au tableau, la porte suivante peut se
- * dessiner.
+ * Il montre la pièce telle qu'elle devrait être. On choisit un pinceau dans la
+ * trousse, on vise un objet, on clique : toute sa famille prend la couleur.
+ * Quand la pièce ressemble au tableau, la porte suivante peut se dessiner.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * LA LOI QUI REND CETTE ÉNIGME POSSIBLE DANS CE JEU-CI
+ * LE MÊME GESTE QUE POUR LE PLAISIR
  *
- *     On ne peint que ce qu'on pourrait tenir.
+ * Tout le décor se peint, n'importe quelle couleur rapportée, et l'eau lave.
+ * Une énigme de couleur ne demande rien d'autre : peindre comme on le fait
+ * « pour le fun », jusqu'à ce que la pièce ressemble au tableau. C'est ce que
+ * le jeu a demandé en jouant, à la place d'une touche qui « disait » la
+ * couleur suivante et d'une « loi de la main » qu'on devait deviner.
  *
- * Même seuil que pour soulever une caisse, même refus, même sensation que le
- * « trop lourd » déjà connu. Elle fait trois choses d'un coup :
- *
- * — elle MARIE LA COULEUR À L'ÉCHELLE. Un pot est peignable à ×1, un toit à ×4,
- *   une falaise à ×16. La palette accessible est partitionnée par la taille, et
- *   un tableau qui demande trois familles est une liste de trois tailles à
- *   devenir. La couleur cesse d'être une couche posée sur le jeu ;
- *
- * — elle PROLONGE LA LOI DES VEILLEURS. Un pinceau ne s'éveille que pour un
- *   joueur de la taille de son monde ; c'est la même phrase, appliquée au geste
- *   au lieu de la rencontre. Une seule idée gouverne tout ;
- *
- * — elle SUPPRIME LA VISÉE. Désigner un objet à travers la pièce serait un
- *   curseur, donc quelque chose de pénible au doigt sur un téléphone. On
- *   s'approche et l'on appuie : le même geste que réveiller, prendre, poser.
+ * La taille garde son mot à dire par la PORTÉE du pinceau, qui grandit avec
+ * soi (`Simulation.PORTEE_PINCEAU`) : un homme n'atteint pas les tuiles d'un
+ * toit, un géant si. Une porte arrête le pinceau : on ne peint que ce qu'on
+ * voit dans ce lieu-ci.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * ET L'ON REPEINT AUTANT QU'ON VEUT. C'est la seule chose du jeu qui se défait,
  * délibérément à l'inverse d'un logement : un logement est un progrès, donc il
- * verrouille ; une couleur est une décision, donc elle se reprend.
+ * verrouille ; une couleur est une décision, donc elle se reprend. Un tableau
+ * satisfait, lui, le reste.
  */
 export interface TableauDef {
   id: string;
@@ -737,6 +727,8 @@ export interface InputCommand {
   quartLacet?: number;
   /** Quarts de tour libres vers l'avant : positif, le haut de la pièce s'éloigne. */
   quartBascule?: number;
+  /** Choisir directement le pinceau n° N de l'inventaire (à partir de 1). */
+  choisir?: number;
 }
 
 /** Événements émis par un tick, pour que le rendu et l'UI puissent réagir. */
@@ -831,14 +823,21 @@ export interface TickEvents {
   trace?: { canevas: string; u: number; v: number; rayon: number; encre: string };
   /** Une toile vient d'être effacée. */
   effacee?: { canevas: string };
-  /** Une famille vient de recevoir une couleur. */
-  peinte?: { famille: string; pigment: string };
   /**
-   * On a voulu peindre plus grand que soi. Ce refus est une leçon, pas une
-   * panne : c'est le même seuil que « trop lourd », et il enseigne en une
-   * seconde que la palette dépend de la taille qu'on a.
+   * Une famille vient de recevoir une couleur — ou d'être lavée, si le
+   * pigment est `eau`. `index` est la boîte touchée : la couleur gagne la
+   * famille de proche en proche depuis elle. Voir `Familles`.
    */
-  peintureRefusee?: { famille: string };
+  peinte?: { famille: string; pigment: string; index?: number };
+  /** Une boîte du décor, hors famille, vient d'être peinte (ou lavée : `eau`). */
+  boitePeinte?: { index: number; pigment: string };
+  /**
+   * On a voulu peindre trop loin : ce qu'on vise est hors de portée du
+   * pinceau, qui grandit avec soi. Voir `Simulation.PORTEE_PINCEAU`.
+   */
+  peintureTropLoin?: { index: number };
+  /** Le pinceau choisi a changé. */
+  pinceauChoisi?: { pinceau: string };
   /** Un tableau vient d'être satisfait : la pièce lui ressemble. */
   tableauSatisfait?: { id: string };
   /** Tous les logements sont pourvus. */

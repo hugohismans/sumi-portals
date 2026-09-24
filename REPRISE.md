@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 24 septembre 2026
 
-`npm run check` : **773 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **787 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -337,9 +337,7 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
 - **La fin d'un chapitre** : la peinture attend le but, un accord, un titre,
   et « Continuer : la montée » au lieu de « Monter ».
 - **Deux mots quand on vise** (`updateHints`) : « E — Prendre » devant une
-  pièce, « E — Dire le rouge » devant une famille qu'on peut peindre. Et une
-  famille se vise par la ligne du regard, inclinaison comprise
-  (`Familles.visee`) : une claie contre un mur n'est plus battue par le mur.
+  pièce, « Clic — Peindre » devant une famille qu'un tableau regarde.
 - **Les cadres de portail gagnent toujours la profondeur** (décalage de
   polygone) : un montant planté dans un jambage ne clignote plus rouge et
   brun. Les plaques du décor entre elles restent à traiter globalement.
@@ -380,6 +378,40 @@ faux dans certaines portes, un portail « carrément freeze » au banc.
   porte. Elle s'ouvre de l'autre côté. » Signalé : « tous les portails sont
   fermés » — c'était la sortie scellée du blanchiment, vue de dos.
 
+### Puis : la trousse, et l'on peint tout
+
+Signalé : « l'étape où il y a un tableau et qu'on doit peindre des éléments,
+c'est pas super clair ; ce serait cool qu'on ait un inventaire de nos
+pinceaux, qu'on puisse absolument tout colorer comme on le souhaite, et que
+lors des énigmes à couleur on doive juste peindre comme on le fait pour le
+fun ».
+
+- **La trousse** (`#trousse`, `majPinceaux` dans `main.ts`) : un pinceau par
+  couleur rapportée, et **l'eau** qui lave. Mains vides, la molette, les
+  chiffres 1 à 5 ou un doigt sur la case choisissent ; au doigt, « Lancer »
+  devient « Peindre » et « Tourner » devient « Pinceau ». Une phrase
+  l'explique une fois, au premier moment calme.
+- **Le clic peint ce qu'on vise**, n'importe quelle boîte du décor
+  (`Simulation.viserPeinture`, `peindreCeQuOnVise`). Une boîte d'une
+  **famille** peint la famille entière, de proche en proche depuis celle
+  qu'on a touchée, et c'est tout ce qu'une énigme demande : que la pièce
+  ressemble au tableau. Le verre ne se peint pas, **une porte arrête le
+  pinceau** (on ne peint pas ce qu'on ne voit pas), et `R` rend tout au lavis.
+- **La loi de la main est retirée** (« on ne peint que ce qu'on pourrait
+  tenir », et le refus « trop grand pour toi »). Elle est remplacée par une
+  **portée** : dix mètres à ×1, quarante à ×4 (`PORTEE_PINCEAU`) ; au-delà,
+  « Trop loin pour ton pinceau ». L'atelier du haut garde son voyage : les
+  pots ne se voient que de la cour, et l'on ressort par le toit.
+- **Rendu** : un attribut `aPeint` par sommet dans le décor
+  (`createCelMaterial(…, { peinture: true })`, `WorldView.peindreBoite`),
+  appliqué APRÈS le lavis : une boîte peinte dans une région encore grise est
+  en couleur. La case de la trousse et le viseur montrent la teinte telle
+  qu'elle s'affiche une fois posée.
+- **La touche E ne peint plus**, `couleurEnMain` (la fée qui peignait au
+  village) et `couleurSuivante` ont disparu. Les pilotes de la descente et de
+  la montée jouent « pour le fun » avant de résoudre : le mur en vert, les
+  claies en vert, puis en rouge.
+
 ## Ce qui reste à faire
 
 Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
@@ -394,7 +426,11 @@ Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
 - **Jouer.** Quatorze lieux n'ont jamais été vus par un œil humain qui joue.
 - **Le monde retourné** (les portails de gravité) : la fin que le troisième
   mouvement n'a pas encore — le seuil tient la place. Décidé, pas bâti.
-- **L'énigme chromatique** à quatre paliers.
+- **L'énigme chromatique** à quatre paliers. La peinture libre change la
+  donne : un palier 4 peut demander « plus de couleurs qu'on n'en a »
+  maintenant que tout se repeint et se lave.
+- **Garder la peinture** d'une partie à l'autre (aujourd'hui, recharger ou `R`
+  rend le décor au lavis) ; et la partager dans le hall à plusieurs.
 - **Brancher la fin à deux dans le hall** (`lobby.ts`, les deux dalles).
 - **Essayer le duo à deux vraies machines.**
 - **Deux nettoyages gratuits** : onze mètres de roche pleine dans l'escalier et

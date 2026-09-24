@@ -370,6 +370,19 @@ mètres. Une molécule jolie et ambiguë vaut moins qu'une molécule laide et
 
 ### 3.5 La couleur — comment elle devient une mécanique
 
+> **Révision du 24 septembre, après une partie.** « L'étape où il y a un tableau
+> et qu'on doit peindre des éléments, c'est pas super clair ; ce serait cool
+> qu'on ait un inventaire de nos pinceaux, qu'on puisse absolument tout colorer
+> comme on le souhaite, et que lors des énigmes à couleur on doive juste peindre
+> comme on le fait pour le fun. » C'est ce que fait le jeu désormais : une
+> **trousse** (un pinceau par couleur rapportée, et l'eau qui lave), un **clic**
+> sur ce qu'on vise, et **tout le décor se peint**. Peindre un membre d'une
+> famille peint la famille, de proche en proche ; un tableau n'est satisfait que
+> par ce même geste. La loi de la main ci-dessous est retirée, et la taille garde
+> son mot à dire par la **portée** du pinceau, qui grandit avec soi (dix mètres à
+> ×1). Le « pas de visée au doigt » tombe aussi : le regard vise, et au doigt le
+> regard se tourne déjà. Le reste de la section est l'histoire de l'idée.
+
 Le carnet pose l'énigme chromatique : un tableau montre l'état où la pièce devrait
 être, on désigne un élément, toute sa famille prend cette couleur. Il pose aussi
 le piège, et il a raison — sans les trois informations (à quoi ressemble le faux,

@@ -13,7 +13,7 @@ import {
   SPRINT_MULTIPLIER,
   scaleOfLevel,
 } from './constants.js';
-import { Carryables } from './carryables.js';
+import { Carryables, lookDirection } from './carryables.js';
 import { Sockets } from './sockets.js';
 import { Familles } from './familles.js';
 import { surLaGomme, viser } from './canevas.js';
@@ -139,46 +139,54 @@ export class Simulation {
   readonly eveilles = new Set<string>();
   /**
    * Les familles de couleur et les tableaux qui les jugent. Voir
-   * `src/core/familles.ts` — la loi tient en dix mots : on ne peint que ce
-   * qu'on pourrait tenir.
+   * `src/core/familles.ts` : on peint tout ce qu'on atteint, et un tableau
+   * n'est que le même geste.
    */
   readonly familles: Familles;
   /**
-   * La couleur que le joueur SAIT DIRE en ce moment : celle de la fée qui
-   * l'accompagne. Posée de l'extérieur, parce que les pigments rapportés
-   * vivent du côté du rendu — ici on ne connaît que la règle, pas l'inventaire.
-   *
-   * Une fée ne porte que sa couleur. Ce n'est pas « tu as la clé rouge »,
-   * c'est « tu as le rouge, donc le rouge est ce que tu sais dire ».
-   */
-  couleurEnMain: string | null = null;
-  /**
    * ═══════════════════════════════════════════════════════════════════════
-   * LES COULEURS QU'ON SAIT DIRE, dans l'ordre où on les a apprises.
+   * LES COULEURS QU'ON A RAPPORTÉES, dans l'ordre du voyage.
    *
-   * Dans le village, c'est la fée qui peint : on a réveillé quelqu'un, il nous
-   * suit, et il ne porte que sa couleur — c'est `couleurEnMain`. Mais les fées
-   * n'existent QUE dans le village, et les ateliers sont ailleurs : dans la
-   * descente et dans la montée, personne ne suivait le joueur, `couleurEnMain`
-   * restait nul, et rien ne pouvait être peint. La porte de la vallée, scellée
-   * par le tableau de l'atelier du haut, ne s'ouvrait donc jamais : la montée
-   * était infinissable, et aucune vérification ne jouait ces salles-là.
+   * Les pigments vivent du côté du rendu, qui remplit ce tableau depuis la
+   * mémoire des couleurs : ici on ne connaît que la règle, pas l'inventaire.
+   * Chacune devient un pinceau de la trousse (voir `pinceaux`).
    *
-   * La conception le disait pourtant en une phrase : « ce n'est pas "tu as la
-   * clé rouge", c'est "tu as le rouge, donc le rouge est ce que tu sais
-   * dire" ». Ce tableau est ce qu'on sait dire — les pigments rapportés, dans
-   * l'ordre du voyage — et le rendu le remplit depuis la mémoire des couleurs.
-   *
-   * ET ON LES DIT L'UNE APRÈS L'AUTRE. Appuyer sur E devant une famille lui
-   * donne la couleur SUIVANTE de celle qu'elle porte : rouge, puis vert, puis
-   * bleu, puis rouge. Aucune commande nouvelle — le même geste que réveiller,
-   * prendre et poser — et le choix reste au joueur : le tableau montre ce que
-   * chaque famille devrait être, et c'est à lui de s'arrêter sur la bonne. Une
-   * couleur est une décision, donc elle se reprend ; un logement est un
-   * progrès, donc il verrouille. La fée, quand elle est là, a la priorité.
+   * Il y eut une fée qui peignait pour soi au village, puis une touche qui
+   * « disait » la couleur suivante à une famille, et seulement à ce qu'on
+   * aurait pu tenir. Signalé en jouant : ce n'était pas clair. On choisit
+   * désormais un pinceau et l'on peint au clic, n'importe quoi, et une énigme
+   * de couleur se résout par le même geste qu'on fait pour le plaisir.
    * ═══════════════════════════════════════════════════════════════════════
    */
   couleursConnues: string[] = [];
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * L'INVENTAIRE DES PINCEAUX, et celui qu'on tient.
+   *
+   * Un pinceau par couleur rapportée, dans l'ordre du voyage, et l'EAU en
+   * dernier : elle lave ce qu'on a peint et le rend au lavis. Sans elle,
+   * peindre « comme on le souhaite » serait peindre pour toujours.
+   *
+   * Mains vides, on choisit à la molette ou au chiffre (1, 2, 3…) et l'on
+   * peint au clic. Voir `peindreCeQuOnVise`.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  get pinceaux(): string[] {
+    return this.couleursConnues.length > 0 ? [...this.couleursConnues, 'eau'] : [];
+  }
+  /** Le pinceau choisi, ou null si l'on n'en a aucun. Toujours un de `pinceaux`. */
+  get pinceauTenu(): string | null {
+    const liste = this.pinceaux;
+    if (liste.length === 0) return null;
+    return this.pinceau !== null && liste.includes(this.pinceau) ? this.pinceau : liste[0];
+  }
+  pinceau: string | null = null;
+  /**
+   * Les boîtes du décor peintes une à une, hors famille, par leur rang dans le
+   * niveau. Une famille garde sa teinte dans `familles.teintes`.
+   */
+  readonly peintures = new Map<number, string>();
 
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
@@ -218,6 +226,7 @@ export class Simulation {
     this.carryables.reset();
     this.sockets.reset();
     this.familles.reset();
+    this.peintures.clear();
     this.goalReached = false;
     this.seuilFranchi = false;
     this.scellerLesPortesADessiner();
@@ -732,30 +741,9 @@ export class Simulation {
     }
 
     const target = this.carryables.targeted(this.player.position, this.player.yaw, scale, this.world);
-    if (!target) {
-      // ─── RIEN À PRENDRE : ALORS PEUT-ÊTRE À PEINDRE ───────────────────
-      //
-      // La même touche que réveiller, prendre et poser. C'est délibéré : une
-      // commande de plus pour peindre serait une commande de plus à apprendre,
-      // et désigner un objet à travers la pièce serait une visée — donc
-      // quelque chose de pénible au doigt sur un téléphone.
-      const famille = this.familles.visee(this.player.position, this.player.yaw, scale, this.player.pitch);
-      if (!famille) return;
-      const couleur = this.couleurEnMain ?? this.couleurSuivante(famille);
-      if (couleur === null) return;
-      if (!this.familles.peignable(famille, scale)) {
-        // Le refus est une leçon, pas une panne : c'est le seuil du « trop
-        // lourd », déjà connu, et il enseigne en une seconde que la palette
-        // dépend de la taille qu'on a.
-        events.peintureRefusee = { famille };
-        return;
-      }
-      this.familles.peindre(famille, couleur);
-      events.peinte = { famille, pigment: couleur };
-      const neufs = this.familles.verifier();
-      if (neufs.length > 0) events.tableauSatisfait = { id: neufs[0] };
-      return;
-    }
+    // Rien à prendre : la touche d'action ne PEINT plus. On peint au clic,
+    // avec le pinceau choisi dans l'inventaire — voir `peindreCeQuOnVise`.
+    if (!target) return;
 
     if (!this.carryables.canLift(target, scale)) {
       events.tooHeavy = { id: target.id };
@@ -766,15 +754,6 @@ export class Simulation {
     target.lancee = false;
     target.lanceeDite = false;
     events.carry = { id: target.id, taken: true };
-  }
-
-  /** La couleur qu'on dira ensuite à cette famille. Voir `couleursConnues`. */
-  couleurSuivante(famille: string): string | null {
-    const connues = this.couleursConnues;
-    if (connues.length === 0) return null;
-    const actuelle = this.familles.teintes.get(famille);
-    const i = actuelle === undefined ? -1 : connues.indexOf(actuelle);
-    return connues[(i + 1) % connues.length];
   }
 
   /**
@@ -910,10 +889,112 @@ export class Simulation {
     if (!justPressed) return;
 
     const held = this.carryables.held;
-    if (!held) return;
+    if (!held) {
+      // MAINS VIDES, LE CLIC PEINT. Voir `peindreCeQuOnVise`.
+      this.peindreCeQuOnVise(scale, events);
+      return;
+    }
     held.releasedAt = this.eyePosition();
     this.carryables.throwIt(held, this.player.yaw, this.player.pitch, scale);
     events.thrown = { id: held.id };
+  }
+
+  /**
+   * La portée du pinceau, en mètres à taille d'homme : on peint ce qu'on
+   * atteint, et l'on atteint quatre fois plus loin à ×4. C'est ce qui garde
+   * un sens aux voyages de taille dans les ateliers — un homme ne touche pas
+   * les tuiles d'un toit, un géant si — sans plus jamais interdire un geste
+   * qu'on ne comprend pas.
+   */
+  static readonly PORTEE_PINCEAU = 10;
+
+  /**
+   * Ce que le regard désigne : la première boîte VISIBLE du décor sur le
+   * rayon de l'œil — le verre ne se peint pas, il se traverse. Rend son rang,
+   * sa distance et si elle est à portée du pinceau. Sert au clic, et au rendu
+   * pour teinter le viseur.
+   */
+  viserPeinture(): { index: number; distance: number; aPortee: boolean } | null {
+    const scale = this.scale;
+    const o = this.eyePosition();
+    const d = lookDirection(this.player.yaw, this.player.pitch);
+    const loin = Simulation.PORTEE_PINCEAU * scale * 4;
+    let meilleur = -1;
+    let tMin = loin;
+    const boxes = this.world.level.boxes;
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      if (b.invisible) continue;
+      let t0 = 0;
+      let t1 = tMin;
+      for (let a = 0; a < 3 && t0 <= t1; a++) {
+        const oa = a === 0 ? o.x : a === 1 ? o.y : o.z;
+        const da = a === 0 ? d.x : a === 1 ? d.y : d.z;
+        const mn = b.min[a];
+        const mx = b.max[a];
+        if (Math.abs(da) < 1e-9) {
+          if (oa < mn || oa > mx) t0 = t1 + 1;
+          continue;
+        }
+        let ta = (mn - oa) / da;
+        let tb = (mx - oa) / da;
+        if (ta > tb) [ta, tb] = [tb, ta];
+        if (ta > t0) t0 = ta;
+        if (tb < t1) t1 = tb;
+      }
+      // Un œil DANS une boîte (un géant la tête dans un plafond bas) ne la
+      // peint pas : on veut ce qu'on voit, pas ce dans quoi l'on est.
+      if (t0 <= t1 && t0 > 1e-4 && t0 < tMin) {
+        tMin = t0;
+        meilleur = i;
+      }
+    }
+    if (meilleur < 0) return null;
+    // UNE PORTE ARRÊTE LE PINCEAU. On y voit un autre lieu, mais le rayon, lui,
+    // continuerait tout droit dans celui-ci et peindrait ce qui est derrière
+    // le cadre — une chose qu'on ne voit pas. On ne peint pas à travers.
+    for (const f of this.faces) {
+      const n = f.normal;
+      const den = d.x * n.x + d.y * n.y + d.z * n.z;
+      if (Math.abs(den) < 1e-6) continue;
+      const t = ((f.position.x - o.x) * n.x + (f.position.y - o.y) * n.y + (f.position.z - o.z) * n.z) / den;
+      if (t <= 0 || t >= tMin) continue;
+      const px = o.x + d.x * t - f.position.x;
+      const py = o.y + d.y * t - f.position.y;
+      const pz = o.z + d.z * t - f.position.z;
+      // La droite de la face est horizontale et perpendiculaire à sa normale.
+      const lateral = (px * n.z - pz * n.x) / Math.max(1e-9, Math.hypot(n.x, n.z));
+      if (Math.abs(lateral) <= f.width / 2 && py >= 0 && py <= f.height) return null;
+    }
+    return { index: meilleur, distance: tMin, aPortee: tMin <= Simulation.PORTEE_PINCEAU * scale };
+  }
+
+  /**
+   * MAINS VIDES, LE CLIC PEINT ce qu'on vise avec le pinceau choisi. Une boîte
+   * d'une famille peint toute la famille — et c'est là qu'un tableau se
+   * satisfait, par le même geste que tout le reste. L'eau lave.
+   */
+  private peindreCeQuOnVise(_scale: number, events: TickEvents): void {
+    const pinceau = this.pinceauTenu;
+    if (pinceau === null) return;
+    const vise = this.viserPeinture();
+    if (!vise) return;
+    if (!vise.aPortee) {
+      events.peintureTropLoin = { index: vise.index };
+      return;
+    }
+    const famille = this.world.level.boxes[vise.index].famille;
+    if (famille) {
+      if (pinceau === 'eau') this.familles.laver(famille);
+      else this.familles.peindre(famille, pinceau);
+      events.peinte = { famille, pigment: pinceau, index: vise.index };
+      const neufs = this.familles.verifier();
+      if (neufs.length > 0) events.tableauSatisfait = { id: neufs[0] };
+      return;
+    }
+    if (pinceau === 'eau') this.peintures.delete(vise.index);
+    else this.peintures.set(vise.index, pinceau);
+    events.boitePeinte = { index: vise.index, pigment: pinceau };
   }
 
   /**
@@ -943,6 +1024,20 @@ export class Simulation {
   private tournerLaPiece(input: InputCommand, events: TickEvents): void {
     const c = this.carryables.held;
     const crans = input.tourner ?? 0;
+    // MAINS VIDES, la molette et les chiffres choisissent le pinceau.
+    if (!c) {
+      const liste = this.pinceaux;
+      if (liste.length === 0) return;
+      let i = Math.max(0, liste.indexOf(this.pinceau ?? ''));
+      if (input.choisir !== undefined && input.choisir >= 1 && input.choisir <= liste.length) i = input.choisir - 1;
+      else if (crans !== 0) i = (((i + crans) % liste.length) + liste.length) % liste.length;
+      else return;
+      if (liste[i] !== this.pinceau) {
+        this.pinceau = liste[i];
+        events.pinceauChoisi = { pinceau: this.pinceau };
+      }
+      return;
+    }
     const lacet = input.quartLacet ?? 0;
     const bascule = input.quartBascule ?? 0;
     if (!c || (crans === 0 && lacet === 0 && bascule === 0)) return;

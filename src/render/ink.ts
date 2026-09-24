@@ -57,8 +57,16 @@ export const createCelMaterial = (
   solidColor?: THREE.Color,
   palette?: THREE.Color[],
   ink?: THREE.Color,
+  /**
+   * LE DÉCOR QU'ON PEINT BOÎTE À BOÎTE. La géométrie porte alors un attribut
+   * `aPeint` (teinte, puis sa force de 0 à 1) que le pinceau du joueur écrit.
+   * Une définition plutôt qu'un attribut toujours présent : un attribut absent
+   * vaut (0, 0, 0, 1) en WebGL, et tout objet sans lui serait peint en noir.
+   */
+  options: { peinture?: boolean } = {},
 ): THREE.ShaderMaterial =>
   new THREE.ShaderMaterial({
+    defines: options.peinture ? { PEINTURE: '' } : {},
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
       {
@@ -122,9 +130,16 @@ export const createCelMaterial = (
       varying float vInk;
       /** Position dans le monde : c'est elle qu'on compare au front d'encre. */
       varying vec3 vMonde;
+      #ifdef PEINTURE
+      attribute vec4 aPeint;
+      varying vec4 vPeint;
+      #endif
 
       void main() {
         vInk = aInk;
+        #ifdef PEINTURE
+        vPeint = aPeint;
+        #endif
         vNormalW = normalize(mat3(modelMatrix) * normal);
         vec4 worldPosition = modelMatrix * vec4(position, 1.0);
         vMonde = worldPosition.xyz;
@@ -155,6 +170,9 @@ export const createCelMaterial = (
       varying vec3 vNormalW;
       varying float vInk;
       varying vec3 vMonde;
+      #ifdef PEINTURE
+      varying vec4 vPeint;
+      #endif
 
       void main() {
         #include <clipping_planes_fragment>
@@ -225,6 +243,15 @@ export const createCelMaterial = (
                       * smoothstep(front - largeur, front, distance);
         vec3 fraiche = clamp(vec3(gris) + (base - vec3(gris)) * 2.1, 0.0, 1.0);
         base = mix(base, fraiche, mouille);
+
+        // ─── CE QUE LE JOUEUR A PEINT, par-dessus tout le reste ─────────────
+        //
+        // APRÈS le lavis, et c'est délibéré : une boîte qu'on a peinte en rouge
+        // dans une région encore grise est ROUGE. C'est le geste du joueur, il
+        // passe avant l'état du monde.
+        #ifdef PEINTURE
+        base = mix(base, vPeint.rgb, vPeint.a);
+        #endif
 
         vec3 n = normalize(vNormalW);
 

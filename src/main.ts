@@ -328,32 +328,56 @@ let AUX_SOCLES_TOTAL = 0;
 let peintreEnCours: PinceauPeintre | null = null;
 
 /**
- * LES FAMILLES QU'ON EST EN TRAIN DE PEINDRE, une par une.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LES COUPS DE PINCEAU EN ATTENTE, boîte par boîte.
  *
- * Sept objets qui basculeraient au même instant se liraient comme un
- * interrupteur. Sept objets peints l'un après l'autre par quelqu'un qui
- * traverse la pièce disent ce qu'est une famille sans qu'un mot ait été
- * prononcé — et le délai empêche de marteler la touche, donc de résoudre par
- * tâtonnement au lieu de raisonner.
+ * On peint au clic ce qu'on vise, avec le pinceau choisi dans la trousse — et
+ * n'importe quelle boîte du décor. Une boîte seule prend sa couleur tout de
+ * suite. Une FAMILLE (ce qu'un tableau nomme d'un mot) se peint de proche en
+ * proche, en partant de celle qu'on a touchée : sept objets qui basculeraient
+ * au même instant se liraient comme un interrupteur, sept objets peints l'un
+ * après l'autre disent ce qu'est une famille sans qu'un mot ait été prononcé.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
-const DUREE_TOUCHE = 0.22;
+const ENTRE_DEUX_COUPS = 0.05;
 interface CoupDePinceau {
-  materiaux: THREE.ShaderMaterial[];
-  teinte: THREE.Color;
+  index: number;
+  teinte: THREE.Color | null;
   reste: number;
 }
 const coupsEnCours: CoupDePinceau[] = [];
 
-/** Pose la teinte d'une famille, après le petit délai qui la fait voir. */
-const peindreFamille = (famille: string, pigment: string): void => {
-  const mats = worldView.parFamille.get(famille);
-  const teinte = TEINTE_DU_PIGMENT[pigment];
-  if (!mats || !teinte) return;
-  coupsEnCours.push({
-    materiaux: mats,
-    teinte: new THREE.Color(teinte),
-    reste: DUREE_TOUCHE,
-  });
+/** Peint ces boîtes dans cet ordre, une à une ; l'eau (`null`) les lave. */
+const peindreBoites = (indices: number[], pigment: string): void => {
+  const hex = TEINTE_DU_PIGMENT[pigment];
+  if (pigment !== 'eau' && !hex) return;
+  const teinte = pigment === 'eau' ? null : new THREE.Color(hex);
+  // Une famille de cent tuiles se peint en moins d'une seconde.
+  const pas = Math.min(ENTRE_DEUX_COUPS, 0.8 / Math.max(1, indices.length));
+  const nouveaux = new Set(indices);
+  // Un nouveau coup sur une boîte remplace celui qui l'attendait encore.
+  for (let i = coupsEnCours.length - 1; i >= 0; i--) {
+    if (nouveaux.has(coupsEnCours[i].index)) coupsEnCours.splice(i, 1);
+  }
+  indices.forEach((index, k) => coupsEnCours.push({ index, teinte, reste: k * pas }));
+};
+
+/** Peint une famille entière, de proche en proche depuis la boîte touchée. */
+const peindreFamille = (famille: string, pigment: string, depuis?: number): void => {
+  const membres = [...(sim.familles.membres.get(famille) ?? [])];
+  const centre = (i: number): [number, number, number] => {
+    const b = LEVEL.boxes[i];
+    return [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2];
+  };
+  const o = depuis !== undefined ? centre(depuis) : null;
+  if (o) {
+    const d = (i: number): number => {
+      const c = centre(i);
+      return Math.hypot(c[0] - o[0], c[1] - o[1], c[2] - o[2]);
+    };
+    membres.sort((x, y) => d(x) - d(y));
+  }
+  peindreBoites(membres, pigment);
 };
 /** Quel veilleur correspond à quel pinceau. */
 /**
@@ -678,6 +702,8 @@ const SCALE_LABELS: Record<number, [string, string]> = {
 
 let hintText = '';
 let flashUntil = 0;
+/** Quand on pourra redire « trop loin » : une fois suffit, pas à chaque clic. */
+let tropLoinDit = 0;
 
 const setHint = (text: string): void => {
   if (text === hintText) return;
@@ -889,6 +915,9 @@ input.start();
 
 input.onReset = () => {
   sim.reset();
+  // Recommencer, c'est aussi retrouver le décor en lavis.
+  coupsEnCours.length = 0;
+  worldView.laverTout();
   input.setYaw(LEVEL.spawnYaw);
   winPanel.classList.remove('show');
   applyScale(true);
@@ -1949,20 +1978,21 @@ function frame(now: number): void {
       ambiance.tache(0);
       flash('Tout est remis en place.', 3);
     }
+    // LE PINCEAU DU JOUEUR. Une famille se peint de proche en proche depuis
+    // la boîte touchée ; une boîte seule, tout de suite. L'eau lave.
     if (events.peinte) {
-      peindreFamille(events.peinte.famille, events.peinte.pigment);
+      peindreFamille(events.peinte.famille, events.peinte.pigment, events.peinte.index);
       ambiance.tache(0);
-      // Hors du village, personne ne vole jusqu'à la famille : on dit la
-      // couleur, et l'on dit qu'appuyer encore en dira une autre.
-      if (sim.couleurEnMain === null) {
-        const autres = sim.couleursConnues.length > 1 ? ' Encore, pour dire la suivante.' : '';
-        flash(`Tu dis le ${events.peinte.pigment}.${autres}`, 3);
-      }
     }
-    // Le refus est une leçon, pas une panne : même seuil que le « trop lourd »,
-    // et il enseigne en une seconde que la palette dépend de la taille qu'on a.
-    if (events.peintureRefusee) {
-      flash('C’est trop grand pour toi. Il faudrait grandir pour le peindre.', 4);
+    if (events.boitePeinte) {
+      peindreBoites([events.boitePeinte.index], events.boitePeinte.pigment);
+      ambiance.tache(0);
+    }
+    // Trop loin : on le dit, sans le répéter à chaque clic. Le pinceau grandit
+    // avec soi — c'est la seule chose à comprendre, et le mot la contient.
+    if (events.peintureTropLoin && now > tropLoinDit) {
+      flash('Trop loin pour ton pinceau.', 2);
+      tropLoinDit = now + 2500;
     }
     if (events.tableauSatisfait) {
       ambiance.progression(1, 2);
@@ -2166,16 +2196,6 @@ function frame(now: number): void {
   }
   socketViews.update(sim.sockets.items, dt, inkUniforms.uTime.value);
   socketViews.syncInk();
-  // LA COULEUR QU'ON SAIT DIRE, à cette image : celle de la fée qui nous
-  // accompagne. Une fée ne porte que sa couleur — ce n'est pas « tu as la clé
-  // rouge », c'est « tu as le rouge, donc le rouge est ce que tu sais dire ».
-  sim.couleurEnMain = null;
-  for (const [socle, p] of peintres) {
-    if (!p.suitLeJoueur) continue;
-    sim.couleurEnMain = socle.replace('socle-', '');
-    break;
-  }
-
   brush.update(sim.player, scale, dt, camera);
 
   // ─── LES PORTES QUI SE DESSINENT SUR UNE FEUILLE ───────────────────────
@@ -2243,15 +2263,11 @@ function frame(now: number): void {
         }
       },
       () => {
-        // On remet les familles telles qu'elles étaient AVANT la prise : celles
-        // que le joueur a déjà peintes gardent leur teinte, les autres
-        // retrouvent le lavis. Sinon le tableau se peindrait lui-même la salle.
-        for (const [famille, mats] of worldView.parFamille) {
-          const teinte = TEINTE_DU_PIGMENT[sim.familles.teintes.get(famille) ?? ''];
-          for (const m of mats) {
-            if (m.uniforms.uUseSolid) m.uniforms.uUseSolid.value = teinte ? 1 : 0;
-            if (teinte && m.uniforms.uSolid) m.uniforms.uSolid.value.set(teinte);
-          }
+        // On rend les familles au lavis APRÈS la prise : sinon le tableau se
+        // peindrait lui-même la salle. Ce que le joueur a peint, lui, vit dans
+        // le décor boîte par boîte (voir `peindreBoites`) et passe par-dessus.
+        for (const mats of worldView.parFamille.values()) {
+          for (const m of mats) if (m.uniforms.uUseSolid) m.uniforms.uUseSolid.value = 0;
         }
       },
     );
@@ -2270,10 +2286,7 @@ function frame(now: number): void {
     const c = coupsEnCours[i];
     c.reste -= dt;
     if (c.reste > 0) continue;
-    for (const m of c.materiaux) {
-      if (m.uniforms.uSolid) m.uniforms.uSolid.value.copy(c.teinte);
-      if (m.uniforms.uUseSolid) m.uniforms.uUseSolid.value = 1;
-    }
+    worldView.peindreBoite(c.index, c.teinte);
     coupsEnCours.splice(i, 1);
   }
   if (sceau.enCours) sceau.update(dt);
@@ -2395,6 +2408,7 @@ function frame(now: number): void {
 
 
   // --- Indices ----------------------------------------------------------------
+  majPinceaux(now);
   updateHints(now);
 
   // --- Rendu ------------------------------------------------------------------
@@ -2587,14 +2601,10 @@ function updateHints(now: number): void {
       const cible = sim.carryables.targeted(p, sim.player.yaw, scale, sim.world);
       if (cible && !cible.locked) {
         if (sim.carryables.canLift(cible, scale)) found = `${TOUCHE_ACTION}Prendre`;
-      } else {
-        const famille = sim.familles.visee(p, sim.player.yaw, scale, sim.player.pitch);
-        if (famille) {
-          const couleur = sim.couleurEnMain ?? sim.couleurSuivante(famille);
-          if (couleur !== null && sim.familles.peignable(famille, scale)) {
-            found = `${TOUCHE_ACTION}Dire le ${couleur}`;
-          }
-        }
+      } else if (visePeinture?.aPortee && LEVEL.boxes[visePeinture.index].famille) {
+        // Tout se peint, mais l'on ne nomme le geste que devant ce qu'un
+        // tableau regarde : sinon le mot ne quitterait jamais l'écran.
+        found = `${TOUCHE_PEINDRE}Peindre`;
       }
     }
   }
@@ -2603,5 +2613,120 @@ function updateHints(now: number): void {
 
 /** Le nom de la touche d'action, quand il y en a une : au doigt, c'est un bouton, on ne le nomme pas. */
 const TOUCHE_ACTION = window.matchMedia?.('(pointer: coarse)').matches ? '' : 'E — ';
+const TOUCHE_PEINDRE = window.matchMedia?.('(pointer: coarse)').matches ? '' : 'Clic — ';
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA TROUSSE — les pinceaux qu'on a, et celui qu'on tient.
+ *
+ * Signalé en jouant : « l'étape où il y a un tableau et qu'on doit peindre des
+ * éléments, c'est pas super clair ; ce serait cool qu'on ait un inventaire de
+ * nos pinceaux ». Un pinceau par couleur rapportée, et l'eau qui lave. On
+ * choisit à la molette ou au chiffre, mains vides ; au doigt, on touche la
+ * case. Le viseur prend la teinte du pinceau quand ce qu'on vise est à portée
+ * — c'est tout ce qu'il faut pour comprendre qu'un clic peindra, et où.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const trousse = el('trousse');
+const viseur = el('crosshair');
+const boutonLancer = el('btn-throw');
+const boutonTourner = el('btn-turn');
+const NOM_DU_PINCEAU: Record<string, string> = { rouge: 'Rouge', vert: 'Vert', bleu: 'Bleu', or: 'Or', eau: 'Eau' };
+/**
+ * La teinte TELLE QU'ELLE S'AFFICHE une fois posée. Le décor écrit ses couleurs
+ * sans conversion (voir `ink.ts`), donc un pigment s'y voit plus soutenu que
+ * son code : la case de la trousse et le viseur montrent la même encre que
+ * celle qui se dépose, sinon on choisirait un vert et l'on en poserait un autre.
+ */
+const teinteAffichee = (pigment: string): string => {
+  const hex = TEINTE_DU_PIGMENT[pigment];
+  if (!hex) return 'transparent';
+  const c = new THREE.Color(hex);
+  return `rgb(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)})`;
+};
+let trousseDite = '';
+let viseurDit = '';
+let boutonDit = '';
+/** Ce que le pinceau vise à cette image — calculé une fois, lu par les indices. */
+let visePeinture: ReturnType<typeof sim.viserPeinture> = null;
+/** L'explication des pinceaux, une fois par partie, au premier moment calme. */
+let pinceauxExpliques = false;
+let pinceauxDepuis = 0;
+
+function majPinceaux(now: number): void {
+  const liste = sim.pinceaux;
+  const tenu = sim.pinceauTenu;
+  const mainsVides = sim.carryables.held === null;
+
+  const cle = `${liste.join(',')}|${tenu}|${mainsVides}`;
+  if (cle !== trousseDite) {
+    trousseDite = cle;
+    trousse.replaceChildren(
+      ...liste.map((p, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = p === tenu ? 'tenu' : '';
+        b.dataset.pigment = p;
+        b.title = NOM_DU_PINCEAU[p] ?? p;
+        const touche = document.createElement('kbd');
+        touche.textContent = String(i + 1);
+        const tache = document.createElement('span');
+        tache.className = 'tache';
+        tache.style.setProperty('--teinte', teinteAffichee(p));
+        const nom = document.createElement('span');
+        nom.className = 'nom';
+        nom.textContent = NOM_DU_PINCEAU[p] ?? p;
+        b.append(touche, tache, nom);
+        // Au doigt : toucher la case la choisit. `pointerdown` et pas `click`,
+        // et sans laisser l'appui atteindre la surface qui tourne le regard.
+        b.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          input.choisirPinceau(i + 1);
+        });
+        return b;
+      }),
+    );
+    document.body.classList.toggle('a-pinceaux', liste.length > 0);
+    // Tenir une pièce, c'est avoir les mains prises : la molette la tourne.
+    trousse.classList.toggle('mains-prises', !mainsVides);
+  }
+
+  visePeinture = mainsVides && tenu !== null && !partieFinie ? sim.viserPeinture() : null;
+  const teinte = visePeinture?.aPortee && tenu !== null ? (tenu === 'eau' ? 'eau' : teinteAffichee(tenu)) : '';
+  if (teinte !== viseurDit) {
+    viseurDit = teinte;
+    viseur.classList.toggle('pinceau', teinte !== '');
+    viseur.classList.toggle('eau', teinte === 'eau');
+    viseur.style.background = teinte && teinte !== 'eau' ? teinte : '';
+  }
+
+  // Au doigt, le bouton du clic dit ce qu'il fera — et celui qui tourne la
+  // pièce, mains vides, passe au pinceau suivant, comme la molette.
+  const pinceauEnMain = mainsVides && tenu !== null;
+  const mot = pinceauEnMain ? 'Peindre' : 'Lancer';
+  if (mot !== boutonDit) {
+    boutonDit = mot;
+    boutonLancer.textContent = mot;
+    boutonTourner.textContent = pinceauEnMain ? 'Pinceau' : 'Tourner';
+  }
+
+  // UNE FOIS, et au premier moment calme : trois secondes de jeu après avoir
+  // reçu ses pinceaux — pas derrière la carte de titre —, quand aucun autre
+  // mot n'est à l'écran.
+  const enJeu = input.locked || document.body.classList.contains('touch');
+  if (liste.length === 0 || !enJeu) pinceauxDepuis = 0;
+  else if (pinceauxDepuis === 0) pinceauxDepuis = now;
+  if (!pinceauxExpliques && pinceauxDepuis > 0 && mainsVides && now - pinceauxDepuis > 3000 && now > flashUntil) {
+    pinceauxExpliques = true;
+    const n = liste.length;
+    flash(
+      TOUCHE_PEINDRE
+        ? `Clic : peindre ce qu’on vise. Molette ou 1 à ${n} : changer de pinceau. L’eau lave.`
+        : 'Peindre : ce qu’on vise prend la couleur. Touche un pinceau pour le choisir. L’eau lave.',
+      7,
+    );
+  }
+}
 
 requestAnimationFrame(frame);

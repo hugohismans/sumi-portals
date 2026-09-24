@@ -476,8 +476,10 @@ export const REPERES_DESCENTE: Repere[] = [
       'la lecture n’a jamais été jugée — et si le lien ne se fait pas, c’est la salle ' +
       'entière qu’il faut reprendre.',
     verifier:
-      "Le cadre montre la pièce avec les claies EN ROUGE. On s'approche d'une claie, " +
-      'on appuie : elles se peignent une par une. Le mur, lui, refuse — il est trop grand.',
+      "Le cadre montre la pièce avec les claies EN ROUGE. La trousse, en bas, porte un " +
+      'pinceau par couleur et l’eau. Peins ce que tu veux (clic) — le sol, le mur : tout ' +
+      'se peint. Une claie peinte les peint toutes, de proche en proche ; en rouge, la ' +
+      'porte se dessine. Défaut à guetter : ne pas faire le lien entre jouer et résoudre.',
     position: [-1.9, 0.12, 1298.65],
     echelle: 0,
     lacet: 0,
@@ -614,9 +616,9 @@ const POURQUOI_MONTEE: Record<string, string> = {
     'gravit maintenant au lieu de la descendre. On vérifie que le verrou est réel et que ' +
     'l’erreur reste réparable.',
   'L’atelier du haut — la couleur, paliers 2 et 3':
-    'La couleur doit devenir un motif de VOYAGE et non un bouton : il faut descendre ' +
-    'puis remonter. Et le point de vue devient l’énigme — on cherche d’où quelqu’un ' +
-    'regardait, ce qui est l’occupation d’un peintre.',
+    'La couleur doit rester un motif de VOYAGE : les pots ne se voient que de la cour, ' +
+    'les mitres que du toit. Et le point de vue devient l’énigme — on cherche d’où ' +
+    'quelqu’un regardait, ce qui est l’occupation d’un peintre.',
   'La vallée en maquette — et l’or au bout':
     'Le plus grand plan du jeu, et le seul endroit où l’on domine physiquement un lieu ' +
     'qu’on a traversé à pied. Son autrice a dû écraser les hauteurs quatre fois plus que ' +
@@ -669,9 +671,10 @@ export const REPERES_MONTEE: Repere[] = [
   auSeuil(
     SALLES_MONTEE[4],
     'L’atelier du haut — la couleur, paliers 2 et 3',
-    'Deux familles, deux couleurs, deux tailles : il faut descendre peindre les pots ' +
-      'et remonter peindre les tuiles. Puis le point de vue : un tabouret quelque part, ' +
-      'et depuis lui seulement la composition du tableau se referme.',
+    'Deux familles, deux couleurs : pots en rouge, tuiles en bleu. Les pots ne sont que ' +
+      'dans la cour, qu’on ne voit pas du toit : il faut descendre, peindre au clic avec ' +
+      'le bon pinceau de la trousse, puis remonter pour repartir. Puis le point de vue : ' +
+      'un tabouret quelque part, et depuis lui seulement la composition du tableau se referme.',
     20,
   ),
   auSeuil(

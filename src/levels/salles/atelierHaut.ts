@@ -2,6 +2,17 @@ import type { BoxDef, PortalPairDef, TableauDef } from '../../core/types.js';
 import type { SalleModule } from './contrat.js';
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ * RÉVISION DU 24 SEPTEMBRE — on peint TOUT au clic, avec le pinceau choisi dans la
+ * trousse, et une énigme de couleur n'est que ce geste-là (voir `atelier.ts` et
+ * `core/familles.ts`). La « loi de la main » dont parle la suite est retirée ; la seule
+ * limite est la PORTÉE du pinceau, dix mètres à ×1, quarante à ×4. La salle garde son
+ * voyage : on entre et l'on ressort par le toit, et les pots n'existent que dans la cour,
+ * que les parapets cachent d'en haut — on descend donc toujours. La pile de tuiles de la
+ * cour ne refuse plus rien : elle se peint d'en bas, et toute la famille avec, jusqu'au
+ * toit. Les mitres et les faîtières ne se voient que d'en haut.
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *
  * L'ATELIER DU HAUT — la tuilerie de la côte rouge, prise par le toit. Elle joue LE PALIER 2
  * puis LE PALIER 3 de l'énigme chromatique (CONCEPTION § 3.5) dans un seul lieu, et suppose
  * lue `atelier.ts`, qui en jouait le palier 1.
@@ -24,8 +35,8 @@ import type { SalleModule } from './contrat.js';
  * défavorable n'étant pas une garantie. (a) LES POTS N'EXISTENT QUE DANS LA COUR — pas un
  * seul sur le toit, et c'est une décision : un seul suffirait à faire basculer toute la
  * famille sans qu'on ait bougé. D'en haut, le plus proche est vingt mètres plus bas et
- * cinquante plus loin quand la portée d'un géant vaut 11,52, donc `Familles.visee` ne le
- * désigne jamais : ce n'est pas « illisible », c'est hors de portée. (b) ON NE VOIT MÊME
+ * cinquante plus loin, et les parapets le cachent (b) : le pinceau ne le touche jamais —
+ * ce n'est pas « illisible », c'est hors d'atteinte. (b) ON NE VOIT MÊME
  * PAS LA COUR D'EN HAUT, les parapets montant à plus de 6 m au-dessus du dallage, au-delà
  * du saut d'un géant (5,18) : la seule ouverture sur la cour est LA PORTE, ce qui est la
  * chose la plus juste que ce jeu puisse faire d'un portail. (c) RÉCIPROQUEMENT, la pile de
@@ -68,7 +79,8 @@ const NOM = 'atelierHaut';
 const box = (min: V3, max: V3, ink = 1, o: { famille?: string; outline?: boolean } = {}): BoxDef =>
   ({ min, max, ink, region: NOM, ...o });
 
-// LES QUATRE FAMILLES. `Familles.taille` retient le PLUS GRAND membre : une seule boîte trop
+// LES QUATRE FAMILLES. (Sous la loi de la main, retirée : la taille d'une famille était celle
+// de son PLUS GRAND membre.) Une seule boîte trop
 // longue emporte la famille entière au-dessus du seuil et rend la salle insoluble sans que
 // rien ne le laisse voir, donc chaque constructeur plus bas est écrit pour qu'aucune arête ne
 // PUISSE dépasser sa cote. POT 0,86 au plus (0,853 mesuré), 86 % du seuil de ×1 · TUILE 3,00,

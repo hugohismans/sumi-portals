@@ -185,14 +185,19 @@ différentes. Une reste, une monte d'une porte, une de deux.
 *Rien ne doit être perdu.*
 
 **`7` — L'atelier de lavis.** Le cadre au mur montre la pièce **avec les claies
-en rouge**. Approche-toi d'une claie, appuie. → *Elles prennent le rouge — la
-première couleur que tu sais dire.* Appuie encore → *elles passent au vert* :
-on dit les couleurs qu'on a rapportées, dans l'ordre où on les a apprises, et
-une couleur est une décision, donc elle se reprend. *(Jusqu'au 22 septembre,
-rien ne se peignait hors du village : seule une fée qui nous suit savait dire
-une couleur, et les fées n'existent que là-bas.)*
-**L'erreur à faire exprès :** essaie de peindre le mur. *Refus — il est trop
-grand pour toi.*
+en rouge**. En bas de l'écran, **la trousse** : un pinceau par couleur rapportée,
+et l'eau. Mains vides, **molette ou 1, 2, 3** pour choisir, **clic** pour peindre
+ce que tu vises — le viseur prend la teinte du pinceau quand c'est à portée.
+**Joue d'abord :** peins le sol en vert, le mur, une jarre. *Tout se peint.* Puis
+une claie en vert → *toutes les claies passent au vert, de proche en proche :
+c'est une famille.* Rien ne s'ouvre. En rouge → *la pièce ressemble au tableau,
+la porte se dessine.* L'eau lave. *(Jusqu'au 24 septembre, une touche E
+« disait » la couleur suivante, seulement à ce qu'on aurait pu tenir, et le mur
+refusait. Signalé en jouant : pas clair. Le geste est maintenant le même pour
+jouer et pour résoudre.)*
+**L'erreur à faire exprès :** vise la porte par laquelle tu es entré et clique.
+*Rien — on ne peint pas à travers une porte.* Et vise le fond d'une grande salle :
+*« Trop loin pour ton pinceau »* (dix mètres à ×1, quarante à ×4).
 **Défaut à guetter, et c'est le plus important de la nuit :** que tu ne
 reconnaisses pas la pièce dans le tableau. La grande jarre au fond de l'allée est
 là pour ça, dans les deux vues. Si ça ne suffit pas, c'est la salle qu'il faut
@@ -314,16 +319,16 @@ cube qui « colle » à la paroi sans qu'on puisse monter dessus (il faut moins
 d'un demi-mètre de jeu, c'est mesuré).
 
 **`5` — L'atelier du haut.** La couleur, paliers 2 et 3. Deux familles, deux
-couleurs, deux tailles : descendre dire le rouge aux pots, remonter dire le bleu
-aux tuiles — chaque appui fait défiler rouge, vert, bleu, et l'on s'arrête sur
-la bonne. Puis le point de vue — un tabouret quelque part, et **depuis lui seul
-la composition du tableau se referme**.
-**Sans couleur rapportée, rien ne se peint, et la porte de la vallée reste
+couleurs : descendre dans la cour peindre les pots en rouge (ils ne se voient
+pas du toit), et les tuiles en bleu — la pile de la cour suffit, toute la
+famille suit jusqu'au toit. Puis remonter, c'est par le toit qu'on repart. Puis
+le point de vue — un tabouret quelque part, et **depuis lui seul la
+composition du tableau se referme**.
+**Sans couleur rapportée, la trousse est vide et la porte de la vallée reste
 scellée.** Les repères (`&debug=1`) donnent le rouge, le vert et le bleu ;
-sinon, joue les voyages dans l'ordre. *(Jusqu'au 22 septembre la montée était
-infinissable : personne ne pouvait peindre ici, et rien ne le disait.)*
-**Défaut à guetter :** ne pas comprendre qu'appuyer encore change la couleur ;
-la phrase « Tu dis le rouge » qui n'apparaît pas.
+sinon, joue les voyages dans l'ordre.
+**Défaut à guetter :** ne pas voir la trousse ; ne pas comprendre que le
+chiffre ou la molette change de pinceau.
 
 **`6` — La vallée en maquette.** ×16. La côte rouge entière **sous les
 semelles**, traversée en huit enjambées. Le dernier four, trente mètres qui
@@ -574,8 +579,9 @@ sont à reprendre** — c'est leur seul critère.
   quatorze ;
 - **une porte scellée** dit qu'elle est scellée quand on s'y cogne, au lieu de
   « ne mène nulle part » ;
-- **peindre dans le village** : la fée garde la priorité sur les couleurs
-  connues, donc rien ne doit avoir changé là-bas — mais c'est le même geste.
+- **peindre dans le village** : dès la première couleur rapportée, la trousse
+  apparaît et tout le village se peint au clic, même les régions encore
+  grises ; `R` rend tout au lavis.
 
 ---
 

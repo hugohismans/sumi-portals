@@ -13,7 +13,7 @@
  * d'homme, dans la cour du lavoir, et il marche. (La cour de pluie n'est plus
  * un détour de ce voyage : elle vit seule, `?niveau=pluie`.) Il fait aussi
  * les fautes que la salle prévoit, là où elles coûtent peu : sauter petit
- * dans le puits et manquer, essayer de peindre un mur.
+ * dans le puits et manquer, peindre d'abord n'importe quoi.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * LES SEULES LIBERTÉS QU'IL SE DONNE, et elles sont celles du rendu, pas du
@@ -34,7 +34,7 @@
 import { TICK_DT } from './constants.js';
 import { Simulation } from './simulation.js';
 import { DESCENTE } from '../levels/descente.js';
-import { agirVers, attendre, near, ordre, piece, pos, settle, walkTo, type Check } from './__pilote.js';
+import { agirVers, attendre, near, ordre, peindreVers, piece, pos, settle, walkTo, type Check } from './__pilote.js';
 
 /**
  * OUVRIR UNE PORTE DESSINÉE, comme le Pinceau le ferait.
@@ -390,26 +390,40 @@ export const piloterDescente = (check: Check): void => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // L'ATELIER DE LAVIS — on ne peint que ce qu'on pourrait tenir. Les gestes
-  // du pilote de la salle, tels quels : on dit le rouge à une claie, la pièce
-  // ressemble au tableau, la porte se dessine. Le mur, lui, refuse.
+  // L'ATELIER DE LAVIS — on peint ce qu'on veut, et la pièce doit ressembler
+  // au tableau. On joue d'abord « pour le fun » : le mur en vert, les claies
+  // en vert. Rien ne s'ouvre. Puis les claies en rouge, comme au tableau.
   // ═══════════════════════════════════════════════════════════════════════
   {
     attendre(sim, 30);
-    // LA FAUTE PRÉVUE : le mur ouest, à un pas de l'entrée. Trop grand.
-    const r = agirVers(sim, [-2.8, 1.0, sim.player.position.z]);
-    check('atelier : le mur refuse — il est trop grand pour soi', r.peintureRefusee !== undefined && r.peinte === undefined, `${r.peinte ? 'peint !' : r.peintureRefusee ? 'refusé' : 'rien'} ${pos(sim)}`);
-
     walkTo(sim, [0.22, 0, 1301.5], 60 * 8);
-    const e = agirVers(sim, [1.82, 1.005, 1301.5]);
+    // LE MUR OUEST, au-dessus des claies : il se peint, parce que tout se
+    // peint. (Pas derrière soi en arrivant : c'est la porte qu'on viserait, et
+    // l'on ne peint pas à travers une porte.)
+    const r = peindreVers(sim, [-2.3, 2.5, 1303.7], 'vert');
     check(
-      'atelier : on dit le rouge à une claie — la première couleur qu’on connaisse',
+      'atelier : tout se peint, même le mur — en vert, pour le plaisir',
+      r.peinte?.pigment === 'vert' || r.boitePeinte?.pigment === 'vert',
+      `${r.peinte ? r.peinte.famille : r.boitePeinte ? `boîte ${r.boitePeinte.index}` : r.peintureTropLoin ? 'trop loin' : 'rien'} ${pos(sim)}`,
+    );
+    check('atelier : et le tableau n’en dit rien', !sim.familles.satisfaits.has('atelier-tableau'), '');
+
+    const v = peindreVers(sim, [1.82, 1.005, 1301.5], 'vert');
+    check(
+      'atelier : les claies en vert — toutes à la fois, c’est une famille',
+      v.peinte?.famille === 'atelier-claies' && sim.familles.teintes.get('atelier-claies') === 'vert',
+      `${v.peinte ? v.peinte.famille : v.boitePeinte ? `boîte ${v.boitePeinte.index}` : 'rien'} ${pos(sim)}`,
+    );
+    check('atelier : mais ce n’est pas le tableau', !sim.familles.satisfaits.has('atelier-tableau'), '');
+    const e = peindreVers(sim, [1.82, 1.005, 1301.5], 'rouge');
+    check(
+      'atelier : en rouge, comme au tableau',
       e.peinte?.pigment === 'rouge' && sim.familles.teintes.get('atelier-claies') === 'rouge',
-      `${e.peinte ? e.peinte.pigment : e.peintureRefusee ? 'refusé' : 'rien'} ${pos(sim)}`,
+      `${e.peinte ? e.peinte.pigment : 'rien'} ${pos(sim)}`,
     );
     check('atelier : et la pièce ressemble au tableau', sim.familles.satisfaits.has('atelier-tableau'), '');
-    const e2 = agirVers(sim, [1.82, 1.005, 1301.5]);
-    check('atelier : appuyer encore dit la couleur suivante', e2.peinte?.pigment === 'vert', `${e2.peinte?.pigment ?? 'rien'}`);
+    const e2 = peindreVers(sim, [1.82, 1.005, 1301.5], 'eau');
+    check('atelier : l’eau les lave', e2.peinte?.pigment === 'eau' && !sim.familles.teintes.has('atelier-claies'), `${e2.peinte?.pigment ?? 'rien'}`);
     check('atelier : et un tableau réussi ne se dé-satisfait pas', sim.familles.satisfaits.has('atelier-tableau'), '');
     desceller(sim, check, 'atelier-porte', 'atelier-tableau', 'atelier');
 
