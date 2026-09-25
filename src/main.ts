@@ -2639,6 +2639,33 @@ function updateHints(now: number): void {
     }
   }
 
+  // ─── UN PINCEAU ENDORMI : ON DIT QU'IL SE SAISIT, ET AVEC QUOI ──────────
+  //
+  // Signalé en jouant : « c'est pas clair qu'il faut saisir le pinceau ». Il
+  // dort planté dans le sol, et rien ne disait qu'il attendait la main. La
+  // première fois qu'on arrive à sa portée, une phrase entière — la touche,
+  // et qu'elle sert aussi aux autres objets ; ensuite, deux mots tant qu'on
+  // reste à portée, comme devant tout ce qui se prend.
+  if (!found && !partieFinie && !sim.carryables.held) {
+    for (const v of LEVEL.veilleurs ?? []) {
+      if (sim.eveilles.has(v.id)) continue;
+      const d = Math.hypot(p.x - v.position[0], p.y - v.position[1], p.z - v.position[2]);
+      if (d > v.radius) continue;
+      if (!veilleursPresentes.has(v.id)) {
+        veilleursPresentes.add(v.id);
+        flash(
+          TOUCHE_ACTION
+            ? 'Appuie sur E, la touche d’action, pour saisir le pinceau. Elle sert aussi à prendre les autres objets.'
+            : 'Touche « Prendre » pour saisir le pinceau. Le même bouton prend aussi les autres objets.',
+          6,
+        );
+        return;
+      }
+      found = `${TOUCHE_ACTION}Saisir le pinceau`;
+      break;
+    }
+  }
+
   // ─── CE QU'ON VISE, ET CE QU'ON PEUT EN FAIRE ──────────────────────────
   //
   // Une claie de l'atelier se dessine exactement comme une pierre du décor, et
@@ -2663,6 +2690,9 @@ function updateHints(now: number): void {
   }
   setHint(found);
 }
+
+/** Les pinceaux endormis dont on a déjà expliqué qu'ils se saisissent. */
+const veilleursPresentes = new Set<string>();
 
 /** Le nom de la touche d'action, quand il y en a une : au doigt, c'est un bouton, on ne le nomme pas. */
 const TOUCHE_ACTION = window.matchMedia?.('(pointer: coarse)').matches ? '' : 'E — ';
