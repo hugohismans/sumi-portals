@@ -503,6 +503,19 @@ taille que le parcours ne permet pas.
   disparaissait pendant que le bleu surgissait. Seule la traverse d'encre de
   la jumelle est cachée désormais (`setTraverseVisible`) ; ses montants et son
   linteau prolongent ceux d'ici, rouge devant, indigo derrière.
+- **La vue ne bondit plus vers le ciel ou vers les pieds** (« parfois ça
+  saute d'un coup »). Sous Windows, Chrome simule la capture en recentrant un
+  curseur invisible ; un mouvement traité après ce recentrage rapporte 35 % de
+  la fenêtre d'un coup (crbug 40547981, pire à 1 000 Hz). Horizontalement,
+  580 px : le seuil fixe de 320 les jetait. Verticalement, pour une zone de
+  jeu de 905 px, 317 : ils passaient. Désormais la capture est BRUTE là où
+  Chrome sait la donner (`unadjustedMovement` : plus de recentrage, plus
+  d'accélération de Windows) ; ailleurs le seuil vaut un quart de la fenêtre
+  par axe ; et l'on jette 80 ms après la capture, pas un seul événement. Au
+  passage : un refus de capture ne se compte plus deux fois, et un ordinateur
+  ne bascule plus en commandes tactiles après trois refus. En `?debug=1`, le
+  compteur d'images dit « souris brute » ou « ordinaire » et combien d'écarts
+  ont été jetés (le dernier en info-bulle).
 
 ## Ce qui reste à faire
 

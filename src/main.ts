@@ -1020,6 +1020,9 @@ input.onReset = () => {
   coupsEnCours.length = 0;
   worldView.laverTout();
   input.setYaw(LEVEL.spawnYaw);
+  // Le regard aussi : sans ça, l'image qui suit montrait l'horizon (la
+  // simulation repart à zéro) puis revenait d'un coup à l'ancien angle.
+  input.setPitch(0);
   winPanel.classList.remove('show');
   applyScale(true);
 };
@@ -2536,6 +2539,13 @@ function frame(now: number): void {
   fpsFrames++;
   if (now - fpsSince >= 700) {
     fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} images/s`;
+    // En débug, la souris dit si elle est brute et ce qu'elle a jeté : le saut
+    // de la vue ne se reproduit pas sur commande, ce compteur-là si.
+    if (PARAMS.get('debug') && input.locked && !input.touchOnly) {
+      const j = input.ecartsJetes;
+      fpsBox.textContent += ` · souris ${input.brute ? 'brute' : 'ordinaire'}${j.nombre ? ` · ${j.nombre} jeté${j.nombre > 1 ? 's' : ''}` : ''}`;
+      fpsBox.title = j.dernier;
+    }
     fpsFrames = 0;
     fpsSince = now;
   }
@@ -2615,6 +2625,8 @@ function frame(now: number): void {
   camera,
   /** Pour mesurer : `renderer.info` compte les appels de dessin. */
   renderer,
+  /** `input.brute`, `input.ecartsJetes` : la souris est-elle brute, et qu'a-t-on jeté. */
+  input,
   portals,
   avatar,
   brush,
