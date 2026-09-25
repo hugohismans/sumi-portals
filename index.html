@@ -308,6 +308,9 @@
          carnet. Vide dans le hall, donc absent — pas de trou à sa place. */
       #overlay .chapitre { font-size: 13px; letter-spacing: .22em; text-transform: uppercase; opacity: .6; margin: -2px 0 18px; }
       #overlay .chapitre:empty { display: none; }
+      #overlay .manque { font-size: 13px; color: var(--vermilion); opacity: 1; margin: -6px 0 20px; }
+      #overlay .manque[hidden] { display: none; }
+      #overlay .manque a { color: inherit; font-weight: 600; }
       #overlay .go { margin-top: 4px; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; opacity: .62; }
       #overlay .son { margin-top: 16px; font-size: 12px; opacity: .42; }
       /* Recommencer : discret, sous l'appel — un lien de carnet, pas un bouton
@@ -521,6 +524,8 @@
           de titre cesse d'être la même page pour cinq lieux différents.
         -->
         <p class="ligne chapitre" id="chapitre"></p>
+        <!-- Un chapitre ouvert sans la couleur qu'il demande. Voir src/main.ts. -->
+        <p class="ligne manque" id="manque" hidden></p>
 
         <p class="ligne lede">
           Un monde dessiné à l’encre, et qui a perdu ses couleurs.<br />

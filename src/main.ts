@@ -20,7 +20,7 @@ import { retrouvailles, type Dalle } from './core/retrouvailles.js';
 import { Cinematique } from './render/cinematique.js';
 import { Talisman } from './render/talisman.js';
 import { Pigments, clePigments } from './render/pigments.js';
-import { Voyage } from './voyage.js';
+import { EXIGE, OU_DORT, RAPPORTE, Voyage, type Chapitre } from './voyage.js';
 import type { Repere } from './debug/reperes.js';
 import {
   REPERES_DESCENTE,
@@ -751,16 +751,34 @@ overlay.addEventListener('click', () => input.requestLock());
   // doit jamais contredire ses propres pinceaux. Et quand la suite est le
   // monde — rien de fini, ou tout —, ce n'est pas une suite, c'est un début.
   const toutesLesCouleurs = ['vert', 'rouge', 'bleu', 'or'].every((c) => acquis.has(c));
-  const prochain = Voyage.prochain();
+  const prochain = Voyage.prochain([...acquis]);
   el('chapitre').textContent = EN_AVENTURE
     ? LEVEL.name
     : Voyage.finis().size === 0
       ? ''
       : prochain === 'monde'
-        ? Voyage.acheve() && toutesLesCouleurs
+        ? Voyage.acheve([...acquis]) && toutesLesCouleurs
           ? 'Tout est rapporté'
           : 'Reprendre du début'
         : `Suite : ${NIVEAUX[prochain]().name}`;
+
+  // ─── ENTRER DANS UN CHAPITRE SANS LA COULEUR QU'IL DEMANDE ──────────────
+  //
+  // La montée sans le bleu est infinissable : l'atelier du haut veut des
+  // tuiles bleues. On le dit sur la carte, avant d'entrer, avec le chemin vers
+  // la couleur qui manque — pas en débug, où les couleurs se posent à la main.
+  const manqueEl = el('manque');
+  const exigees = MODE && !PARAMS.get('debug') ? (EXIGE[MODE as Chapitre] ?? []) : [];
+  const absente = exigees.find((c) => !acquis.has(c));
+  if (absente) {
+    const ou = OU_DORT[absente];
+    const lien = document.createElement('a');
+    lien.href = adresseDe(ou.chapitre);
+    lien.textContent = ou.chapitre === 'monde' ? 'Reprendre du début' : `Aller le chercher : ${NIVEAUX[ou.chapitre]().name.toLowerCase()}`;
+    lien.addEventListener('click', (e) => e.stopPropagation());
+    manqueEl.replaceChildren(`Il te manque le ${absente}, et ce chapitre ne s’achève pas sans lui. ${ou.phrase} `, lien);
+    manqueEl.hidden = false;
+  }
 
   // Les deux liens du carton de fin, dans le même mode que la page.
   const apres = document.querySelectorAll<HTMLAnchorElement>('#fin .apres a');
@@ -1025,12 +1043,13 @@ function franchirSeuil(mode: 'solo' | 'duo' | 'reve'): void {
     // n'a pas fini. Sans ça, revenir le lendemain ramenait au monde gris, et
     // les quatre autres chapitres n'étaient joignables que par le lien de fin
     // de celui d'avant — dans l'onglet même où l'on venait de finir.
-    const chapitre = Voyage.prochain();
+    const acquisArche = Pigments.lire();
+    const chapitre = Voyage.prochain(acquisArche);
     if (chapitre === 'monde') {
       flash(
         Voyage.finis().size === 0
           ? 'Départ pour l’Aventure…'
-          : Voyage.acheve()
+          : Voyage.acheve(acquisArche)
             ? 'Tout est rapporté. On repart du monde…'
             : 'On repart du début…',
         4,
@@ -2078,6 +2097,18 @@ function frame(now: number): void {
             : `Il manque ${manque} couleurs. Le monde n’est pas entier.`,
           6,
         );
+        setTimeout(() => {
+          sim.goalReached = false;
+        }, 8000);
+      } else if (
+        (RAPPORTE[MODE as Chapitre] ?? []).some((c) => !pigments.a(c) && peintureAuBut !== c)
+      ) {
+        // LA FIN SANS LA COULEUR N'EST PAS LA FIN — comme à la pointe de
+        // l'Aiguille. On arrivait au but de la descente les mains vides, le
+        // chapitre se marquait fini, et la montée, qui veut du bleu, devenait
+        // infinissable. On le dit, et le but se réarme.
+        const manque = (RAPPORTE[MODE as Chapitre] ?? []).find((c) => !pigments.a(c) && peintureAuBut !== c)!;
+        flash(`Il te manque le ${manque}. ${OU_DORT[manque].phrase} Retourne le réveiller.`, 7);
         setTimeout(() => {
           sim.goalReached = false;
         }, 8000);
