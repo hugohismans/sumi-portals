@@ -496,6 +496,13 @@ taille que le parcours ne permet pas.
   nord : de la grève on la voyait par la tranche, et sa feuille couvrait le
   bleu. Elle est sur le sable juste derrière la vasque, tournée vers la pente
   (`BOL.sortie`, lacet est) : ruisseau, vasque, pinceau, porte, d'un regard.
+- **Le poteau d'en face se voit à travers la porte** (revenu, signalé une
+  seconde fois). Pour ôter une poutre noire en travers de la vue, on avait
+  caché TOUT le cadre de la face jumelle dans le rendu d'une porte : on ne
+  voyait plus que la moitié de chaque poteau, et en passant le rouge
+  disparaissait pendant que le bleu surgissait. Seule la traverse d'encre de
+  la jumelle est cachée désormais (`setTraverseVisible`) ; ses montants et son
+  linteau prolongent ceux d'ici, rouge devant, indigo derrière.
 
 ## Ce qui reste à faire
 

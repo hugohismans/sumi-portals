@@ -180,9 +180,9 @@ class PortalFaceView {
    * Et ça rend la règle du jeu entière : dans ce monde, la couleur est ce qu'on
    * rapporte, jamais ce qui est déjà là.
    */
-  /** Montre ou cache les montants — voir la passe de rendu d'un portail. */
-  setCadreVisible(v: boolean): void {
-    for (const m of this.posts) m.visible = v;
+  /** Montre ou cache la traverse d'encre — voir la passe de rendu d'un portail. */
+  setTraverseVisible(v: boolean): void {
+    this.posts[3].visible = v;
   }
 
   setCouleur(v: number): void {
@@ -684,16 +684,21 @@ export class PortalRenderer {
     // c'est de là que le dos se voit. Il fermerait la vue.
     view.twin.dos.visible = false;
 
-    // ─── ET SON CADRE AVEC, SINON IL BARRE L'OUVERTURE ─────────────────
+    // ─── SA TRAVERSE D'ENCRE, ET ELLE SEULE ────────────────────────────
     //
-    // Le cadre de la face jumelle est à cheval sur le plan de coupe : la
-    // moitié qui reste du bon côté survit au découpage et se dessine EN
-    // TRAVERS de la vue, comme une poutre noire posée sous le linteau.
-    //
+    // Le cadre d'en face se tient derrière le plan de la porte, dans la vue :
+    // ses montants prolongent ceux d'ici, rouge devant, indigo derrière. Mais
+    // sa traverse, qui barre toute l'ouverture, se dessine en perspective
+    // juste sous celle d'ici — une seconde poutre noire sous le linteau.
     // Signalé en jouant : « le cadre bleu est mal mis, il est en
-    // superposition avec autre chose ». Ce n'était pas un cadre mal placé,
-    // c'était le cadre d'EN FACE, vu de l'intérieur et tranché net.
-    view.twin.setCadreVisible(false);
+    // superposition avec autre chose ».
+    //
+    // On avait alors caché le cadre entier, et c'était trop : on ne voyait
+    // plus que la moitié de chaque poteau, celle de son côté, et en passant la
+    // porte le poteau rouge disparaissait pendant que le bleu surgissait.
+    // Signalé en jouant, deux fois : « on ne voit pas le poteau qui est de
+    // l'autre côté du portail ». Seule la traverse s'en va.
+    view.twin.setTraverseVisible(false);
 
     this.setupClipPlane(view);
     renderer.clippingPlanes = [this.clipPlane];
@@ -743,7 +748,7 @@ export class PortalRenderer {
     renderer.clippingPlanes = [];
     view.twin.surface.visible = true;
     view.twin.dos.visible = true;
-    view.twin.setCadreVisible(true);
+    view.twin.setTraverseVisible(true);
   }
 
   /**
