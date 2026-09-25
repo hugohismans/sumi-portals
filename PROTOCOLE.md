@@ -72,6 +72,13 @@ start "https://hugohismans.github.io/sumi-portals/"
   la ligne dans la liste) ;
   `H` replie la liste. Le mode débug a sa propre sauvegarde : il n'abîme plus ta
   partie.
+- **la souris** — sous Windows, le jeu lit la souris « brute » (sans
+  l'accélération de Windows), ce qui supprime les bonds de la vue. Si elle
+  paraît trop vive ou trop lente, ajoute `&sens=0.7` ou `&sens=1.5` (de 0,2 à
+  5) ; `&souris=ordinaire` revient à l'ancienne lecture, `&souris=brute` à la
+  nouvelle. Les deux se gardent d'une page à l'autre. En `&debug=1`, le
+  compteur d'images dit laquelle est active et combien d'écarts aberrants ont
+  été jetés.
 
 ---
 

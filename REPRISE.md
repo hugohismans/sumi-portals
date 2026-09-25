@@ -508,14 +508,24 @@ taille que le parcours ne permet pas.
   curseur invisible ; un mouvement traité après ce recentrage rapporte 35 % de
   la fenêtre d'un coup (crbug 40547981, pire à 1 000 Hz). Horizontalement,
   580 px : le seuil fixe de 320 les jetait. Verticalement, pour une zone de
-  jeu de 905 px, 317 : ils passaient. Désormais la capture est BRUTE là où
-  Chrome sait la donner (`unadjustedMovement` : plus de recentrage, plus
-  d'accélération de Windows) ; ailleurs le seuil vaut un quart de la fenêtre
-  par axe ; et l'on jette 80 ms après la capture, pas un seul événement. Au
-  passage : un refus de capture ne se compte plus deux fois, et un ordinateur
-  ne bascule plus en commandes tactiles après trois refus. En `?debug=1`, le
-  compteur d'images dit « souris brute » ou « ordinaire » et combien d'écarts
-  ont été jetés (le dernier en info-bulle).
+  jeu de 905 px, 317 : ils passaient. Désormais la capture est BRUTE sous
+  Windows (`unadjustedMovement` : plus de recentrage, plus d'accélération de
+  Windows), avec repli sur l'ordinaire ; ailleurs le seuil vaut un quart de la
+  fenêtre par axe (au plus 320, corrigé du zoom de la page) ; et l'on jette
+  80 ms après la capture, pas un seul événement. Relu par trois agents, qui ont
+  fait ajouter : un refus ne se compte plus deux fois ; trois refus d'affilée
+  sur un ordinateur le DISENT sur la carte (`#refus-souris`) au lieu de
+  basculer en commandes tactiles ; un clic de souris reprend la capture en
+  commandes tactiles (portable à écran tactile) ; trente écarts nuls en brute
+  (bureau à distance, machine virtuelle, stylet) repassent en ordinaire ; le
+  jeu qui rend la souris exprès (`input.rendre()` : carnet, fin, sacre) n'est
+  plus repris par une tentative programmée ; les notes du carnet ne sont plus
+  lues comme des commandes (« r » relançait le niveau). Réglages par
+  l'adresse, gardés : `?sens=`, `?souris=ordinaire|brute` (voir PROTOCOLE).
+  En `?debug=1`, le compteur d'images dit « souris brute » ou « ordinaire » et
+  combien d'écarts aberrants ont été jetés (le dernier en info-bulle). Reste à
+  faire, non fait : la vue suit la simulation à 60 Hz, donc à 127 images/s
+  une image sur deux répète l'angle précédent (léger saccadé du regard).
 
 ## Ce qui reste à faire
 

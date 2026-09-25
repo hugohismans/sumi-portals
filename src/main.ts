@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './core/constants.js';
 import { Simulation } from './core/simulation.js';
 import { conditionsDe } from './core/portals.js';
-import { InputManager } from './input/input.js';
+import { InputManager, estUneSaisie } from './input/input.js';
 import { LEVEL_01 } from './levels/level01.js';
 import { LEVEL_02 } from './levels/level02.js';
 import { DALLE_GEANT, DALLE_MINUSCULE, RAYON_DALLE, construireDuo, roleDansSalon, type RoleDuo } from './levels/duo.js';
@@ -938,10 +938,24 @@ let fermerLeCarnet: (() => void) | null = null;
 const rendreLaSouris = (): void => {
   partieFinie = true;
   overlay.classList.add('hidden');
-  document.exitPointerLock();
+  input.rendre();
+};
+
+// ─── LA SOURIS REFUSÉE ────────────────────────────────────────────────────
+//
+// Trois refus de capture d'affilée, sur un ordinateur : un cadre sans la
+// permission, un navigateur qui l'a désactivée. On le disait autrefois en
+// basculant en commandes tactiles, ce qui laissait une souris libre tourner la
+// vue ; on le dit maintenant en mots, sur la carte, et le clic suivant réessaie.
+const refusSouris = el('refus-souris');
+input.onLockRefused = () => {
+  refusSouris.textContent =
+    'Le navigateur refuse de capturer la souris. Clique encore ; si rien ne change, ouvre le jeu dans un onglet à lui.';
+  refusSouris.hidden = false;
 };
 
 input.onLockChange = (locked) => {
+  if (locked) refusSouris.hidden = true;
   // La fin a la priorité sur tout : sans ça, Échap ramène le panneau de reprise
   // par-dessus la carte, et l'on repart pour un tour.
   // Et le sacre aussi : il rend la souris dès son premier plan, et la carte
@@ -1302,7 +1316,7 @@ const REPERES: Repere[] =
     carnetOuvert = ouvrir;
     if (ouvrir) {
       overlay.classList.add('hidden');
-      document.exitPointerLock();
+      input.rendre();
     } else if (!partieFinie) {
       input.requestLock();
     }
@@ -1396,7 +1410,7 @@ const REPERES: Repere[] =
       sceau.declencher();
       sacre.jouer([0, 74, 0], camera.position);
       ambiance.retrouvaille();
-      document.exitPointerLock();
+      input.rendre();
     }
   };
 
@@ -1669,11 +1683,14 @@ const REPERES: Repere[] =
   panneau.querySelector('h3')?.addEventListener('click', replier);
 
   window.addEventListener('keydown', (e) => {
+    // Échap referme le carnet même depuis ses notes ; le reste s'y écrit.
+    if (e.code === 'Escape' && !panneau.hidden) basculer(false);
+    if (estUneSaisie(e.target)) return;
     if (e.code === 'KeyH') replier();
     // ÉCHAP REFERME LE CARNET ET REND AU JEU. C'est le geste que tout le monde
     // fait devant une pause, et il n'avait aucun effet : Échap sert nativement
     // à rendre la souris, or on l'avait déjà rendue en ouvrant le carnet.
-    if (e.code === 'Escape' && !panneau.hidden) basculer(false);
+    // (Voir plus haut : Échap est traité avant le filtre des saisies.)
     const i = TOUCHES.indexOf(e.code);
     if (i >= 0 && i < REPERES.length) allerA(i);
   });
@@ -2135,7 +2152,7 @@ function frame(now: number): void {
         sceau.declencher();
         sacre.jouer([0, 74, 0], camera.position);
         ambiance.retrouvaille();
-        document.exitPointerLock();
+        input.rendre();
       } else if (MODE === 'monde') {
         // LA POINTE SANS LES COULEURS N'EST PAS LA FIN. La pointe s'atteint
         // sans avoir posé un seul pinceau — c'est mesuré —, et l'on marquait
@@ -2541,10 +2558,10 @@ function frame(now: number): void {
     fpsBox.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} images/s`;
     // En débug, la souris dit si elle est brute et ce qu'elle a jeté : le saut
     // de la vue ne se reproduit pas sur commande, ce compteur-là si.
-    if (PARAMS.get('debug') && input.locked && !input.touchOnly) {
+    if (PARAMS.get('debug') && !input.touchOnly) {
       const j = input.ecartsJetes;
-      fpsBox.textContent += ` · souris ${input.brute ? 'brute' : 'ordinaire'}${j.nombre ? ` · ${j.nombre} jeté${j.nombre > 1 ? 's' : ''}` : ''}`;
-      fpsBox.title = j.dernier;
+      fpsBox.textContent += ` · souris ${input.brute ? 'brute' : 'ordinaire'}${j.nombre ? ` · ${j.nombre} écart${j.nombre > 1 ? 's' : ''} jeté${j.nombre > 1 ? 's' : ''}` : ''}`;
+      fpsBox.title = j.dernier ? `Dernier écart jeté : ${j.dernier}` : '';
     }
     fpsFrames = 0;
     fpsSince = now;

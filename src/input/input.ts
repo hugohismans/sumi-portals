@@ -12,16 +12,24 @@ const LOOK_SENSITIVITY = 0.0022;
  *
  * CE N'EST QU'UN PLAFOND, et c'était le bug. Les faux écarts de Chrome sous
  * Windows valent 35 % de la fenêtre (voir le garde-fou de `mousemove`) : 580
- * en largeur, mais 317 en hauteur pour une zone de jeu de 905 pixels — sous le
- * seuil. Le seuil réel se proportionne donc à la fenêtre : voir `LIMITE_RELATIVE`.
+ * en largeur pour une zone de jeu de 1 659 pixels, mais 317 en hauteur pour
+ * une zone de 905 — sous le seuil. Le seuil réel se proportionne donc à la
+ * fenêtre : voir `LIMITE_RELATIVE`.
  */
 const SAUT_ABERRANT = 320;
 
 /**
  * La part de la fenêtre au-delà de laquelle un écart est un faux. Les faux
  * écarts de Chrome en valent au moins 0,35, dans la dimension de l'axe ; un
- * quart laisse de la marge, et reste deux fois au-dessus de ce qu'une main
- * fait entre deux images.
+ * quart laisse de la marge. Une main n'y arrive qu'en balayant pendant qu'une
+ * image gèle : on perd alors un bout de geste, la vue colle un instant — ce
+ * qui vaut mieux qu'un bond.
+ *
+ * La fenêtre se mesure dans l'unité des écarts. Chrome les donne en pixels de
+ * l'écran, que le zoom de la page ne change pas, et la fenêtre en pixels de
+ * la page, qu'il change : à 67 % de zoom elle paraît une fois et demie plus
+ * haute, et le seuil laissait repasser les faux. Le rapport des largeurs
+ * extérieure et intérieure donne ce zoom ; ailleurs il vaut 1.
  */
 const LIMITE_RELATIVE = 0.25;
 
@@ -37,6 +45,71 @@ const APRES_CAPTURE = 80;
 
 /** Un pointeur précis existe-t-il (souris, pavé) ? Voir `echecDeCapture`. */
 const pointeurPrecis = (): boolean => window.matchMedia?.('(any-pointer: fine)').matches ?? false;
+
+/**
+ * Le recentrage qui fabrique les faux écarts n'existe que sous Windows : c'est
+ * là seulement qu'on demande la souris brute. Ailleurs la capture est native,
+ * et la brute ne ferait que retirer l'accélération dont la main a l'habitude.
+ */
+const SOUS_WINDOWS = typeof navigator !== 'undefined' && /Windows/.test(navigator.userAgent);
+/** Chromium, où l'on sait que l'option change la source des écarts. */
+const CHROMIUM =
+  typeof navigator !== 'undefined' &&
+  ('userAgentData' in navigator || /\b(Chrome|Chromium|Edg)\//.test(navigator.userAgent));
+
+/** Une touche tapée dans un champ de texte n'est pas une commande. */
+export const estUneSaisie = (t: EventTarget | null): boolean =>
+  t instanceof HTMLElement &&
+  (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.tagName === 'SELECT');
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LES RÉGLAGES DE LA SOURIS, par l'adresse, et gardés d'une page à l'autre.
+ *
+ *   ?sens=1.5          la sensibilité, multipliée (de 0,2 à 5)
+ *   ?souris=ordinaire  la capture ordinaire, sans souris brute
+ *   ?souris=brute      la souris brute à nouveau (sous Windows)
+ *
+ * La souris brute ignore le curseur de Windows : sa vitesse, et l'« amélioration
+ * de la précision » qui accélère les gestes vifs. Le même geste ne tourne donc
+ * plus tout à fait de la même quantité qu'avant. On ne sait pas corriger ça
+ * d'office — la page ne voit aucun de ces réglages — : on donne la main.
+ * Gardés hors des sauvegardes de partie, que « Recommencer l'aventure » efface.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const CLE_REGLAGES = 'sumi.souris';
+const lireReglages = (): { sens: number; ordinaire: boolean } => {
+  const r = { sens: 1, ordinaire: false };
+  try {
+    const brut = localStorage.getItem(CLE_REGLAGES);
+    const lu = brut ? (JSON.parse(brut) as Partial<typeof r>) : {};
+    if (typeof lu.sens === 'number' && lu.sens > 0) r.sens = lu.sens;
+    if (typeof lu.ordinaire === 'boolean') r.ordinaire = lu.ordinaire;
+  } catch {
+    /* Stockage fermé : les réglages par défaut. */
+  }
+  if (typeof location === 'undefined') return r;
+  const params = new URLSearchParams(location.search);
+  let change = false;
+  const sens = Number(params.get('sens'));
+  if (params.has('sens') && Number.isFinite(sens) && sens > 0) {
+    r.sens = Math.min(5, Math.max(0.2, sens));
+    change = true;
+  }
+  const souris = params.get('souris');
+  if (souris === 'ordinaire' || souris === 'brute') {
+    r.ordinaire = souris === 'ordinaire';
+    change = true;
+  }
+  if (change) {
+    try {
+      localStorage.setItem(CLE_REGLAGES, JSON.stringify(r));
+    } catch {
+      /* Pas gardé : il vaudra pour cette page. */
+    }
+  }
+  return r;
+};
 
 /** Au doigt, on balaie moins vite qu'à la souris pour le même geste. */
 const TOUCH_LOOK_SENSITIVITY = 0.0042;
@@ -91,6 +164,17 @@ export class InputManager {
   private bruteDemandee = false;
   /** Le navigateur a refusé l'option une fois : on ne la lui redemande plus. */
   private bruteRefusee = false;
+  /** Le refus vient d'arriver : il ne vaut que si la capture ordinaire, elle, réussit. */
+  private repliProvisoire = false;
+  /** Écarts nuls d'affilée en brute : voir `renoncerALaBrute`. */
+  private immobiles = 0;
+  /**
+   * Le jeu a rendu la souris exprès (carnet, fin, sacre) : rien ne doit la
+   * reprendre tout seul — ni une nouvelle tentative programmée, ni un clic.
+   */
+  private rendue = false;
+  /** Les réglages de l'adresse : voir `lireReglages`. */
+  private readonly reglages = lireReglages();
   /**
    * Une demande est en vol : un second clic n'en lance pas une autre (Chrome
    * la refuserait, et ce refus compterait). Datée, pour qu'une promesse qui ne
@@ -100,8 +184,10 @@ export class InputManager {
   private demandeDepuis = 0;
   /** Le navigateur répond par une promesse : c'est elle qui dit l'échec. */
   private repondParPromesse = false;
-  /** Les écarts jetés, pour le débug : combien, et le dernier. */
+  /** Les écarts aberrants jetés, pour le débug : combien, et le dernier. */
   readonly ecartsJetes = { nombre: 0, dernier: '' };
+  /** Trois refus de capture d'affilée sur un ordinateur : on le dit. Voir `echecDeCapture`. */
+  onLockRefused: ((raison: string) => void) | null = null;
   private yaw: number;
   private pitch = 0;
   locked = false;
@@ -114,8 +200,12 @@ export class InputManager {
     initialYaw: number,
   ) {
     this.yaw = initialYaw;
+    this.bruteRefusee = this.reglages.ordinaire;
 
     window.addEventListener('keydown', (e) => {
+      // Les notes du carnet : taper « r » y relançait le niveau, les chiffres
+      // changeaient de pinceau, et l'espace ne s'écrivait pas.
+      if (estUneSaisie(e.target)) return;
       this.keys.add(e.code);
       if (e.code === 'KeyR') this.onReset?.();
       if (e.code === 'KeyC') this.onCapture?.();
@@ -200,7 +290,20 @@ export class InputManager {
     // deux fois, et le deuxième refus d'une séance basculait un ordinateur en
     // commandes tactiles. Quand il y a une promesse, c'est elle qui compte.
     document.addEventListener('pointerlockerror', () => {
-      if (!this.repondParPromesse) this.echecDeCapture();
+      if (!this.repondParPromesse) this.echecDeCapture('');
+    });
+
+    // UN CLIC DE SOURIS REPREND LA CAPTURE, MÊME EN COMMANDES TACTILES. Sur un
+    // portable à écran tactile, un seul doigt posé bascule le jeu au doigt, et
+    // la souris ne tournait plus la vue de la séance : la capture n'était plus
+    // jamais redemandée. Un clic sur le jeu, souris en main, la redemande —
+    // sauf si le jeu l'a rendue exprès.
+    document.addEventListener('pointerdown', (e) => {
+      if (!this.touchOnly || e.pointerType !== 'mouse' || this.rendue) return;
+      if (document.pointerLockElement === this.canvas || pointerLockUnavailable()) return;
+      const cible = e.target as HTMLElement | null;
+      if (cible !== this.canvas && cible?.id !== 'touch-surface') return;
+      this.verrouiller();
     });
 
     // Clic gauche pour lancer — mais seulement souris capturée, sinon le clic
@@ -249,11 +352,12 @@ export class InputManager {
       // des 15 % au bord de la fenêtre. Un mouvement de souris produit AVANT
       // ce recentrage et traité APRÈS rapporte l'écart entre le bord et le
       // centre : au moins 35 % de la fenêtre sur cet axe, dans le sens de la
-      // main (Chromium, `kMouseLockBorderPercentage`, crbug 40547981 ; plus
-      // fréquent à 1 000 Hz). En largeur, 35 % font 580 pixels, et le seuil
-      // fixe de 320 les jetait tous. En hauteur, pour une zone de jeu de 905
-      // pixels — un écran de 1 080 moins la barre d'adresse —, ils en font
-      // 317 : ils passaient, et la vue bondissait de quarante degrés.
+      // main (Chromium, `kMouseLockBorderPercentage` ; crbug 40547981 ; les
+      // rapports de joueurs le disent plus fréquent avec une souris à 1 000
+      // Hz). Pour une zone de jeu de 1 659 × 905 pixels — un écran de 1 080
+      // moins la barre d'adresse —, ça fait 580 en largeur, que le seuil fixe
+      // de 320 jetait, et 317 en hauteur : ils passaient, et la vue bondissait
+      // de quarante degrés.
       //
       // Un seuil fixe ne peut pas suivre un faux écart qui se proportionne à
       // la fenêtre. On borne donc chaque axe au quart de sa dimension. Et
@@ -262,18 +366,32 @@ export class InputManager {
       // recentrer, donc sans faux écart.
       if (this.premierMouvement || e.timeStamp < this.suspectJusqua) {
         this.premierMouvement = false;
-        this.noterEcart(e, 'après la capture');
         return;
       }
-      const limiteX = this.brute ? SAUT_ABERRANT_BRUT : Math.min(SAUT_ABERRANT, window.innerWidth * LIMITE_RELATIVE);
-      const limiteY = this.brute ? SAUT_ABERRANT_BRUT : Math.min(SAUT_ABERRANT, window.innerHeight * LIMITE_RELATIVE);
+      if (this.brute) {
+        // Une souris qui bouge ne donne pas trente écarts nuls d'affilée.
+        if (e.movementX === 0 && e.movementY === 0) {
+          if (++this.immobiles >= 30) this.renoncerALaBrute();
+          return;
+        }
+        this.immobiles = 0;
+      }
+      const zoom =
+        window.outerWidth > 0 && window.innerWidth > 0 ? Math.min(1, window.outerWidth / window.innerWidth) : 1;
+      const limiteX = this.brute
+        ? SAUT_ABERRANT_BRUT
+        : Math.min(SAUT_ABERRANT, window.innerWidth * zoom * LIMITE_RELATIVE);
+      const limiteY = this.brute
+        ? SAUT_ABERRANT_BRUT
+        : Math.min(SAUT_ABERRANT, window.innerHeight * zoom * LIMITE_RELATIVE);
       if (Math.abs(e.movementX) > limiteX || Math.abs(e.movementY) > limiteY) {
-        this.noterEcart(e, 'aberrant');
+        this.noterEcart(e);
         return;
       }
 
-      this.yaw -= e.movementX * LOOK_SENSITIVITY * this.sensLateral;
-      this.pitch -= e.movementY * LOOK_SENSITIVITY;
+      const sens = LOOK_SENSITIVITY * this.reglages.sens;
+      this.yaw -= e.movementX * sens * this.sensLateral;
+      this.pitch -= e.movementY * sens;
       const limit = Math.PI / 2 - 0.02;
       this.pitch = Math.max(-limit, Math.min(limit, this.pitch));
     });
@@ -412,10 +530,12 @@ export class InputManager {
   private lockFailures = 0;
 
   requestLock(): void {
+    this.rendue = false;
     if (this.locked) return;
     // Sur téléphone, il n'y a pas de capture de pointeur : on entre simplement
     // dans le jeu. Sans ce cas, l'appel échouait en silence et le panneau
     // d'accueil restait à l'écran pour toujours — le jeu paraissait mort.
+    // (Une souris branchée reprend la capture d'un clic : voir `pointerdown`.)
     if (this.touchOnly) {
       this.locked = true;
       this.onLockChange?.(true);
@@ -435,23 +555,28 @@ export class InputManager {
    * système disparaît du même coup : la vue tourne de la même quantité pour le
    * même geste, vite ou lentement.
    *
-   * Là où l'option n'existe pas (Chrome sous Linux, Firefox, Safari), le
-   * navigateur rejette avec `NotSupportedError`, ou ignore l'option : on
-   * redemande aussitôt une capture ordinaire — le clic vaut encore — et l'on
-   * ne redemande plus l'option de la séance. Ce refus-là n'est pas un échec :
-   * le compter ferait basculer un ordinateur en commandes tactiles au
-   * troisième retour dans le jeu.
+   * On ne la demande que sous Windows, seul lieu du recentrage (voir
+   * `SOUS_WINDOWS`), et jamais si le joueur l'a refusée (`?souris=ordinaire`).
+   * Là où l'option n'existe pas, le navigateur rejette avec
+   * `NotSupportedError`, ou l'ignore : on redemande aussitôt une capture
+   * ordinaire — le clic vaut encore — et l'on ne redemande plus l'option de la
+   * séance, si du moins la capture ordinaire réussit (Firefox donne la même
+   * erreur pour un échec quelconque). Ce refus-là ne compte pas comme un échec.
    *
    * On ne tient la capture pour brute que chez Chromium, où l'on sait que
    * l'option change la source des écarts : un navigateur qui l'accepterait
    * sans l'appliquer garderait sinon ses faux écarts, sans le garde-fou qui
-   * les arrête. `userAgentData` n'existe que chez lui.
+   * les arrête. Firefox 152 l'applique aussi, mais on l'y traite en ordinaire :
+   * le seuil de la fenêtre, appliqué à des comptes, ne coûte presque rien.
+   *
+   * `sansOption` : la dernière tentative d'une série de refus se fait sans
+   * l'option, au cas où ce serait elle qu'un navigateur refuse sans le dire.
    * ═══════════════════════════════════════════════════════════════════════
    */
-  private verrouiller(): void {
-    if (this.locked) return;
+  private verrouiller(sansOption = false): void {
+    if (document.pointerLockElement === this.canvas) return;
     if (this.demandeEnVol && performance.now() - this.demandeDepuis < 3000) return;
-    const brute = !this.bruteRefusee;
+    const brute = !sansOption && !this.bruteRefusee && SOUS_WINDOWS;
     let reponse: Promise<void> | undefined;
     try {
       // Selon les navigateurs, l'appel renvoie une promesse ou rien du tout.
@@ -463,10 +588,10 @@ export class InputManager {
       if (brute) {
         this.bruteRefusee = true;
         this.verrouiller();
-      } else this.echecDeCapture();
+      } else this.echecDeCapture('');
       return;
     }
-    this.bruteDemandee = brute && 'userAgentData' in navigator;
+    this.bruteDemandee = brute && CHROMIUM;
     // Pas de promesse : l'option est ignorée, et l'échec viendra par l'événement.
     if (!reponse || typeof reponse.then !== 'function') {
       this.bruteDemandee = false;
@@ -478,51 +603,95 @@ export class InputManager {
     reponse.then(
       () => {
         this.demandeEnVol = false;
+        this.repliProvisoire = false;
       },
       (err: unknown) => {
         this.demandeEnVol = false;
-        if (this.locked) return;
-        if (brute && (err as { name?: string } | null)?.name === 'NotSupportedError') {
+        if (document.pointerLockElement === this.canvas) return;
+        const nom = (err as { name?: string } | null)?.name ?? '';
+        if (brute && nom === 'NotSupportedError') {
           this.bruteRefusee = true;
+          this.repliProvisoire = true;
           this.verrouiller();
           return;
         }
-        this.echecDeCapture();
+        // La capture ordinaire échoue aussi : le refus ne disait rien de l'option.
+        if (this.repliProvisoire) {
+          this.repliProvisoire = false;
+          this.bruteRefusee = this.reglages.ordinaire;
+        }
+        this.echecDeCapture(nom);
       },
     );
+  }
+
+  /**
+   * TRENTE ÉCARTS NULS D'AFFILÉE EN BRUTE : la souris n'en est pas une. Un
+   * bureau à distance, une machine virtuelle, une tablette à stylet donnent
+   * des positions et non des déplacements, et Chrome n'en tire aucun écart en
+   * brute — la vue ne tournait plus du tout. On repasse en capture ordinaire,
+   * sans geste : Chrome accepte qu'on change les options d'une capture tenue.
+   * S'il refuse, on rend la souris, et le clic suivant la reprend ordinaire.
+   */
+  private renoncerALaBrute(): void {
+    this.immobiles = 0;
+    this.bruteRefusee = true;
+    this.brute = false;
+    try {
+      const r = this.canvas.requestPointerLock() as Promise<void> | undefined;
+      if (r && typeof r.then === 'function') r.then(undefined, () => document.exitPointerLock());
+    } catch {
+      document.exitPointerLock();
+    }
+  }
+
+  /**
+   * LE JEU REND LA SOURIS EXPRÈS : le carnet, la fin, le sacre. Une tentative
+   * programmée après un refus la reprenait sinon une seconde plus tard, au
+   * milieu du carnet ; et un clic sur le décor, en commandes tactiles.
+   */
+  rendre(): void {
+    this.rendue = true;
+    if (this.retryHandle !== null) {
+      window.clearTimeout(this.retryHandle);
+      this.retryHandle = null;
+    }
+    document.exitPointerLock();
   }
 
   /**
    * Un refus de capture. On retente après le délai de garde imposé par le
    * navigateur ; au troisième refus d'affilée, on cesse de retenter.
    */
-  private echecDeCapture(): void {
+  private echecDeCapture(raison: string): void {
     // Un refus persistant signifie que cet appareil n'en veut pas : plutôt que
     // de laisser le joueur devant un panneau qui ne répond pas, on lui donne
     // les commandes tactiles. Mieux vaut un jeu jouable qu'un jeu conforme.
     //
-    // SAUF SUR UN ORDINATEUR. Là, le refus vient presque toujours du délai
-    // de garde après Échap, ou d'une fenêtre qui n'avait pas le focus ; les
-    // commandes tactiles y laissaient une souris libre tourner la vue sans
-    // capture. On cesse seulement de retenter : le panneau reste, et le clic
-    // suivant redemande.
+    // SAUF SUR UN ORDINATEUR QU'ON JOUE À LA SOURIS. Les commandes tactiles y
+    // laissaient une souris libre tourner la vue sans capture, avec les bonds
+    // d'un curseur qui sort de la fenêtre et y revient ; et trois refus d'un
+    // simple délai de garde suffisaient, du temps où chacun comptait double.
+    // On cesse de retenter, et l'on dit pourquoi (`onLockRefused`) : le
+    // panneau reste, et le clic suivant redemande.
     if (this.lockFailures++ >= 2) {
-      if (!pointeurPrecis()) this.enableTouchMode();
+      if (!pointeurPrecis() || this.touchOnly) this.enableTouchMode();
+      else this.onLockRefused?.(raison);
       return;
     }
     if (this.retryHandle !== null) return;
+    const derniere = this.lockFailures >= 2;
     this.retryHandle = window.setTimeout(() => {
       this.retryHandle = null;
-      if (!this.locked) this.verrouiller();
+      if (!this.rendue && document.pointerLockElement !== this.canvas) this.verrouiller(derniere);
     }, 1400);
   }
 
   /** Garde trace d'un écart jeté : le seul moyen d'en parler sans le reproduire. */
-  private noterEcart(e: MouseEvent, raison: string): void {
-    if (e.movementX === 0 && e.movementY === 0) return;
+  private noterEcart(e: MouseEvent): void {
     this.ecartsJetes.nombre++;
     this.ecartsJetes.dernier =
-      `${raison} : ${e.movementX}, ${e.movementY} ` +
+      `${e.movementX}, ${e.movementY} ` +
       `(fenêtre ${window.innerWidth}×${window.innerHeight}, ${this.brute ? 'brute' : 'ordinaire'})`;
   }
 
