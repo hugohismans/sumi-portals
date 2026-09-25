@@ -2028,7 +2028,7 @@ function frame(now: number): void {
         'trop-petit': 'Elle danse dans le creux. Il la faudrait plus grande.',
         forme: 'Ce n’est pas ce dessin-là. Le creux en attend un autre.',
         teinte: 'La forme est juste, la couleur non.',
-        main: 'Bonne taille, bon dessin, et elle n’entre pas. La tourner n’y changera rien.',
+        main: 'Bonne taille, et elle n’entre pas : c’est l’autre main que ce creux attend. La tourner n’y changera rien.',
         orientation: 'Bonne main, pas dans ce sens. Tourne-la jusqu’à ce qu’elle épouse le dessin.',
         lancee: 'Lancée, elle n’entre pas. Reprends-la, et pose-la.',
       };
@@ -2289,7 +2289,7 @@ function frame(now: number): void {
       const p = sim.player.position;
       const loin = 12 * scaleOfLevel(sim.player.scaleLevel);
       for (const s of sim.sockets.items) {
-        if (s.filledBy !== null || s.forme === undefined) continue;
+        if (s.filledBy !== null || (s.forme === undefined && s.main === undefined)) continue;
         if (Math.hypot(s.position.x - p.x, s.position.z - p.z) > loin) continue;
         if (sim.sockets.fits(s, tenue)) epouses.add(s.id);
       }

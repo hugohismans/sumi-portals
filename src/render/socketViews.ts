@@ -46,6 +46,58 @@ type Blocs = { min: [number, number, number]; max: [number, number, number] }[];
  * pleines d'un seul côté d'un plan.
  * ═══════════════════════════════════════════════════════════════════════════
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UN CREUX QUI N'EXIGE QUE LA MAIN porte une main à plat au fond, et non plus
+ * quatre montants.
+ *
+ * Signalé en jouant la boîte à formes : « il me reste une pièce chirale et
+ * pas de gros cube », puis, une fois posée, « la forme est un cube alors que
+ * ça attend une forme spéciale ». Le creux de la main accepte N'IMPORTE QUELLE
+ * forme de la bonne main ; il n'avait pas de dessin, donc on lui donnait le
+ * cadre cubique — et ses quatre montants de la hauteur du creux se lisaient
+ * « un cube ». On y pose donc l'étalon de la chiralité, celui des murs du
+ * refus et du blanchiment (`levels/mains.ts`) : une main d'encre, à plat, les
+ * doigts vers le fond de la planche, et le POUCE du côté qui fait la main.
+ *
+ * Dos de la main vers le haut, doigts vers +z : la droite a le pouce à gauche
+ * de qui regarde — c'est-à-dire vers +x, la droite du joueur tourné vers +z
+ * étant −x dans ce jeu.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const DOIGTS_A_PLAT: [number, number][] = [
+  [-0.3, 0.62],
+  [-0.1, 0.72],
+  [0.1, 0.68],
+  [0.28, 0.52],
+];
+const mainAPlat = (
+  taille: number,
+  droite: boolean,
+): { min: [number, number, number]; max: [number, number, number]; ink: number }[] => {
+  // La main d'encre fait 1,65 de long et 1,44 de large : on la ramène aux
+  // neuf dixièmes du creux, et on la centre.
+  const k = (taille * 0.9) / 1.65;
+  const dz = -0.665;
+  const m = droite ? 1 : -1;
+  const y0 = 0.004 * taille;
+  const y1 = y0 + Math.max(0.012, taille * 0.02);
+  const boite = (x0: number, z0: number, x1: number, z1: number) => ({
+    min: [Math.min(x0, x1) * k, y0, (z0 + dz) * k] as [number, number, number],
+    max: [Math.max(x0, x1) * k, y1, (z1 + dz) * k] as [number, number, number],
+    ink: 0,
+  });
+  const out = [
+    // La paume, et le poignet qui donne le sens de lecture.
+    boite(-0.42, 0.1, 0.42, 0.78),
+    boite(-0.2, -0.16, 0.2, 0.11),
+  ];
+  for (const [d, l] of DOIGTS_A_PLAT) out.push(boite(m * d - 0.075, 0.77, m * d + 0.075, 0.77 + l));
+  // LE POUCE : court, épais, écarté. C'est lui qu'on lit.
+  out.push(boite(m * 0.44, 0.3, m * 0.72, 0.62));
+  return out;
+};
+
 const aretesDeLaForme = (
   blocs: Blocs,
   taille: number,
@@ -204,13 +256,29 @@ export class SocketViews {
         group.add(dessin);
       }
 
+      // UN CREUX QUI N'EXIGE QUE LA MAIN : une main à plat au fond, à la place
+      // des montants. Elle respire comme un dessin de forme quand la pièce en
+      // main lui convient. Voir `mainAPlat`.
+      let mainSeule = false;
+      if (!dessin && s.main !== undefined) {
+        mainSeule = true;
+        const encre = createCelMaterial(new THREE.Color('#c8492e'));
+        const trait = createOutlineMaterial();
+        trait.uniforms.uThickness.value = 0.003;
+        this.materials.push(encre, trait);
+        dessin = new THREE.Group();
+        const geo = buildWorldGeometry(mainAPlat(s.size, s.main === 'D'));
+        dessin.add(new THREE.Mesh(geo, trait), new THREE.Mesh(geo, encre));
+        group.add(dessin);
+      }
+
       // L'empreinte au sol : quatre barreaux qui cernent le vide. On montre le
       // manque, pas un objet — c'est ce qui donne envie d'y mettre quelque chose.
       const t = Math.max(0.04, s.size * 0.09);
       const h = s.size * 0.5;
       // Un creux qui a sa forme n'a pas besoin du cadre cubique : il le
       // contredirait. On saute droit au sceau.
-      if (!dessin) {
+      if (!dessin || mainSeule) {
       const bars: [number, number, number, number, number, number][] = [
         [-h - t, 0, -h - t, h + t, t, -h],
         [-h - t, 0, h, h + t, t, h + t],
@@ -223,8 +291,10 @@ export class SocketViews {
       }
 
       // Quatre montants d'angle : ils donnent la HAUTEUR attendue, sans quoi on
-      // ne saurait pas si la caisse doit être un pavé ou un cube.
-      for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+      // ne saurait pas si la caisse doit être un pavé ou un cube. Pas pour un
+      // creux de la main : n'importe quelle forme y entre, et des montants
+      // feraient lire un cube.
+      if (!mainSeule) for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
         const geo = buildWorldGeometry([
           {
             min: [sx * h - (sx < 0 ? 0 : t), 0, sz * h - (sz < 0 ? 0 : t)],

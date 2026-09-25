@@ -403,8 +403,20 @@ export class Carryables {
       c.position.z = p.z;
 
       aabbOfCarryable(c, scratch);
-      if (world.queryStatic(scratch, hits).length !== 0) continue;
-      if (!world.segmentLibre(oeil, vec3(p.x, p.y + c.size * 0.5, p.z))) continue;
+      if (world.queryStatic(scratch, hits).length !== 0) {
+        // VISER UNE TABLE, C'EST Y POSER. La pièce se tient à la hauteur du
+        // regard : en regardant le creux, donc le DESSUS de la planche, elle
+        // mordait à moitié dans la planche, et toutes les positions essayées
+        // étaient refusées — « pas de place », devant un creux vide. Une pièce
+        // qui n'entre dans le décor que PAR-DESSOUS, d'au plus sa demi-taille,
+        // est reposée sur ce qu'elle touche.
+        const dessus = world.dessusDuSol(scratch, c.size * 0.5);
+        if (dessus <= c.position.y) continue;
+        c.position.y = dessus;
+        aabbOfCarryable(c, scratch);
+        if (world.queryStatic(scratch, hits).length !== 0) continue;
+      }
+      if (!world.segmentLibre(oeil, vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z))) continue;
       return true;
     }
     return false;

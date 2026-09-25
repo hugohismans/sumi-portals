@@ -4204,6 +4204,83 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 
 // =============================================================================
 {
+  console.log('\n— La boîte à formes se résout, pièce par pièce, porte par porte —');
+
+  // Signalé en jouant : « j'ai réussi à placer toutes les formes sauf un gros
+  // cube, il me reste une pièce chirale ». La table d'unicité plus bas prouve
+  // qu'aucune pièce ne peut entrer dans le mauvais creux ; rien ne jouait la
+  // salle. Ce pilote la joue comme un joueur : il prend, porte, passe les
+  // portes, tourne et pose — et il a trouvé en chemin qu'un bloc visé sur la
+  // planche ne trouvait « pas de place » (voir `placeForDrop`).
+  const sim = new Simulation(FORMES);
+  const creuxDe = (id: string) => sim.sockets.items.find((x) => x.id === id)!;
+  const prendre = (id: string): boolean => {
+    const c = piece(sim, id);
+    walkTo(sim, [c.position.x, 0, c.position.z - 1.2 * sim.scale], 60 * 20);
+    agirVers(sim, [c.position.x, c.position.y, c.position.z]);
+    return c.held;
+  };
+  const poser = (id: string): boolean => {
+    const c = creuxDe(id);
+    walkTo(sim, [c.position.x, 0, c.position.z - 2.2 * sim.scale], 60 * 30);
+    if (c.forme !== undefined && sim.carryables.held) orienterPour(sim, id);
+    poserVers(sim, [c.position.x, c.position.y, c.position.z]);
+    attendre(sim, 60 * 2);
+    return sim.sockets.pourvus.has(id);
+  };
+  const passer = (x: number, zDepuis: number, zVers: number) => {
+    walkTo(sim, [x, 0, zDepuis], 60 * 30);
+    const t = walkTo(sim, [x, 0, zVers], 60 * 15, { stopOnEvent: true });
+    attendre(sim, 30);
+    return t.traversed;
+  };
+  check('boîte à formes : la perle, dans le creux de la couleur', prendre('perle') && poser('creux-teinte'), pos(sim));
+  check('boîte à formes : le té, dans le creux de la forme', prendre('te') && poser('creux-forme'), pos(sim));
+  const geant = passer(-34, 2480, 2470);
+  check('boîte à formes : par la petite face de la porte lisse, géant', geant?.pairId === 'porte-lisse' && geant.newLevel === 1, pos(sim));
+  walkTo(sim, [26, 0, 2470], 60 * 30);
+  check('boîte à formes : géant, on soulève le bloc de trois mètres', prendre('bloc'), pos(sim));
+  walkTo(sim, [26, 0, 2452], 60 * 30);
+  const rapetisse = passer(34, 2452, 2430);
+  const bloc = piece(sim, 'bloc');
+  check('boîte à formes : rapporté par la grande face, le bloc fait 0,75', rapetisse?.pairId === 'porte-lisse' && bloc.held && near(bloc.size, 0.75, 1e-6), `${bloc.size}`);
+  check('boîte à formes : visé sur la planche, il se pose dans le creux de la taille', poser('creux-taille'), pos(sim));
+  check('boîte à formes : la vis moyenne, gauche', prendre('vis-m') && piece(sim, 'vis-m').main === 'L', '');
+  passer(34, 2480, 2470);
+  const vm = piece(sim, 'vis-m');
+  check('boîte à formes : par le miroir, elle ressort droite et 1,92', vm.held && vm.main === 'D' && near(vm.size, 1.92, 1e-6), `${vm.main} ${vm.size}`);
+  check('boîte à formes : dans le creux de la main', poser('creux-main'), pos(sim));
+  walkTo(sim, [-26, 0, 2452], 60 * 30);
+  passer(-34, 2452, 2430);
+  check('boîte à formes : la vis courte, gauche', prendre('vis-c'), pos(sim));
+  passer(34, 2480, 2470);
+  const vc = piece(sim, 'vis-c');
+  check('boîte à formes : par le miroir, droite et 1,20', vc.held && vc.main === 'D' && near(vc.size, 1.2, 1e-6), `${vc.main} ${vc.size}`);
+  check('boîte à formes : tournée, dans le creux qui exige tout', poser('creux-tout'), pos(sim));
+  check(
+    'boîte à formes : les cinq creux sont pourvus, le coffre peut se dessiner',
+    ['creux-teinte', 'creux-forme', 'creux-taille', 'creux-tout', 'creux-main'].every((id) => sim.sockets.pourvus.has(id)),
+    [...sim.sockets.pourvus].join(', '),
+  );
+
+  // ET L'ERREUR QUI A ÉGARÉ LE JOUEUR : la vis moyenne portée par la porte
+  // LISSE grandit sans changer de main. Le creux de la main la refuse — en le
+  // disant —, et le miroir puis la porte lisse la rendent juste.
+  const E = new Simulation(FORMES);
+  const vis = E.carryables.items.find((c) => c.id === 'vis-m')!;
+  E.player.position = { x: vis.position.x, y: 0.05, z: vis.position.z - 1.2 };
+  walkTo(E, [vis.position.x, 0, vis.position.z - 1.2], 60);
+  agirVers(E, [vis.position.x, vis.position.y, vis.position.z]);
+  walkTo(E, [-34, 0, 2480], 60 * 30);
+  walkTo(E, [-34, 0, 2470], 60 * 15, { stopOnEvent: true });
+  const vis2 = E.carryables.items.find((c) => c.id === 'vis-m')!;
+  check('boîte à formes : par la porte lisse, la vis moyenne fait 1,92 mais reste gauche', vis2.held && near(vis2.size, 1.92, 1e-6) && vis2.main === 'L', `${vis2.main} ${vis2.size}`);
+  const cm = E.sockets.items.find((x) => x.id === 'creux-main')!;
+  check('boîte à formes : et le creux de la main la refuse pour la main', E.sockets.raisonDuRefus(cm, vis2) === 'main', `${E.sockets.raisonDuRefus(cm, vis2)}`);
+}
+
+// =============================================================================
+{
   console.log('\n— La boîte à formes : une seule case par ligne et par colonne —');
 
   // ─── LA TABLE D'UNICITÉ, ET C'EST TOUTE LA SALLE ────────────────────────

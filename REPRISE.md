@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 24 septembre 2026
 
-`npm run check` : **816 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **831 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -477,6 +477,15 @@ taille que le parcours ne permet pas.
   scellée, ou de dos) : la vrille de 2 m d'un géant entrait dans une petite
   face et le rendu la tranchait en deux. Une pièce qui passe passe toujours
   la première — c'est ainsi qu'on dépose par une porte trop petite pour soi.
+
+- **La boîte à formes se joue de bout en bout au harnais** (cinq pièces,
+  cinq creux, les deux portes). Signalé : « il me reste une pièce chirale et
+  pas de gros cube ». Le creux qui n'exige QUE la main (1,92, n'importe quelle
+  forme) était dessiné en cube, montants compris : il porte maintenant une
+  main d'encre à plat, pouce du côté qui fait la main, et respire quand la
+  pièce tenue lui convient ; son refus dit « c'est l'autre main ». Le pilote a
+  aussi trouvé qu'un bloc visé sur la planche ne trouvait « pas de place » :
+  une pièce qui mord dans une surface par-dessus y est reposée.
 
 ## Ce qui reste à faire
 
