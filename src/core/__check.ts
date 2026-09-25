@@ -2951,6 +2951,37 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     check('déposé contre le flanc d’un mur, un saut sur place retombe au pied', haut < apex + 0.01, `plus haut ${haut.toFixed(2)} (mur de 4 m)`);
   }
 
+  // CE QU'ON PORTE BUTE CONTRE UNE PORTE QU'IL NE PASSE PAS. Signalé au
+  // blanchiment : géant, la vrille de 2 m en main, devant la petite face de
+  // la porte ordinaire — la pièce entrait dans le cadre et le rendu la
+  // tranchait en deux. On y marche droit : elle ne passe jamais le plan.
+  {
+    const sim = new Simulation(MONTEE);
+    const face = sim.faces.find((f) => f.pairId === 'ordinaire-blanchiment' && f.kind === 'small')!;
+    const n = face.normal;
+    poserG(sim, { x: face.position.x + n.x * 14, y: 0, z: face.position.z + n.z * 14 }, 1);
+    const w = sim.carryables.items.find((c) => c.id === 'vrille-blanchiment')!;
+    w.size = BLANCHIMENT_GRANDE;
+    w.held = true;
+    const yaw = Math.atan2(-n.x, -n.z);
+    let pire = Infinity;
+    let retenue = false;
+    let passe = false;
+    for (let t = 0; t < 60 * 6; t++) {
+      // Le regard baissé : c'est ce qui descend la pièce dans le cadre.
+      const e = sim.step({ ...ordreG({ forward: 1, yaw }), pitch: -0.35 }, TICK_DT);
+      if (e.pieceRetenue) retenue = true;
+      if (e.traversed) passe = true;
+      const c = { x: w.position.x, y: w.position.y + w.size * 0.5, z: w.position.z };
+      pire = Math.min(pire, (c.x - face.position.x) * n.x + (c.z - face.position.z) * n.z - w.size * 0.5);
+    }
+    check(
+      'blanchiment : géant, la vrille de 2 m bute contre la petite face au lieu d’y entrer',
+      retenue && !passe && w.held && pire > -1e-6,
+      `au plus près ${pire.toFixed(3)} m du plan, ${retenue ? 'retenue' : 'jamais retenue'}${passe ? ', PASSÉ' : ''}`,
+    );
+  }
+
   // UNE CAISSE QUI TOMBE À TRAVERS UN JOUEUR IMMOBILE ne le hisse pas en vol.
   {
     const L: LevelDef = {

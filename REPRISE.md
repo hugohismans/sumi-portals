@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 24 septembre 2026
 
-`npm run check` : **806 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **816 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -451,6 +451,32 @@ porte à linteau bas posait sur le linteau, et lancé on passait le mur.
 Reste connu, hors d'atteinte en jouant : la grande face de la lucarne dorée
 recoupe la pyramide à degrés de la vallée ; on n'y arrive dedans qu'à une
 taille que le parcours ne permet pas.
+
+### Puis, le 25 : cinq retours de partie
+
+- **Recommencer l'aventure**, depuis la carte de titre : un lien discret,
+  seulement s'il y a quelque chose à effacer, en deux temps (« Effacer les
+  couleurs rapportées et les chapitres finis ? Oui · Non »). Efface la
+  sauvegarde en usage (jeu, ou débug) et les toiles ; garde les notes du
+  protocole ; ramène au hall.
+- **Un pinceau endormi dit qu'il se saisit** : la première fois à portée,
+  « Appuie sur E, la touche d'action, pour saisir le pinceau. Elle sert aussi
+  à prendre les autres objets. » ; ensuite « E — Saisir le pinceau ».
+- **Les bordures qui clignotaient** : deux faces dans le même plan (le dallage
+  de la place et sa bordure, x = 19) se disputaient la profondeur, et des
+  centaines de paires à quelques millimètres dans tous les niveaux font de
+  même au-delà de cent mètres. Le rendu départage (`rangsDesFaces`, attribut
+  `aPriorite`) : la face qui avance gagne, à égalité le détail sur la masse,
+  d'un pas constant dans l'espace de la profondeur. Mesuré à l'écran.
+- **Un chapitre ne s'achève pas sans sa couleur** (`voyage.ts`, `RAPPORTE`,
+  `EXIGE`, `OU_DORT`) : on finissait la descente sans réveiller le bleu, et la
+  montée devenait infinissable. Le but se réarme en disant où dort la
+  couleur ; l'arche renvoie au chapitre dont la couleur manque ; la carte de
+  la montée sans bleu le dit, avec le lien.
+- **Ce qu'on porte bute contre une porte qu'il ne passe pas** (trop grosse,
+  scellée, ou de dos) : la vrille de 2 m d'un géant entrait dans une petite
+  face et le rendu la tranchait en deux. Une pièce qui passe passe toujours
+  la première — c'est ainsi qu'on dépose par une porte trop petite pour soi.
 
 ## Ce qui reste à faire
 

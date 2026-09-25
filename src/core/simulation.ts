@@ -522,6 +522,39 @@ export class Simulation {
     const held = this.carryables.held;
     if (held) {
       this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale);
+      // ═══════════════════════════════════════════════════════════════════
+      // CE QU'ON PORTE BUTE CONTRE UNE PORTE QU'IL NE PASSE PAS.
+      //
+      // Signalé en jouant, au blanchiment : géant, la vrille de deux mètres
+      // en main, devant une petite face. La pièce se tient à bout de bras :
+      // elle atteignait le plan de la porte bien avant l'œil, y entrait, et
+      // le rendu la tranchait au plan en montrant sa moitié « passée » de
+      // l'autre côté, quatre fois plus grande — une pièce qui ne passe pas,
+      // coupée en deux dans le cadre. On bute donc avec elle, comme contre un
+      // mur : le pas qui l'y ferait entrer est refusé. Et si elle y entre
+      // quand même — on a tourné la tête —, elle est ramenée devant le plan.
+      // Une pièce qui passe, elle, passe toujours la première : c'est ainsi
+      // qu'on dépose ou qu'on lance par une porte trop petite pour soi.
+      // ═══════════════════════════════════════════════════════════════════
+      const bute = this.porteQuiRetient(held);
+      if (bute && !events.traversed) {
+        if (pl.position.x !== prevPos.x || pl.position.z !== prevPos.z) {
+          pl.position.x = prevPos.x;
+          pl.position.z = prevPos.z;
+          pl.velocity.x = 0;
+          pl.velocity.z = 0;
+          this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale);
+        }
+        const encore = this.porteQuiRetient(held);
+        if (encore) {
+          const n = encore.face.normal;
+          const pousse = (held.size * 0.5 + 0.02 - encore.devant) * encore.cote;
+          held.position.x += n.x * pousse;
+          held.position.y += n.y * pousse;
+          held.position.z += n.z * pousse;
+        }
+        events.pieceRetenue = { pairId: bute.face.pairId, raison: bute.raison, joueurPasse: bute.raison === 'dos' ? false : canPass(bute.face, this.scale) };
+      }
     }
     // Les caisses libres franchissent les portails comme le joueur : on note
     // leur centre avant le déplacement pour détecter le passage du plan.
@@ -774,6 +807,42 @@ export class Simulation {
    * borne déjà la taille du joueur, appliquée aux objets : on ne fait pas
    * passer un meuble par une chatière.
    */
+  /**
+   * La porte contre laquelle bute la pièce tenue, s'il y en a une : une face
+   * qu'elle ne passe pas (trop grosse, scellée, ou vue de dos), dont elle
+   * touche le plan à l'intérieur du cadre. `devant` est la distance de son
+   * centre au plan, du côté de l'œil ; `cote`, ce côté.
+   */
+  private porteQuiRetient(
+    c: Carryable,
+  ): { face: PortalFace; devant: number; cote: 1 | -1; raison: 'tropGrosse' | 'scellee' | 'dos' } | null {
+    const oeil = this.eyePosition();
+    const demi = c.size * 0.5;
+    const centre = vec3(c.position.x, c.position.y + demi, c.position.z);
+    let pire: { face: PortalFace; devant: number; cote: 1 | -1; raison: 'tropGrosse' | 'scellee' | 'dos' } | null = null;
+    for (const face of this.faces) {
+      const cote: 1 | -1 = signedDistance(face, oeil) >= 0 ? 1 : -1;
+      const scellee = this.portesFermees.has(face.pairId) || estScelle(face, this.conditionsRemplies);
+      const raison = cote < 0 ? 'dos' : scellee ? 'scellee' : !pieceFits(face, c.size) ? 'tropGrosse' : null;
+      if (raison === null) continue;
+      const devant = signedDistance(face, centre) * cote;
+      if (devant >= demi + 0.02) continue;
+      // Et DANS le cadre, élargi de la demi-pièce : à côté d'une porte, c'est
+      // un mur, et une pièce tenue traverse les murs comme avant.
+      const n = face.normal;
+      const lat = Math.hypot(n.x, n.z) || 1;
+      const u = ((centre.x - face.position.x) * n.z - (centre.z - face.position.z) * n.x) / lat;
+      const v = centre.y - face.position.y;
+      if (Math.abs(u) > face.width * 0.5 + demi || v < -demi || v > face.height + demi) continue;
+      // L'œil lui-même doit être en face du cadre : une porte loin sur le côté
+      // n'a rien à retenir.
+      const uo = ((oeil.x - face.position.x) * n.z - (oeil.z - face.position.z) * n.x) / lat;
+      if (Math.abs(uo) > face.width * 0.5 + demi + c.size * 4) continue;
+      if (!pire || devant < pire.devant) pire = { face, devant, cote, raison };
+    }
+    return pire;
+  }
+
   private carryTraversal(before: (Vec3 | null)[]): void {
     const items = this.carryables.items;
     for (let i = 0; i < items.length; i++) {

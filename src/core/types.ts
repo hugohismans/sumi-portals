@@ -838,6 +838,12 @@ export interface TickEvents {
   peintureTropLoin?: { index: number };
   /** Le pinceau choisi a changé. */
   pinceauChoisi?: { pinceau: string };
+  /**
+   * La pièce qu'on tient bute contre une porte qu'elle ne passe pas : trop
+   * grosse pour la face, porte scellée, ou dos de la porte. `joueurPasse` :
+   * le joueur, lui, passerait.
+   */
+  pieceRetenue?: { pairId: string; raison: 'tropGrosse' | 'scellee' | 'dos'; joueurPasse: boolean };
   /** Un tableau vient d'être satisfait : la pièce lui ressemble. */
   tableauSatisfait?: { id: string };
   /** Tous les logements sont pourvus. */

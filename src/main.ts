@@ -704,6 +704,8 @@ let hintText = '';
 let flashUntil = 0;
 /** Quand on pourra redire « trop loin » : une fois suffit, pas à chaque clic. */
 let tropLoinDit = 0;
+/** Et « la pièce ne passe pas » : on bute à chaque image, on ne le dit qu'une fois. */
+let pieceRetenueDite = 0;
 
 const setHint = (text: string): void => {
   if (text === hintText) return;
@@ -1841,6 +1843,22 @@ function frame(now: number): void {
             : 'Plus grand, il n’y a plus rien. Cette porte ne mène nulle part.',
         3.4,
       );
+    }
+    // CE QU'ON PORTE BUTE CONTRE UNE PORTE QU'IL NE PASSE PAS — et l'on dit
+    // pourquoi, une fois : sans un mot, on se croirait arrêté par rien.
+    if (events.pieceRetenue && now > pieceRetenueDite) {
+      const r = events.pieceRetenue;
+      flash(
+        r.raison === 'dos'
+          ? 'C’est le dos de la porte. Elle s’ouvre de l’autre côté.'
+          : r.raison === 'scellee'
+            ? 'Cette porte est scellée. Quelque chose, ici, l’ouvrira.'
+            : r.joueurPasse
+              ? 'La pièce est trop grosse pour cette porte.'
+              : 'Trop grand pour cette porte, et la pièce aussi. Il faudrait rapetisser.',
+        3,
+      );
+      pieceRetenueDite = now + 4000;
     }
     // Le dos d'une porte fait mur, et il le dit : sans un mot, une feuille
     // tendue dans un cadre passe pour une porte fermée de plus. Signalé en
