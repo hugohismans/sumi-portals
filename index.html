@@ -310,6 +310,23 @@
       #overlay .chapitre:empty { display: none; }
       #overlay .go { margin-top: 4px; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; opacity: .62; }
       #overlay .son { margin-top: 16px; font-size: 12px; opacity: .42; }
+      /* Recommencer : discret, sous l'appel — un lien de carnet, pas un bouton
+         d'interface. La confirmation remplace la demande au même endroit. */
+      #overlay .recommencer { margin-top: 20px; font-size: 12px; cursor: default; }
+      #overlay .recommencer[hidden] { display: none; }
+      #overlay .recommencer button {
+        font: inherit; color: var(--ink); background: none; cursor: pointer;
+        border: none; border-bottom: 1px solid rgba(27, 23, 20, .35);
+        padding: 2px 1px; opacity: .55;
+        -webkit-user-select: none; user-select: none; touch-action: manipulation;
+      }
+      #overlay .recommencer button:hover, #overlay .recommencer button:focus-visible { opacity: .9; }
+      #overlay .recommencer .confirmer { display: none; line-height: 1.7; opacity: .85; }
+      #overlay .recommencer .choix { display: block; margin-top: 6px; }
+      #overlay .recommencer .choix button { margin: 0 8px; }
+      #overlay .recommencer .oui { color: var(--vermilion); border-bottom-color: currentColor; opacity: .9; }
+      #overlay .recommencer.sur .demande { display: none; }
+      #overlay .recommencer.sur .confirmer { display: inline; }
       /* Une seule fois : à la reprise, le joueur a déjà lu. */
       #overlay.resumed .son { display: none; }
 
@@ -513,6 +530,23 @@
         <div class="go">
           <span class="enter">Tremper le pinceau</span>
           <span class="resume">Reprendre le trait</span>
+        </div>
+
+        <!--
+          RECOMMENCER L'AVENTURE. Seulement quand il y a quelque chose à
+          effacer (une couleur rapportée, un chapitre fini), et en deux temps :
+          un clic égaré sur la carte de titre ne doit pas coûter une partie.
+          Voir `src/main.ts`, « Recommencer l'aventure ».
+        -->
+        <div class="recommencer" id="recommencer" hidden>
+          <button type="button" class="demande">Recommencer l’aventure</button>
+          <span class="confirmer">
+            Effacer les couleurs rapportées et les chapitres finis ?
+            <span class="choix">
+              <button type="button" class="oui">Oui, tout reprendre</button>
+              <button type="button" class="non">Non</button>
+            </span>
+          </span>
         </div>
 
         <!--

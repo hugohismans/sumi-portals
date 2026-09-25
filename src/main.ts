@@ -768,6 +768,48 @@ overlay.addEventListener('click', () => input.requestLock());
   apres[1]?.setAttribute('href', adresseDe(null));
 }
 
+// ─── RECOMMENCER L'AVENTURE ─────────────────────────────────────────────────
+//
+// Demandé : « comment je peux reset ma progression ? » — et la seule réponse
+// était une adresse à taper ou une ligne de console. Un bouton, donc, sur la
+// carte de titre, qui n'apparaît que s'il y a quelque chose à effacer, et qui
+// demande confirmation : un clic égaré ne doit pas coûter une partie.
+//
+// Il efface la sauvegarde EN USAGE — celle du jeu, ou celle du débug avec
+// `?debug=1`, qui a toujours eu la sienne — et les toiles dessinées, puis
+// ramène au hall, d'où l'arche « Seul » repart du monde. Les notes du
+// protocole, elles, ne sont pas une progression : on les garde.
+const recommencer = el('recommencer');
+const majRecommencer = (): void => {
+  const aEffacer = Voyage.finis().size > 0 || Pigments.lire().length > 0;
+  recommencer.hidden = !aEffacer;
+  if (!aEffacer) recommencer.classList.remove('sur');
+};
+majRecommencer();
+// La carte de titre entre dans le jeu au moindre clic, et au moindre doigt
+// posé : rien de ce qui se passe ici ne doit l'atteindre.
+for (const evenement of ['click', 'touchstart', 'pointerdown'] as const) {
+  recommencer.addEventListener(evenement, (e) => e.stopPropagation(), { passive: true });
+}
+recommencer.querySelector('.demande')?.addEventListener('click', () => {
+  recommencer.classList.add('sur');
+});
+recommencer.querySelector('.non')?.addEventListener('click', () => {
+  recommencer.classList.remove('sur');
+});
+recommencer.querySelector('.oui')?.addEventListener('click', () => {
+  pigments.effacer();
+  Voyage.effacer();
+  try {
+    for (const cle of Object.keys(localStorage)) {
+      if (cle.startsWith('sumi.canevas.')) localStorage.removeItem(cle);
+    }
+  } catch {
+    /* sans mémoire, il n'y avait rien à effacer */
+  }
+  location.href = adresseDe(null);
+});
+
 // --- Tactile ---------------------------------------------------------------
 // Sur téléphone, il n'y a pas de capture de souris : le pouce gauche déplace,
 // le côté droit fait pivoter le regard, et trois boutons font le reste.
@@ -858,6 +900,13 @@ input.onLockChange = (locked) => {
     return;
   }
   overlay.classList.toggle('hidden', locked);
+  // La carte revient à chaque pause : on y remet la demande à jour (une
+  // couleur a pu revenir entre-temps), et l'on referme une confirmation
+  // laissée ouverte.
+  if (!locked) {
+    recommencer.classList.remove('sur');
+    majRecommencer();
+  }
   if (locked) {
     overlay.classList.add('resumed');
     // ON RANGE LE CARNET EN COMMENÇANT À JOUER. Sans ça, le panneau ouvert au
