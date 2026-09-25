@@ -20,7 +20,7 @@ là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
 ## État au 24 septembre 2026
 
-`npm run check` : **793 vérifications, tout passe.** `npm run build` passe.
+`npm run check` : **806 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
 aucune erreur de shader.
 
@@ -427,6 +427,30 @@ pas un autre axe, et sur le sien elle refuse seulement qu'on s'y enfonce
 davantage. La descente garde sa règle (linteau, rattrapage). Balayage de
 chaque plafond bas de chaque niveau aux trois tailles : 1 124 sauts sur
 43 145 éjectaient, aucun maintenant ; le harnais en rejoue un échantillon.
+
+**Et ce que cette correction a cassé, trouvé par deux chasses aux
+régressions** (cinq angles chacune, chaque trouvaille rejouée par un
+sceptique — plus de six millions d'essais contre les murs, cent mille sous
+les linteaux, vingt mille traversées de portes) : un contact latéral
+laissait le corps dedans d'un ulp, qui survivait désormais au saut, et la
+chute posait le joueur sur le poteau du hall (6,40 m) ou un pilier du
+belvédère (21 m) ; une porte qui dépose les pieds dans l'estrade d'arrivée
+les y laissait. Tenus maintenant par cinq règles de `physics.ts`, chacune
+gardée au harnais (bloc « Ce que la chasse aux régressions a trouvé ») et
+vérifiée par mutation :
+- **toute résolution pose au contact exact**, un ulp à la fois
+  (`auRasDessous`, `auRasDessus`) — la source même de l'ulp du plafond ;
+- **un mur n'est pas un sol** : la descente ignore une boîte touchée par le
+  flanc ou par-dessous, sauf une dalle où les pieds mordent d'une marche ;
+- en montant, **jamais repoussé vers le bas** au-delà d'un arrondi ;
+- **des pieds enfoncés par le dessus dans le décor fixe** (jamais une caisse
+  en vol) sont reposés dessus (`reposerSurLeSol`), dès l'arrivée d'une
+  porte et au premier pas qui suit.
+Au passage, l'ancien moteur avait encore une catapulte : sauter devant une
+porte à linteau bas posait sur le linteau, et lancé on passait le mur.
+Reste connu, hors d'atteinte en jouant : la grande face de la lucarne dorée
+recoupe la pyramide à degrés de la vallée ; on n'y arrive dedans qu'à une
+taille que le parcours ne permet pas.
 
 ## Ce qui reste à faire
 

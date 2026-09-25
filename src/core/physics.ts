@@ -162,7 +162,11 @@ const moveAxis = (
       if (j < 0) continue;
       bloque = true;
       const face = auRasDessous(h[minKey], posExtent);
-      resolved = Math.min(resolved, j === 0 ? Math.min(debut, face) : face);
+      // En montant, on ne repousse JAMAIS vers le bas plus que le résidu d'un
+      // arrondi : une tête déjà enfoncée dans une caisse ou une dalle ferait
+      // sinon passer tout le corps sous le sol à chaque saut.
+      const garde = axis === 'y' && j === 0 && debut - face > 1e-9 * scale;
+      resolved = Math.min(resolved, j === 0 ? (garde ? debut : Math.min(debut, face)) : face);
     }
   } else if (axis !== 'y') {
     for (const h of hits) {
@@ -194,11 +198,16 @@ const moveAxis = (
     // sur le dessus d'un mur, d'un pilier ou d'un linteau qu'il frôlait en
     // retombant d'un saut. Ne restent que les boîtes neuves et celles où l'on
     // est enfoncé PAR LE DESSUS — le sol où une porte a déposé les pieds.
+    //
+    // Sauf une dalle où les pieds sont enfoncés d'au plus une marche : même
+    // prise par son bord, c'est un sol, et une porte peut y déposer le corps.
+    const marche = PLAYER_HEIGHT * STEP_FRACTION * scale;
     let haut = resolved;
     let bas = -Infinity;
     let retenues = 0;
     for (const h of hits) {
-      if (jugement(h) < 0) continue;
+      const surLesPieds = h.maxY - avant.minY;
+      if (jugement(h) < 0 && !(surLesPieds > 0 && surLesPieds <= marche)) continue;
       retenues++;
       const r = h[maxKey] + negExtent;
       haut = Math.max(haut, r);
@@ -210,6 +219,52 @@ const moveAxis = (
   }
   p[axis] = resolved;
   return bloque;
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * DES PIEDS ENFONCÉS DANS UN SOL REMONTENT DESSUS.
+ *
+ * Une porte dépose parfois les pieds DANS l'estrade d'arrivée (0,135, 0,20,
+ * 0,50 m au monde). L'ancienne résolution les en sortait par hasard, au
+ * premier pas, en « heurtant » l'estrade et en montant la marche ; depuis
+ * qu'un chevauchement préexistant ne se heurte plus, on marchait enfoncé. On
+ * les repose donc sur le dessus :
+ *   — seulement le DÉCOR FIXE : une caisse qui tombe à travers un joueur
+ *     immobile le hissait sinon dessus, en plein vol ;
+ *   — seulement de moins de `portee` ;
+ *   — seulement si c'est PAR LE DESSUS qu'on y est enfoncé, non contre son
+ *     flanc — un mur frôlé n'est pas une marche ;
+ *   — et seulement si le corps y est libre. S'il bute sur une autre boîte dont
+ *     le dessus est encore à portée (le géant ×16 arrivant dans les meubles de
+ *     la vallée), on retente sur celle-là, quelques fois au plus.
+ * Rend vrai si le corps a été reposé.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const reposerSurLeSol = (world: World, p: Vec3, scale: number, portee: number): boolean => {
+  const corps = playerAabb(p, scale, scratchAvant);
+  let dessus = -Infinity;
+  for (const h of world.queryStatic(corps, scratchHits)) {
+    const pied = h.maxY - p.y;
+    const flanc = Math.min(
+      corps.maxX - h.minX, h.maxX - corps.minX,
+      corps.maxZ - h.minZ, h.maxZ - corps.minZ,
+    );
+    if (pied > 0 && pied <= portee && pied <= flanc) dessus = Math.max(dessus, h.maxY);
+  }
+  for (let essai = 0; essai < 4 && dessus > p.y; essai++) {
+    const cible = { x: p.x, y: dessus, z: p.z };
+    const gene = world.query(playerAabb(cible, scale, scratchAvant), scratchHits);
+    if (gene.length === 0) {
+      p.y = dessus;
+      return true;
+    }
+    let suivant = dessus;
+    for (const h of gene) if (h.maxY > suivant && h.maxY - p.y <= portee) suivant = h.maxY;
+    if (suivant === dessus) return false;
+    dessus = suivant;
+  }
+  return false;
 };
 
 export interface MoveResult {
@@ -241,6 +296,8 @@ export const moveAndCollide = (
   scale: number,
   dt: number,
   wasGrounded: boolean,
+  /** Le premier pas après une porte : on y repose aussi des pieds enfoncés. */
+  apresPorte = false,
 ): MoveResult => {
   const result: MoveResult = { grounded: false, hitCeiling: false, hitWall: false };
 
@@ -300,27 +357,9 @@ export const moveAndCollide = (
   // ailleurs.
   // ─── DES PIEDS ENFONCÉS DANS UN SOL BAS REMONTENT DESSUS ──────────────────
   //
-  // Une porte dépose parfois les pieds DANS l'estrade d'arrivée (0,135, 0,20,
-  // 0,50 m au monde). L'ancienne résolution les en sortait par hasard, au
-  // premier pas, en « heurtant » l'estrade et en montant la marche ; depuis
-  // qu'un chevauchement préexistant ne se heurte plus, on marchait enfoncé. On
-  // les repose donc sur le dessus — seulement debout, seulement de moins
-  // d'une marche, seulement si c'est bien PAR LE DESSUS qu'on y est enfoncé
-  // (et non contre son flanc), et seulement si le corps y est libre.
-  if (wasGrounded) {
-    const marche = PLAYER_HEIGHT * STEP_FRACTION * scale;
-    const corps = playerAabb(p, scale, scratchAvant);
-    let dessus = -Infinity;
-    for (const h of world.query(corps, scratchHits)) {
-      const pied = h.maxY - p.y;
-      const flanc = Math.min(
-        corps.maxX - h.minX, h.maxX - corps.minX,
-        corps.maxZ - h.minZ, h.maxZ - corps.minZ,
-      );
-      if (pied > 0 && pied <= marche && pied <= flanc) dessus = Math.max(dessus, h.maxY);
-    }
-    if (dessus > p.y && isClear(world, { x: p.x, y: dessus, z: p.z }, scale)) p.y = dessus;
-  }
+  // Voir `reposerSurLeSol`. Debout, ou au premier pas après une porte — qui
+  // a remis `grounded` à faux, et l'on restait sinon enfoncé une image de plus.
+  if (wasGrounded || apresPorte) reposerSurLeSol(world, p, scale, PLAYER_HEIGHT * STEP_FRACTION * scale);
 
   const departY = p.y;
   const dy = velocity.y * dt;

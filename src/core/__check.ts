@@ -2767,6 +2767,213 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   }
 }
 
+{
+  console.log('\n— Ce que la chasse aux régressions a trouvé, et qui ne doit pas revenir —');
+
+  // La première correction du plafond bas en a ouvert d'autres, que les 793
+  // vérifications d'alors ne voyaient pas : une chasse à cinq angles, chacun
+  // contre-vérifié, les a mesurées. Chacune a sa ligne ici, et chacune échoue
+  // si l'on retire la règle qui la tient (contact exact, un mur n'est pas un
+  // sol, pieds reposés sur le décor fixe).
+  const ordreG = (o: Partial<{ forward: number; jump: boolean; yaw: number }> = {}) => ({
+    forward: 0, strafe: 0, jump: false, sprint: false, interact: false, throwIt: false, yaw: 0, pitch: 0, ...o,
+  });
+  const poserG = (sim: Simulation, p: { x: number; y: number; z: number }, palier: number, grounded = true) => {
+    sim.reset();
+    sim.player.position = { ...p };
+    sim.player.velocity = { x: 0, y: 0, z: 0 };
+    sim.player.scaleLevel = palier;
+    sim.player.grounded = grounded;
+  };
+
+  // SAUTER CONTRE UN POTEAU QU'ON TOUCHE : on retombe au pied, pas au sommet.
+  // Le contact en z laissait le corps DEDANS d'un ulp, et la chute suivante le
+  // posait sur le poteau du hall (6,40 m) ou le pilier du belvédère (21 m).
+  const sauterContre = (L: LevelDef, p: { x: number; y: number; z: number }, yaw: number, palier: number): number => {
+    const sim = new Simulation(L);
+    poserG(sim, p, palier);
+    let haut = -Infinity;
+    for (let t = 0; t < 120; t++) {
+      sim.step(ordreG({ forward: 1, jump: t === 30, yaw }), TICK_DT);
+      haut = Math.max(haut, sim.player.position.y);
+    }
+    return haut - p.y;
+  };
+  const apex = (JUMP_SPEED * JUMP_SPEED) / (2 * GRAVITY);
+  const poteau = sauterContre(LOBBY, { x: -15.69, y: 0, z: 2.13 }, Math.PI, 0);
+  check('hall : un saut contre le poteau de 6,40 m retombe au pied', poteau < apex + 0.01, `montée ${poteau.toFixed(2)} m (un saut : ${apex.toFixed(2)})`);
+  const pilier = sauterContre(MONDE, { x: -256.39, y: 120, z: 193.18 }, Math.PI / 2, 0);
+  check('monde : un saut contre un pilier du belvédère retombe au pied', pilier < apex + 0.01, `montée ${pilier.toFixed(2)} m`);
+
+  // UN LINTEAU RESTE FERMÉ, MÊME EN SAUTANT : le passage d'essai de la
+  // catapulte, franchi cette fois en sautant et en sautant lancé.
+  const passageG = (hauteurSeuil: number, hauteurLibre: number): LevelDef => ({
+    name: 'seuil-saut',
+    spawn: [0, 0.2, -3],
+    spawnYaw: 0,
+    boxes: [
+      { min: [-8, -1, -8], max: [8, 0, 8], ink: 0 },
+      { min: [-2, 0, -0.15], max: [2, hauteurSeuil, 0.15], ink: 1 },
+      { min: [-2, hauteurLibre, -0.6], max: [2, hauteurLibre + 0.5, 0.6], ink: 2 },
+      { min: [-8, 0, -0.6], max: [-1.2, hauteurLibre + 0.5, 0.6], ink: 2 },
+      { min: [1.2, 0, -0.6], max: [8, hauteurLibre + 0.5, 0.6], ink: 2 },
+    ],
+    portals: [],
+    goal: { position: [0, -900, 0], radius: 1 },
+  });
+  const franchitEnSautant = (L: LevelDef, sprint: boolean): { z: number; haut: number } => {
+    const sim = new Simulation(L);
+    poserG(sim, { x: 0, y: 0, z: -3 }, 0);
+    let haut = -Infinity;
+    for (let t = 0; t < 60 * 12; t++) {
+      sim.step({ ...ordreG({ forward: 1, jump: t % 17 < 2, yaw: 0 }), sprint }, TICK_DT);
+      haut = Math.max(haut, sim.player.position.y);
+    }
+    return { z: sim.player.position.z, haut };
+  };
+  for (const [seuil, libre] of [[0, 1.5], [0.2, 1.9]] as const) {
+    for (const sprint of [false, true]) {
+      const r = franchitEnSautant(passageG(seuil, libre), sprint);
+      check(
+        `un linteau à ${libre} (seuil ${seuil}) reste fermé en sautant${sprint ? ' lancé' : ''}`,
+        r.z < 0 && r.haut < libre + 0.5,
+        `z ${r.z.toFixed(2)}, plus haut ${r.haut.toFixed(2)}`,
+      );
+    }
+  }
+
+  // UNE PORTE QUI DÉPOSE LES PIEDS DANS L'ESTRADE D'ARRIVÉE : on est reposé
+  // dessus dès l'arrivée, et l'on ne marche jamais enfoncé.
+  for (const [pair, kind, palier, dessus] of [
+    ['cote-rouge', 'small', 0, 0.5],
+    ['descente-jardin', 'big', 0, 0.135],
+    ['ascension-1', 'big', 1, 0.2],
+  ] as [string, 'big' | 'small', number, number][]) {
+    const sim = new Simulation(MONDE);
+    const face = sim.faces.find((x) => x.pairId === pair && x.kind === kind)!;
+    const s = scaleOfLevel(palier);
+    const n = face.normal;
+    const recul = 2 * PLAYER_RADIUS * s + 0.3 * s;
+    poserG(sim, { x: face.position.x + n.x * recul, y: face.position.y, z: face.position.z + n.z * recul }, palier);
+    sim.player.yaw = Math.atan2(-n.x, -n.z);
+    let apres = -1;
+    let enfonce = 0;
+    let y1 = NaN;
+    for (let k = 0; k < 400 && apres < 90; k++) {
+      const e = sim.step(ordreG({ forward: 1, yaw: sim.player.yaw }), TICK_DT);
+      if (e.traversed && apres < 0) {
+        apres = 0;
+        y1 = sim.player.position.y;
+        continue;
+      }
+      if (apres < 0) continue;
+      apres++;
+      if (!isClear(sim.world, sim.player.position, scaleOfLevel(sim.player.scaleLevel))) enfonce++;
+    }
+    check(
+      `monde, ${pair} : l’arrivée pose les pieds SUR l’estrade (${dessus} m), jamais dedans`,
+      apres > 0 && Math.abs(y1 - dessus) < 1e-6 && enfonce === 0,
+      `à l’arrivée y ${y1.toFixed(3)}, enfoncé ${enfonce}/90 images`,
+    );
+  }
+
+  // UN CORPS DÉPOSÉ CONTRE LE FLANC D'UN MUR (une porte, une caisse) qui saute
+  // sur place retombe au pied : un mur n'est pas un sol à rattraper.
+  {
+    const L: LevelDef = {
+      name: 'flanc',
+      spawn: [0, 0, 0],
+      spawnYaw: 0,
+      boxes: [
+        { min: [-20, -1, -20], max: [20, 0, 20], ink: 0 },
+        { min: [-20, 0, 2], max: [20, 4, 12], ink: 1 },
+      ],
+      portals: [],
+      goal: { position: [0, -900, 0], radius: 1 },
+    };
+    const sim = new Simulation(L);
+    poserG(sim, { x: 0, y: 0, z: 2 - PLAYER_RADIUS + 0.05 }, 0);
+    let haut = -Infinity;
+    for (let t = 0; t < 90; t++) {
+      sim.step(ordreG({ jump: t < 2 }), TICK_DT);
+      haut = Math.max(haut, sim.player.position.y);
+    }
+    check('déposé contre le flanc d’un mur, un saut sur place retombe au pied', haut < apex + 0.01, `plus haut ${haut.toFixed(2)} (mur de 4 m)`);
+  }
+
+  // UNE CAISSE QUI TOMBE À TRAVERS UN JOUEUR IMMOBILE ne le hisse pas en vol.
+  {
+    const L: LevelDef = {
+      name: 'caisse-qui-tombe',
+      spawn: [0, 0, 0],
+      spawnYaw: 0,
+      boxes: [{ min: [-10, -1, -10], max: [10, 0, 10], ink: 0 }],
+      carryables: [{ id: 'chute', position: [0.1, 4, 0.1], size: 0.6, ink: 2 }],
+      portals: [],
+      goal: { position: [0, -900, 0], radius: 1 },
+    };
+    const sim = new Simulation(L);
+    poserG(sim, { x: 0, y: 0, z: 0 }, 0);
+    let leveEnVol = 0;
+    for (let t = 0; t < 120; t++) {
+      const y0 = sim.player.position.y;
+      sim.step(ordreG(), TICK_DT);
+      const c = sim.carryables.items[0];
+      if (sim.player.position.y > y0 + 1e-9 && Math.abs(c.velocity.y) > 0.1) leveEnVol++;
+    }
+    check('une caisse qui tombe à travers un joueur immobile ne le soulève pas en vol', leveEnVol === 0, `${leveEnVol} images soulevé pendant la chute de la caisse`);
+  }
+
+  // LA TÊTE DÉJÀ DANS UNE BOÎTE, UN SAUT NE FAIT PAS PASSER LE CORPS SOUS LE SOL.
+  {
+    const L: LevelDef = {
+      name: 'tete-dedans',
+      spawn: [0, 0, 0],
+      spawnYaw: 0,
+      boxes: [
+        { min: [-10, -0.2, -10], max: [10, 0, 10], ink: 0 },
+        { min: [-0.6, 1.4, -0.6], max: [0.6, 3, 0.6], ink: 2 },
+        { min: [-40, -30, -40], max: [40, -29, 40], ink: 0 },
+      ],
+      portals: [],
+      goal: { position: [0, -900, 0], radius: 1 },
+    };
+    const sim = new Simulation(L);
+    poserG(sim, { x: 0, y: 0, z: 0 }, 0);
+    let bas = Infinity;
+    for (let t = 0; t < 40; t++) {
+      sim.step(ordreG({ jump: true }), TICK_DT);
+      bas = Math.min(bas, sim.player.position.y);
+    }
+    check('la tête déjà dans une boîte, un saut ne fait pas passer le corps sous le sol', bas > -1e-6, `plus bas ${bas.toFixed(3)}`);
+  }
+
+  // DES PIEDS DÉPOSÉS DANS LE BORD D'UNE PLATEFORME SUSPENDUE y sont repris,
+  // même quand le corps n'y mord que de deux centimètres de côté.
+  {
+    const L: LevelDef = {
+      name: 'bord',
+      spawn: [0, 0, 0],
+      spawnYaw: 0,
+      boxes: [
+        { min: [-10, -1, -10], max: [0, 0, 10], ink: 0 },
+        { min: [-40, -30, -40], max: [-20, -29, 40], ink: 0 },
+      ],
+      portals: [],
+      goal: { position: [0, -900, 0], radius: 1 },
+    };
+    const fautes: string[] = [];
+    for (const d of [0.05, 0.2, 0.5]) for (const lat of [0.02, 0.1, 0.3]) {
+      const sim = new Simulation(L);
+      poserG(sim, { x: -lat + PLAYER_RADIUS, y: -d, z: 0 }, 0, false);
+      let tombe = false;
+      for (let k = 0; k < 200 && !tombe; k++) if (sim.step(ordreG(), TICK_DT).rattrape) tombe = true;
+      if (tombe || Math.abs(sim.player.position.y) > 1e-6) fautes.push(`enfoncé ${d}, bord ${lat}`);
+    }
+    check('des pieds déposés dans le bord d’une plateforme y sont repris', fautes.length === 0, fautes.join(' · ') || '9 cas');
+  }
+}
+
 
 // =============================================================================
 {

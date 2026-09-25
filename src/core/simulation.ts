@@ -18,7 +18,7 @@ import { Sockets } from './sockets.js';
 import { Familles } from './familles.js';
 import { surLaGomme, viser } from './canevas.js';
 import { clamp, eulerVersMat, matVersEuler, mulMat, quartDeTour, rotateY, vec3, wrapAngle, yawToForward, type Mat3, type Vec3 } from './math.js';
-import { moveAndCollide } from './physics.js';
+import { moveAndCollide, reposerSurLeSol } from './physics.js';
 import {
   buildFaces,
   canPass,
@@ -188,6 +188,8 @@ export class Simulation {
    */
   readonly peintures = new Map<number, string>();
 
+  /** Le pas qui suit une porte : voir `moveAndCollide`, `apresPorte`. */
+  private apresPorte = false;
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
   private throwHeld = false;
@@ -227,6 +229,7 @@ export class Simulation {
     this.sockets.reset();
     this.familles.reset();
     this.peintures.clear();
+    this.apresPorte = false;
     this.goalReached = false;
     this.seuilFranchi = false;
     this.scellerLesPortesADessiner();
@@ -374,7 +377,9 @@ export class Simulation {
       scale,
       dt,
       pl.grounded,
+      this.apresPorte,
     );
+    this.apresPorte = false;
     pl.grounded = move.grounded;
     const dos = this.dosDesPortes(prevPos, scale);
     if (dos) events.dos = { pairId: dos.pairId };
@@ -1183,6 +1188,14 @@ export class Simulation {
     const regard = transformVector(face, yawToForward(pl.yaw), false);
     pl.yaw = Math.atan2(regard.x, regard.z);
     pl.grounded = false;
+    // ARRIVÉ DANS LA PIERRE, ON EN SORT PAR LE DESSUS, une fois, tout de suite.
+    // Une face est plantée à quelques centimètres de son sol, et cet écart ne
+    // suit pas la taille : un joueur minuscule ressortait entier dans
+    // l'estrade d'arrivée, l'œil dans la pierre. On le repose sur ce qui le
+    // contient si c'est à moins de sa propre hauteur (au moins celle d'un
+    // homme) et que la place est libre — voir `reposerSurLeSol`.
+    reposerSurLeSol(this.world, pl.position, newScale, PLAYER_HEIGHT * Math.max(newScale, 1));
+    this.apresPorte = true;
 
     // La caisse portée subit exactement le même sort que son porteur. C'est
     // toute la mécanique : elle ressort quatre fois plus grande, ou quatre fois
