@@ -56,7 +56,7 @@ export const EXIGE: Partial<Record<Chapitre, readonly string[]>> = {
 export const OU_DORT: Record<string, { chapitre: Chapitre; phrase: string }> = {
   vert: { chapitre: 'monde', phrase: 'Il dort au sommet du tas de feuilles, dans le jardin du monde.' },
   rouge: { chapitre: 'monde', phrase: 'Il dort sur le chantier des potiers, dans le monde.' },
-  bleu: { chapitre: 'descente', phrase: 'Il dort au fond de la descente, dans le bol, devant la dernière porte.' },
+  bleu: { chapitre: 'descente', phrase: 'Il dort au fond de la descente, dans la vasque de la grève, devant la dernière porte.' },
   or: { chapitre: 'montee', phrase: 'Il dort au bout de la vallée, dans la montée.' },
 };
 

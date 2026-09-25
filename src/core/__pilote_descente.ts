@@ -505,7 +505,8 @@ export const piloterDescente = (check: Check): void => {
   // LE FOND — la grève, la vasque, et le bleu qui dort. On descend la pente en
   // marchant ; la vasque est le bol, aux mêmes cotes, pleine d'eau ; E le
   // réveille, à ×1/4 seulement. Puis la porte de la lucarne, ouverte, plantée
-  // là même où dort le pinceau : on la franchit vers le sud.
+  // sur le sable juste derrière la vasque et tournée vers la pente : on
+  // enjambe le bord et on la franchit vers l'est.
   // ═══════════════════════════════════════════════════════════════════════
   {
     attendre(sim, 30);
@@ -516,7 +517,7 @@ export const piloterDescente = (check: Check): void => {
     walkTo(sim, [-267.5, 0.2, 1335.3], 60 * 6);
     const v = agirVers(sim, [-267.5, 0.21, 1335]);
     check('fond : dans la vasque, E réveille le pinceau bleu', v.eveil?.id === 'pinceau-bleu' && sim.eveilles.has('pinceau-bleu'), `${v.eveil ? 'éveil' : v.eveilRefuse ? `refusé (trop ${v.eveilRefuse.trop})` : 'rien'} ${pos(sim)}`);
-    const t = walkTo(sim, [-267.5, 0.2, 1331], 60 * 6, { stopOnEvent: true });
+    const t = walkTo(sim, [-265.4, 0.2, 1335.1], 60 * 6, { stopOnEvent: true });
     check(
       'fond → lucarne : par la petite face, on arrive homme sur le palier, devant la maquette',
       t.traversed?.pairId === 'raccord-bol-lucarneBleue' && t.traversed.newLevel === 0,

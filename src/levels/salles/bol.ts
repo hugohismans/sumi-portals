@@ -980,13 +980,22 @@ export const BOL: SalleModule = {
   // tout le mouvement, et exactement ce qu'il faut pour que la pièce paraisse
   // banale. La position est le milieu du seuil, au niveau de la pierre.
   //
-  // ON REPART DE LA VASQUE, palier −1. Ce n'est pas une porte : c'est le but,
-  // et c'est le seul endroit du module qui n'ouvre sur rien. Le mouvement ne
-  // finit pas quand on franchit quelque chose, il finit quand le bleu s'éveille
-  // — après quoi il n'y a plus qu'à remonter, et c'est la vraie récompense.
+  // ON REPART PAR LA LUCARNE, palier −1, et sa porte est DERRIÈRE LA VASQUE.
+  //
+  // Elle était plantée au centre, là même où dort le bleu, face au nord. Signalé
+  // en jouant : « je vois pas où est le pinceau bleu ». On descendait la grève
+  // vers l'est et la porte se présentait par la tranche — un trait bleu dans
+  // l'eau, rien d'autre ; de plus près, sa feuille recouvrait le pinceau qu'elle
+  // traversait. Le seul objet du lieu était caché par le seul autre.
+  //
+  // Elle se tient maintenant sur le sable, un pas après le bord est de la
+  // vasque, et REGARDE LA PENTE : on la voit de tout en haut, ouverte sur la
+  // maquette grise, et le bleu planté dans l'eau devant elle. Le chemin se lit
+  // d'un coup — le ruisseau, la vasque, le pinceau, la porte — et on la
+  // franchit en marchant vers l'est, dans le sens de toute la descente.
   // Par le mur sud : on arrive en marchant vers le nord, la salle devant soi.
   entree: { position: [-340.6, 0.03, P_Z0], echelle: 0, lacet: 0 },
-  sortie: { position: [V_X, V_EAU, V_Z], echelle: -1 },
+  sortie: { position: [V_X + 1.05, V_SABLE + 0.02, V_Z], echelle: -1, lacet: Math.PI / 2 },
 };
 
 /**

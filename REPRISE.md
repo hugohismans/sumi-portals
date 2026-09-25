@@ -487,6 +487,15 @@ taille que le parcours ne permet pas.
   (`banc-main`). Son refus dit « c'est l'autre main ». Le pilote a
   aussi trouvé qu'un bloc visé sur la planche ne trouvait « pas de place » :
   une pièce qui mord dans une surface par-dessus y est reposée.
+- **Le pinceau bleu se voit** (« je vois pas où est le pinceau bleu dans la
+  descente »). Seuls le vert et le rouge avaient un corps : les veilleurs des
+  chapitres (`pinceau-bleu`, `pinceau-or`, celui du banc) n'étaient dessinés
+  nulle part. Ils sont plantés là où ils dorment, touffe hors de l'eau
+  (`compagnons` dans `main.ts`), et s'éveillent en compagnon. Et la porte de
+  la lucarne était plantée AU CENTRE de la vasque, sur le pinceau, face au
+  nord : de la grève on la voyait par la tranche, et sa feuille couvrait le
+  bleu. Elle est sur le sable juste derrière la vasque, tournée vers la pente
+  (`BOL.sortie`, lacet est) : ruisseau, vasque, pinceau, porte, d'un regard.
 
 ## Ce qui reste à faire
 

@@ -526,6 +526,38 @@ if (MODE === 'monde') {
   }
 }
 
+// ─── LES PINCEAUX DES CHAPITRES : ILS DORMENT, ET ON LES VOIT DORMIR ────────
+//
+// Signalé en jouant : « je vois pas où est le pinceau bleu dans la descente ».
+// Il n'y était pas — pas pour l'œil. Le veilleur existait (la simulation
+// l'écoutait, « E — Saisir le pinceau » s'affichait à portée), mais seuls les
+// deux pinceaux du monde central avaient un corps : on cherchait au fond de la
+// vasque une chose que rien ne dessinait, et l'or de la vallée de même.
+//
+// Chaque veilleur `pinceau-<pigment>` d'un chapitre est donc planté là où il
+// dort, à la taille de qui viendra le chercher (0,55 à ×1, comme le vert), et
+// s'éveille en compagnon. Il n'a pas de socle : sa couleur se pose au balcon,
+// sous les yeux (voir `peintureAuBut`) ; lui nous suit jusque-là.
+const compagnons = new Map<string, PinceauPeintre>();
+for (const v of LEVEL.veilleurs ?? []) {
+  if (MODE === 'monde' && PINCEAU_DE_VEILLEUR.has(v.id)) continue;
+  const teinte = v.id.startsWith('pinceau-') ? TEINTE_DU_PIGMENT[v.id.slice('pinceau-'.length)] : undefined;
+  if (!teinte) continue;
+  const p = new PinceauPeintre(v.position, teinte, 1);
+  // La touffe à fleur du sol, pas dessous : c'est elle qui porte la couleur,
+  // et le bleu planté au fond de sa vasque ne montrait qu'un manche beige
+  // sortant de l'eau.
+  const taille = 0.55 * scaleOfLevel(v.echelle);
+  p.planter([v.position[0], v.position[1] + 0.6 * taille, v.position[2]], taille);
+  compagnons.set(v.id, p);
+  scene.add(p.group);
+}
+/** Le corps d'un veilleur qui s'éveille, qu'il rentre au village ou nous suive. */
+const corpsDuVeilleur = (id: string): PinceauPeintre | undefined => {
+  const socle = PINCEAU_DE_VEILLEUR.get(id);
+  return (socle ? peintres.get(socle) : undefined) ?? compagnons.get(id);
+};
+
 // Les cadres accrochés aux murs des ateliers. Leur image est prise une seule
 // fois, juste après la construction du monde : c'est un vrai rendu de la scène
 // avec les familles déjà peintes, donc le tableau ne peut pas mentir sur ce
@@ -1350,9 +1382,8 @@ const REPERES: Repere[] =
     // franchissant, au lieu de refaire le monde entier à chaque essai.
     if (r.eveille && !sim.eveilles.has(r.eveille)) {
       sim.eveilles.add(r.eveille);
-      const socle = PINCEAU_DE_VEILLEUR.get(r.eveille);
       const e = sim.eyePosition();
-      if (socle) peintres.get(socle)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
+      corpsDuVeilleur(r.eveille)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
     }
     flash(r.verifier, 9);
     for (const b of panneau.querySelectorAll('button')) b.classList.remove('ici');
@@ -1920,7 +1951,7 @@ function frame(now: number): void {
     if (events.eveil) {
       const socle = PINCEAU_DE_VEILLEUR.get(events.eveil.id);
       const e = sim.eyePosition();
-      if (socle) peintres.get(socle)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
+      corpsDuVeilleur(events.eveil.id)?.reveiller(new THREE.Vector3(e.x, e.y, e.z));
       ambiance.pinceau();
 
       // ─── LA LUCARNE : LA COULEUR SE POSE ICI, ET PAS DANS TROIS HEURES ───
@@ -2416,6 +2447,7 @@ function frame(now: number): void {
     }
     p.update(dt, scale, tmpOeil);
   }
+  for (const p of compagnons.values()) if (p.enCours) p.update(dt, scale, tmpOeil);
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
   for (const g of averses) g.syncInk();
@@ -2595,6 +2627,7 @@ function frame(now: number): void {
   remotePlayers,
   pigments,
   peintres,
+  compagnons,
   worldView,
   bornesDeRegion,
   pigmentDe,
