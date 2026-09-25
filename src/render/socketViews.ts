@@ -63,6 +63,12 @@ type Blocs = { min: [number, number, number]; max: [number, number, number] }[];
  * Dos de la main vers le haut, doigts vers +z : la droite a le pouce à gauche
  * de qui regarde — c'est-à-dire vers +x, la droite du joueur tourné vers +z
  * étant −x dans ce jeu.
+ *
+ * PUIS : « j'ai ça dans la boîte à formes, c'est pas normal ». Dans un jouet à
+ * formes, chaque trou a une forme — les deux creux qui n'exigeaient que la
+ * main (la boîte à formes, le banc) dessinent désormais la vis de la main
+ * droite. Aucun creux du jeu n'emploie plus ce dessin ; il reste la réponse
+ * juste pour un creux qui n'exigerait que la main.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 const DOIGTS_A_PLAT: [number, number][] = [

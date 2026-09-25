@@ -480,10 +480,11 @@ taille que le parcours ne permet pas.
 
 - **La boîte à formes se joue de bout en bout au harnais** (cinq pièces,
   cinq creux, les deux portes). Signalé : « il me reste une pièce chirale et
-  pas de gros cube ». Le creux qui n'exige QUE la main (1,92, n'importe quelle
-  forme) était dessiné en cube, montants compris : il porte maintenant une
-  main d'encre à plat, pouce du côté qui fait la main, et respire quand la
-  pièce tenue lui convient ; son refus dit « c'est l'autre main ». Le pilote a
+  pas de gros cube ». Le creux qui n'exigeait QUE la main (1,92, n'importe
+  quelle forme) était dessiné en cube, montants compris ; une main d'encre à
+  plat n'a pas mieux tenu (« dans la boîte à formes, c'est pas normal ») : il
+  exige et dessine maintenant la VIS de la main droite, comme au banc
+  (`banc-main`). Son refus dit « c'est l'autre main ». Le pilote a
   aussi trouvé qu'un bloc visé sur la planche ne trouvait « pas de place » :
   une pièce qui mord dans une surface par-dessus y est reposée.
 

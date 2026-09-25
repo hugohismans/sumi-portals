@@ -277,7 +277,10 @@ const SOCKETS: SocketDef[] = [
   creux('banc-taille', 0, 0.18, {}),
   creux('banc-forme', 1, 0.52, { forme: 'vrille' }),
   creux('banc-teinte', 2, 0.3, { teinte: 3 }),
-  creux('banc-main', 3, 0.8, { main: 'D' }),
+  // Le creux de la main a la forme de la vis : un creux sans forme se dessinait
+  // en cube et égarait (voir `formes.ts`). La vrille gauche y est toujours
+  // refusée pour la MAIN — la forme est juste, c'est tout l'intérêt.
+  creux('banc-main', 3, 0.8, { forme: 'vrille', main: 'D' }),
   creux('banc-tout', 4, 2.4, { forme: 'vrille', main: 'D', teinte: 3, portee: 2.4 }),
   /**
    * STATION 2 — le seul creux du banc qui dise oui, et seulement à la vrille

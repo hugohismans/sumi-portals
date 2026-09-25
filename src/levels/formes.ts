@@ -15,7 +15,9 @@ import type { PortalPairDef, RegionDef, SocketDef } from '../core/types.js';
  * corrigent l'une sans toucher l'autre.
  *
  * Cinq pièces, cinq creux. Un creux ne demande que la forme, un que la taille,
- * un que la main, un que la couleur — et le cinquième demande les quatre.
+ * un que la couleur, un la vis de la main droite — et le cinquième demande
+ * tout à la fois. (Le quatrième ne demandait que la main, sans forme : il se
+ * dessinait en cube et égarait le joueur. Voir `SOCKETS`.)
  * Quatre inconnues simultanées font seize combinaisons : ou bien le joueur a
  * compris les quatre leçons séparément et il pose la pièce du premier coup, ou
  * bien il tire au sort. La salle ne fait que trancher entre ces deux joueurs.
@@ -68,10 +70,10 @@ import type { PortalPairDef, RegionDef, SocketDef } from '../core/types.js';
  *
  * ┌──────────────────────────┬──────┬──────┬──────┬──────┬──────┐
  * │  pièce  \  creux         │ 0,30 │ 0,48 │ 0,75 │ 1,20 │ 1,92 │
- * │                          │teinte│ forme│ rien │ TOUT │ main │
+ * │                          │teinte│ forme│ rien │ TOUT │vis D │
  * ├──────────────────────────┼──────┼──────┼──────┼──────┼──────┤
  * │ la perle   0,30 · encre 3│  ✔   │  ·   │  ·   │  f   │  ·   │
- * │ le té      0,48 · encre 2│  ·   │  ✔   │  ·   │  ·   │  m   │
+ * │ le té      0,48 · encre 2│  ·   │  ✔   │  ·   │  ·   │  f   │
  * │ le bloc    3,00 · encre 1│  ·   │  ·   │  ✔   │  ·   │  ·   │
  * │ la vis-c   0,30 · encre 1│  t   │  ·   │  ·   │  ✔   │  ·   │
  * │ la vis-m   0,48 · encre 2│  ·   │  f   │  ·   │  ·   │  ✔   │
@@ -239,7 +241,15 @@ const SOCKETS: SocketDef[] = [
   creux('creux-forme', -7, 0.48, 3, { forme: 'te' }),
   creux('creux-taille', 0, 0.75, 4, {}),
   creux('creux-tout', 7, 1.2, 7, { forme: 'vrille', main: 'D', teinte: 1 }),
-  creux('creux-main', 14, 1.92, 9, { main: 'D' }),
+  // LE CREUX DE LA MAIN A LA FORME DE LA VIS. Il n'exigeait que la main, donc
+  // n'avait pas de dessin : on lui donnait le cadre cubique, puis une main
+  // d'encre à plat. Signalé en jouant, deux fois : « il me reste une pièce
+  // chirale et pas de gros cube », puis, devant la main, « dans la boîte à
+  // formes, c'est pas normal ». Dans un jouet à formes, chaque trou a une
+  // forme. Celui-ci dessine donc la vis de la main droite, comme le creux qui
+  // exige tout ; la table d'unicité n'y perd rien (le té y est refusé pour sa
+  // forme au lieu de sa main).
+  creux('creux-main', 14, 1.92, 9, { forme: 'vrille', main: 'D' }),
 ];
 
 /**
