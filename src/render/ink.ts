@@ -63,10 +63,13 @@ export const createCelMaterial = (
    * Une définition plutôt qu'un attribut toujours présent : un attribut absent
    * vaut (0, 0, 0, 1) en WebGL, et tout objet sans lui serait peint en noir.
    */
-  options: { peinture?: boolean } = {},
+  options: { peinture?: boolean; priorite?: boolean } = {},
 ): THREE.ShaderMaterial =>
   new THREE.ShaderMaterial({
-    defines: options.peinture ? { PEINTURE: '' } : {},
+    defines: {
+      ...(options.peinture ? { PEINTURE: '' } : {}),
+      ...(options.priorite ? { PRIORITE: '' } : {}),
+    },
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
       {
@@ -134,6 +137,10 @@ export const createCelMaterial = (
       attribute vec4 aPeint;
       varying vec4 vPeint;
       #endif
+      #ifdef PRIORITE
+      /** Le rang de la face quand elle se dispute la profondeur : voir rangsDesFaces. */
+      attribute float aPriorite;
+      #endif
 
       void main() {
         vInk = aInk;
@@ -145,6 +152,15 @@ export const createCelMaterial = (
         vMonde = worldPosition.xyz;
         vec4 mvPosition = viewMatrix * worldPosition;
         gl_Position = projectionMatrix * mvPosition;
+        #ifdef PRIORITE
+        // DEUX FACES DANS LE MÊME PLAN : la gagnante avance d'un pas CONSTANT
+        // dans l'espace de la profondeur — huit crans d'un tampon sur 24 bits
+        // par rang, quand deux faces confondues ne diffèrent que d'un ou deux.
+        // Un écart en mètres ne tiendrait que jusqu'à une distance ; celui-ci
+        // tient à toutes. Plafonné à douze rangs : quelques centimètres à
+        // trente mètres, un pixel ou deux à cent.
+        gl_Position.z -= min(aPriorite, 12.0) * 1.0e-6 * gl_Position.w;
+        #endif
         #include <clipping_planes_vertex>
         #include <fog_vertex>
       }

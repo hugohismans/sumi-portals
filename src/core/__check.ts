@@ -16,7 +16,7 @@ import { buildFaces, canPass, estScelle, transformPoint, transformVector, transp
 import { appliquerMat, eulerVersMat } from './math.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
-import { facesConfondues } from './coplanaires.js';
+import { facesConfondues, rangsDesFaces } from './coplanaires.js';
 import { verifierParcelleSalle, verifierTaillesDistinctes, type SalleModule } from '../levels/salles/contrat.js';
 import { PLUIE, PLUIE_AVERSE } from '../levels/salles/pluie.js';
 import { PLUIE_SEULE } from '../levels/pluie.js';
@@ -1374,6 +1374,56 @@ console.log('\n— Aucune face confondue et exposée —');
   ] as const) {
     const fautes = facesConfondues(niveau.boxes, 0.25);
     check(`${nom} n'a aucune face confondue`, fautes.length === 0, fautes[0] ?? '');
+  }
+
+  // ─── ET QUAND ELLES LE SONT QUAND MÊME, L'UNE GAGNE TOUJOURS ─────────────
+  //
+  // Signalé en jouant : la bordure de la place « clignote quand on bouge ».
+  // Le dallage et sa bordure avaient leur face au même plan x = 19 — la
+  // vérification ci-dessus ne le voyait pas, le milieu du recouvrement étant
+  // enterré — et des centaines de paires, dans tous les niveaux, sont à
+  // quelques millimètres, ce qui ne tient plus au-delà de cent mètres. Le
+  // rendu départage chaque paire (`rangsDesFaces`) : on vérifie qu'aucune
+  // paire de faces presque confondues qui se recouvrent n'est à égalité, et
+  // que la gagnante est bien celle qui avance, ou le détail posé sur la masse.
+  for (const [nom, niveau] of [
+    ['le monde', MONDE], ['la descente', DESCENTE], ['la montée', MONTEE], ['la mesure', MESURE],
+    ['le hall', LOBBY], ['le banc', BANC], ['la boîte à formes', FORMES], ['la cour de pluie', PLUIE_SEULE],
+  ] as const) {
+    const boxes = niveau.boxes;
+    const rangs = rangsDesFaces(boxes);
+    let paires = 0;
+    const fautes: string[] = [];
+    const vol = (b: BoxDef) => (b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]);
+    for (let axe = 0; axe < 3; axe++) {
+      const u = (axe + 1) % 3;
+      const v = (axe + 2) % 3;
+      for (const cote of ['max', 'min'] as const) {
+        const f = axe * 2 + (cote === 'max' ? 0 : 1);
+        const idx = boxes.map((_, i) => i).filter((i) => !boxes[i].invisible).sort((a, c) => boxes[a][cote][axe] - boxes[c][cote][axe]);
+        for (let i = 0; i < idx.length; i++) {
+          for (let j = i + 1; j < idx.length && boxes[idx[j]][cote][axe] - boxes[idx[i]][cote][axe] <= 0.012; j++) {
+            const a = boxes[idx[i]];
+            const c = boxes[idx[j]];
+            const du = Math.min(a.max[u], c.max[u]) - Math.max(a.min[u], c.min[u]);
+            const dv = Math.min(a.max[v], c.max[v]) - Math.max(a.min[v], c.min[v]);
+            if (du <= 1e-4 || dv <= 1e-4) continue;
+            paires++;
+            const ra = rangs[idx[i] * 6 + f];
+            const rc = rangs[idx[j] * 6 + f];
+            const ecart = (c[cote][axe] - a[cote][axe]) * (cote === 'max' ? 1 : -1);
+            const attendue = Math.abs(ecart) > 1e-6 ? (ecart > 0 ? 'c' : 'a') : vol(a) !== vol(c) ? (vol(a) < vol(c) ? 'a' : 'c') : idx[i] > idx[j] ? 'a' : 'c';
+            const ok = attendue === 'a' ? ra > rc : rc > ra;
+            if (!ok && fautes.length < 3) fautes.push(`#${idx[i]}/#${idx[j]} ${'xyz'[axe]}${cote}`);
+          }
+        }
+      }
+    }
+    check(`${nom} : chaque paire de faces presque confondues a une gagnante (${paires} paires)`, fautes.length === 0, fautes.join(' · '));
+  }
+  {
+    const r = rangsDesFaces(MONDE.boxes);
+    check('le monde : la bordure est de la place gagne sur le dallage (x = 19)', r[6 * 6 + 0] > r[4 * 6 + 0], `bordure ${r[6 * 6]}, dallage ${r[4 * 6]}`);
   }
 }
 

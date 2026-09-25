@@ -91,3 +91,96 @@ export const facesConfondues = (boxes: BoxDef[], seuil = 4): string[] => {
   trouvailles.sort((x, y) => y[0] - x[0]);
   return trouvailles.map(([, texte]) => texte);
 };
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * QUI GAGNE, QUAND DEUX FACES SE DISPUTENT LA PROFONDEUR.
+ *
+ * Signalé en jouant : « la bordure devrait être toute gris foncé, mais elle
+ * clignote quand on bouge ». Le dallage de la place et sa bordure avaient leur
+ * face extérieure au même plan, et la bande entre le sol et le dessus du
+ * dallage grésillait. La vérification plus haut ne l'attrapait pas : elle ne
+ * regardait que le MILIEU du recouvrement, qui était enterré. Et elle ne voit
+ * pas les faces PRESQUE confondues — deux, cinq, neuf millimètres, les écarts
+ * qu'on met exprès — qui clignotent pourtant dès qu'on s'éloigne : avec un
+ * plan proche à six centimètres et une profondeur sur vingt-quatre bits, deux
+ * surfaces à moins d'un centimètre l'une de l'autre se confondent à cent
+ * mètres. Un balayage en trouve des centaines, dans tous les niveaux.
+ *
+ * Plutôt que de retoucher des centaines de boîtes, on décide une fois pour
+ * toutes, au rendu, laquelle des deux se voit : pour toute paire de faces de
+ * même orientation, à moins de `tolerance` l'une de l'autre et qui se
+ * recouvrent, la GAGNANTE est celle qui avance le plus ; à égalité exacte,
+ * celle de la plus petite boîte — c'est le détail qu'on a posé sur la masse
+ * (une bordure sur un dallage, un cadre sur un mur), donc c'est lui qu'on
+ * veut voir. Le shader du décor avance ensuite chaque face de son rang, d'un
+ * pas constant dans l'espace de la profondeur : la décision tient à toute
+ * distance, là où un écart en mètres ne tient que jusqu'à une distance.
+ *
+ * LA TOLÉRANCE EST D'UN CENTIMÈTRE ET DEMI À PEINE, et c'est mesuré : à cinq,
+ * les marches d'une cour faites de dalles à deux centimètres l'une de l'autre
+ * formaient des chaînes de trente rangs, donc un décalage de plusieurs mètres
+ * à cent mètres. Au-delà d'un centimètre, l'écart suffit seul jusqu'à cent
+ * mètres à taille d'homme.
+ *
+ * Rend un rang par face, six par boîte, dans l'ordre de `buildWorldGeometry`
+ * (+x, −x, +y, −y, +z, −z) : 0 pour une face qui ne gagne rien, et toujours
+ * strictement plus que chaque face qu'elle bat — même en chaîne.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const rangsDesFaces = (boxes: readonly BoxDef[], tolerance = 0.012): Uint8Array => {
+  const rangs = new Uint8Array(boxes.length * 6);
+  const volume = (b: BoxDef): number =>
+    (b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]);
+  // Chaque arête : [face gagnante, face battue].
+  const aretes: [number, number][] = [];
+  const visibles: number[] = [];
+  boxes.forEach((b, i) => {
+    if (!b.invisible) visibles.push(i);
+  });
+
+  for (let axe = 0; axe < 3; axe++) {
+    const u = (axe + 1) % 3;
+    const v = (axe + 2) % 3;
+    for (const cote of ['max', 'min'] as const) {
+      // Index de la face dans l'ordre de `buildWorldGeometry`.
+      const f = axe * 2 + (cote === 'max' ? 0 : 1);
+      const avance = cote === 'max' ? 1 : -1;
+      const tri = [...visibles].sort((a, c) => boxes[a][cote][axe] - boxes[c][cote][axe]);
+      for (let i = 0; i < tri.length; i++) {
+        const a = boxes[tri[i]];
+        for (let j = i + 1; j < tri.length; j++) {
+          const c = boxes[tri[j]];
+          if (c[cote][axe] - a[cote][axe] > tolerance) break;
+          const du = Math.min(a.max[u], c.max[u]) - Math.max(a.min[u], c.min[u]);
+          const dv = Math.min(a.max[v], c.max[v]) - Math.max(a.min[v], c.min[v]);
+          if (du <= 1e-4 || dv <= 1e-4) continue;
+          const ecart = (c[cote][axe] - a[cote][axe]) * avance;
+          let gagne: number;
+          if (Math.abs(ecart) > 1e-6) gagne = ecart > 0 ? tri[j] : tri[i];
+          else {
+            const va = volume(a);
+            const vc = volume(c);
+            gagne = va !== vc ? (va < vc ? tri[i] : tri[j]) : Math.max(tri[i], tri[j]);
+          }
+          const perd = gagne === tri[i] ? tri[j] : tri[i];
+          aretes.push([gagne * 6 + f, perd * 6 + f]);
+        }
+      }
+    }
+  }
+
+  // Le plus long chemin dans un graphe sans cycle (l'ordre « avance, puis
+  // volume, puis rang » est total) : quelques passes suffisent.
+  for (let passe = 0; passe < 32; passe++) {
+    let bouge = false;
+    for (const [g, p] of aretes) {
+      if (rangs[g] <= rangs[p]) {
+        rangs[g] = Math.min(255, rangs[p] + 1);
+        bouge = true;
+      }
+    }
+    if (!bouge) break;
+  }
+  return rangs;
+};
