@@ -69,6 +69,7 @@ import { isClear } from './physics.js';
 import { REACH } from './carryables.js';
 import { conditionsDe } from './portals.js';
 import { FORMES } from '../levels/formes.js';
+import { mainDEncre } from '../levels/mains.js';
 import {
   POURQUOI_MONTEE_ORPHELINS,
   REPERES_DESCENTE,
@@ -4574,6 +4575,84 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
 }
 
 // =============================================================================
+console.log('\n— Ce que la chasse du 26 a trouvé : sortir du décor sans passer par une porte —');
+{
+  // Deux cent trente mille parcours, quarante millions d'images : aucun ne
+  // traversait un sol ni un mur. Deux trous, pourtant, et une décoration qui
+  // servait d'échelle. Chacun a sa ligne, qui échoue sans son correctif.
+  /** De combien le corps est-il dans la pierre, au pire ? */
+  const enfoncement = (sim: Simulation): number => {
+    const p = sim.player.position;
+    const sc = scaleOfLevel(sim.player.scaleLevel);
+    const r = PLAYER_RADIUS * sc;
+    let pire = 0;
+    for (const b of sim.world.solids) {
+      const px = Math.min(p.x + r - b.minX, b.maxX - (p.x - r));
+      const py = Math.min(p.y + PLAYER_HEIGHT * sc - b.minY, b.maxY - p.y);
+      const pz = Math.min(p.z + r - b.minZ, b.maxZ - (p.z - r));
+      if (px > 0 && py > 0 && pz > 0) pire = Math.max(pire, Math.min(px, py, pz));
+    }
+    return pire;
+  };
+
+  // LE DOS D'UNE PORTE POUSSAIT DANS LA PIERRE. Dans la vallée, à ×16, en
+  // longeant le dos de la grande face vers la lucarne dorée : le rappel
+  // d'après le pas remettait le corps dans un gradin de la pyramide, et l'on
+  // marchait au travers de deux gradins.
+  {
+    const sim = new Simulation(MONTEE);
+    poserA(sim, -53.313, 8.44, 2797.4, 2);
+    let pire = 0;
+    for (let t = 0; t < 16; t++) {
+      sim.step(ordre(sim, { forward: 1, sprint: true, yaw: 2.3245 }), TICK_DT);
+      pire = Math.max(pire, enfoncement(sim) / scaleOfLevel(sim.player.scaleLevel));
+    }
+    check(
+      'longer le dos d’une porte ne fait jamais entrer dans la pierre (vallée, ×16)',
+      pire < 0.005,
+      `enfoncé de ${(pire * 100).toFixed(2)} % de la taille`,
+    );
+  }
+
+  // UN PAS « RÉUSSI » AU-DESSUS DU VIDE. Avec des mains d'encre solides, la
+  // sonde du pas passait l'angle d'un doigt, redescendait dans le vide, et
+  // l'on se déclarait posé à 75 cm du sol. On rend les mains solides pour
+  // l'épreuve : c'est le moteur qu'on juge, pas la décoration.
+  {
+    const mainsSolides: LevelDef = {
+      ...MONTEE,
+      boxes: MONTEE.boxes.map((b) =>
+        b.ghost && b.region === 'blanchiment' && b.max[0] - b.min[0] <= 0.06 ? { ...b, ghost: false } : b,
+      ),
+    };
+    const sim = new Simulation(mainsSolides);
+    poserA(sim, 170.4675, 0, 1721.6287, 0);
+    sim.player.velocity = { x: -4.408, y: 0, z: -6.278 };
+    // L'image où l'on quitte une arête compte encore comme posée : c'est le
+    // pas qui s'achève, pas un appui. Deux d'affilée, c'est le défaut.
+    const surRien: string[] = [];
+    for (let t = 0; t < 5; t++) {
+      sim.step(ordre(sim, { forward: 1, sprint: true, yaw: -2.529407608305635 }), TICK_DT);
+      if (!sim.player.grounded) continue;
+      const p = sim.player.position;
+      const r = PLAYER_RADIUS;
+      const sous = sim.world.queryStatic(
+        { minX: p.x - r, maxX: p.x + r, minY: p.y - 0.02, maxY: p.y + 0.001, minZ: p.z - r, maxZ: p.z + r },
+        [],
+      );
+      if (!sous.some((b) => b.maxY >= p.y - 0.02)) surRien.push(`t${t} y = ${p.y.toFixed(3)}`);
+    }
+    check('un pas ne se déclare jamais posé au-dessus du vide', surRien.length <= 1, surRien.join(', '));
+  }
+
+  // Et la main d'encre est de l'encre : ni corniche, ni marche.
+  check(
+    'les mains d’encre ne portent personne',
+    mainDEncre('essai', 0, 0, 0, true).every((b) => b.ghost === true),
+    '',
+  );
+}
+
 console.log('\n— La mesure : le voyage entier, dans l’ordre, en une seule partie —');
 {
   // Deux salles écrites au mètre près par deux mains, mesurées chacune à son

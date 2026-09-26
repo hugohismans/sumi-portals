@@ -538,6 +538,22 @@ taille que le parcours ne permet pas.
   deux rattrapages sans appui sûr entre eux, ou trois retours au même endroit
   en une demi-minute, font oublier l'endroit et remonter d'un cran, jusqu'au
   départ du niveau. Cinq vérifications, qui échouent sur l'ancien code.
+- **La chasse du 26 : sortir du décor sans porte.** 230 000 parcours, 40
+  millions d'images, tous les niveaux et toutes les tailles : rien ne traverse
+  un sol ni un mur. Deux trous et une échelle, corrigés et tenus par trois
+  vérifications : le DOS D'UNE PORTE ramenait le joueur sans collision, dans
+  la pierre (vallée ×16, on traversait deux gradins) — la vitesse est
+  maintenant freinée AVANT le pas (`freinerDevantLeDos`) ; un PAS « réussi »
+  au-dessus du vide se déclarait posé (`physics.ts`, on n'est posé que si la
+  descente touche) ; les MAINS D'ENCRE étaient des corniches solides — elles
+  sont fantômes. Et `reposerSurLeSol` ne prend plus un flanc pour un sol en
+  ressortant d'une porte.
+- **Question ouverte, de conception** : beaucoup de dalles n'ont pas de bord
+  (le hall à ±70, la boîte à formes, le lavoir, le conduit, les toits, le
+  plateau de l'escalier, la rive, le seuil). La règle 6 du contrat demande des
+  balustrades plus hautes que le saut ; aucune vérification ne la tient. Le
+  rattrapage rend la chute sans conséquence, mais c'est la façon la plus
+  probable de « sortir du sol ».
 
 ## Ce qui reste à faire
 

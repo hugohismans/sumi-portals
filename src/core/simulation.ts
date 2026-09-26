@@ -8,6 +8,7 @@ import {
   PLAYER_HEIGHT,
   PLAYER_RADIUS,
   SCALE_MAX_LEVEL,
+  STEP_FRACTION,
   SCALE_MIN_LEVEL,
   SPRINT_EN_L_AIR,
   SPRINT_MULTIPLIER,
@@ -479,6 +480,7 @@ export class Simulation {
     const prevEye = this.eyePosition();
     const prevPos = vec3(pl.position.x, pl.position.y, pl.position.z);
 
+    this.freinerDevantLeDos(scale, dt);
     const move = moveAndCollide(
       this.world,
       pl.position,
@@ -1325,6 +1327,48 @@ export class Simulation {
    * d'une porte n'est donc jamais franchi par personne, dans aucun sens.
    * ═══════════════════════════════════════════════════════════════════════
    */
+  /**
+   * LE DOS D'UNE PORTE FREINE AVANT LE PAS, ET PAS SEULEMENT APRÈS.
+   *
+   * `dosDesPortes` ramenait le joueur en arrière APRÈS le déplacement, sans
+   * collision : l'ancienne coordonnée le long de la normale, la nouvelle en
+   * travers, la nouvelle hauteur — un point qui pouvait être dans la pierre.
+   * Une fois dedans, la résolution tient la boîte pour déjà pénétrée et la
+   * laisse traverser : dans la vallée, à ×16, en longeant le dos de la grande
+   * face, on marchait au travers de deux gradins de la pyramide. Trouvé par la
+   * chasse du 26, qui a balayé le dos de chaque porte.
+   *
+   * On retire donc d'abord à la vitesse ce qui porterait le corps au-delà du
+   * plan, par la même règle ; le pas passe ensuite par la collision, et le
+   * rappel d'après ne sert plus que de garde-fou.
+   */
+  private freinerDevantLeDos(scale: number, dt: number): void {
+    const pl = this.player;
+    const r = PLAYER_RADIUS * scale;
+    const h = PLAYER_HEIGHT * scale;
+    const marge = Math.hypot(pl.velocity.x, pl.velocity.z) * dt;
+    const margeY = Math.abs(pl.velocity.y) * dt + PLAYER_HEIGHT * STEP_FRACTION * scale;
+    for (const face of this.faces) {
+      const d0 = signedDistance(face, pl.position);
+      if (d0 >= 0) continue;
+      const local = rotateY(
+        vec3(pl.position.x - face.position.x, pl.position.y - face.position.y, pl.position.z - face.position.z),
+        -face.yaw,
+      );
+      if (Math.abs(local.x) > face.width * 0.5 + r + marge) continue;
+      if (local.y + h < -margeY || local.y > face.height + margeY) continue;
+      const n = face.normal;
+      const along = pl.velocity.x * n.x + pl.velocity.z * n.z;
+      if (along <= 0) continue;
+      const permis = Math.max(0, -r - d0) / dt;
+      if (along > permis) {
+        const coupe = along - permis;
+        pl.velocity.x -= n.x * coupe;
+        pl.velocity.z -= n.z * coupe;
+      }
+    }
+  }
+
   private dosDesPortes(prev: Vec3, scale: number): PortalFace | null {
     const pl = this.player;
     const r = PLAYER_RADIUS * scale;

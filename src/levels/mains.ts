@@ -50,11 +50,15 @@ export const mainDEncre = (
   /** Vers où l'encre regarde : +1 pour l'est, −1 pour l'ouest. */
   vers = 1,
 ): BoxDef[] => {
+  // DE L'ENCRE, PAS DE LA PIERRE. Solides, les doigts faisaient des corniches
+  // de un à cinq centimètres : un saut s'y posait à 1,85 contre le mur, et le
+  // pas y trouvait des marches au-dessus du vide. Une main se regarde.
   const b = (min: [number, number, number], max: [number, number, number], ink: number): BoxDef => ({
     min,
     max,
     ink,
     region,
+    ghost: true,
   });
   const m = (gauche ? 1 : -1) * vers;
   const e = (v: number) => v * ech;

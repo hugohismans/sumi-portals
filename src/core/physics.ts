@@ -259,8 +259,19 @@ export const reposerSurLeSol = (world: World, p: Vec3, scale: number, portee: nu
       p.y = dessus;
       return true;
     }
+    // Ce qui gêne le corps relevé ne devient un sol que s'il est sous les
+    // pieds, pas contre le flanc — la même règle qu'au premier passage : sans
+    // elle, un jambage ou un mur à portée de marche, rencontré en ressortant
+    // d'une porte, devenait un endroit où se tenir PAR-DESSUS.
     let suivant = dessus;
-    for (const h of gene) if (h.maxY > suivant && h.maxY - p.y <= portee) suivant = h.maxY;
+    for (const h of gene) {
+      const pied = h.maxY - p.y;
+      const flanc = Math.min(
+        scratchAvant.maxX - h.minX, h.maxX - scratchAvant.minX,
+        scratchAvant.maxZ - h.minZ, h.maxZ - scratchAvant.minZ,
+      );
+      if (h.maxY > suivant && pied <= portee && pied <= flanc) suivant = h.maxY;
+    }
     if (suivant === dessus) return false;
     dessus = suivant;
   }
@@ -422,12 +433,18 @@ export const moveAndCollide = (
       // le linteau et par-dessus le mur, là où aucune salle n'est dessinée.
       //
       // Si ce repli remonte, ce n'était pas une marche : on essaie la suivante.
-      moveAxis(world, probe, scale, 'y', -levee);
+      //
+      // ET L'ON N'EST POSÉ QUE SI LA DESCENTE A TOUCHÉ QUELQUE CHOSE. La sonde
+      // levée passait par-dessus l'angle d'un doigt de main d'encre puis
+      // sortait de son emprise : elle redescendait dans le vide, et l'on se
+      // déclarait posé à 75 cm du sol — de quoi sauter depuis les airs, et
+      // recommencer le long du moindre relief. Trouvé par la chasse du 26.
+      const pose = moveAxis(world, probe, scale, 'y', -levee);
       if (probe.y > beforeY + levee + 1e-6) continue;
       p.x = probe.x;
       p.y = probe.y;
       p.z = probe.z;
-      result.grounded = true;
+      result.grounded = pose;
       result.hitWall = false;
       return result;
     }
