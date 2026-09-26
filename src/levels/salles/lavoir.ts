@@ -160,6 +160,41 @@ const dallage = (): BoxDef[] => {
 };
 
 /**
+ * LES REBORDS, ET ILS NE SE VOIENT PAS.
+ *
+ * La cour est une dalle posée sur le vide. On marchait au bout du socle, au
+ * sud, à l'est ou à l'ouest, et l'on tombait hors du monde : plus d'un
+ * parcours sur deux à taille d'homme, presque tous à ×4 — et c'est la toute
+ * première salle du voyage. Règle 6 du contrat : le vide se protège par des
+ * balustrades plus hautes que son saut. Ici, où rien ne doit se lire comme une
+ * clôture, ce sont quatre murs INVISIBLES, juste au-dehors du socle : ils
+ * arrêtent le corps, la main et les pièces lancées, et ne se dessinent pas.
+ *
+ * Ils montent à 10,50. Le géant de 7,20 qui a grandi avant l'heure grimpe sur
+ * le mur du fond (4,20, sous son saut de 5,18) et en saute encore à 9,37 ; son
+ * nord n'a rien derrière lui. Ils descendent jusqu'au dessous du socle, parce
+ * que la fente débouche aux deux bouts à −1,21 et qu'on y marche jusqu'à
+ * ×1/1024. Et ils TOUCHENT le socle sans le mordre : pas une fente où glisser,
+ * si petit qu'on soit, et rien de ce qu'on foule n'est rogné.
+ */
+const rebords = (): BoxDef[] => {
+  const mur = (min: [number, number, number], max: [number, number, number]): BoxDef =>
+    ({ min, max, region: 'lavoir', invisible: true });
+  const x0 = X0 - 14;
+  const x1 = X0 + 14;
+  const z0 = Z0 - 10;
+  const z1 = Z0 + 12;
+  const bas = -FENTE_FOND - 0.6;
+  const haut = 10.5;
+  return [
+    mur([x0 - 1, bas, z0 - 1], [x1 + 1, haut, z0]),
+    mur([x0 - 1, bas, z1], [x1 + 1, haut, z1 + 1]),
+    mur([x0 - 1, bas, z0], [x0, haut, z1]),
+    mur([x1, bas, z0], [x1 + 1, haut, z1]),
+  ];
+};
+
+/**
  * LA FENTE ELLE-MÊME, et la rampe par laquelle on en sort.
  *
  * On ne piège personne : une dalle descellée plonge dans la fente en pente
@@ -273,7 +308,7 @@ export const LAVOIR: SalleModule = {
   region: REGION,
   bounds: { min: [-300, -40, 600], max: [-100, 40, 800] },
 
-  boxes: [...dallage(), ...fente(), ...lavoir(), ...chevalet()],
+  boxes: [...dallage(), ...fente(), ...lavoir(), ...chevalet(), ...rebords()],
 
   carryables: [
     // LA PERLE, au fond de la fente. Inatteignable à 1,80 : la fente ne fait

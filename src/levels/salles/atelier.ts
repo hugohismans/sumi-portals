@@ -691,6 +691,24 @@ const decor = (): BoxDef[] => {
   // laquelle vous êtes entré, à six mètres au nord, en fait six. Le tas de
   // tessons au milieu de la cour est un éboulis. On n'a rien expliqué.
   out.push(box([2.4, SOL - 1.14, 1297.2], [9.6, SOL - 0.06, 1306.4], 1, { outline: false }));
+  // ON N'ENTRE ICI QUE PETIT, ET IL FAUT QUE CE SOIT VRAI. Le jour de l'est
+  // fait 3,00 de haut (le dessous du linteau est à 3,02) et la grande face
+  // 2,80 : vingt centimètres au-dessus d'elle. En sautant, un joueur de 1,80
+  // y passait l'œil au-dessus de la face, donc SANS la franchir, la tête sous
+  // le linteau — mesuré : les pieds à 1,16, l'œil à 2,82. Il retombait ici à
+  // sa taille, enjambait le muret (0,76, sous son enjambée de 0,90) et tombait
+  // hors du monde ; et le dos de la porte lui interdisait de repasser.
+  // Une plaque INVISIBLE ferme ces vingt centimètres, du ras de la tête d'un
+  // homme dont l'œil est encore dans la face (2,86 : l'œil à 2,72) jusque dans
+  // le linteau. Elle ne touche pas la face, qui s'arrête à 2,80, et ne se voit
+  // pas. Règle 6 du contrat, par l'autre bout : le vide qu'on ne peut pas
+  // atteindre n'a pas besoin de balustrade.
+  out.push({
+    min: [2.1, SOL + 2.86, JOUR_EST[0] - 0.03],
+    max: [2.48, SOL + 3.05, JOUR_EST[1] + 0.03],
+    region: NOM,
+    invisible: true,
+  });
   out.push(box([9.2, SOL - 0.8, 1297.16], [9.62, SOL + 0.79, 1306.44], 2));
   out.push(box([2.44, SOL - 0.8, 1306.02], [9.24, SOL + 0.76, 1306.42], 2));
   out.push(box([2.44, SOL - 0.8, 1297.22], [9.24, SOL + 0.73, 1297.62], 2));

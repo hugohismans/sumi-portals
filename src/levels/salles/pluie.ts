@@ -901,6 +901,27 @@ const murs = (): BoxDef[] => {
   out.push(box([-213.46, -1.15, AXE_Z - 1.42], [-211.54, solDalle(0, 3) + 0.035, AXE_Z + 1.42], 0));
   out.push(box([-186.47, -1.19, AXE_Z - 1.38], [-184.53, solDalle(NX - 1, 3) + 0.03, AXE_Z + 1.38], 0));
 
+  // ─── Et ce qu'il y a au bout des seuils : rien, qu'on sent sans le voir ───
+  //
+  // La cour vit seule depuis qu'elle a quitté la descente, et ses deux
+  // ouvertures ne mènent plus à aucune porte : on apparaissait sur le seuil
+  // ouest, on reculait de quelques pas, et l'on tombait hors du monde ; au bout du
+  // seuil est, la même chose en dépassant le but. Règle 6 du contrat : le vide
+  // se protège par des balustrades plus hautes que son saut. Au bout de chaque
+  // seuil, un mur INVISIBLE, jusqu'au linteau (3,00), et deux joues qui ferment
+  // les quelques centimètres dont le seuil dépasse les jambages. Rien ne
+  // change à l'œil : la sortie reste un rectangle clair au bout de l'axe.
+  // Si l'assemblage y plante un jour une porte, elle ira dans l'ouverture,
+  // devant ces murs, jamais derrière.
+  const joue = (min: [number, number, number], max: [number, number, number]): BoxDef =>
+    ({ min, max, region: 'pluie', invisible: true });
+  out.push(joue([-214.46, -1.15, AXE_Z - 1.92], [-213.46, PORTE_HAUT, AXE_Z + 1.92]));
+  out.push(joue([-213.46, -1.15, AXE_Z - 1.92], [-213.35, PORTE_HAUT, AXE_Z - 1.42]));
+  out.push(joue([-213.46, -1.15, AXE_Z + 1.42], [-213.35, PORTE_HAUT, AXE_Z + 1.92]));
+  out.push(joue([-184.53, -1.19, AXE_Z - 1.88], [-183.53, PORTE_HAUT, AXE_Z + 1.88]));
+  out.push(joue([-184.6, -1.19, AXE_Z - 1.88], [-184.53, PORTE_HAUT, AXE_Z - 1.38]));
+  out.push(joue([-184.61, -1.19, AXE_Z + 1.38], [-184.53, PORTE_HAUT, AXE_Z + 1.88]));
+
   // ─── Les toits, derrière les murs ──────────────────────────────────────────
   // On ne les visite pas ; ils font la silhouette au-dessus de la crête, et ils
   // disent d'où vient toute cette eau. Quatre volées en gradins de chaque côté,

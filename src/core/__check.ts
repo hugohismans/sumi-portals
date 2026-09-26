@@ -4847,6 +4847,31 @@ console.log('\n— Ce que la chasse du 26 a trouvé : sortir du décor sans pass
     }
   }
 
+  // Et les salles qui s'ouvraient sur le vide, bord par bord — la chasse en a
+  // compté 5 335 chutes hors du monde sur 50 700 parcours, zéro après. Ici, le
+  // cas le plus simple : du départ du voyage, on court et l'on saute droit
+  // devant soi, dans huit directions. La fente du lavoir et les rues des toits
+  // restent des chutes voulues : on ne juge que le rattrapage.
+  {
+    const sorties: string[] = [];
+    for (const [nom, level] of [
+      ['la descente (lavoir)', DESCENTE],
+      ['la montée (toits)', MONTEE],
+      ['la cour de pluie', PLUIE_SEULE],
+    ] as const) {
+      for (let k = 0; k < 8; k++) {
+        const cap = (k * Math.PI) / 4;
+        const sim = new Simulation(level);
+        let dehors = false;
+        for (let i = 0; i < 60 * 20 && !dehors; i++) {
+          dehors = sim.step(ordre(sim, { yaw: cap, forward: 1, sprint: true, jump: i % 50 < 25 }), TICK_DT).rattrape === true;
+        }
+        if (dehors) sorties.push(`${nom} vers ${k * 45}°`);
+      }
+    }
+    check('du départ de chaque voyage, on court et l’on saute dans huit directions sans tomber du monde', sorties.length === 0, sorties.join(' ; '));
+  }
+
   // Et la main d'encre est de l'encre : ni corniche, ni marche.
   check(
     'les mains d’encre ne portent personne',

@@ -578,15 +578,20 @@ taille que le parcours ne permet pas.
 - **Rebords invisibles** (accepté par Hugo) : `src/levels/rebords.ts`, quatre
   murs `invisible` juste au-dehors d'une dalle, plus hauts que le saut à la
   plus grande taille qu'on y atteint. Posés au hall (±70) et à la boîte à
-  formes ; une vérification court et saute vers chaque bord à ×1 et ×4. Les
-  autres salles (lavoir, conduit, toits, plateau de l'escalier, rive, seuil)
-  suivent, bord par bord : on n'en pose pas là où l'on doit sauter un vide.
-- **Question ouverte, de conception** : beaucoup de dalles n'ont pas de bord
-  (le hall à ±70, la boîte à formes, le lavoir, le conduit, les toits, le
-  plateau de l'escalier, la rive, le seuil). La règle 6 du contrat demande des
-  balustrades plus hautes que le saut ; aucune vérification ne la tient. Le
-  rattrapage rend la chute sans conséquence, mais c'est la façon la plus
-  probable de « sortir du sol ».
+  formes ; une vérification court et saute vers chaque bord à ×1 et ×4.
+  Puis, bord par bord, dans le lavoir, le conduit, les toits, le plateau de
+  l'escalier, la rive, le seuil et la cour de pluie seule (chaque salle a son
+  petit assembleur : une salle ne dépend d'aucun autre fichier). Laissés
+  ouverts exprès : la bouche du conduit, la fosse de l'escalier et la brèche
+  de son parapet, le chenal et la passe de la rive, les toits sur la rue, la
+  fente du lavoir. Dans l'atelier, une plaque invisible ferme les 20 cm entre
+  la grande face (2,80) et le linteau (3,02) : un homme y passait l'œil
+  au-dessus de la face en sautant, retombait dans la cour est sans l'avoir
+  franchie, et en tombait. Mesuré sur 50 700 parcours : 5 335 chutes hors du
+  monde avant, 0 après, sans rien retrancher de ce qu'on atteint (sauf la cour
+  est de l'atelier à ×1, où l'on n'a rien à faire). Pas balayés : le monde, le
+  rêve, le duo ; le banc garde exprès ses vides (stations 5 et 10) et son
+  pourtour est ouvert.
 
 ## Ce qui reste à faire
 

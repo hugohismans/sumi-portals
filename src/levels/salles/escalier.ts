@@ -151,6 +151,19 @@ const terrain = (): BoxDef[] => [
   b([X_O, -12.06, Z_B], [X_E, 0, 2126], 0, { outline: false }),
   b([X_O, -12.07, 1904], [F_O, 0, Z_B], 0, { outline: false }),
   b([F_E, -12.08, 1904], [X_E, 0, Z_B], 0, { outline: false }),
+  // SES BORDS, ET ILS NE SE VOIENT PAS. Le parapet garde la fosse ; rien ne
+  // gardait le reste : à l'ouest, à l'est, au nord et au sud, le plateau
+  // s'arrêtait sur le vide, et plus de quatre parcours de géant sur dix
+  // finissaient hors du monde. Règle 6 du contrat : le vide se protège par des
+  // balustrades plus hautes que son saut. Quatre murs INVISIBLES, juste
+  // au-dehors du plateau, qui le touchent sans le mordre. 9,50 : un géant monté
+  // sur la plus haute pierre du plateau (2,85) en saute encore à 8,03. Au sud,
+  // le mur longe aussi la butte, dont le dessus (11,02) n'est à la portée de
+  // personne.
+  { ...b([X_O - 1, -1, 1903], [X_O, 9.5, 2127]), invisible: true },
+  { ...b([X_E, -1, 1903], [X_E + 1, 9.5, 2127]), invisible: true },
+  { ...b([X_O, -1, 2126], [X_E, 9.5, 2127]), invisible: true },
+  { ...b([X_O, -1, 1903], [X_E, 9.5, 1904]), invisible: true },
   // LA BUTTE : onze mètres de roche pleine au-dessus de la galerie. Elle n'est
   // pas décorative — elle est LA SERRURE, et sa hauteur est calculée plus bas.
   b([F_O, -12.09, 1904], [F_E, 11.02, Z_BOUT], 2),

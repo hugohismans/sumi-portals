@@ -60,6 +60,21 @@ const decor = (): BoxDef[] => [
   b([CX + 9.0, 0, Z0 + 0.6], [CX + 9.4, 0.22, Z0 + 1.0], 3),
   b([CX - 9.4, 0, Z1 - 1.0], [CX - 9.0, 0.22, Z1 - 0.6], 3),
   b([CX + 9.0, 0, Z1 - 1.0], [CX + 9.4, 0.22, Z1 - 0.6], 3),
+  // LE BORD DU LISERÉ, ET IL NE SE VOIT PAS. La dalle flotte dans le
+  // brouillard, et l'on marchait au bout du liseré jusque hors du monde — un
+  // parcours sur cinq, en allant vers le but ou en s'en détournant. Règle 6 du
+  // contrat : le vide se protège par des balustrades plus hautes que son saut.
+  // Quatre murs INVISIBLES, juste au-dehors du liseré, qui le touchent sans le
+  // mordre : rien à voir, c'est le sujet de la salle. Un mètre et demi : on n'y
+  // est jamais qu'à ×1/4, et monté sur une borne (0,22) on saute à 0,54.
+  ...(
+    [
+      [[CX - 11.6, -1.12, Z0 - 1.6], [CX + 11.6, 1.5, Z0 - 0.6]],
+      [[CX - 11.6, -1.12, Z1 + 0.6], [CX + 11.6, 1.5, Z1 + 1.6]],
+      [[CX - 11.6, -1.12, Z0 - 0.6], [CX - 10.6, 1.5, Z1 + 0.6]],
+      [[CX + 10.6, -1.12, Z0 - 0.6], [CX + 11.6, 1.5, Z1 + 0.6]],
+    ] as [[number, number, number], [number, number, number]][]
+  ).map(([min, max]): BoxDef => ({ min, max, region: 'seuil', invisible: true })),
 ];
 
 export const SEUIL: SalleModule = {

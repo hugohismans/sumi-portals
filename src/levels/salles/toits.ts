@@ -194,6 +194,20 @@ const plateau = (): BoxDef[] => [
   b([COUR.x0, -8, COUR.z1], [COUR.x1, 0, LOIN], 0, { outline: false }),
   // Le fond de la cour garde son contour : c'est lui qui la dessine en creux.
   b([COUR.x0, -8, COUR.z0], [COUR.x1, COUR.fond, COUR.z1], 2),
+  // LA LISIÈRE DU PLATEAU, ET ELLE NE SE VOIT PAS. Un village n'a pas de
+  // garde-corps, et l'on tombe toujours des toits dans la rue — voir l'en-tête.
+  // Mais au bout de la plaine, à cent mètres du centre, la rue elle-même
+  // s'arrêtait sur le vide : quatre parcours sur dix finissaient hors du monde.
+  // Règle 6 du contrat : le vide se protège par des balustrades plus hautes que
+  // son saut. Quatre murs INVISIBLES, posés sur le dernier demi-mètre du
+  // plateau — la parcelle s'arrête là, on ne peut pas bâtir au-dehors — qui
+  // arrêtent le corps et laissent la lisière se dissoudre dans le papier.
+  // Douze mètres : à ×4 on saute à 5,18 depuis la rue, et le toit le plus haut
+  // (16,15) est à près de cinquante mètres — on retombe bien avant.
+  { ...b([-LOIN, 0, -LOIN], [-LOIN + 0.5, 12, LOIN]), invisible: true },
+  { ...b([LOIN - 0.5, 0, -LOIN], [LOIN, 12, LOIN]), invisible: true },
+  { ...b([-LOIN + 0.5, 0, -LOIN], [LOIN - 0.5, 12, -LOIN + 0.5]), invisible: true },
+  { ...b([-LOIN + 0.5, 0, LOIN - 0.5], [LOIN - 0.5, 12, LOIN]), invisible: true },
   // LA MARGELLE, quatre barres rouges. Elle annonçait le trou de loin et retenait
   // le joueur minuscule ; à ×4 elle arrive à la cheville. Elle est en retrait de
   // 6 cm de l'arête, faute de quoi ses faces tombent dans le plan des dalles.

@@ -190,6 +190,20 @@ const terrain = (): BoxDef[] => [
   b([0, -40.02, Z_LEVRE], [300, Y_FOND, Z_FALAISE], 1, { outline: false }),
   b([EP_O, -40.05, Z_LEVRE], [EP_E, Y_PASSE, Z_EPERON], 3),
   b([0, -40.04, Z_FALAISE], [300, Y_CIEL, 3600], 2),
+  // LES BOUTS DU QUAI ET DU CHENAL, ET ILS NE SE VOIENT PAS. Au sud du quai,
+  // et aux deux bouts du quai comme du chenal, la rive s'arrêtait sur le vide :
+  // quatre parcours de géant sur dix finissaient hors du monde, en marchant
+  // droit devant soi. Règle 6 du contrat : le vide se protège par des
+  // balustrades plus hautes que son saut. Des murs INVISIBLES posés sur le
+  // dernier demi-mètre du quai et du chenal — la parcelle s'arrête là, et l'on
+  // ne bâtit pas chez le voisin —, jusqu'à 9 m : un géant monté sur une borne
+  // (2,20) en saute encore à 7,38. Rien de ce qu'on pose ou lance ne va de ce
+  // côté : la baie est au nord, sous la falaise, et le chenal reste ouvert.
+  { ...b([0, 0, 3400], [300, 9, 3400.5]), invisible: true },
+  { ...b([0, 0, 3400.5], [0.5, 9, Z_LEVRE]), invisible: true },
+  { ...b([299.5, 0, 3400.5], [300, 9, Z_LEVRE]), invisible: true },
+  { ...b([0, Y_FOND, Z_LEVRE], [0.5, 9, Z_FALAISE]), invisible: true },
+  { ...b([299.5, Y_FOND, Z_LEVRE], [300, 9, Z_FALAISE]), invisible: true },
 ];
 
 /**

@@ -246,6 +246,24 @@ const decor = (): BoxDef[] => {
   const NORD_M = box([LEVRE, Y_ROC, NORD], [FOND, Y_LEVRE, Z_NORD_ROC], 1);
   out.push(OUEST, SUD_M, NORD_M);
 
+  // ─── LES REBORDS, QUI NE SE VOIENT PAS ─────────────────────────────────────
+  //
+  // La terrasse est posée sur le vide. À l'ouest, au sud et au nord, on
+  // marchait au bout de la roche et l'on tombait hors du monde — un parcours
+  // sur cinq, à taille d'homme comme à ×4. Le puits est un lieu qu'on traverse ;
+  // le dehors n'en est pas un. Règle 6 du contrat : le vide se protège par des
+  // balustrades plus hautes que son saut. Trois murs INVISIBLES, juste
+  // au-dehors de la terrasse, qui la touchent sans la mordre : ils arrêtent le
+  // corps et ne se dessinent pas. Dix mètres : un géant monté sur une petite
+  // arche (3,35) en saute encore à 8,52. La falaise d'en face ferme le
+  // quatrième côté, et LA BOUCHE RESTE OUVERTE — c'est elle, la chute voulue.
+  const rebord = (min: V3, max: V3): BoxDef => ({ min, max, region: 'conduit', invisible: true });
+  out.push(
+    rebord([X_OUEST - 1, Y_LEVRE - 1, Z_SUD_ROC - 1], [X_OUEST, 10, Z_NORD_ROC + 1]),
+    rebord([X_OUEST, Y_LEVRE - 1, Z_SUD_ROC - 1], [FOND, 10, Z_SUD_ROC]),
+    rebord([X_OUEST, Y_LEVRE - 1, Z_NORD_ROC], [FOND, 10, Z_NORD_ROC + 1]),
+  );
+
   // ─── LA PAROI D'EN FACE, PERCÉE ────────────────────────────────────────────
   //
   // On ne creuse pas une boîte : on en pose plusieurs qui laissent le trou.
