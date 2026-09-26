@@ -18,7 +18,7 @@ style encre et manga. Ça tourne dans un navigateur, y compris sur téléphone.
 Le fil est **le Pinceau** : un personnage qui vole de jalon en jalon. Il passe
 là où on ne peut pas marcher, et c'est cet écart qui fait l'énigme.
 
-## État au 24 septembre 2026
+## État au 25 septembre 2026
 
 `npm run check` : **831 vérifications, tout passe.** `npm run build` passe.
 Chaque monde a été ouvert dans un navigateur sans tête : aucune erreur console,
@@ -534,9 +534,16 @@ Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
 - **Rejouer la montée sur le PC** : la cadence (lire le compteur en haut à
   gauche), la netteté des portes au loin, le refus à miroir plan, le
   blanchiment.
-- **Le clignotement rouge-marron** des plaques au même niveau : une réponse
-  globale reste à choisir (tampon de profondeur logarithmique, ou décaler les
-  cadres devant les jambages).
+- **Confirmer à l'œil les corrections du 25** : la souris sous Windows (le
+  compteur dit « souris brute » en débug), le pinceau bleu dans la vasque, la
+  boîte à formes jusqu'au coffre, le plafond bas, la bordure de la place. Le
+  clignotement des plaques au même niveau a reçu sa réponse globale
+  (`rangsDesFaces`) : reste à voir qu'il ne revient nulle part.
+- **Petites améliorations prêtes, sur demande** : un réglage de sensibilité
+  sur la carte de titre (aujourd'hui `?sens=`) ; dessiner le regard avec le
+  dernier angle de la souris et non celui de la simulation à 60 Hz (à 127
+  images/s, une image sur deux répète l'angle) ; compiler les matériaux sous
+  la carte de titre, pour qu'aucune première apparition ne gèle une image.
 
 - **Jouer.** Quatorze lieux n'ont jamais été vus par un œil humain qui joue.
 - **Le monde retourné** (les portails de gravité) : la fin que le troisième
