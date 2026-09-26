@@ -527,6 +527,18 @@ taille que le parcours ne permet pas.
   faire, non fait : la vue suit la simulation à 60 Hz, donc à 127 images/s
   une image sur deux répète l'angle précédent (léger saccadé du regard).
 
+### Puis, le 26
+
+- **Le rattrapage ne boucle plus** (« je réapparais, je reglisse, et ça me
+  remet au bord du terrain en boucle »). L'appui se notait après douze images
+  debout, pas d'affilée : la première image sur une arête, en tombant, pouvait
+  devenir l'appui, et rien n'y renonçait jamais. Désormais (`appuiSur`,
+  `choisirRetour` dans `simulation.ts`) : douze images debout d'affilée, le sol
+  sous le CENTRE du corps et le corps hors de la pierre ; huit appuis gardés ;
+  deux rattrapages sans appui sûr entre eux, ou trois retours au même endroit
+  en une demi-minute, font oublier l'endroit et remonter d'un cran, jusqu'au
+  départ du niveau. Cinq vérifications, qui échouent sur l'ancien code.
+
 ## Ce qui reste à faire
 
 Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.

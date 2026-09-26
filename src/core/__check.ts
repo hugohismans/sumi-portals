@@ -3871,6 +3871,87 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     );
   }
 
+  // ─── ET L'ON NE REPOSE JAMAIS DEUX FOIS DANS LE MÊME PIÈGE ──────────────
+  //
+  // Signalé en jouant : « je réapparais, je reglisse, et ça me remet au bord
+  // du terrain en boucle ». L'appui se notait sur une arête, et rien ne
+  // renonçait jamais à lui. Un îlot et une corniche : l'îlot est sûr, la
+  // corniche aussi, l'arête ne l'est pas.
+  {
+    const deux: LevelDef = {
+      ...ilot,
+      name: 'ilot-et-corniche',
+      boxes: [
+        { min: [-4, -1, -4], max: [4, 0, 4], ink: 0 },
+        { min: [10, -1, -1], max: [11, 0, 1], ink: 0 },
+      ],
+      carryables: [],
+    };
+    const tenir = (sim: Simulation, x: number, z: number): void => {
+      sim.player.position = { x, y: 0, z };
+      sim.player.velocity = { x: 0, y: 0, z: 0 };
+      for (let i = 0; i < 40; i++) sim.step(immobile, TICK_DT);
+    };
+    /** Par-dessus bord, et l'on rend le point où l'on a été reposé. */
+    const tomber = (sim: Simulation): { x: number; z: number } => {
+      sim.player.position = { x: 60, y: 0, z: 60 };
+      for (let i = 0; i < 60 * 12; i++) if (sim.step(immobile, TICK_DT).rattrape) break;
+      return { x: sim.player.position.x, z: sim.player.position.z };
+    };
+    const ou = (p: { x: number; z: number }): string => `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})`;
+
+    // Debout au centre, puis immobile sur l'arête, le centre du corps dans le vide.
+    let sim = new Simulation(deux);
+    tenir(sim, 0, 0);
+    tenir(sim, 4.2, 0);
+    check('debout sur une arête, le centre dans le vide : on y tient', sim.player.grounded, ou(sim.player.position));
+    let r = tomber(sim);
+    check(
+      'mais ce n’est pas un appui : la chute repose au dernier endroit sûr, pas sur l’arête',
+      Math.hypot(r.x, r.z) < 0.01,
+      ou(r),
+    );
+
+    // Reposé sur la corniche, on en reglisse avant d'y tenir : on remonte d'un
+    // cran à chaque rattrapage, jusqu'au départ du niveau.
+    sim = new Simulation(deux);
+    tenir(sim, 0, 0);
+    tenir(sim, 10.5, 0);
+    const suite = [tomber(sim), tomber(sim), tomber(sim)];
+    check(
+      'reposé, on reglisse aussitôt : la corniche, puis l’îlot, puis le départ — jamais la même boucle',
+      Math.hypot(suite[0].x - 10.5, suite[0].z) < 0.01 &&
+        Math.hypot(suite[1].x, suite[1].z) < 0.01 &&
+        Math.hypot(suite[2].x - deux.spawn[0], suite[2].z - deux.spawn[2]) < 0.01,
+      suite.map(ou).join(' → '),
+    );
+
+    // On tient sur la corniche, mais on n'en sort qu'en retombant : au
+    // troisième retour en une demi-minute, on est reposé plus loin.
+    sim = new Simulation(deux);
+    tenir(sim, 0, 0);
+    tenir(sim, 10.5, 0);
+    const retours: { x: number; z: number }[] = [];
+    for (let k = 0; k < 3; k++) {
+      retours.push(tomber(sim));
+      for (let i = 0; i < 40; i++) sim.step(immobile, TICK_DT);
+    }
+    check(
+      'reposé trois fois de suite au même endroit : la troisième, on remonte d’un cran',
+      Math.hypot(retours[0].x - 10.5, retours[0].z) < 0.01 &&
+        Math.hypot(retours[1].x - 10.5, retours[1].z) < 0.01 &&
+        Math.hypot(retours[2].x, retours[2].z) < 0.01,
+      retours.map(ou).join(' → '),
+    );
+
+    // Et une chute ordinaire ne change rien : on revient là où l'on se tenait.
+    sim = new Simulation(deux);
+    tenir(sim, 0, 0);
+    tenir(sim, 10.5, 0);
+    r = tomber(sim);
+    check('une chute isolée repose toujours là où l’on se tenait', Math.hypot(r.x - 10.5, r.z) < 0.01, ou(r));
+  }
+
   // ─── UNE PIÈCE TOMBÉE HORS DU MONDE REVIENT AUSSI ───────────────────────
   //
   // Ce qui sort d'une grande face sort quatre fois plus vite, et une pièce est

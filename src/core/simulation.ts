@@ -18,7 +18,7 @@ import { Sockets } from './sockets.js';
 import { Familles } from './familles.js';
 import { surLaGomme, viser } from './canevas.js';
 import { clamp, eulerVersMat, matVersEuler, mulMat, quartDeTour, rotateY, vec3, wrapAngle, yawToForward, type Mat3, type Vec3 } from './math.js';
-import { moveAndCollide, reposerSurLeSol } from './physics.js';
+import { moveAndCollide, playerAabb, reposerSurLeSol } from './physics.js';
 import {
   buildFaces,
   canPass,
@@ -88,6 +88,19 @@ const tournerAvecLaPorte = (c: Carryable, face: PortalFace): void => {
  */
 /** Boîte de travail pour la sortie des pièces par les portes. */
 const seuilScratch: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+const sondeAppui: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+const corpsAppui: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+const touchesAppui: Aabb[] = [];
+
+/** Un endroit où l'on s'est tenu debout, et la taille qu'on y faisait. */
+interface Appui {
+  x: number;
+  y: number;
+  z: number;
+  echelle: number;
+}
+/** Combien d'appuis on garde : assez pour remonter hors d'un piège, pas davantage. */
+const APPUIS_GARDES = 8;
 
 /** Une pièce passe-t-elle par cette face ? La même marge que pour le joueur. */
 const pieceFits = (face: PortalFace, size: number): boolean =>
@@ -132,9 +145,15 @@ export class Simulation {
    * autant que le lieu — être reposé au bon endroit dans la mauvaise peau
    * rendrait le rattrapage plus déroutant que la chute.
    */
-  private dernierAppui: { x: number; y: number; z: number } | null = null;
-  private appuiEchelle = 0;
+  private appuis: Appui[] = [];
+  /** Images passées debout D'AFFILÉE : un saut, une chute, une glissade remettent à zéro. */
   private depuisAppui = 0;
+  /** Rattrapages depuis le dernier appui sûr : deux d'affilée disent que l'appui est un piège. */
+  private rattrapagesSansAppui = 0;
+  /** Où le dernier rattrapage a reposé le joueur, combien de fois de suite, et quand. */
+  private dernierRetour: { x: number; y: number; z: number; fois: number; tick: number } | null = null;
+  /** L'horloge des rattrapages, en pas de simulation. */
+  private pas = 0;
   /** Pinceaux déjà réveillés : on ne les réveille pas deux fois. */
   readonly eveilles = new Set<string>();
   /**
@@ -248,11 +267,101 @@ export class Simulation {
    * Deux endroits qui doivent faire la même chose finissent toujours par ne
    * plus la faire. Il n'y en a plus qu'un.
    */
+  /**
+   * Peut-on reposer quelqu'un ici ? Le sol sous le CENTRE du corps, au ras
+   * des pieds — un joueur posé sur une arête y tient tant qu'il ne bouge pas,
+   * et glisse au premier pas — et le corps hors de la pierre. Le décor fixe
+   * seulement : une caisse peut être déplacée, et l'appui avec elle.
+   */
+  private appuiSur(p: Vec3, scale: number): boolean {
+    const r = PLAYER_RADIUS * scale * 0.25;
+    sondeAppui.minX = p.x - r;
+    sondeAppui.maxX = p.x + r;
+    sondeAppui.minZ = p.z - r;
+    sondeAppui.maxZ = p.z + r;
+    sondeAppui.minY = p.y - 0.05 * scale;
+    sondeAppui.maxY = p.y - 1e-6;
+    let porte = false;
+    for (const h of this.world.queryStatic(sondeAppui, touchesAppui)) {
+      if (h.maxY >= p.y - 0.02 * scale) porte = true;
+    }
+    if (!porte) return false;
+    const marge = 0.01 * scale;
+    playerAabb(p, scale, corpsAppui);
+    corpsAppui.minX += marge;
+    corpsAppui.maxX -= marge;
+    corpsAppui.minY += marge;
+    corpsAppui.maxY -= marge;
+    corpsAppui.minZ += marge;
+    corpsAppui.maxZ -= marge;
+    return this.world.queryStatic(corpsAppui, touchesAppui).length === 0;
+  }
+
+  /** Note un appui sûr. Tout près du dernier, il le remplace : on garde des endroits, pas des pas. */
+  private noterAppui(p: Vec3, echelle: number, scale: number): void {
+    const dernier = this.appuis[this.appuis.length - 1];
+    if (
+      dernier &&
+      dernier.echelle === echelle &&
+      Math.hypot(p.x - dernier.x, p.y - dernier.y, p.z - dernier.z) < PLAYER_HEIGHT * scale
+    ) {
+      dernier.x = p.x;
+      dernier.y = p.y;
+      dernier.z = p.z;
+    } else {
+      this.appuis.push({ x: p.x, y: p.y, z: p.z, echelle });
+      if (this.appuis.length > APPUIS_GARDES) this.appuis.shift();
+    }
+    this.rattrapagesSansAppui = 0;
+  }
+
+  /**
+   * Où reposer le joueur qui tombe hors du décor. Le dernier appui sûr, sauf
+   * s'il s'est révélé un piège ; `null` s'il n'en reste aucun — le départ du
+   * niveau, alors.
+   */
+  private choisirRetour(): Appui | null {
+    // Deux rattrapages sans appui entre eux : reposé là, on n'a pas pu y tenir.
+    if (this.rattrapagesSansAppui > 0) this.appuis.pop();
+    this.rattrapagesSansAppui++;
+    // Trois retours au même endroit en moins d'une demi-minute : on y tient,
+    // mais on n'en sort qu'en retombant.
+    const r0 = this.appuis[this.appuis.length - 1];
+    const d = this.dernierRetour;
+    if (
+      r0 &&
+      d &&
+      this.pas - d.tick < 30 * 60 &&
+      Math.hypot(r0.x - d.x, r0.y - d.y, r0.z - d.z) < PLAYER_HEIGHT * scaleOfLevel(r0.echelle) &&
+      d.fois >= 2
+    ) {
+      this.appuis.pop();
+    }
+    // Une caisse posée là depuis : on ne repose personne dedans.
+    while (this.appuis.length > 0) {
+      const r = this.appuis[this.appuis.length - 1];
+      if (this.world.query(playerAabb(r, scaleOfLevel(r.echelle), corpsAppui), touchesAppui).length === 0) break;
+      this.appuis.pop();
+    }
+    const retour = this.appuis[this.appuis.length - 1] ?? null;
+    const memeEndroit =
+      retour !== null &&
+      d !== null &&
+      this.pas - d.tick < 30 * 60 &&
+      Math.hypot(retour.x - d.x, retour.y - d.y, retour.z - d.z) < PLAYER_HEIGHT * scaleOfLevel(retour.echelle);
+    this.dernierRetour = retour
+      ? { x: retour.x, y: retour.y, z: retour.z, fois: memeEndroit ? d!.fois + 1 : 1, tick: this.pas }
+      : null;
+    return retour;
+  }
+
   private scellerLesPortesADessiner(): void {
     this.portesFermees.clear();
     this.refusEnAttente = null;
-    this.dernierAppui = null;
+    this.appuis = [];
     this.depuisAppui = 0;
+    this.rattrapagesSansAppui = 0;
+    this.dernierRetour = null;
     for (const p of this.world.level.portals ?? []) {
       if (p.dessinee) this.portesFermees.add(p.id);
     }
@@ -408,18 +517,38 @@ export class Simulation {
     // minuscule et un rattrapage instantané au grand — c'est-à-dire deux jeux
     // différents, ce qu'on refuse partout ailleurs.
     // ═══════════════════════════════════════════════════════════════════════
-    if (pl.grounded && ++this.depuisAppui > 12) {
+    //
+    // ─── ET L'ON NE REPOSE JAMAIS DEUX FOIS DANS LE MÊME PIÈGE ────────────
+    //
+    // Signalé en jouant : « je me suis glitché hors du sol, ça me fait
+    // réapparaître hors du sol encore ; je réapparais, je reglisse, et ça me
+    // remet au bord du terrain en boucle ». L'appui s'échantillonnait toutes
+    // les douze images passées debout — pas d'affilée : le compteur survivait
+    // aux chutes, et la première image posée sur une arête, en tombant,
+    // pouvait devenir l'appui. On y était reposé, on en reglissait, on
+    // retombait, et l'on y revenait, sans fin : rien ne notait un meilleur
+    // endroit, et rien ne renonçait à celui-là.
+    //
+    // Trois règles, maintenant. Un appui ne se note qu'après douze images
+    // debout D'AFFILÉE, avec le sol sous le CENTRE du corps (pas sous un
+    // bord) et le corps hors de la pierre (voir `appuiSur`). On en garde
+    // plusieurs, du plus ancien au plus récent. Et deux rattrapages sans appui
+    // sûr entre eux, ou trois retours au même endroit en moins d'une demi-
+    // minute, disent que cet endroit est un piège : on l'oublie, et l'on
+    // remonte d'un cran — jusqu'au départ du niveau s'il le faut.
+    this.pas++;
+    if (!pl.grounded) this.depuisAppui = 0;
+    else if (++this.depuisAppui > 12) {
       this.depuisAppui = 0;
-      this.dernierAppui = { x: pl.position.x, y: pl.position.y, z: pl.position.z };
-      this.appuiEchelle = pl.scaleLevel;
+      if (this.appuiSur(pl.position, scale)) this.noterAppui(pl.position, pl.scaleLevel, scale);
     }
     if (pl.position.y < this.world.plancher - 20 * scale) {
-      const retour = this.dernierAppui;
+      const retour = this.choisirRetour();
       if (retour) {
         pl.position.x = retour.x;
         pl.position.y = retour.y;
         pl.position.z = retour.z;
-        pl.scaleLevel = this.appuiEchelle;
+        pl.scaleLevel = retour.echelle;
       } else {
         // Jamais posé le pied nulle part : on ne peut que revenir au départ.
         const d = this.world.level.spawn;
@@ -432,6 +561,7 @@ export class Simulation {
       pl.velocity.y = 0;
       pl.velocity.z = 0;
       pl.grounded = false;
+      this.depuisAppui = 0;
       events.rattrape = true;
       const porte = this.carryables.held;
       if (porte) {
