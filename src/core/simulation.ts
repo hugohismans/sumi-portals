@@ -1403,6 +1403,51 @@ export class Simulation {
     return bute;
   }
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ON RESSORT DANS L'OUVERTURE DE LA JUMELLE, PAS À CÔTÉ.
+   *
+   * La capture d'une face a deux centimètres de marge au-delà de son bord.
+   * Multipliés par quatre, ils posaient l'œil jusqu'à huit centimètres HORS de
+   * la grande face — hors de sa propre capture : faire demi-tour ne ramenait
+   * plus par la porte. Et le corps d'un géant qui sort d'une petite face prise
+   * dans son tiers extérieur chevauchait le jambage ; la résolution, qui laisse
+   * traverser ce qu'on chevauche déjà, le laissait alors marcher au travers du
+   * mur, et tomber derrière. Sur le chemin même de la descente, de l'atelier
+   * au bol. Trouvé par la chasse du 26.
+   *
+   * L'œil est donc ramené dans la largeur de la face ; et si le corps y
+   * heurte encore le décor au-dessus de la hauteur d'une marche, on le
+   * recentre de sa largeur et on le pose tout entier devant le plan. Si même
+   * là il est gêné, on garde le premier placement : on ne crée jamais pire.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  private ressortirDansLOuverture(arrivee: PortalFace, echelle: number): void {
+    const pl = this.player;
+    const r = PLAYER_RADIUS * echelle;
+    const local = rotateY(vec3(pl.position.x - arrivee.position.x, 0, pl.position.z - arrivee.position.z), -arrivee.yaw);
+    const poser = (lx: number, lz: number): void => {
+      const w = rotateY(vec3(lx, 0, lz), arrivee.yaw);
+      pl.position.x = arrivee.position.x + w.x;
+      pl.position.z = arrivee.position.z + w.z;
+    };
+    const libreDeCote = (): boolean => {
+      playerAabb(pl.position, echelle, corpsAppui);
+      corpsAppui.minY += PLAYER_HEIGHT * STEP_FRACTION * echelle;
+      return this.world.queryStatic(corpsAppui, touchesAppui).length === 0;
+    };
+    const demi = arrivee.width / 2;
+    const x1 = Math.max(-demi, Math.min(demi, local.x));
+    poser(x1, local.z);
+    if (libreDeCote()) return;
+    // Un cheveu de marge : une embrasure est souvent exactement aussi large
+    // que sa face, et un corps recentré au ras la touchait à l'arrondi près.
+    const jeu = 0.005 * echelle;
+    const lim = Math.max(0, demi - r - jeu);
+    poser(Math.max(-lim, Math.min(lim, x1)), Math.max(local.z, r + jeu));
+    if (!libreDeCote()) poser(x1, local.z);
+  }
+
   private teleport(face: PortalFace, eye: Vec3, nextLevel: number): void {
     const pl = this.player;
     const newEye = transformPoint(face, eye);
@@ -1418,6 +1463,7 @@ export class Simulation {
     pl.position.x = newEye.x;
     pl.position.y = newEye.y - PLAYER_HEIGHT * EYE_FRACTION * newScale;
     pl.position.z = newEye.z;
+    this.ressortirDansLOuverture(face.twin, newScale);
     pl.velocity.x = newVel.x;
     pl.velocity.y = newVel.y;
     pl.velocity.z = newVel.z;

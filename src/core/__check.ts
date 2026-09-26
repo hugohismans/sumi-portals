@@ -13,7 +13,7 @@ import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
 import { buildFaces, canPass, estScelle, faceDuDouble, signedDistance, transformPoint, transformVector, transporterRotation, traversalLevelDelta } from './portals.js';
-import { appliquerMat, eulerVersMat } from './math.js';
+import { appliquerMat, eulerVersMat, rotateY, vec3 } from './math.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
 import { facesConfondues, rangsDesFaces } from './coplanaires.js';
@@ -4706,6 +4706,103 @@ console.log('\n— Ce que la chasse du 26 a trouvé : sortir du décor sans pass
       'portée par quelqu’un derrière la face : entière, avec lui',
       faceDuDouble(sim.faces, w, sim.eyePosition()) === null,
       `${faceDuDouble(sim.faces, w, sim.eyePosition())?.pairId}`,
+    );
+  }
+
+  // ─── PAR LES PORTES : ON RESSORT DANS L'OUVERTURE, ET L'ON NE PASSE PAS À CÔTÉ ─
+  //
+  // La seconde chasse du 26, par les portes : cent vingt mille approches,
+  // soixante-sept mille traversées. Chaque ligne échoue sans son correctif.
+  /** Face `pairId.kind` : se poser devant, au décalage u, et marcher droit dedans jusqu'à la traverser. */
+  const traverserAuRas = (level: LevelDef, id: string, palier: number, u: number, ouvrir = false) => {
+    const sim = new Simulation(level);
+    // Une porte qui attend son logement est fermée au départ : on l'ouvre quand
+    // c'est le passage qu'on juge, pas l'énigme.
+    if (ouvrir) {
+      sim.portesFermees.clear();
+      for (const f of sim.faces) f.condition = undefined;
+    }
+    const [pairId, kind] = id.split('.');
+    const F = sim.faces.find((f) => f.pairId === pairId && f.kind === kind)!;
+    const s = scaleOfLevel(palier);
+    const monde = (x: number, y: number, z: number) => {
+      const r = rotateY(vec3(x, y, z), F.yaw);
+      return vec3(F.position.x + r.x, F.position.y + r.y, F.position.z + r.z);
+    };
+    const depart = monde(u, 0.05 * s, 2.2 * s + 0.3);
+    const cible = monde(u, 0, -1);
+    const yaw = Math.atan2(cible.x - depart.x, cible.z - depart.z);
+    sim.player.position = { ...depart };
+    sim.player.velocity = { x: 0, y: 0, z: 0 };
+    sim.player.scaleLevel = palier;
+    sim.player.yaw = yaw;
+    sim.player.grounded = true;
+    for (let i = 0; i < 40; i++) sim.step(ordre(sim, { yaw }), TICK_DT);
+    let passe = false;
+    for (let i = 0; i < 600 && !passe; i++) passe = sim.step(ordre(sim, { yaw, forward: 1 }), TICK_DT).traversed !== undefined;
+    return { sim, passe, arrivee: F.twin };
+  };
+  /** Marche tenue dans ce cap : tombe-t-on hors du monde ? */
+  const tombeEnMarchant = (sim: Simulation, yaw: number, images: number): boolean => {
+    for (let i = 0; i < images; i++) if (sim.step(ordre(sim, { yaw, forward: 1 }), TICK_DT).rattrape) return true;
+    return false;
+  };
+
+  // Descente, chemin normal : la petite face de l'atelier vers le bol, prise à
+  // un centimètre de son bord à ×1/4, puis demi-tour. On sortait dans le
+  // jambage de la tour, on le traversait, et l'on tombait derrière.
+  {
+    const { sim, passe, arrivee } = traverserAuRas(DESCENTE, 'raccord-atelier-bol.small', -1, -0.253);
+    const retour = Math.atan2(-arrivee.normal.x, -arrivee.normal.z);
+    const sol = sim.player.position.y;
+    let revenu = false;
+    let tombe = false;
+    for (let i = 0; i < 120 && passe && !revenu && !tombe; i++) {
+      const e = sim.step(ordre(sim, { yaw: retour, forward: 1 }), TICK_DT);
+      revenu = e.traversed !== undefined;
+      tombe = e.rattrape === true || sim.player.position.y < sol - 2;
+    }
+    check(
+      'descente : sorti au ras du bord de la porte du bol, un demi-tour ramène par la porte, jamais dans le vide',
+      passe && revenu && !tombe,
+      `${passe ? 'traversée' : 'pas de traversée'}${tombe ? ', tombé' : revenu ? '' : ', pas revenu'} ${pos(sim)}`,
+    );
+  }
+  // La tour du bol : vingt centimètres de jour de chaque côté de la grande
+  // face, où passe un joueur à ×1/4. Il sortait par là, dans le vide.
+  {
+    let tombes = 0;
+    for (const u of [-1.05, 1.05]) {
+      const sim = new Simulation(DESCENTE);
+      const F = sim.faces.find((f) => f.pairId === 'raccord-atelier-bol' && f.kind === 'big')!;
+      const r = rotateY(vec3(u, 0, 1.5), F.yaw);
+      poserA(sim, F.position.x + r.x, F.position.y + 0.05, F.position.z + r.z, -1);
+      if (tombeEnMarchant(sim, Math.atan2(-F.normal.x, -F.normal.z), 60 * 8)) tombes++;
+    }
+    check('le bol : à ×1/4, le jour à côté de la grande face ne mène plus dehors', tombes === 0, `${tombes} sortie(s) sur 2`);
+  }
+  // Le rêve : un pas de côté au départ, puis tout droit, à côté de la petite
+  // porte : l'embrasure de huit mètres menait hors de la pièce.
+  {
+    const sim = new Simulation(reve(1));
+    const cap = sim.player.yaw;
+    for (let i = 0; i < 300 && Math.abs(sim.player.position.x - 2.5) > 0.05; i++) {
+      sim.step(ordre(sim, { yaw: Math.PI / 2, forward: 1 }), TICK_DT);
+    }
+    check('le rêve : passer à côté d’une porte ne fait plus sortir de la pièce', !tombeEnMarchant(sim, cap, 60 * 10), pos(sim));
+  }
+  // Le hall : la maisonnette prise au ras du bord à ×1/4. On ressortait le
+  // corps dans le montant, coincé contre le banc : avancer ne faisait rien.
+  {
+    const { sim, passe, arrivee } = traverserAuRas(LOBBY, 'maisonnette.small', -1, 0.206, true);
+    const avant = { ...sim.player.position };
+    const cap = Math.atan2(arrivee.normal.x, arrivee.normal.z);
+    for (let i = 0; i < 30; i++) sim.step(ordre(sim, { yaw: cap, forward: 1 }), TICK_DT);
+    const fait = Math.hypot(sim.player.position.x - avant.x, sim.player.position.z - avant.z);
+    check(
+      'le hall : sorti au ras du bord de la maisonnette, on avance',
+      passe && fait > 0.5,
+      `${passe ? '' : 'pas de traversée, '}${fait.toFixed(2)} m en une demi-seconde ×${sim.scale}`,
     );
   }
 

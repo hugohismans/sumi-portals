@@ -103,6 +103,15 @@ const salle = (
     // tombaient exactement dans le plan du mur, et chaque embrasure du rêve
     // grésillait pile à hauteur d'œil. Quatre-vingt-huit fois par rêve.
     out.push(box([-PORTE / 2 + cx - 0.3, 11.6, za - 0.25], [PORTE / 2 + cx + 0.3, PLAFOND, zb + 0.25], 2));
+    // LE FOND DE L'EMBRASURE EST FERMÉ, derrière la face. L'embrasure fait
+    // huit mètres pour une face de 1,90 : on passait à côté de la porte, au
+    // bout du mur, et l'on sortait de la pièce dans le vide. Signalé en
+    // jouant (« je me suis glitché hors du sol »), mesuré par la chasse du 26
+    // depuis le départ même du rêve.
+    const dehors = za < cz ? za : zb;
+    out.push(
+      box([-PORTE / 2 + cx, 0, dehors === za ? za : zb - 0.3], [PORTE / 2 + cx, PLAFOND, dehors === za ? za + 0.3 : zb], 1),
+    );
   }
 
   // Le mobilier du vide : quelques piliers, et rien d'autre. Un lieu vide n'est

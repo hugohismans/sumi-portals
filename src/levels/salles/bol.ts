@@ -515,6 +515,12 @@ const laPiece = (): BoxDef[] => {
   // côté et 20 cm sous le linteau.
   out.push(box([-343.2, -0.45, 1236.6], [-341.75, 3.28, P_Z0], 1));
   out.push(box([-339.45, -0.47, 1236.62], [-336.8, 3.26, P_Z0], 1));
+  // ET LE JOUR SE FERME DERRIÈRE LA FACE. Vingt centimètres de chaque côté,
+  // c'est le passage d'un joueur à ×1/4, qui sortait de la tour par là et
+  // tombait dans le vide. Une plaque au dos de l'ouverture, là où l'on n'arrive
+  // jamais par la porte : la face se franchit toujours, le jour plus.
+  // (Chasse du 26.)
+  out.push(box([-341.75, -0.3, 1236.34], [-339.45, 2.98, 1236.52], 1));
   out.push(box([-341.95, 3.0, 1236.58], [-339.25, 3.24, 1237.02], 2));
   // Le seuil : sans lui, pas de sol dans l'épaisseur du mur, et l'on tombe en
   // franchissant sa propre porte. Il dépasse de 3 cm — on le sent, on ne bute

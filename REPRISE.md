@@ -560,6 +560,21 @@ taille que le parcours ne permet pas.
   vérifications. Un agent a balayé 653 000 essais de pièces passées par des
   portes : côté simulation, aucune ne finit en l'air, coincée ou en
   va-et-vient.
+- **Par les portes, on ressort dans l'ouverture** (seconde chasse du 26 :
+  120 000 approches, 67 000 traversées). La capture d'une face a 2 cm de
+  marge ; ×4, l'œil ressortait jusqu'à 8 cm hors de la grande face, hors de
+  sa capture, et le corps d'un géant sorti d'une petite face prise dans son
+  tiers extérieur chevauchait le jambage, qu'il traversait ensuite — sur le
+  chemin de la descente, de l'atelier au bol. `ressortirDansLOuverture`
+  ramène l'œil dans la largeur de la face, et recentre le corps s'il heurte
+  encore le décor. Le RÊVE avait des embrasures de 8 m pour des faces de
+  1,90 : on passait à côté de la porte et l'on sortait de la pièce, dès le
+  départ — le fond de chaque embrasure est fermé. La TOUR DU BOL laissait
+  20 cm de jour de chaque côté de la grande face (un joueur à ×1/4 y passe) :
+  une plaque ferme le jour derrière la face. Quatre vérifications, qui
+  échouent sans leurs correctifs. Reste, à une taille inhabituelle (×1/4
+  devant la lucarne dorée) : la grande face de la vallée est en partie
+  couverte par la pyramide.
 - **Question ouverte, de conception** : beaucoup de dalles n'ont pas de bord
   (le hall à ±70, la boîte à formes, le lavoir, le conduit, les toits, le
   plateau de l'escalier, la rive, le seuil). La règle 6 du contrat demande des
