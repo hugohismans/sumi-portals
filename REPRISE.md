@@ -589,9 +589,22 @@ taille que le parcours ne permet pas.
   au-dessus de la face en sautant, retombait dans la cour est sans l'avoir
   franchie, et en tombait. Mesuré sur 50 700 parcours : 5 335 chutes hors du
   monde avant, 0 après, sans rien retrancher de ce qu'on atteint (sauf la cour
-  est de l'atelier à ×1, où l'on n'a rien à faire). Pas balayés : le monde, le
-  rêve, le duo ; le banc garde exprès ses vides (stations 5 et 10) et son
-  pourtour est ouvert.
+  est de l'atelier à ×1, où l'on n'a rien à faire). Pas balayés : le rêve, le
+  duo ; le banc garde exprès ses vides (stations 5 et 10) et son pourtour est
+  ouvert.
+- **Rebords du monde** : le sol commun (x ±260, z −300…400) s'arrêtait sur le
+  vide ; quatre murs invisibles de 280 l'entourent — du toit de la rotonde ou
+  de la lisse du sommet du belvédère (223,2), un géant saute encore de 20,7, et
+  le belvédère touche le bord. Les deux talus des poches reçoivent un mur contre
+  leur face extérieure (jardin 24,2, côte 23), et les fentes de 40 et 80 cm
+  entre les dalles est du jardin et son talus sont comblées. Laissés ouverts
+  exprès : les bords de la terrasse, du belvédère, des escaliers et de
+  l'éperon — on tombe sur le sol commun, on remonte à pied. Mesuré sur
+  192 000 parcours (six lots, de ×1/4 à ×16, mêmes graines) : 28 908 chutes
+  hors du monde avant, 0 après, sans rien retrancher de ce qu'on atteint,
+  sauf deux raccourcis par-dessus le vide : un géant passait du sol commun aux
+  deux poches, et l'on sautait à ×4 du talus de la côte sur le sol commun. Les
+  poches ne se rejoignent plus que par leurs portes.
 
 ## Ce qui reste à faire
 

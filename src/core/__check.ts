@@ -4847,6 +4847,52 @@ console.log('\n— Ce que la chasse du 26 a trouvé : sortir du décor sans pass
     }
   }
 
+  // ─── LES REBORDS INVISIBLES : LE MONDE ─────────────────────────────────
+  //
+  // Le sol sous les trois étages s'arrêtait sur le vide, et la chasse y a
+  // compté une course sur deux hors du monde à ×16. Trois tailles en deçà de
+  // chaque bord et de chaque coin du sol, à ×1, ×4 et ×16 ; du sommet du
+  // belvédère vers le nord ; du tas de feuilles par-dessus le talus ; dans les
+  // fentes du jardin ; de l'épaulement nord de la côte. Sans les rebords,
+  // trente-quatre de ces trente-cinq départs finissaient hors du monde, et le
+  // dernier — un géant parti vers l'ouest — enjambait le vide jusqu'à la côte
+  // rouge. Tomber du belvédère sur le sol reste permis : on ne juge que le
+  // rattrapage.
+  {
+    const cx = 0;
+    const cz = 50;
+    const bordsDuSol: [number, number, number][] = [
+      [-260, cz, -Math.PI / 2], [260, cz, Math.PI / 2], [cx, -300, Math.PI], [cx, 400, 0],
+      [-260, -300, -3 * Math.PI / 4], [260, 400, Math.PI / 4], [260, -300, 3 * Math.PI / 4], [-260, 400, -Math.PI / 4],
+    ];
+    const departs: [string, number, number, number, number, number, number][] = [];
+    for (const palier of [0, 1, 2]) {
+      const rentre = 3 * scaleOfLevel(palier);
+      for (const [bx, bz, cap] of bordsDuSol) {
+        const x = Math.min(260 - rentre, Math.max(-260 + rentre, bx));
+        const z = Math.min(400 - rentre, Math.max(-300 + rentre, bz));
+        departs.push([`le sol ×${scaleOfLevel(palier)} vers (${bx}, ${bz})`, x, 0.05, z, palier, cap, 6]);
+      }
+    }
+    for (const cap of [0, -Math.PI / 4]) departs.push([`le sommet du belvédère ×16 cap ${(cap * 180 / Math.PI).toFixed(0)}°`, -180, 197.4, 326, 2, cap, 20]);
+    for (const cap of [Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4]) departs.push([`le tas de feuilles cap ${(cap * 180 / Math.PI).toFixed(0)}°`, 513, 16, -34, 0, cap, 6]);
+    departs.push(['la fente sud ×1', 490, 0.05, -112, 0, Math.PI, 6], ['la fente nord ×1', 490, 0.05, 92, 0, 0, 6]);
+    departs.push(['la fente sud ×1/4', 430, 0.05, -117, -1, Math.PI, 6], ['la fente nord ×1/4', 430, 0.05, 97, -1, 0, 6]);
+    for (const cap of [-Math.PI / 2, -Math.PI / 4]) departs.push([`l’épaulement de la côte cap ${(cap * 180 / Math.PI).toFixed(0)}°`, -500, 15.5, 90, 1, cap, 8]);
+    const sorties: string[] = [];
+    for (const [nom, x, y, z, palier, cap, secondes] of departs) {
+      const sim = new Simulation(MONDE);
+      poserA(sim, x, y, z, palier);
+      let dehors = false;
+      for (let i = 0; i < 60 * secondes && !dehors; i++) {
+        const e = sim.step(ordre(sim, { yaw: cap, forward: 1, sprint: true, jump: i % 40 < 20 }), TICK_DT);
+        dehors = e.rattrape === true || sim.player.position.y < sim.world.plancher - 1;
+      }
+      if (dehors) sorties.push(nom);
+    }
+    check(`le monde : on court et l’on saute vers chacun de ses bords sans jamais tomber du monde (${departs.length} départs)`, sorties.length === 0, sorties.join(' ; '));
+  }
+
   // Et les salles qui s'ouvraient sur le vide, bord par bord — la chasse en a
   // compté 5 335 chutes hors du monde sur 50 700 parcours, zéro après. Ici, le
   // cas le plus simple : du départ du voyage, on court et l'on saute droit

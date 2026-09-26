@@ -3,6 +3,7 @@ import { BELVEDERE } from './regions/belvedere.js';
 import { JARDIN, SOMMET_DU_TAS } from './regions/jardin.js';
 import { ROUGE } from './regions/rouge.js';
 import { TERRASSE } from './regions/terrasse.js';
+import { rebordsInvisibles } from './rebords.js';
 
 /**
  * LE MONDE — un voyage en spirale.
@@ -259,6 +260,9 @@ const piedestal = (cx: number, cz: number, creux: number, retourne = false): Box
   ];
 };
 
+/** Épaisseur d'un bourrelet : un talus, pas une palissade. */
+const epaisseurTalus = (haut: number): number => haut * 2.2;
+
 /**
  * BOURRELET D'HORIZON — ce qui empêche de voir dehors depuis une poche.
  *
@@ -291,13 +295,37 @@ const bourrelet = (
   ink: number,
   region: string,
 ): BoxDef[] => {
-  const e = haut * 2.2; // épaisseur : un talus, pas une palissade
+  const e = epaisseurTalus(haut);
   return [
     box([x0 - e, -6, z0 - e], [x0, haut, z1 + e], ink, { region }),
     box([x1, -6, z0 - e], [x1 + e, haut, z1 + e], ink, { region }),
     box([x0, -6, z0 - e], [x1, haut, z0], ink, { region }),
     box([x0, -6, z1], [x1, haut, z1 + e], ink, { region }),
   ];
+};
+
+/**
+ * LE DEHORS DU BOURRELET, qu'on sent sans le voir.
+ *
+ * Un talus se gravit dès qu'on trouve plus haut que lui à côté : le tas de
+ * feuilles au fond du jardin, l'épaulement nord au bout de la côte. On marchait
+ * alors sur son dos jusqu'à son autre bord, et de l'autre côté il n'y a rien —
+ * les poches sont posées sur le vide. Règle 6 du contrat : le vide se protège
+ * par des balustrades plus hautes que son saut. Quatre murs INVISIBLES contre
+ * sa face extérieure (voir `rebords.ts`) : son dos reste un chemin, il ne mène
+ * plus hors du monde. `hauteur` se compte depuis le dessus du talus.
+ */
+const bordDuBourrelet = (
+  x0: number,
+  x1: number,
+  z0: number,
+  z1: number,
+  haut: number,
+  hauteur: number,
+  region: string,
+): BoxDef[] => {
+  const e = epaisseurTalus(haut);
+  return rebordsInvisibles([x0 - e, z0 - e], [x1 + e, z1 + e], haut, hauteur, region);
 };
 
 /**
@@ -686,6 +714,37 @@ export const MONDE: LevelDef = {
     // poches — et une poche dont on voit le dehors n'est plus un ailleurs.
     ...bourrelet(300, 520, -120, 100, 2.2, 2, 'jardin'),
     ...bourrelet(-520, -300, -120, 100, 14, 2, 'cote-rouge'),
+
+    // LES BORDS DU MONDE, ET ILS NE SE VOIENT PAS. Le sol qui court sous les
+    // trois étages s'arrêtait sur le vide à x = ±260, z = −300 et z = 400 : un
+    // géant y arrive en quelques secondes, un homme en quelques minutes, et
+    // tout droit on sortait du monde — une course sur deux à ×16. Règle 6 du
+    // contrat : le vide se protège par des balustrades plus hautes que son
+    // saut. Quatre murs INVISIBLES au ras du sol, qui ne mordent sur rien.
+    // 280 et non 25 : du toit de la rotonde ou de la lisse du sommet (223,2),
+    // un géant saute encore de 20,7 et franchissait la lisière cent mètres
+    // au-dessus du sol ; et c'est à cette hauteur que le belvédère touche le
+    // bord. Ils ferment aussi l'enjambée qu'un géant faisait jusqu'aux deux
+    // poches, qui ne se rejoignent que par leurs portes.
+    ...rebordsInvisibles([-260, -300], [260, 400], VILLAGE_Y, 280),
+    // Le jardin : on n'y dépasse jamais ×1, mais du sommet du tas (20,05) on
+    // sautait par-dessus le talus. 22 au-dessus de son dos, soit 24,2 : plus
+    // haut que tout ce qu'on peut atteindre là-bas, saut compris (21,34).
+    ...bordDuBourrelet(300, 520, -120, 100, 2.2, 22, 'jardin'),
+    // La côte : on y est à ×4, et l'on monte sur le talus (14) depuis
+    // l'épaulement nord. 9 au-dessus : on en saute 5,18, et rien de plus haut
+    // n'est à moins de trente mètres de son bord extérieur.
+    ...bordDuBourrelet(-520, -300, -120, 100, 14, 9, 'cote-rouge'),
+    // ET LES FENTES DU JARDIN. Ses dalles de l'est s'arrêtent 40 et 80 cm
+    // avant le talus, au nord comme au sud (voir `jardin.ts`, les bords
+    // lointains décalés) : un homme passait dans la plus large, un joueur de
+    // 45 cm dans les deux, et dessous il n'y a que le vide. On les comble de
+    // verre jusqu'au dos du talus : elles touchent les dalles sans les mordre,
+    // et le talus y gagne quelques décimètres qu'on ne voit pas.
+    { min: [401.6, -6, -120], max: [520, 2.2, -119.6], ink: 0, invisible: true, region: 'jardin' },
+    { min: [452.2, -6, -119.6], max: [520, 2.2, -119.2], ink: 0, invisible: true, region: 'jardin' },
+    { min: [401.6, -6, 99.6], max: [520, 2.2, 100], ink: 0, invisible: true, region: 'jardin' },
+    { min: [452.2, -6, 99.2], max: [520, 2.2, 99.6], ink: 0, invisible: true, region: 'jardin' },
   ],
 
   portals: [
