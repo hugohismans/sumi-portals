@@ -548,6 +548,18 @@ taille que le parcours ne permet pas.
   descente touche) ; les MAINS D'ENCRE étaient des corniches solides — elles
   sont fantômes. Et `reposerSurLeSol` ne prend plus un flanc pour un sol en
   ressortant d'une porte.
+- **La pièce « imprenable » n'était pas là** (« un objet passé par un portail
+  est devenu imprenable, il n'a même plus son petit cercle »). La vrille,
+  lancée à côté du montant de la grande face, reposait DERRIÈRE elle sans
+  l'avoir franchie, à 35 m ; le rendu appliquait à toute pièce la règle des
+  pièces portées (doubler jusqu'à trois tailles derrière le plan, un rayon au
+  lieu du cadre), l'effaçait et dessinait son double devant la petite face.
+  La règle vit maintenant dans le cœur (`faceDuDouble`, `portals.ts`) : une
+  pièce libre ne se double que si la simulation pourrait la faire passer, une
+  pièce portée derrière une face reste entière avec son porteur. Cinq
+  vérifications. Un agent a balayé 653 000 essais de pièces passées par des
+  portes : côté simulation, aucune ne finit en l'air, coincée ou en
+  va-et-vient.
 - **Question ouverte, de conception** : beaucoup de dalles n'ont pas de bord
   (le hall à ±70, la boîte à formes, le lavoir, le conduit, les toits, le
   plateau de l'escalier, la rive, le seuil). La règle 6 du contrat demande des

@@ -193,6 +193,58 @@ export const withinFaceRect = (face: PortalFace, from: Vec3, to: Vec3, t: number
 };
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA FACE PAR LAQUELLE UNE PIÈCE PASSE, À L'IMAGE — celle où le rendu la
+ * tranche et dresse son double. `null` : elle se dessine entière, où elle est.
+ *
+ * PORTÉE, elle franchit le plan AVANT son porteur et peut s'y trouver entière
+ * de l'autre côté : on la double largement — mais seulement si le porteur est
+ * DEVANT la face ; derrière, elle est derrière avec lui.
+ *
+ * LIBRE, elle passe la porte à l'image même où son centre franchit le plan
+ * dans le cadre (`Simulation.carryTraversal`). Une pièce libre dont le centre
+ * est derrière une face, ou hors de son cadre, n'est donc JAMAIS en train de
+ * passer : elle est passée à côté du montant, a buté contre le dos, ou y a été
+ * posée.
+ *
+ * Le rendu en décidait seul, avec la règle des pièces portées appliquée à
+ * toutes, et un rayon au lieu du cadre. Signalé en jouant, dans la montée :
+ * « un objet passé par un portail est devenu imprenable, il n'a même plus son
+ * petit cercle ». La vrille, lancée à côté du montant de la grande face,
+ * reposait derrière elle, à trente-cinq mètres : le rendu l'effaçait et
+ * dessinait son double devant la petite face bleue, où rien ne se ramassait —
+ * le cerne, lui, entourait un vide là-bas. La règle vit donc ici, sans
+ * Three.js, où le harnais la vérifie.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const faceDuDouble = (
+  faces: readonly PortalFace[],
+  c: { position: Vec3; size: number; held: boolean },
+  oeil: Vec3 | null = null,
+): PortalFace | null => {
+  const centre = vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z);
+  // Un peu large : mieux vaut doubler trop tôt.
+  const half = c.size * 0.72;
+  for (const face of faces) {
+    const d = signedDistance(face, centre);
+    // Devant : rien à dédoubler.
+    if (d > half) continue;
+    if (c.held) {
+      // Portée : entièrement passée devant son porteur, elle reste vue à
+      // travers le portail — jusqu'à trois tailles derrière le plan.
+      if (d < -(half + c.size * 3)) continue;
+      if (oeil && signedDistance(face, oeil) < 0) continue;
+      const local = rotateY(sub(centre, face.position), -face.yaw);
+      if (Math.abs(local.x) > face.width * 0.5 + c.size || local.y < -c.size || local.y > face.height + c.size) continue;
+    } else if (d < 0 || !withinFaceRect(face, centre, centre, 0)) {
+      continue;
+    }
+    return face;
+  }
+  return null;
+};
+
+/**
  * Transporte un POINT à travers `face` vers sa jumelle.
  *
  * On exprime le point dans le repère de la face, on le retourne de 180° autour

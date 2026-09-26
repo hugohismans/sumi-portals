@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { Carryable } from '../core/carryables.js';
+import type { Vec3 } from '../core/math.js';
 import {
-  faceWorldSize,
+  faceDuDouble,
   transformPoint,
   traversalScale,
   transporterRotation,
@@ -184,7 +185,8 @@ export class CarryableViews {
   private readonly euler = new THREE.Euler();
   private readonly cible = new THREE.Quaternion();
 
-  update(items: Carryable[], faces: PortalFace[], temps = 0): void {
+  /** `oeil` : celui du joueur — une pièce portée derrière une face est derrière avec lui. */
+  update(items: Carryable[], faces: PortalFace[], temps = 0, oeil: Vec3 | null = null): void {
     const dt = Math.min(0.1, Math.max(0, temps - this.dernierTemps));
     this.dernierTemps = temps;
     // La respiration du cerne : lente, et jamais éteinte — un cerne qui
@@ -244,7 +246,7 @@ export class CarryableViews {
       if (!view.enRotation) view.quat.copy(this.cible);
       view.group.quaternion.copy(view.quat);
 
-      this.updateGhost(view, item, faces, cx, cy, cz);
+      this.updateGhost(view, item, faces, cx, cy, cz, oeil);
     }
   }
 
@@ -256,26 +258,15 @@ export class CarryableViews {
     cx: number,
     cy: number,
     cz: number,
+    oeil: Vec3 | null,
   ): void {
-    const half = item.size * 0.72; // un peu large : mieux vaut doubler trop tôt
-
-    for (const face of faces) {
+    // QUELLE FACE LA TRANCHE, S'IL Y EN A UNE : la règle vit dans le cœur,
+    // où le harnais la vérifie (voir `faceDuDouble`). Portée, on la double
+    // même entièrement passée — elle franchit le plan avant son porteur ;
+    // libre, seulement si la simulation pourrait vraiment la faire passer.
+    const face = faceDuDouble(faces, item, oeil);
+    if (face) {
       const n = face.normal;
-      const d = (cx - face.position.x) * n.x + (cy - face.position.y) * n.y + (cz - face.position.z) * n.z;
-      // Devant : rien à dédoubler. Loin derrière : ce n'est plus ce portail.
-      // Entre les deux, on double — y compris quand la caisse est ENTIÈREMENT
-      // passée, ce qui arrive tout le temps puisqu'on la tend devant soi : elle
-      // franchit le plan avant son porteur. Sans ce cas, elle réapparaissait
-      // brutalement du mauvais côté au lieu de rester vue à travers le portail.
-      if (d > half || d < -(half + item.size * 3)) continue;
-
-      // Grossièrement dans l'ouverture ? Sinon la caisse passe à côté du cadre
-      // et n'a aucune raison d'être dédoublée.
-      const { width, height } = faceWorldSize(face);
-      const lat = Math.hypot(cx - face.position.x, cz - face.position.z);
-      const up = cy - face.position.y;
-      if (lat > width * 0.5 + item.size || up < -item.size || up > height + item.size) continue;
-
       const s = traversalScale(face);
       const there = transformPoint(face, { x: cx, y: cy, z: cz });
 

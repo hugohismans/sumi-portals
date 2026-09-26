@@ -2328,7 +2328,7 @@ function frame(now: number): void {
 
   avatar.update(sim.player, scale, dt);
   avatar.syncInk();
-  carryableViews.update(sim.carryables.items, sim.faces, inkUniforms.uTime.value as number);
+  carryableViews.update(sim.carryables.items, sim.faces, inkUniforms.uTime.value as number, sim.eyePosition());
   carryableViews.syncInk();
   // Le dessin du creux RESPIRE quand la pièce qu'on tient l'épouse — forme,
   // taille, main ET sens. C'est la réponse visible à la molette : avec la

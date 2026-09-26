@@ -12,7 +12,7 @@ import { EYE_FRACTION, GRAVITY, JUMP_SPEED, PLAYER_HEIGHT, PLAYER_RADIUS, SCALE_
 import { Fraicheur, STALE_MS } from './fraicheur.js';
 import { estUnSaut } from './saut.js';
 import { Familles } from './familles.js';
-import { buildFaces, canPass, estScelle, transformPoint, transformVector, transporterRotation, traversalLevelDelta } from './portals.js';
+import { buildFaces, canPass, estScelle, faceDuDouble, signedDistance, transformPoint, transformVector, transporterRotation, traversalLevelDelta } from './portals.js';
 import { appliquerMat, eulerVersMat } from './math.js';
 import { partenaireDe, salonDe, type Attendant } from './salons.js';
 import { retrouvailles, type Dalle } from './retrouvailles.js';
@@ -57,7 +57,7 @@ import {
 } from '../levels/duo.js';
 import { Simulation } from './simulation.js';
 import {
-  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, orienterPour, peindreVers, piece, pos, poserA, poserVers, settle, walkTo,
+  agirVers, attendre, bondirVers, dansLaCour, lancer, near, ordre, orienterPour, peindreVers, piece, pos, poserA, poserVers, settle, versLePoint, walkTo,
 } from './__pilote.js';
 import type { BoxDef, LevelDef, TickEvents } from './types.js';
 import { LEVEL_01 } from '../levels/level01.js';
@@ -4643,6 +4643,70 @@ console.log('\n— Ce que la chasse du 26 a trouvé : sortir du décor sans pass
       if (!sous.some((b) => b.maxY >= p.y - 0.02)) surRien.push(`t${t} y = ${p.y.toFixed(3)}`);
     }
     check('un pas ne se déclare jamais posé au-dessus du vide', surRien.length <= 1, surRien.join(', '));
+  }
+
+  // UNE PIÈCE PASSÉE À CÔTÉ DU MONTANT NE SE DÉDOUBLE PAS. Signalé en jouant :
+  // « un objet passé par un portail est devenu imprenable, il n'a même plus
+  // son petit cercle ». La vrille de 2,00, lancée à côté du montant de la
+  // grande face, repose derrière elle sans l'avoir franchie ; le rendu
+  // l'effaçait et dessinait son double devant la petite face bleue, à
+  // trente-cinq mètres de là, où rien ne se ramassait.
+  {
+    const sim = new Simulation(MONTEE);
+    const w = piece(sim, 'vrille-blanchiment');
+    const grande = sim.faces.find((f) => f.pairId === 'ordinaire-blanchiment' && f.kind === 'big')!;
+    poserA(sim, 212, 0, 1686.6, 1);
+    w.held = true;
+    w.size = BLANCHIMENT_GRANDE;
+    w.main = 'D';
+    settle(sim, 5);
+    // Le plan de la grande face, visé à 4,60 de son axe : 80 cm au-delà du montant.
+    lancer(sim, versLePoint(sim, [226, 0, 1686.6]), 0);
+    attendre(sim, 240);
+    const centre = { x: w.position.x, y: w.position.y + w.size / 2, z: w.position.z };
+    check(
+      'lancée à côté du montant, la vrille repose derrière la grande face sans l’avoir franchie',
+      !w.held && w.grounded && near(w.size, BLANCHIMENT_GRANDE, 1e-9) && signedDistance(grande, centre) < 0,
+      `(${w.position.x.toFixed(2)}, ${w.position.y.toFixed(2)}, ${w.position.z.toFixed(2)}) taille ${w.size}`,
+    );
+    check(
+      '…et elle se dessine là, entière : aucun double devant la petite face, où rien ne se ramasse',
+      faceDuDouble(sim.faces, w, sim.eyePosition()) === null,
+      `doublée par ${faceDuDouble(sim.faces, w, sim.eyePosition())?.pairId}`,
+    );
+  }
+  // Les doubles voulus restent.
+  {
+    const sim = new Simulation(MONTEE);
+    const w = piece(sim, 'vrille-blanchiment');
+    const petite = sim.faces.find((f) => f.pairId === 'ordinaire-blanchiment' && f.kind === 'small')!;
+    w.position = { x: 226 - 0.1, y: 0, z: 1720 };
+    w.size = BLANCHIMENT_TAILLE;
+    poserA(sim, 222, 0, 1720, 0);
+    attendre(sim, 30);
+    check(
+      'libre, à cheval sur le plan, centre devant, dans le cadre : doublée',
+      faceDuDouble(sim.faces, w, sim.eyePosition()) === petite,
+      `${faceDuDouble(sim.faces, w)?.pairId}`,
+    );
+    w.held = true;
+    poserA(sim, 226 - 0.6, 0, 1720, 0);
+    sim.player.yaw = Math.PI / 2;
+    attendre(sim, 3);
+    const passee = signedDistance(petite, { x: w.position.x, y: w.position.y + w.size / 2, z: w.position.z }) < 0;
+    check(
+      'portée, passée avant son porteur resté devant : doublée',
+      passee && faceDuDouble(sim.faces, w, sim.eyePosition()) === petite,
+      `passée ${passee}`,
+    );
+    poserA(sim, 228, 0, 1720, 0);
+    sim.player.yaw = -Math.PI / 2;
+    attendre(sim, 3);
+    check(
+      'portée par quelqu’un derrière la face : entière, avec lui',
+      faceDuDouble(sim.faces, w, sim.eyePosition()) === null,
+      `${faceDuDouble(sim.faces, w, sim.eyePosition())?.pairId}`,
+    );
   }
 
   // Et la main d'encre est de l'encre : ni corniche, ni marche.
