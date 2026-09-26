@@ -1,4 +1,5 @@
 import type { BoxDef, CarryableDef, LevelDef } from '../core/types.js';
+import { rebordsInvisibles } from './rebords.js';
 import type { PortalPairDef, RegionDef, SocketDef } from '../core/types.js';
 
 /**
@@ -270,6 +271,10 @@ const SOCKETS: SocketDef[] = [
 const decor = (): BoxDef[] => [
   // Le plancher. `outline: false` : ses arêtes feraient un cadre en plein vide.
   b([-260, -2.5, 2240], [260, 0, 2760], 0, { outline: false }),
+  // Et son bord, qu'on sent sans le voir : un géant de 7,20 qui marchait
+  // tout droit finissait par en tomber, et tomber d'un jouet n'a pas de sens.
+  // Quarante mètres, au-dessus du saut d'un géant (5,20). Voir `rebords.ts`.
+  ...rebordsInvisibles([-260, 2240], [260, 2760], 0, 40, 'formes'),
 
   // LA PLANCHE. Soixante centimètres, c'est-à-dire un genou — l'étalon de la
   // règle 9, celui qu'on a dans le corps : à taille d'homme on s'y appuie, et

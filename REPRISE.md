@@ -575,6 +575,12 @@ taille que le parcours ne permet pas.
   échouent sans leurs correctifs. Reste, à une taille inhabituelle (×1/4
   devant la lucarne dorée) : la grande face de la vallée est en partie
   couverte par la pyramide.
+- **Rebords invisibles** (accepté par Hugo) : `src/levels/rebords.ts`, quatre
+  murs `invisible` juste au-dehors d'une dalle, plus hauts que le saut à la
+  plus grande taille qu'on y atteint. Posés au hall (±70) et à la boîte à
+  formes ; une vérification court et saute vers chaque bord à ×1 et ×4. Les
+  autres salles (lavoir, conduit, toits, plateau de l'escalier, rive, seuil)
+  suivent, bord par bord : on n'en pose pas là où l'on doit sauter un vide.
 - **Question ouverte, de conception** : beaucoup de dalles n'ont pas de bord
   (le hall à ±70, la boîte à formes, le lavoir, le conduit, les toits, le
   plateau de l'escalier, la rive, le seuil). La règle 6 du contrat demande des

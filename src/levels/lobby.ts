@@ -1,4 +1,5 @@
 import type { BoxDef, LevelDef } from '../core/types.js';
+import { rebordsInvisibles } from './rebords.js';
 
 /**
  * LE HALL — un lieu d'expérience, pas un couloir.
@@ -793,6 +794,10 @@ export const LOBBY: LevelDef = {
     // Sol. Une seule dalle, donc aucune couture — mais sans contour tout de
     // même, sinon sa silhouette entière serait tracée à l'encre à l'horizon.
     box([-FAR, -6, -FAR], [FAR, 0, FAR], 0, { outline: false }),
+    // Et son bord, qu'on sent sans le voir : on marchait au bout de la dalle
+    // et l'on tombait hors du hall. Quarante mètres, au-dessus du saut d'un
+    // géant (5,20) — celui qui sort de la grande arche. Voir `rebords.ts`.
+    ...rebordsInvisibles([-FAR, -FAR], [FAR, FAR], 0, 40),
 
     ...PLACE(),
     ...chevalet(),

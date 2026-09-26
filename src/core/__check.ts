@@ -4806,6 +4806,47 @@ console.log('\n— Ce que la chasse du 26 a trouvé : sortir du décor sans pass
     );
   }
 
+  // ─── LES REBORDS INVISIBLES : LE HALL ET LA BOÎTE À FORMES ─────────────
+  //
+  // Là où tomber n'a jamais de sens, on ne tombe plus : trois mètres en deçà
+  // de chaque bord et de chaque coin, on court et l'on saute droit dehors, à
+  // taille d'homme puis en géant. Sans les rebords, chacun de ces départs
+  // finissait hors du monde.
+  {
+    const bords = (x0: number, z0: number, x1: number, z1: number): [number, number, number][] => {
+      const cx = (x0 + x1) / 2;
+      const cz = (z0 + z1) / 2;
+      return [
+        [x0, cz, -Math.PI / 2], [x1, cz, Math.PI / 2], [cx, z0, Math.PI], [cx, z1, 0],
+        [x0, z0, -3 * Math.PI / 4], [x1, z1, Math.PI / 4],
+      ];
+    };
+    for (const [nom, level, x0, z0, x1, z1] of [
+      ['le hall', LOBBY, -70, -70, 70, 70],
+      ['la boîte à formes', FORMES, -260, 2240, 260, 2760],
+    ] as const) {
+      const sorties: string[] = [];
+      for (const palier of [0, 1]) {
+        const sc = scaleOfLevel(palier);
+        for (const [bx, bz, cap] of bords(x0, z0, x1, z1)) {
+          const sim = new Simulation(level);
+          // Trois tailles en deçà du bord, face au vide.
+          const rentre = 3 * sc;
+          const x = Math.min(x1 - rentre, Math.max(x0 + rentre, bx));
+          const z = Math.min(z1 - rentre, Math.max(z0 + rentre, bz));
+          poserA(sim, x, 0.05, z, palier);
+          let dehors = false;
+          for (let i = 0; i < 60 * 6 && !dehors; i++) {
+            const e = sim.step(ordre(sim, { yaw: cap, forward: 1, sprint: true, jump: i % 40 < 20 }), TICK_DT);
+            dehors = e.rattrape === true || sim.player.position.y < -2;
+          }
+          if (dehors) sorties.push(`×${sc} vers ${(cap * 180 / Math.PI).toFixed(0)}° depuis (${x.toFixed(0)}, ${z.toFixed(0)})`);
+        }
+      }
+      check(`${nom} : on court et l’on saute vers chaque bord, à ×1 et ×4, sans jamais tomber du monde`, sorties.length === 0, sorties.join(' ; '));
+    }
+  }
+
   // Et la main d'encre est de l'encre : ni corniche, ni marche.
   check(
     'les mains d’encre ne portent personne',
