@@ -60,6 +60,9 @@ const TRAIT_PINCEAU = 0.004;
 /** Longueur de la traînée, en échantillons. */
 const TRAIL = 56;
 
+/** Le haut d'une face debout, quand on ne nous en donne pas d'autre. */
+const HAUT_ORDINAIRE = new THREE.Vector3(0, 1, 0);
+
 interface Sample {
   x: number;
   y: number;
@@ -148,6 +151,8 @@ export interface FacePorte {
   hauteur: number;
   /** Vers où la face regarde. On en sort en s'en écartant, pas en surgissant. */
   normale: THREE.Vector3;
+  /** Le haut de la face : +y, sauf pour une porte couchée contre un mur ou au plafond. */
+  haut?: THREE.Vector3;
 }
 
 export class Brush {
@@ -590,10 +595,10 @@ export class Brush {
         // terre, puis rejaillir à l'autre bout du monde. Rien là-dedans ne
         // disait qu'il était PASSÉ PAR LÀ — et c'était pourtant la seule chose
         // que ce vol avait à raconter.
-        this.to.copy(entree.position);
-        this.to.y += entree.hauteur * 0.5;
-        this.sortie = sortie.position.clone();
-        this.sortie.y += sortie.hauteur * 0.5;
+        // Le milieu se prend le long du haut de la face : pour une porte
+        // couchée contre un mur, « au-dessus du seuil » est dans le mur.
+        this.to.copy(entree.position).addScaledVector(entree.haut ?? HAUT_ORDINAIRE, entree.hauteur * 0.5);
+        this.sortie = sortie.position.clone().addScaledVector(sortie.haut ?? HAUT_ORDINAIRE, sortie.hauteur * 0.5);
         versLaPorte = true;
       } else {
         this.to.copy(next);

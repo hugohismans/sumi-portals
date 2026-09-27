@@ -175,7 +175,8 @@ export class PinceauPeintre {
     this.etat = 'compagnon';
     this.temps = 0;
     this.plante = false;
-    // Éveillé, il se redresse : un compagnon vole debout, quel que soit le mur où il dormait.
+    // Éveillé, il se redresse dans le repère du joueur : `update` lui donne
+    // ce haut à chaque image, quel que soit le mur où il dormait.
     this.group.quaternion.identity();
     this.group.position.copy(ou);
     this.group.visible = true;
@@ -186,6 +187,8 @@ export class PinceauPeintre {
     if (this.etat !== 'compagnon') return;
     this.etat = 'peintre';
     this.temps = 0;
+    // Le monde gris est debout : il y peint et s'y pose debout.
+    this.group.quaternion.identity();
   }
 
   get suitLeJoueur(): boolean {
@@ -201,6 +204,7 @@ export class PinceauPeintre {
     this.etat = 'peintre';
     this.temps = BOND + BALAYAGE + RETOUR;
     this.aPeint = true;
+    this.group.quaternion.identity();
     this.group.visible = true;
   }
 
@@ -208,7 +212,7 @@ export class PinceauPeintre {
     return this.etat !== 'dormant' || this.plante;
   }
 
-  update(dt: number, echelleJoueur: number, oeil: THREE.Vector3): void {
+  update(dt: number, echelleJoueur: number, oeil: THREE.Vector3, haut?: Haut): void {
     // Planté : il respire sur place, et c'est tout. Assez pour qu'on le
     // remarque de loin, trop peu pour qu'il ait l'air de bouger.
     if (this.etat === 'dormant') {
@@ -230,11 +234,17 @@ export class PinceauPeintre {
     if (this.etat === 'compagnon') {
       const a = this.temps * 1.15;
       const r = ORBITE * echelleJoueur;
-      this.cible.set(
-        oeil.x + Math.sin(a) * r,
-        oeil.y + 0.35 * echelleJoueur + Math.sin(this.temps * 1.7) * 0.12 * echelleJoueur,
-        oeil.z + Math.cos(a) * r,
-      );
+      // L'orbite se dessine dans le repère du joueur : « un peu au-dessus »,
+      // pour qui marche sur un mur, c'est vers le milieu de la pièce — pas
+      // une boucle verticale qui rase le mur qu'on foule.
+      this.cible
+        .set(
+          Math.sin(a) * r,
+          0.35 * echelleJoueur + Math.sin(this.temps * 1.7) * 0.12 * echelleJoueur,
+          Math.cos(a) * r,
+        )
+        .applyQuaternion(quaternionDuHaut(haut, this.group.quaternion))
+        .add(oeil);
       this.group.position.lerp(this.cible, Math.min(1, dt * 3.2));
       // En compagnon il suit VOTRE taille : il est à votre côté, donc il doit
       // rester à votre mesure quand vous changez d'échelle en chemin.

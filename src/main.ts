@@ -614,6 +614,7 @@ const brush = new Brush(
     position: new THREE.Vector3(f.position.x, f.position.y, f.position.z),
     hauteur: f.height,
     normale: new THREE.Vector3(f.normal.x, f.normal.y, f.normal.z),
+    haut: new THREE.Vector3(f.haut.x, f.haut.y, f.haut.z),
   })),
 );
 // Le seul retour du jeu qui dise « tu avances ». Le son du pinceau existait
@@ -1033,7 +1034,8 @@ input.onCapture = () => {
   const p = sim.player.position;
   const line =
     `__game.tp(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}, ` +
-    `${sim.player.scaleLevel}, ${sim.player.yaw.toFixed(3)}, ${sim.player.pitch.toFixed(3)})`;
+    `${sim.player.scaleLevel}, ${sim.player.yaw.toFixed(3)}, ${sim.player.pitch.toFixed(3)}` +
+    (estDebout(sim.player.haut) ? ')' : `, '${sim.player.haut}')`);
   console.log(line);
   void navigator.clipboard?.writeText(line).then(
     () => flash('Point de vue copié — colle-le dans la conversation.'),
@@ -1890,7 +1892,10 @@ function frame(now: number): void {
       // à seize unitès l'une de l'autre, aucune feuille ne sortait du voisinage
       // et l'on abandonnait derrière soi un petit tas de traînées d'encre à
       // l'ancienne échelle, autour de la porte qu'on venait de quitter.
-      feuilles.traverser(camera.position, scaleOfLevel(sim.player.scaleLevel));
+      // Depuis l'œil d'ARRIVÉE : la caméra, elle, est encore à l'image d'avant,
+      // devant la porte qu'on quitte.
+      const oeil = sim.eyePosition();
+      feuilles.traverser(new THREE.Vector3(oeil.x, oeil.y, oeil.z), scaleOfLevel(sim.player.scaleLevel));
     }
     // ─── UN REFUS DOIT RACONTER LE MONDE, PAS LE MOTEUR ────────────────────
     //
@@ -2503,9 +2508,9 @@ function frame(now: number): void {
         flash('Il te quitte. Regarde-le peindre.', 5);
       }
     }
-    p.update(dt, scale, tmpOeil);
+    p.update(dt, scale, tmpOeil, sim.player.haut);
   }
-  for (const p of compagnons.values()) if (p.enCours) p.update(dt, scale, tmpOeil);
+  for (const p of compagnons.values()) if (p.enCours) p.update(dt, scale, tmpOeil, sim.player.haut);
   if (talisman.enCours) talisman.update(dt, camera.position);
   feuilles.syncInk();
   for (const g of averses) g.syncInk();
@@ -2610,26 +2615,6 @@ function frame(now: number): void {
   updateHints(now);
 
   // --- Rendu ------------------------------------------------------------------
-  camera.updateMatrixWorld(true);
-  // À faire AVANT le rendu des vues : la surface doit déjà être écartée quand
-  // les caméras virtuelles travaillent.
-  portals.updateSurfaceOffsets(camera);
-  applyAmbience(camera.position);
-
-  // Bonhomme entier dans les vues de portail — sinon on s'y verrait décapité.
-  avatar.setHeadVisible(true);
-  portals.renderViews(renderer, scene, camera, applyAmbience);
-
-  // Mais pas de tête dans la vue principale : elle est pile dans la caméra.
-  // Le buste et les jambes, eux, restent visibles quand on baisse les yeux.
-  //
-  // Sauf pendant le sacre : la caméra est à trois cents mètres de là, et un
-  // personnage décapité au milieu du plan de fin serait une belle sortie.
-  avatar.setHeadVisible(sacre.actif);
-  // Retour à l'ambiance de là où l'on se tient réellement.
-  applyAmbience(camera.position);
-  renderer.setRenderTarget(paper.target);
-  renderer.clear();
   // ═══════════════════════════════════════════════════════════════════════
   // LE MONDE SE LIT DE LA MAIN DU JOUEUR.
   //
@@ -2654,8 +2639,30 @@ function frame(now: number): void {
   // Les commandes suivent la main du monde : voir `InputManager.setGauchere`.
   input.setGauchere(gauchere);
   input.setTenue(sim.carryables.held !== null);
+  // AVANT LES VUES DE PORTAIL : elles lisent la main de la caméra. Posée après,
+  // l'image qui suit un miroir franchi montrait chaque porte avec la main
+  // d'avant — une image retournée à tort, au moment même du passage.
   camera.scale.x = gauchere ? -1 : 1;
   camera.updateMatrixWorld(true);
+  // À faire AVANT le rendu des vues : la surface doit déjà être écartée quand
+  // les caméras virtuelles travaillent.
+  portals.updateSurfaceOffsets(camera);
+  applyAmbience(camera.position);
+
+  // Bonhomme entier dans les vues de portail — sinon on s'y verrait décapité.
+  avatar.setHeadVisible(true);
+  portals.renderViews(renderer, scene, camera, applyAmbience);
+
+  // Mais pas de tête dans la vue principale : elle est pile dans la caméra.
+  // Le buste et les jambes, eux, restent visibles quand on baisse les yeux.
+  //
+  // Sauf pendant le sacre : la caméra est à trois cents mètres de là, et un
+  // personnage décapité au milieu du plan de fin serait une belle sortie.
+  avatar.setHeadVisible(sacre.actif);
+  // Retour à l'ambiance de là où l'on se tient réellement.
+  applyAmbience(camera.position);
+  renderer.setRenderTarget(paper.target);
+  renderer.clear();
   const retournes = gauchere ? PortalRenderer.materiauxDe(scene) : [];
   for (const m of retournes) {
     m.side = m.side === THREE.FrontSide ? THREE.BackSide : THREE.FrontSide;
@@ -2829,7 +2836,7 @@ function updateHints(now: number): void {
   if (!found && !partieFinie) {
     const scale = scaleOfLevel(sim.player.scaleLevel);
     if (!sim.carryables.held) {
-      const cible = sim.carryables.targeted(p, sim.player.yaw, scale, sim.world);
+      const cible = sim.carryables.targeted(p, sim.player.yaw, scale, sim.world, sim.player.haut);
       if (cible && !cible.locked) {
         if (sim.carryables.canLift(cible, scale)) found = `${TOUCHE_ACTION}Prendre`;
       } else if (visePeinture?.aPortee && LEVEL.boxes[visePeinture.index].famille) {
