@@ -12,6 +12,7 @@ import { MONDE } from './levels/monde.js';
 import { DESCENTE } from './levels/descente.js';
 import { MONTEE } from './levels/montee.js';
 import { MESURE } from './levels/mesure.js';
+import { ENVERS } from './levels/envers.js';
 import { PLUIE_SEULE } from './levels/pluie.js';
 import { FORMES } from './levels/formes.js';
 import { BANC, REPERES_BANC } from './levels/banc.js';
@@ -31,6 +32,7 @@ import {
   REPERES_MONDE,
   REPERES_MONTEE,
   REPERES_MESURE,
+  REPERES_ENVERS,
   changeDeMonde,
 } from './debug/reperes.js';
 import { PinceauPeintre } from './render/pinceauPeintre.js';
@@ -88,6 +90,7 @@ const NIVEAUX: Record<string, () => typeof LEVEL_01> = {
   descente: () => DESCENTE,
   montee: () => MONTEE,
   mesure: () => MESURE,
+  envers: () => ENVERS,
   formes: () => FORMES,
   banc: () => BANC,
   pluie: () => PLUIE_SEULE,
@@ -112,7 +115,11 @@ const NIVEAU_SUIVANT: Record<string, string> = {
   // tout — elle se disait l'avant-dernière salle du jeu et n'était dans aucune
   // chaîne.
   montee: '?niveau=mesure',
-  mesure: '?niveau=formes',
+  // Puis l'on change de bas : l'envers ne touche pas à la taille, il fait des
+  // murs et du plafond des sols — et il rapporte le violet. La boîte à formes
+  // vient après, qui vérifie tout.
+  mesure: '?niveau=envers',
+  envers: '?niveau=formes',
   cour: '?niveau=caisse',
   caisse: '?niveau=monde',
 };
@@ -128,6 +135,7 @@ const FIN_DU_CHAPITRE: Record<string, { titre: string; regarde: string }> = {
   descente: { titre: 'Le bleu est rendu', regarde: 'Regarde le village en bas : l’eau prend le bleu.' },
   montee: { titre: 'L’or est rendu', regarde: 'Regarde le village en bas : la lumière prend l’or.' },
   mesure: { titre: 'La mesure est rendue', regarde: 'Tu sais de nouveau quelle taille tu fais.' },
+  envers: { titre: 'Le violet est rendu', regarde: 'Lève les yeux : le village pendu prend le violet.' },
   formes: { titre: 'Tout est vérifié', regarde: 'Cinq creux, cinq pièces, et rien à expliquer.' },
 };
 /**
@@ -423,6 +431,7 @@ const TEINTE_DU_PIGMENT: Record<string, string> = {
   vert: '#4c7a3f',
   bleu: '#2f6a8c',
   or: '#c99a3c',
+  violet: '#7a4c8a',
 };
 /**
  * CE QU'ON SAIT DIRE : les pigments rapportés, dans l'ordre du voyage. Voir
@@ -797,11 +806,11 @@ overlay.addEventListener('click', () => input.requestLock());
   // quelque chose à reprendre. Au tout premier lancement, la couverture reste
   // une couverture.
   //
-  // « Tout est rapporté » n'est vrai que si les quatre pinceaux le sont : la
+  // « Tout est rapporté » n'est vrai que si les cinq pinceaux le sont : la
   // mémoire du voyage et celle des couleurs sont deux cases, et la carte ne
   // doit jamais contredire ses propres pinceaux. Et quand la suite est le
   // monde — rien de fini, ou tout —, ce n'est pas une suite, c'est un début.
-  const toutesLesCouleurs = ['vert', 'rouge', 'bleu', 'or'].every((c) => acquis.has(c));
+  const toutesLesCouleurs = ['vert', 'rouge', 'bleu', 'or', 'violet'].every((c) => acquis.has(c));
   const prochain = Voyage.prochain([...acquis]);
   el('chapitre').textContent = EN_AVENTURE
     ? LEVEL.name
@@ -925,7 +934,7 @@ let partieFinie = false;
 /** La couleur qui attend le balcon pour se poser. Voir l'éveil, plus bas. */
 let peintureAuBut: string | null = null;
 /** Les chapitres dont la couleur se pose à la fin, sous les yeux, et non à l'éveil. */
-const PEINTURE_AU_BUT = MODE === 'descente' || MODE === 'montee';
+const PEINTURE_AU_BUT = MODE === 'descente' || MODE === 'montee' || MODE === 'envers';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -1295,6 +1304,8 @@ const REPERES: Repere[] =
         ? REPERES_MONTEE
         : MODE === 'mesure'
           ? REPERES_MESURE
+        : MODE === 'envers'
+          ? REPERES_ENVERS
         : MODE === 'formes'
           ? REPERES_FORMES
           : MODE === 'pluie'
@@ -1523,6 +1534,7 @@ const REPERES: Repere[] =
     ['descente', '?niveau=descente&debug=1'],
     ['montée', '?niveau=montee&debug=1'],
     ['mesure', '?niveau=mesure&debug=1'],
+    ['envers', '?niveau=envers&debug=1'],
     ['formes', '?niveau=formes&debug=1'],
     ['banc', '?niveau=banc&debug=1'],
     ['pluie', '?niveau=pluie&debug=1'],
@@ -2044,7 +2056,8 @@ function frame(now: number): void {
         // balcon : elle se pose au moment où l'on arrive, sous les yeux.
         // ═══════════════════════════════════════════════════════════════════
         peintureAuBut = pigment;
-        flash('Il s’éveille, et il te suit. Va le montrer au village.', 6);
+        // Dans l'envers, le village de la lucarne pend au plafond : on le montre en levant les yeux.
+        flash(MODE === 'envers' ? 'Il s’éveille, et il te suit. Va le montrer au village, là-haut.' : 'Il s’éveille, et il te suit. Va le montrer au village.', 6);
       } else if (attendu && !socle) {
         pigments.rendre(
           pigment,
@@ -2872,7 +2885,7 @@ const trousse = el('trousse');
 const viseur = el('crosshair');
 const boutonLancer = el('btn-throw');
 const boutonTourner = el('btn-turn');
-const NOM_DU_PINCEAU: Record<string, string> = { rouge: 'Rouge', vert: 'Vert', bleu: 'Bleu', or: 'Or', eau: 'Eau' };
+const NOM_DU_PINCEAU: Record<string, string> = { rouge: 'Rouge', vert: 'Vert', bleu: 'Bleu', or: 'Or', violet: 'Violet', eau: 'Eau' };
 /**
  * La teinte TELLE QU'ELLE S'AFFICHE une fois posée. Le décor écrit ses couleurs
  * sans conversion (voir `ink.ts`), donc un pigment s'y voit plus soutenu que

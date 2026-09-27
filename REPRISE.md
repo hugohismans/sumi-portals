@@ -35,7 +35,8 @@ Le jeu est un hall et **trois voyages enchaînés**, plus un examen final :
 
 ```
 hall  →  monde (rouge, vert)  →  descente (bleu)  →  montée (or)
-      →  mesure (rien : on perd la taille, on la retrouve)  →  boîte à formes
+      →  mesure (rien : on perd la taille, on la retrouve)
+      →  envers (violet : on marche aux murs)  →  boîte à formes
 ```
 
 - **https://hugohismans.github.io/sumi-portals/** — le hall, trois arches.
@@ -48,6 +49,8 @@ hall  →  monde (rouge, vert)  →  descente (bleu)  →  montée (or)
   descente et se lisait comme une erreur de chemin.
 - `?niveau=montee` — sept salles, on y cherche l'or.
 - `?niveau=mesure` — **NEUF** : trois salles, on y perd la taille.
+- `?niveau=envers` — **NEUF (27 septembre)** : cinq salles, tout à ×1, on y
+  marche au plafond et aux murs, on y cherche le violet. Voir plus bas.
 - `?niveau=formes` — la boîte à formes, l'examen.
 - `?niveau=banc` — le banc d'essai, douze stations (treize jalons du Pinceau),
   une par chose que personne n'a vue. **C'est par là qu'il faut commencer.**
@@ -174,7 +177,8 @@ monde        ?niveau=monde
 descente     ?niveau=descente&couleurs=rouge,vert
 montée       ?niveau=montee&couleurs=rouge,vert,bleu
 mesure       ?niveau=mesure&couleurs=rouge,vert,bleu,or
-formes       ?niveau=formes&couleurs=rouge,vert,bleu,or
+envers       ?niveau=envers&couleurs=rouge,vert,bleu,or
+formes       ?niveau=formes&couleurs=rouge,vert,bleu,or,violet
 banc         ?niveau=banc
 pluie        ?niveau=pluie
 rêve         ?niveau=reve&graine=7
@@ -248,6 +252,8 @@ descente   lavoir ×1 · conduit ×1/4→×1 · creux ×4 · atelier ×1→×1/4
 montée     toits ×4 · refus ×1→×4 · blanchiment ×1 · escalier ×4→×1 ·
            atelier du haut ×4 · vallée ×16 · lucarne dorée
 mesure     rive ×4 · grain ×1 (on y tombe, on ne remonte pas) · seuil ×1/4
+envers     bascule · puits couché · escalier mural · cuve · lucarne violette
+           — tout à ×1, quatre portes planes ; le bas change, pas la taille
 ```
 
 Une porte ne vaut qu'un cran : la sortie d'une salle et l'entrée de la suivante
@@ -606,6 +612,37 @@ taille que le parcours ne permet pas.
   deux poches, et l'on sautait à ×4 du talus de la côte sur le sol commun. Les
   poches ne se rejoignent plus que par leurs portes.
 
+### Puis, le 27 : l'envers, le chapitre qui marche aux murs
+
+Sur le moteur de la pesanteur (`src/core/pesanteur.ts`), un quatrième mouvement
+entre la mesure et la boîte à formes : `src/levels/envers.ts`, cinq salles dans
+`src/levels/salles/` (`bascule`, `puitsCouche`, `escalierMural`, `cuve`,
+`lucarneViolette`). Il rapporte **le violet** (#7a4c8a, cinquième pinceau de la
+carte de titre, enfin branché) et n'exige rien.
+
+- **Une seule porte violette par salle**, plane, cadres violets des deux côtés,
+  et un **fil à plomb** pendu à chaque linteau vers les pieds de qui en
+  ressort : sous une face couchée, il pend de côté.
+- **Les raccords ne tournent jamais la pesanteur**, et chaque salle est bâtie
+  pour qu'on n'atteigne jamais une face de raccord couché ou la tête en bas.
+  Toutes les salles sont closes sur leurs six faces, parois de trois mètres
+  (une pièce tenue traverse la pierre jusqu'à 2,34 m devant soi).
+- Les faces couchées à plat (normale ±y : les jumelles du puits et de la cour)
+  ont leur dos fermé par une **poche** de 50 cm, close de toutes parts.
+- Le chapitre est **joué de bout en bout** par `src/core/__pilote_envers.ts`
+  (gestes dans le repère du joueur), et chaque salle y est **passée au crible** :
+  des parcours au hasard dans chaque pesanteur qu'on y prend. Trois millions
+  d'images au banc : personne ne tombe du monde, ne sort sans porte, ne passe
+  un raccord couché, ni ne reste coincé.
+- **Trois défauts du moteur, notés, non corrigés** (ce chantier ne touchait pas
+  au moteur ; tous se voient aussi debout) : une pièce lancée alors que la main
+  la tient dans un mur est recalée au bout de ce mur, et peut sortir du monde
+  (le rattrapage la rend) ; une pièce qui tombe sur un joueur adossé à un mur
+  le pousse d'une largeur de corps DANS le mur, d'où il finit par tomber du
+  monde (le rattrapage le rend) ; une porte refuse « trop grand » quelqu'un qui
+  arrive couché de côté contre elle (les salles sont bâties pour que ça
+  n'arrive pas).
+
 ## Ce qui reste à faire
 
 Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
@@ -625,8 +662,8 @@ Rien de bloqué. Tous décrits dans `IDEES.md` et `CONCEPTION.md`.
   la carte de titre, pour qu'aucune première apparition ne gèle une image.
 
 - **Jouer.** Quatorze lieux n'ont jamais été vus par un œil humain qui joue.
-- **Le monde retourné** (les portails de gravité) : la fin que le troisième
-  mouvement n'a pas encore — le seuil tient la place. Décidé, pas bâti.
+- **Le monde retourné** : bâti le 27 septembre, c'est l'envers (voir plus
+  haut). Reste à le REGARDER — la caméra retournée n'a été vue par personne.
 - **L'énigme chromatique** à quatre paliers. La peinture libre change la
   donne : un palier 4 peut demander « plus de couleurs qu'on n'en a »
   maintenant que tout se repeint et se lave.

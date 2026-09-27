@@ -2,9 +2,9 @@
  * LA MÉMOIRE DU VOYAGE.
  *
  * Le hall n'a qu'une arche pour l'aventure, et elle menait toujours au monde.
- * Tant que le jeu n'avait qu'un chapitre, c'était juste. Il en a cinq — le
- * monde, la descente, la montée, la mesure, la boîte à formes — enchaînés par
- * le lien du panneau de fin. Mais ce lien n'existe que dans l'onglet où l'on
+ * Tant que le jeu n'avait qu'un chapitre, c'était juste. Il en a six — le
+ * monde, la descente, la montée, la mesure, l'envers, la boîte à formes —
+ * enchaînés par le lien du panneau de fin. Mais ce lien n'existe que dans l'onglet où l'on
  * vient de finir : on ferme, on revient le lendemain, on franchit l'arche…
  * et l'on est de retour au monde, tout gris, comme si rien n'avait eu lieu.
  *
@@ -21,7 +21,7 @@ const CLE_DEBUG = 'sumi.voyage.debug';
 const CLE = new URLSearchParams(location.search).get('debug') ? CLE_DEBUG : CLE_JEU;
 
 /** Les chapitres de l'aventure, dans l'ordre où on les joue. */
-export const CHAPITRES = ['monde', 'descente', 'montee', 'mesure', 'formes'] as const;
+export const CHAPITRES = ['monde', 'descente', 'montee', 'mesure', 'envers', 'formes'] as const;
 export type Chapitre = (typeof CHAPITRES)[number];
 
 const estChapitre = (mode: string): mode is Chapitre => (CHAPITRES as readonly string[]).includes(mode);
@@ -44,6 +44,8 @@ export const RAPPORTE: Partial<Record<Chapitre, readonly string[]>> = {
   monde: ['vert', 'rouge'],
   descente: ['bleu'],
   montee: ['or'],
+  // Le violet dort planté au mur, au fond de la cuve couchée.
+  envers: ['violet'],
 };
 /** Les couleurs sans lesquelles un chapitre ne peut pas s'achever. */
 export const EXIGE: Partial<Record<Chapitre, readonly string[]>> = {
@@ -51,6 +53,8 @@ export const EXIGE: Partial<Record<Chapitre, readonly string[]>> = {
   descente: ['rouge'],
   // L'atelier du haut veut ses pots en rouge et ses tuiles en bleu.
   montee: ['rouge', 'bleu'],
+  // L'envers n'exige rien : le réglet de l'escalier mural se peint pour le
+  // plaisir, jamais pour ouvrir une porte.
 };
 /** Où l'on va chercher chaque couleur. */
 export const OU_DORT: Record<string, { chapitre: Chapitre; phrase: string }> = {
@@ -58,6 +62,7 @@ export const OU_DORT: Record<string, { chapitre: Chapitre; phrase: string }> = {
   rouge: { chapitre: 'monde', phrase: 'Il dort sur le chantier des potiers, dans le monde.' },
   bleu: { chapitre: 'descente', phrase: 'Il dort au fond de la descente, dans la vasque de la grève, devant la dernière porte.' },
   or: { chapitre: 'montee', phrase: 'Il dort au bout de la vallée, dans la montée.' },
+  violet: { chapitre: 'envers', phrase: 'Il dort planté au mur, au fond de la cuve de la teinturerie, dans l’envers : on ne le voit qu’en marchant sur le mur.' },
 };
 
 export class Voyage {
@@ -95,7 +100,7 @@ export class Voyage {
     return CHAPITRES.find((c) => !Voyage.estFini(c, acquis)) ?? 'monde';
   }
 
-  /** Vrai quand les cinq chapitres ont été finis au moins une fois. */
+  /** Vrai quand les six chapitres ont été finis au moins une fois. */
   static acheve(acquis: readonly string[] = []): boolean {
     return CHAPITRES.every((c) => Voyage.estFini(c, acquis));
   }

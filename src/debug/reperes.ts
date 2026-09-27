@@ -2,6 +2,7 @@ import type { Haut } from '../core/pesanteur.js';
 import { SALLES_MONTEE } from '../levels/montee.js';
 import { SALLES_DESCENTE } from '../levels/descente.js';
 import { SALLES_MESURE } from '../levels/mesure.js';
+import { SALLES_ENVERS } from '../levels/envers.js';
 import { FORMES } from '../levels/formes.js';
 
 /**
@@ -858,6 +859,216 @@ export const POURQUOI_MESURE_ORPHELINS = Object.keys(POURQUOI_MESURE).filter(
   (t) => !REPERES_MESURE.some((r) => r.titre === t),
 );
 
+/**
+ * L'ENVERS — le quatrième mouvement, tout à ×1. Ses repères demandent leurs
+ * positions aux salles, comme ceux de la montée et de la mesure.
+ *
+ * TROIS REPÈRES NE SONT PAS DEBOUT : au plafond du lavoir, sur le mur du puits,
+ * sur le mur nord de la cour, au fond de la cuve couchée. Ils portent `haut`,
+ * et le rendu pose le joueur avec ce haut-là (voir `Repere.haut`). Leur point
+ * est pris à quelques décimètres de leur surface, jamais dedans : posé debout
+ * par erreur, on y tomberait sur un vrai sol, pas dans un mur.
+ *
+ * LES PIGMENTS À L'ARRIVÉE sont les quatre des chapitres d'avant, SANS le
+ * violet : c'est lui qu'on vient chercher, et la lucarne doit naître grise.
+ */
+const [BASCULE_E, PUITS_E, ESCALIER_E, CUVE_E, LUCARNE_E] = SALLES_ENVERS;
+const AVANT_ENVERS = ['rouge', 'vert', 'bleu', 'or'];
+const auSeuilEnvers = (salle: (typeof SALLES_ENVERS)[number]): [number, number, number] => [
+  salle.entree.position[0],
+  salle.entree.position[1] + 0.05,
+  salle.entree.position[2],
+];
+const POURQUOI_ENVERS: Record<string, string> = {
+  'L’envers — le lavoir et sa porte violette':
+    'La première porte qui change le BAS et pas la taille, présentée seule, dans une salle ' +
+    'qui n’exige rien. Tout le chapitre repose sur ce premier regard à travers A : si l’on ' +
+    'n’y lit pas « le plafond est un sol », rien de la suite ne se lira.',
+  'L’envers — au plafond, la tête en bas':
+    'Le plafond est meublé comme le sol, tourné d’un demi-tour : bassins, banc, galets, la ' +
+    'main d’encre. Une rotation, pas un miroir. Aucune vérification ne peut dire si le lieu ' +
+    'se reconnaît, ni si la caméra supporte le passage.',
+  'Le puits couché — le fond, et le jeton à vingt mètres':
+    'Une salle qui repose sur une chose vue d’en bas : un jeton collé au mur, vingt mètres ' +
+    'plus haut. S’il ne se voit pas, ou s’il se lit comme un décor, la salle est muette.',
+  'Le puits couché — couché sur le mur, le couloir de vingt mètres':
+    'Le mur qu’on ne grimpe pas devient un couloir qu’on arpente. C’est la sensation du ' +
+    'chapitre, et elle n’existe qu’à l’écran : le fond du puits comme un mur au bout, le ' +
+    'haut comme un horizon.',
+  'L’escalier mural — la cour, le balcon, cinq cubes':
+    'L’énigme de bravoure : poser couché, monter debout. L’erreur voulue est la colonne ; ' +
+    'on vérifie ici qu’on la fait, qu’on la comprend, et qu’on la répare sans quitter la salle.',
+  'L’escalier mural — couché sur le mur nord, où poser les cubes':
+    'D’ici, le coin du sol est « devant », le balcon « à gauche ». Un cube posé reste collé ' +
+    'au mur : c’est la seule chose qu’on doive croire sans la voir tomber.',
+  'L’escalier mural — le balcon, et le tunnel de sortie':
+    'La sortie est dans un tunnel de 1,70 : couché, on n’y entre pas, et c’est voulu — on ' +
+    'arriverait couché dans la cuve. Debout, on y passe sans le remarquer.',
+  'La cuve — la teinturerie, la coulure violette':
+    'Du sol, la cuve ne montre que sa coulure. Le pinceau dort dedans, planté au mur : il ' +
+    'faut marcher sur le mur pour le voir, et c’est la seule salle du chapitre qui cache ' +
+    'quelque chose.',
+  'La cuve — au fond de la fosse couchée, le pinceau planté au mur':
+    'Un pinceau planté dans un mur, debout pour qui y marche. Il doit se VOIR — un pinceau ' +
+    'caché derrière une porte a déjà coûté une salle — et se réveiller à taille d’homme.',
+  'La lucarne violette — le village et son envers':
+    'Le village au seizième sur une table, et son envers pendu au plafond, les deux ' +
+    'Aiguilles pointe contre pointe. Le lavis éclaire d’en haut : l’envers se lit comme une ' +
+    'ombre, et c’est l’original, dessous, qui le fait reconnaître. Rien de tout ça ne se ' +
+    'vérifie hors de l’écran.',
+};
+
+export const REPERES_ENVERS: Repere[] = [
+  {
+    titre: 'L’envers — le lavoir et sa porte violette',
+    verifier:
+      'Au sud d’un lavoir clos, face au nord. Une porte violette debout au milieu de ' +
+      'l’allée ; sa jumelle pend au plafond, son fil à plomb tendu VERS LE HAUT. À travers ' +
+      'A, on voit le lavoir la tête en bas. Franchis-la : on ressort les pieds au plafond, ' +
+      'en marchant vers le nord. Défaut à guetter : un raccord de caméra au passage ; ne pas ' +
+      'comprendre qu’on peut revenir par B.',
+    position: auSeuilEnvers(BASCULE_E),
+    echelle: 0,
+    lacet: 0,
+    pigments: AVANT_ENVERS,
+    jalon: 0,
+  },
+  {
+    titre: 'L’envers — au plafond, la tête en bas',
+    verifier:
+      'Debout au plafond, au nord de B, face au sud. Le banc pend à gauche — monte dessus. ' +
+      'Prends un galet collé au plafond et lance-le : il retombe au plafond. Reprends B par ' +
+      'devant pour redescendre. Défaut à guetter : le lavoir du plafond qui se lit comme un ' +
+      'miroir ; la sortie, au sol, qu’on atteindrait d’ici.',
+    position: [BASCULE_E.sortie.position[0], 6.6, BASCULE_E.sortie.position[2] - 1.3],
+    echelle: 0,
+    // Au plafond, le lacet se lit dans le repère du haut −y : 0 regarde le sud.
+    lacet: 0,
+    haut: '-y',
+    pigments: AVANT_ENVERS,
+    jalon: 2,
+  },
+  {
+    titre: 'Le puits couché — le fond, et le jeton à vingt mètres',
+    verifier:
+      'Au fond d’un puits clos de vingt-quatre mètres. La sortie au nord est scellée ; un ' +
+      'creux sur un socle, contre le mur est. Lève les yeux : un jeton collé au mur ouest, à ' +
+      'vingt mètres. La porte violette du fond ressort couchée sur ce mur, son fil à plomb ' +
+      'pendu vers le mur. Défaut à guetter : ne pas voir le jeton ; tomber dans la jumelle ' +
+      'depuis le fond.',
+    position: auSeuilEnvers(PUITS_E),
+    echelle: 0,
+    lacet: 0,
+    pigments: AVANT_ENVERS,
+    jalon: 4,
+  },
+  {
+    titre: 'Le puits couché — couché sur le mur, le couloir de vingt mètres',
+    verifier:
+      'Couché sur le mur ouest, face au haut du puits. Marche jusqu’au jeton, prends-le, ' +
+      'reviens, reprends la jumelle par devant : on ressort debout au fond, le jeton en main. ' +
+      'Pose-le sur le socle : la sortie se dessine. Défaut à guetter : le jeton qui ne suit ' +
+      'pas ; un creux qui refuse un jeton debout.',
+    // Quarante centimètres du mur ouest (x −305), au-dessus de la jumelle.
+    position: [-304.6, 5.5, 3900],
+    echelle: 0,
+    // Sur le mur ouest (haut +x), −π/2 regarde le haut du puits.
+    lacet: -Math.PI / 2,
+    haut: '+x',
+    pigments: AVANT_ENVERS,
+    jalon: 6,
+  },
+  {
+    titre: 'L’escalier mural — la cour, le balcon, cinq cubes',
+    verifier:
+      'Une cour couverte ; au mur nord, un balcon à 4,20 et un tunnel au bout. Cinq cubes ' +
+      'de 0,80 au sol (un de rechange) ; une console de pierre à 0,80 contre le mur, et un réglet peint au-' +
+      'dessus. Porte les cubes par la porte violette, pose-les couchée sur le mur nord EN ' +
+      'DIAGONALE, reviens debout, monte. Défaut à guetter : un cube posé qui glisse ou tombe ' +
+      'du mur ; une colonne qu’on ne comprend pas.',
+    position: auSeuilEnvers(ESCALIER_E),
+    echelle: 0,
+    lacet: 0,
+    pigments: AVANT_ENVERS,
+    jalon: 10,
+  },
+  {
+    titre: 'L’escalier mural — couché sur le mur nord, où poser les cubes',
+    verifier:
+      'Couché sur le mur nord, le coin du sol devant soi. Un cube posé ici reste au mur. ' +
+      'Chacun « plus loin » que le précédent d’une arête, et d’un bon pas de côté. Défaut à ' +
+      'guetter : ne pas savoir où est le balcon ; la porte B qu’on reprend par erreur.',
+    position: [-98.5, 3.5, 3904.6],
+    echelle: 0,
+    // Sur le mur nord (haut −z), π regarde le coin du sol.
+    lacet: Math.PI,
+    haut: '-z',
+    pigments: AVANT_ENVERS,
+    jalon: 12,
+  },
+  {
+    titre: 'L’escalier mural — le balcon, et le tunnel de sortie',
+    verifier:
+      'Sur le balcon, face au tunnel du mur ouest. La porte de sortie est dedans, à 1,60. ' +
+      'Défaut à guetter : un saut depuis le quatrième cube qui n’arrive pas jusqu’ici ; le ' +
+      'tunnel trop étroit pour passer debout.',
+    position: [-103.5, 4.3, 3903.75],
+    echelle: 0,
+    lacet: -Math.PI / 2,
+    pigments: AVANT_ENVERS,
+    jalon: 14,
+  },
+  {
+    titre: 'La cuve — la teinturerie, la coulure violette',
+    verifier:
+      'Une teinturerie ; contre le mur ouest, une cuve à parois de quatre mètres, une coulure ' +
+      'violette qui descend de sa lèvre. On ne voit pas dedans. La porte violette ressort ' +
+      'couchée sur le mur ouest. Fais le tour de la cuve : le pinceau ne s’éveille pas. ' +
+      'Défaut à guetter : l’éveiller à travers la paroi.',
+    position: auSeuilEnvers(CUVE_E),
+    echelle: 0,
+    lacet: 0,
+    pigments: AVANT_ENVERS,
+    jalon: 16,
+  },
+  {
+    titre: 'La cuve — au fond de la fosse couchée, le pinceau planté au mur',
+    verifier:
+      'Couché sur le mur ouest, au fond de la cuve : la mare violette est un mur, les parois ' +
+      'des falaises couchées, et le pinceau sort du mur comme d’un sol. Réveille-le (E). ' +
+      'Défaut à guetter : un pinceau planté de travers, ou dans le mur ; un éveil refusé.',
+    // Quarante centimètres du mur ouest (x 93), au fond de la cuve.
+    position: [93.4, 2.4, 3900],
+    echelle: 0,
+    // Sur le mur ouest (haut +x), π/2 regarde vers le fond de la cuve.
+    lacet: Math.PI / 2,
+    haut: '+x',
+    pigments: AVANT_ENVERS,
+    jalon: 19,
+  },
+  {
+    titre: 'La lucarne violette — le village et son envers',
+    verifier:
+      'Réveille le violet dans la cuve, puis viens ici. Sur la table, le village de la ' +
+      'lucarne bleue ; LÈVE LES YEUX : son envers pend au plafond, la tête en bas, et les ' +
+      'deux Aiguilles se touchent presque. Les lanternes sont déjà d’or. Marche jusqu’au pied ' +
+      'de la table. → Le violet se pose sur les deux villages et la chambre, sous tes yeux. ' +
+      'Défaut à guetter : que ça bascule d’un coup ; un envers qu’on ne reconnaît pas.',
+    position: auSeuilEnvers(LUCARNE_E),
+    echelle: 0,
+    lacet: 0,
+    pigments: AVANT_ENVERS,
+    jalon: 22,
+  },
+];
+for (const r of REPERES_ENVERS) {
+  const p = POURQUOI_ENVERS[r.titre];
+  if (p) r.pourquoi = p;
+}
+export const POURQUOI_ENVERS_ORPHELINS = Object.keys(POURQUOI_ENVERS).filter(
+  (t) => !REPERES_ENVERS.some((r) => r.titre === t),
+);
+
 export const REPERES_LOBBY: Repere[] = [
   {
     titre: 'La toile et les deux stylos',
@@ -1033,7 +1244,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-taille', 14),
     echelle: 0,
     lacet: 0,
-    pigments: ['rouge', 'vert', 'bleu', 'or'],
+    pigments: ['rouge', 'vert', 'bleu', 'or', 'violet'],
     jalon: 0,
   },
   {
@@ -1051,7 +1262,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-taille', 6),
     echelle: 0,
     lacet: 0,
-    pigments: ['rouge', 'vert', 'bleu', 'or'],
+    pigments: ['rouge', 'vert', 'bleu', 'or', 'violet'],
     jalon: 0,
   },
   {
@@ -1069,7 +1280,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-main', 10),
     echelle: 0,
     lacet: 0,
-    pigments: ['rouge', 'vert', 'bleu', 'or'],
+    pigments: ['rouge', 'vert', 'bleu', 'or', 'violet'],
     jalon: 0,
   },
   {
@@ -1087,7 +1298,7 @@ export const REPERES_FORMES: Repere[] = [
     position: devantLeCreux('creux-tout', 4),
     echelle: 0,
     lacet: 0,
-    pigments: ['rouge', 'vert', 'bleu', 'or'],
+    pigments: ['rouge', 'vert', 'bleu', 'or', 'violet'],
     jalon: 0,
   },
 ];

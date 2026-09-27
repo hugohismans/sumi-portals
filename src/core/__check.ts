@@ -23,10 +23,12 @@ import { PLUIE_SEULE } from '../levels/pluie.js';
 import { DESCENTE, RACCORDS_DESCENTE, SALLES_DESCENTE, ecartDeRaccord } from '../levels/descente.js';
 import { MONTEE, RACCORDS_MONTEE, SALLES_MONTEE } from '../levels/montee.js';
 import { MESURE, RACCORDS_MESURE, SALLES_MESURE } from '../levels/mesure.js';
+import { ENVERS, RACCORDS_ENVERS, SALLES_ENVERS } from '../levels/envers.js';
 import { LACET_PAR_DEFAUT } from '../levels/salles/contrat.js';
 import { piloterDescente } from './__pilote_descente.js';
 import { Tracage } from '../render/tracage.js';
 import { piloterMontee } from './__pilote_montee.js';
+import { piloterEnvers, verifierSallesEnvers } from './__pilote_envers.js';
 import { verifierPesanteur } from './__gravite.js';
 import { verifierRelecturePesanteur } from './__gravite_relecture.js';
 import { vecteurHaut } from './pesanteur.js';
@@ -49,6 +51,7 @@ const SALLES_LIVREES: SalleModule[] = [
   ...SALLES_DESCENTE,
   ...SALLES_MONTEE,
   ...SALLES_MESURE,
+  ...SALLES_ENVERS,
 ];
 import { CaissesPartagees } from '../net/caisses.js';
 import type { RemoteSnapshot } from '../net/presence.js';
@@ -82,6 +85,8 @@ import {
   REPERES_MONTEE,
   REPERES_MESURE,
   POURQUOI_MESURE_ORPHELINS,
+  REPERES_ENVERS,
+  POURQUOI_ENVERS_ORPHELINS,
 } from '../debug/reperes.js';
 import { MONDE } from '../levels/monde.js';
 import { reve } from '../levels/reve.js';
@@ -1322,6 +1327,8 @@ console.log('\n— Rien ne naît enterré dans la pierre —');
     ['la clairière', construireDuo('geant')],
     ['la cour', LEVEL_01],
     ['la caisse', LEVEL_02],
+    // Ses galets du plafond et son jeton du mur ont leur ancre sur LEUR sol.
+    ['l’envers', ENVERS],
   ] as const) {
     const fautes: string[] = [];
     for (const c of niveau.carryables ?? []) {
@@ -1393,7 +1400,7 @@ console.log('\n— Aucune face confondue et exposée —');
   // paire de faces presque confondues qui se recouvrent n'est à égalité, et
   // que la gagnante est bien celle qui avance, ou le détail posé sur la masse.
   for (const [nom, niveau] of [
-    ['le monde', MONDE], ['la descente', DESCENTE], ['la montée', MONTEE], ['la mesure', MESURE],
+    ['le monde', MONDE], ['la descente', DESCENTE], ['la montée', MONTEE], ['la mesure', MESURE], ['l’envers', ENVERS],
     ['le hall', LOBBY], ['le banc', BANC], ['la boîte à formes', FORMES], ['la cour de pluie', PLUIE_SEULE],
   ] as const) {
     const boxes = niveau.boxes;
@@ -2261,6 +2268,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     [SALLES_DESCENTE, RACCORDS_DESCENTE],
     [SALLES_MONTEE, RACCORDS_MONTEE],
     [SALLES_MESURE, RACCORDS_MESURE],
+    [SALLES_ENVERS, RACCORDS_ENVERS],
   ] as const) {
     for (const r of raccords) {
       const a = salles[r.depuis];
@@ -2730,7 +2738,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // trois par recouvrement) et non le balayage entier, qui prend cinq secondes.
   {
     const niveaux: [string, LevelDef][] = [
-      ['la montée', MONTEE], ['la descente', DESCENTE], ['la mesure', MESURE], ['le monde', MONDE],
+      ['la montée', MONTEE], ['la descente', DESCENTE], ['la mesure', MESURE], ['l’envers', ENVERS], ['le monde', MONDE],
       ['le hall', LOBBY], ['le banc', BANC], ['la boîte à formes', FORMES], ['la cour de pluie', PLUIE_SEULE],
     ];
     const jump = (JUMP_SPEED * 1) ** 2 / (2 * GRAVITY);
@@ -3462,6 +3470,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     for (const [salles, niveau] of [
       [SALLES_DESCENTE, DESCENTE],
       [SALLES_MONTEE, MONTEE],
+      [SALLES_ENVERS, ENVERS],
     ] as const) {
       const portes = new Set((niveau.portals ?? []).map((p) => p.id));
       for (const s of salles) {
@@ -3495,6 +3504,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
     ['la mesure', MESURE],
+    ['l’envers', ENVERS],
     ['la boîte à formes', FORMES],
     ['le banc d’essai', BANC],
   ] as const) {
@@ -4035,6 +4045,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
     ['la mesure', MESURE],
+    ['l’envers', ENVERS],
   ] as const) {
     const sim = new Simulation(niveau);
     let faux = false;
@@ -4133,6 +4144,9 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
     ['la mesure', MESURE],
+    // L'envers n'est pas ici : ses galets du plafond et son jeton du mur se
+    // prennent la tête en bas ou couché, et ce balayage-ci ne se tient que
+    // debout. Il est refait, haut compris, dans `verifierSallesEnvers`.
     ['la boîte à formes', FORMES],
     ['le banc d’essai', BANC],
   ] as const) {
@@ -4473,6 +4487,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la descente', DESCENTE, REPERES_DESCENTE],
     ['la montée', MONTEE, REPERES_MONTEE],
     ['la mesure', MESURE, REPERES_MESURE],
+    ['l’envers', ENVERS, REPERES_ENVERS],
     ['la boîte à formes', FORMES, REPERES_FORMES],
     // Le banc n'était couvert par AUCUNE vérification : douze stations, douze
     // repères écrits à la main, et personne pour dire si l'on y naît debout.
@@ -4550,6 +4565,7 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
     ['la descente', SALLES_DESCENTE, REPERES_DESCENTE],
     ['la montée', SALLES_MONTEE, REPERES_MONTEE],
     ['la mesure', SALLES_MESURE, REPERES_MESURE],
+    ['l’envers', SALLES_ENVERS, REPERES_ENVERS],
   ] as const) {
     const sansRepere = salles.filter(
       (s) =>
@@ -4574,8 +4590,8 @@ console.log('\n— LE VOYAGE ENTIER, dans l’ordre, en une seule partie —');
   // avant d'être devant l'écran.
   check(
     'aucune raison de test ne vise une station qui n’existe plus',
-    POURQUOI_MONTEE_ORPHELINS.length === 0 && POURQUOI_MESURE_ORPHELINS.length === 0,
-    [...POURQUOI_MONTEE_ORPHELINS, ...POURQUOI_MESURE_ORPHELINS].join(', '),
+    POURQUOI_MONTEE_ORPHELINS.length === 0 && POURQUOI_MESURE_ORPHELINS.length === 0 && POURQUOI_ENVERS_ORPHELINS.length === 0,
+    [...POURQUOI_MONTEE_ORPHELINS, ...POURQUOI_MESURE_ORPHELINS, ...POURQUOI_ENVERS_ORPHELINS].join(', '),
   );
 }
 
@@ -4908,6 +4924,7 @@ console.log('\n— Ce que la chasse du 26 a trouvé : sortir du décor sans pass
     for (const [nom, level] of [
       ['la descente (lavoir)', DESCENTE],
       ['la montée (toits)', MONTEE],
+      ['l’envers (le lavoir)', ENVERS],
       ['la cour de pluie', PLUIE_SEULE],
     ] as const) {
       for (let k = 0; k < 8; k++) {
@@ -5170,9 +5187,15 @@ console.log('\n— Le dernier coup de pinceau va à la porte qu’on trace —')
 // l'atelier du haut plantées à l'envers).
 piloterDescente(check);
 piloterMontee(check);
+// L'envers : le chapitre où l'on marche aux murs, joué de bout en bout.
+piloterEnvers(check);
 // La pesanteur par axe : marcher aux murs et au plafond. Voir `pesanteur.ts`.
 verifierPesanteur(check);
 verifierRelecturePesanteur(check);
+// Et ses salles, une à une : les fautes voulues, les raccourcis qui doivent
+// échouer, et chaque pesanteur qu'on y prend passée au crible. Voir
+// `__pilote_envers.ts`, qui porte aussi les gestes dans le repère du joueur.
+verifierSallesEnvers(check);
 
 // =============================================================================
 console.log('\n— Une porte scellée fait mur aux pièces, et l’on en ressort au ras du sol —');
@@ -5274,6 +5297,7 @@ console.log('\n— Chaque raccord se franchit depuis l’intérieur, et l’on a
     ['la descente', 'raccord', DESCENTE, SALLES_DESCENTE, RACCORDS_DESCENTE],
     ['la montée', 'montee', MONTEE, SALLES_MONTEE, RACCORDS_MONTEE],
     ['la mesure', 'mesure', MESURE, SALLES_MESURE, RACCORDS_MESURE],
+    ['l’envers', 'envers', ENVERS, SALLES_ENVERS, RACCORDS_ENVERS],
   ] as const) {
     for (const r of raccords) {
       const a = salles[r.depuis];
@@ -5422,6 +5446,7 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
   for (const [nom, niveau] of [
     ['le monde', MONDE],
     ['le hall', LOBBY],
+    ['l’envers', ENVERS],
   ] as const) {
     const g = niveau.guide?.length ?? 0;
     const e = niveau.guideEchelle?.length ?? g;
@@ -5448,6 +5473,7 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
     ['la descente', DESCENTE],
     ['la montée', MONTEE],
     ['la mesure', MESURE],
+    ['l’envers', ENVERS],
   ] as const) {
     const e = niveau.guideEchelle;
     if (!e) continue;

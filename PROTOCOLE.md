@@ -23,11 +23,15 @@ du plus gros au plus petit :
    porte (voir § 3 bis). C'est le chantier le plus récent, donc le moins vu.
 3. **La mesure**, `?niveau=mesure&debug=1` — le troisième mouvement, assemblé
    la nuit du 22 septembre, jamais joué (voir § 3 septies).
-4. **Le voyage de l'introduction, de bout en bout** — `?niveau=monde`. Le
+4. **L'envers**, `?niveau=envers&debug=1` — le quatrième mouvement, où l'on
+   marche aux murs et au plafond. Bâti le 27 septembre sur le moteur de la
+   pesanteur, joué de bout en bout par le harnais, **jamais regardé** (voir
+   § 3 octies). C'est le seul endroit du jeu où la caméra se retourne.
+5. **Le voyage de l'introduction, de bout en bout** — `?niveau=monde`. Le
    moteur a encore bougé sous lui : deux correctifs de physique sur les pièces.
-5. **Le hall**, `./?debug=1`. C'est là qu'on arrive par défaut, donc là qu'un
+6. **Le hall**, `./?debug=1`. C'est là qu'on arrive par défaut, donc là qu'un
    défaut coûte le plus cher.
-6. Le reste, dans n'importe quel ordre.
+7. Le reste, dans n'importe quel ordre.
 
 **Ce qu'aucune vérification ne peut te dire, et qui est le vrai sujet :** est-ce
 que tu comprends ce qu'on te demande sans qu'on te l'écrive.
@@ -65,6 +69,9 @@ start "https://hugohismans.github.io/sumi-portals/"
 - **la cour de pluie** (seule, une respiration) — `?niveau=pluie`
 - **la montée** (sept salles, on y cherche l'or) — `?niveau=montee`
 - **la mesure** (trois salles, on y perd la taille) — `?niveau=mesure`
+- **l'envers** (cinq salles, on y change de bas, on y cherche le violet) —
+  `?niveau=envers` ; en débug, `&couleurs=rouge,vert,bleu,or` pour arriver
+  avec les quatre pinceaux d'avant
 - **la boîte à formes** (cinq pièces, cinq creux) — `?niveau=formes`
 - **le banc d'essai** (treize stations) — `?niveau=banc`
 - **les repères** — ajoute `&debug=1` à l'un ou l'autre. Une touche **du pavé
@@ -416,6 +423,93 @@ jeu, soixante-dix centimètres, pour quelqu'un de quarante-cinq.* Le lien de fin
 mène à la boîte à formes.
 **Défaut à guetter :** ne pas lire la porte comme un étalon ; un premier pas
 qui la retraverse (elle est dans le dos, ça ne doit pas arriver).
+
+---
+
+## 3 octies. L'envers — `?niveau=envers&debug=1`
+
+Le quatrième mouvement, et il ne touche pas à la taille : **tout se joue à ×1**.
+Il change le bas. Une seule porte nouvelle, **violette**, plane, qui fait du
+plafond ou d'un mur le sol ; un fil à plomb pend à chaque linteau vers les
+pieds de qui en ressort. On y arrive au bout de la mesure ; il rapporte le
+violet et mène à la boîte à formes. **Joué de bout en bout par le harnais,
+jamais regardé à l'écran** — la caméra retournée, en particulier, n'a été vue
+par personne.
+
+**`1` — Le lavoir et sa porte violette.** On naît au sud d'un lavoir clos, face
+au nord. → *Une porte violette debout au milieu de l'allée ; sa jumelle pend au
+plafond, son fil à plomb tendu VERS LE HAUT. Au plafond, le même lavoir, tourné
+d'un demi-tour : bassins, banc, trois galets, la main d'encre.* Franchis A.
+**Défaut à guetter :** un raccord de caméra au passage (il ne doit y avoir aucun
+roulis : la vue d'avant, transportée) ; un lavoir du plafond qui se lit comme un
+miroir ; ne pas comprendre qu'on peut revenir par B. La salle n'exige rien : la
+sortie est au bout de l'allée, au sol.
+
+**`2` — Au plafond, la tête en bas.** Monte sur le banc du plafond, prends un
+galet collé là-haut, lance-le. → *Il retombe au plafond.* Prends un galet au
+sol, passe la porte en le tenant, lance-le : pareil. Reprends B par devant pour
+redescendre. **Défaut à guetter :** la sortie, au sol, qu'on atteindrait d'ici
+(elle est à plus de quatre mètres de l'œil, même en sautant, même sur le banc).
+
+**`3` — Le puits couché, le fond.** Un puits clos de vingt-quatre mètres. La
+sortie au nord est scellée ; un creux sur un socle contre le mur est. → *Lève
+les yeux : un jeton collé au mur ouest, à vingt mètres.* La porte du fond
+ressort couchée sur ce mur, son fil à plomb pendu vers le mur.
+**Défaut à guetter :** ne pas voir le jeton ; ne pas lire le fil à plomb.
+
+**`4` — Couché sur le mur, le couloir de vingt mètres.** → *Le mur ouest est le
+sol, le haut du puits l'horizon.* Marche jusqu'au jeton, prends-le, reviens,
+reprends la jumelle par devant : on ressort debout au fond, le jeton en main —
+il a tourné avec nous. Pose-le sur le socle → *la sortie se dessine.*
+**Défaut à guetter :** un jeton qui ne suit pas ; la sensation de marcher sur un
+mur qui ne vient pas (c'est LA sensation du chapitre).
+
+**`5` — L'escalier mural, la cour.** Une cour couverte ; un balcon à 4,20 au
+mur nord, un tunnel au bout. Cinq cubes de 0,80 au sol (un de rechange), une
+console de pierre à 0,80 contre le mur, un réglet peint au-dessus.
+**Le geste :** porter les cubes un à un par la porte violette, les POSER couché
+sur le mur nord — ils y restent collés —, EN DIAGONALE : chacun une arête « plus
+loin », un bon pas de côté. Revenir debout, monter : 0,80 · 1,60 · 2,40 · 3,20,
+puis un saut d'un mètre jusqu'au balcon.
+**Défaut à guetter :** l'erreur voulue est la COLONNE (on pose droit devant
+soi) ; vérifie qu'on la fait, qu'on la comprend en essayant de monter, et qu'on
+la répare sans quitter la salle.
+
+**`6` — Couché sur le mur nord.** → *Le coin du sol est devant, le balcon à
+gauche.* **Défaut à guetter :** un cube posé qui glisse ou tombe du mur ; la
+porte qu'on reprend par erreur en reculant.
+
+**`7` — Le balcon et le tunnel.** La sortie est dans un tunnel du mur ouest,
+1,70 de large : debout, on y entre sans le remarquer ; couché sur le mur, on n'y
+entre jamais (c'est voulu : on arriverait couché dans la salle suivante).
+**Défaut à guetter :** un saut depuis le quatrième cube qui n'arrive pas.
+
+**`8` — La cuve, la teinturerie.** → *Contre le mur ouest, une cuve à parois de
+quatre mètres ; une coulure violette descend de sa lèvre.* On ne voit pas dedans.
+Fais le tour, appuie sur E partout : le pinceau ne s'éveille pas.
+**Défaut à guetter :** l'éveiller à travers la paroi.
+
+**`9` — Au fond de la fosse couchée.** Par la porte du sol, couché sur le mur
+ouest, on descend dans la cuve — pour le monde, on longe le mur vers le bas,
+entre ses parois. → *La mare violette est un mur, et le pinceau sort du mur
+comme d'un sol, debout pour nous.* Réveille-le (E).
+**Défaut à guetter :** un pinceau planté de travers ou dans la pierre ; un éveil
+refusé.
+
+**`10` — La lucarne violette.** Le pinceau réveillé, viens ici. Sur une table,
+le village de la lucarne bleue, au seizième. **Lève les yeux** → *son envers
+pend au plafond, la tête en bas ; les deux Aiguilles se touchent presque, à huit
+mètres ; les lanternes sont déjà d'or.* Marche jusqu'au pied de la table → *le
+violet se pose sur les deux villages, sous tes yeux ; « Le violet est rendu ».*
+**Défaut à guetter :** que ça bascule d'un coup au lieu de se peindre ; un
+envers qu'on ne reconnaît pas — le lavis éclaire d'en haut, il se lit comme une
+ombre, et c'est voulu : seul, pendu, il était une masse noire.
+
+**Ce que je n'ai pas su juger :** si l'on s'oriente en marchant au mur (le
+guide aide-t-il ?), si le fil à plomb se lit, et si l'envers pendu se
+reconnaît. Et un défaut du moteur, noté mais pas corrigé : une porte refuse
+« trop grand » quelqu'un qui arrive couché de côté contre elle — les salles
+sont bâties pour que ça n'arrive pas.
 
 ---
 
