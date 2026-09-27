@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Carryable } from '../core/carryables.js';
 import type { Vec3 } from '../core/math.js';
+import { estDebout, vecteurHaut } from '../core/pesanteur.js';
 import {
   faceDuDouble,
   transformPoint,
@@ -79,6 +80,9 @@ interface View {
  * sans grésiller et se lise d'où qu'on soit — y compris gauchère.
  * ═══════════════════════════════════════════════════════════════════════════
  */
+/** La normale du cerne dans sa géométrie : un anneau dans le plan xy. */
+const AXE_DU_CERNE = new THREE.Vector3(0, 0, 1);
+
 const createHaloMaterial = (): THREE.MeshBasicMaterial =>
   new THREE.MeshBasicMaterial({
     color: 0x22201c,
@@ -94,6 +98,7 @@ export class CarryableViews {
   /** Un seul matériau pour tous les cernes : ils respirent ensemble. */
   private readonly haloMat = createHaloMaterial();
   private readonly haloGeo = new THREE.RingGeometry(0.66, 0.84, 48);
+  private readonly hautCerne = new THREE.Vector3();
 
   /**
    * REND UNE CAISSE INVISIBLE, en la laissant exister.
@@ -205,7 +210,21 @@ export class CarryableViews {
       // Le cerne : seulement autour de ce qu'on peut prendre, posé au sol.
       view.halo.visible = !item.held && !item.locked && item.grounded;
       if (view.halo.visible) {
-        view.halo.position.set(item.position.x, item.position.y + 0.02 + item.size * 0.01, item.position.z);
+        if (estDebout(item.haut)) {
+          view.halo.position.set(item.position.x, item.position.y + 0.02 + item.size * 0.01, item.position.z);
+          view.halo.rotation.set(-Math.PI / 2, 0, 0);
+        } else {
+          // Posée sur un mur ou sous un plafond : le cerne est sur SON sol, à
+          // plat le long de son haut — sous la face d'appui, pas sous le cube.
+          const u = vecteurHaut(item.haut!);
+          const d = -item.size * 0.5 + 0.02 + item.size * 0.01;
+          view.halo.position.set(
+            item.position.x + u.x * d,
+            item.position.y + item.size * 0.5 + u.y * d,
+            item.position.z + u.z * d,
+          );
+          view.halo.quaternion.setFromUnitVectors(AXE_DU_CERNE, this.hautCerne.set(u.x, u.y, u.z));
+        }
         const r = item.size * ampleur;
         view.halo.scale.set(r, r, 1);
       }

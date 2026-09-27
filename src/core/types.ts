@@ -1,4 +1,5 @@
 import type { Vec3 } from './math.js';
+import type { Haut } from './pesanteur.js';
 
 /** Boîte alignée sur les axes — tout le décor du monde est fait de ça. */
 export interface BoxDef {
@@ -69,6 +70,32 @@ export interface PortalFaceDef {
   position: [number, number, number];
   /** Lacet en radians. La normale de la face est yawToForward(yaw). */
   yaw: number;
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * UNE PORTE QUI N'EST PAS DEBOUT — et c'est elle qui fait marcher aux murs.
+   *
+   * `haut` est le haut de la face : le sens de sa hauteur, de son bord bas
+   * vers son linteau. Absent, ou '+y' : une porte debout, comme toutes celles
+   * d'avant, et rien ne change. Autre chose : une porte COUCHÉE contre un mur
+   * (haut horizontal), ou retournée sous un plafond ('-y').
+   *
+   * `normale` est le côté avant de la face, quand il n'est pas horizontal —
+   * une trappe dans un sol ('+y'), dans un plafond ('-y'). Absente, la
+   * normale vient du lacet comme avant, qui doit alors valoir un multiple
+   * exact d'un quart de tour dès que `haut` n'est pas '+y'.
+   *
+   * `position` reste le CENTRE DU BORD BAS, le bas étant pris le long du
+   * propre haut de la face : le rectangle s'étend de `position` vers `haut`
+   * sur toute la hauteur, et d'une demi-largeur de chaque côté.
+   *
+   * Ce qui traverse une face tourne comme elle, SA PESANTEUR COMPRISE : on
+   * ressort avec pour haut le haut de la jumelle, tourné du même angle que le
+   * sien l'était par rapport à la face d'entrée. Une porte debout dont la
+   * jumelle est couchée contre le mur ouest fait donc du mur ouest le sol.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  haut?: Haut;
+  normale?: Haut;
 }
 
 export interface PortalPairDef {
@@ -199,6 +226,19 @@ export interface CarryableDef {
    * ═══════════════════════════════════════════════════════════════════════
    */
   pieces?: { min: [number, number, number]; max: [number, number, number]; ink?: number }[];
+  /**
+   * LE HAUT DE LA PIÈCE : vers où elle tombe (vers l'opposé). Absent : '+y'.
+   *
+   * Pour une pièce qui n'est pas debout, `position` est le centre de la face
+   * qui touche SON sol — celle d'en bas, le long de son propre haut. Une
+   * pièce posée sur le mur ouest ('+x') d'arête 1 a donc `position[0]` au ras
+   * du mur, et son cube s'étend d'une arête vers +x.
+   *
+   * Une pièce qu'on lâche prend le haut de celui qui la lâche, et une porte
+   * qui n'est pas debout le tourne. Un logement, lui, est toujours au sol
+   * ('+y') : une pièce d'un autre haut ne s'y loge pas.
+   */
+  haut?: Haut;
   /**
    * Nom de la forme. Un logement compare des VALEURS, jamais des géométries :
    * quatre comparaisons — la forme, la taille, la main, et bientôt la teinte —
@@ -536,6 +576,11 @@ export interface VeilleurDef {
   radius: number;
   /** Palier d'échelle exigé du joueur. 0 = taille normale. */
   echelle: number;
+  /**
+   * Le haut du mur ou du plafond où il est planté. Absent : '+y', planté
+   * dans un sol. `position` est le point d'où il sort de sa surface.
+   */
+  haut?: Haut;
 }
 
 /**
@@ -602,6 +647,8 @@ export interface LevelDef {
    * autrement.
    */
   spawnScale?: number;
+  /** Le haut du joueur au départ. Absent : '+y'. Voir `PlayerState.haut`. */
+  spawnHaut?: Haut;
   boxes: BoxDef[];
   /** Régions colorées. La première contenant le joueur donne l'ambiance. */
   regions?: RegionDef[];
@@ -696,6 +743,21 @@ export interface PlayerState {
    * ═══════════════════════════════════════════════════════════════════════
    */
   gauchere: boolean;
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * OÙ EST LE HAUT, POUR CE JOUEUR. Absent : '+y', le haut de tout le monde.
+   *
+   * Sa pesanteur tire vers l'opposé, sa boîte se dresse le long de ce haut,
+   * et `yaw`/`pitch` se lisent dans SON repère (`REPERES[haut]`) : le lacet
+   * tourne autour de son haut, l'inclinaison le long de sa droite. Pour '+y'
+   * le repère est l'identité, et tout est exactement comme avant.
+   *
+   * Il ne change qu'en passant une porte qui n'est pas debout (voir
+   * `PortalFaceDef.haut`), ou quand le rattrapage nous repose là où l'on se
+   * tenait — avec le haut qu'on y avait. `position` reste celle des PIEDS.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  haut?: Haut;
 }
 
 /** Entrée d'un tick. Ce sont des COMMANDES, pas des mutations directes. */
@@ -749,7 +811,7 @@ export interface TickEvents {
      * `tooBig` : le joueur ne rentre pas. `scaleLimit` : garde-fou d'échelle.
      * `scelle` : le logement qui l'ouvre est encore vide.
      */
-    reason: 'tooBig' | 'scaleLimit' | 'scelle';
+    reason: 'tooBig' | 'scaleLimit' | 'scelle' | 'pesanteur';
     /**
      * Pour un refus d'échelle : le monde n'a plus de cran de ce côté-là.
      *

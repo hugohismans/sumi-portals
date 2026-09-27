@@ -76,8 +76,14 @@ export const viser = (
   playerScale: number,
   /** Arête du stylo tenu. C'est elle qui fait l'épaisseur du trait. */
   tailleStylo: number,
+  /**
+   * La direction du regard DANS LE MONDE, quand elle ne se lit pas sur le
+   * lacet et l'inclinaison — un joueur qui marche sur un mur. Voir
+   * `Simulation.regard`.
+   */
+  direction?: Vec3,
 ): Impact | null => {
-  const dir = lookDirection(yaw, pitch);
+  const dir = direction ?? lookDirection(yaw, pitch);
   const portee = PLAYER_HEIGHT * playerScale * PORTEE;
 
   let meilleur: Impact | null = null;

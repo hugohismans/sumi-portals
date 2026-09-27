@@ -13,11 +13,14 @@ import {
   mulMat,
   rotateY,
   sub,
+  transposer,
   vec3,
   wrapAngle,
   yawToForward,
+  type Mat3,
   type Vec3,
 } from './math.js';
+import { REPERES, estDebout, hautDe, vecteurHaut, type Haut } from './pesanteur.js';
 import type { PortalFaceDef, PortalPairDef } from './types.js';
 
 export type FaceKind = 'big' | 'small';
@@ -51,6 +54,16 @@ export interface PortalFace {
   miroir?: boolean;
   /** Les deux faces ont la même taille : rien ne change en passant. Voir `PortalPairDef.plane`. */
   plane?: boolean;
+  /**
+   * DEBOUT : le haut de la face est +y. Toutes les faces d'avant le sont, et
+   * elles gardent leurs formules d'origine — lacet, sinus, cosinus — au bit
+   * près. Les autres ont un repère exact sur les axes : voir `PortalFaceDef.haut`.
+   */
+  droite: boolean;
+  /** Le haut de la face (du bord bas vers le linteau), dans le monde. */
+  haut: Vec3;
+  /** Sa droite vue de devant : haut × normale. Avec `haut` et `normal`, son repère. */
+  lateral: Vec3;
 }
 
 const makeFace = (
@@ -60,16 +73,77 @@ const makeFace = (
   smallW: number,
   smallH: number,
   plane: boolean,
-): Omit<PortalFace, 'twin'> => ({
-  pairId,
-  kind,
-  position: vec3(def.position[0], def.position[1], def.position[2]),
-  yaw: def.yaw,
-  normal: yawToForward(def.yaw),
-  width: kind === 'big' && !plane ? smallW * SCALE_RATIO : smallW,
-  height: kind === 'big' && !plane ? smallH * SCALE_RATIO : smallH,
-  plane,
-});
+): Omit<PortalFace, 'twin'> => {
+  const commun = {
+    pairId,
+    kind,
+    position: vec3(def.position[0], def.position[1], def.position[2]),
+    width: kind === 'big' && !plane ? smallW * SCALE_RATIO : smallW,
+    height: kind === 'big' && !plane ? smallH * SCALE_RATIO : smallH,
+    plane,
+  };
+  if (estDebout(def.haut) && def.normale === undefined) {
+    return {
+      ...commun,
+      yaw: def.yaw,
+      normal: yawToForward(def.yaw),
+      droite: true,
+      haut: vec3(0, 1, 0),
+      lateral: vec3(Math.cos(def.yaw), 0, -Math.sin(def.yaw)),
+    };
+  }
+  // UNE FACE QUI N'EST PAS DEBOUT a un repère EXACT, sur les axes : une
+  // pesanteur qui la traverse doit ressortir sur un axe, au bit près.
+  const nom = `${pairId}.${kind}`;
+  let n: Vec3;
+  if (def.normale !== undefined) n = vecteurHaut(def.normale);
+  else {
+    const h = hautDe(yawToForward(def.yaw), 1e-9);
+    if (h === null) throw new Error(`porte ${nom} : une face qui n'est pas debout veut un lacet multiple d'un quart de tour, ou une normale`);
+    n = vecteurHaut(h);
+  }
+  const v = vecteurHaut(def.haut ?? '+y');
+  if (n.x * v.x + n.y * v.y + n.z * v.z !== 0) throw new Error(`porte ${nom} : son haut doit être perpendiculaire à sa normale`);
+  const u = vec3(v.y * n.z - v.z * n.y, v.z * n.x - v.x * n.z, v.x * n.y - v.y * n.x);
+  return { ...commun, yaw: n.y === 0 ? Math.atan2(n.x, n.z) : 0, normal: n, droite: false, haut: v, lateral: u };
+};
+
+/**
+ * UN ÉCART, LU DANS LE REPÈRE DE LA FACE : (droite, haut, profondeur).
+ *
+ * Pour une face debout, exactement l'ancien `rotateY(d, -yaw)` ; pour les
+ * autres, trois produits scalaires avec des axes du monde — exacts.
+ */
+export const versFace = (face: PortalFace, d: Vec3): Vec3 => {
+  if (face.droite) return rotateY(d, -face.yaw);
+  const u = face.lateral;
+  const v = face.haut;
+  const n = face.normal;
+  return vec3(
+    d.x * u.x + d.y * u.y + d.z * u.z,
+    d.x * v.x + d.y * v.y + d.z * v.z,
+    d.x * n.x + d.y * n.y + d.z * n.z,
+  );
+};
+
+/** L'inverse de `versFace` : un vecteur du repère de la face, remis dans le monde. */
+export const depuisFace = (face: PortalFace, l: Vec3): Vec3 => {
+  if (face.droite) return rotateY(l, face.yaw);
+  const u = face.lateral;
+  const v = face.haut;
+  const n = face.normal;
+  return vec3(u.x * l.x + v.x * l.y + n.x * l.z, u.y * l.x + v.y * l.y + n.y * l.z, u.z * l.x + v.z * l.y + n.z * l.z);
+};
+
+/** Le repère de la face en matrice, colonnes (droite, haut, normale). */
+export const repereFace = (face: PortalFace): Mat3 =>
+  face.droite
+    ? matLacet(face.yaw)
+    : [
+        face.lateral.x, face.haut.x, face.normal.x,
+        face.lateral.y, face.haut.y, face.normal.y,
+        face.lateral.z, face.haut.z, face.normal.z,
+      ];
 
 /**
  * Une paire scellée est fermée DES DEUX CÔTÉS.
@@ -160,9 +234,19 @@ export const faceWorldSize = (face: PortalFace): { width: number; height: number
  * rentre plus dans la petite porte, donc on ne peut plus grandir. Aucun palier
  * arbitraire à expliquer — ça se voit.
  */
-export const canPass = (face: PortalFace, playerScale: number): boolean =>
-  PLAYER_HEIGHT * playerScale <= face.height * 0.96 &&
-  PLAYER_RADIUS * 2 * playerScale <= face.width * 0.9;
+export const canPass = (face: PortalFace, playerScale: number, haut?: Haut): boolean => {
+  if (face.droite && estDebout(haut)) {
+    return PLAYER_HEIGHT * playerScale <= face.height * 0.96 &&
+      PLAYER_RADIUS * 2 * playerScale <= face.width * 0.9;
+  }
+  // EN REPÈRE : l'emprise du corps sur chacun des deux axes de la face — sa
+  // taille sur celui qui longe son haut, sa largeur sur l'autre. Qui tombe
+  // dans une trappe y présente sa largeur deux fois.
+  const h = vecteurHaut(haut ?? '+y');
+  const emprise = (a: Vec3): number =>
+    Math.abs(a.x * h.x + a.y * h.y + a.z * h.z) > 0.5 ? PLAYER_HEIGHT * playerScale : PLAYER_RADIUS * 2 * playerScale;
+  return emprise(face.haut) <= face.height * 0.96 && emprise(face.lateral) <= face.width * 0.9;
+};
 
 /** Distance signée d'un point au plan de la face (positive = devant). */
 export const signedDistance = (face: PortalFace, p: Vec3): number => {
@@ -181,7 +265,7 @@ export const withinFaceRect = (face: PortalFace, from: Vec3, to: Vec3, t: number
     from.y + (to.y - from.y) * t,
     from.z + (to.z - from.z) * t,
   );
-  const local = rotateY(sub(hit, face.position), -face.yaw);
+  const local = versFace(face, sub(hit, face.position));
   // Un chouïa de marge : mieux vaut téléporter que laisser passer au travers.
   // `hauteurs` élargit le rectangle vers le haut — pour savoir si l'on passe
   // AU-DESSUS d'une porte, et le dire, sans jamais la franchir.
@@ -234,7 +318,7 @@ export const faceDuDouble = (
       // travers le portail — jusqu'à trois tailles derrière le plan.
       if (d < -(half + c.size * 3)) continue;
       if (oeil && signedDistance(face, oeil) < 0) continue;
-      const local = rotateY(sub(centre, face.position), -face.yaw);
+      const local = versFace(face, sub(centre, face.position));
       if (Math.abs(local.x) > face.width * 0.5 + c.size || local.y < -c.size || local.y > face.height + c.size) continue;
     } else if (d < 0 || !withinFaceRect(face, centre, centre, 0)) {
       continue;
@@ -253,9 +337,9 @@ export const faceDuDouble = (
  */
 export const transformPoint = (face: PortalFace, p: Vec3): Vec3 => {
   const s = traversalScale(face);
-  const local = rotateY(sub(p, face.position), -face.yaw);
+  const local = versFace(face, sub(p, face.position));
   const flipped = vec3(mainDe(face) * local.x * s, local.y * s, -local.z * s);
-  const world = rotateY(flipped, face.twin.yaw);
+  const world = depuisFace(face.twin, flipped);
   return vec3(
     face.twin.position.x + world.x,
     face.twin.position.y + world.y,
@@ -270,9 +354,43 @@ export const transformPoint = (face: PortalFace, p: Vec3): Vec3 => {
  */
 export const transformVector = (face: PortalFace, v: Vec3, applyScale: boolean): Vec3 => {
   const s = applyScale ? traversalScale(face) : 1;
-  const local = rotateY(v, -face.yaw);
+  const local = versFace(face, v);
   const flipped = vec3(mainDe(face) * local.x * s, local.y * s, -local.z * s);
-  return rotateY(flipped, face.twin.yaw);
+  return depuisFace(face.twin, flipped);
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA PESANTEUR PASSE LA PORTE COMME UNE VITESSE.
+ *
+ * On la transporte comme n'importe quelle direction, et l'on relit l'axe. Par
+ * une porte debout vers une porte debout, la rotation est autour de la
+ * verticale : le haut reste '+y', et c'est tout l'existant. Par une porte
+ * debout vers une porte couchée contre un mur, le haut devient horizontal —
+ * le mur est le sol.
+ *
+ * `null` si le résultat ne tombe pas sur un axe : un joueur couché sur un mur
+ * qui franchit une porte debout plantée de biais. La porte refuse alors
+ * (`'pesanteur'`) — toutes les portes du jeu sont plantées au quart de tour,
+ * et ce refus n'arrive dans aucun niveau.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const hautApres = (face: PortalFace, h: Haut | undefined): Haut | null =>
+  hautDe(transformVector(face, vecteurHaut(h ?? '+y'), false));
+
+/** La rotation — ou la réflexion — subie en traversant : F_jumelle · D · F_faceᵀ. */
+export const rotationDeTraversee = (face: PortalFace): Mat3 => {
+  const D: Mat3 = [mainDe(face), 0, 0, 0, 1, 0, 0, 0, -1];
+  return mulMat(repereFace(face.twin), mulMat(D, transposer(repereFace(face))));
+};
+
+/** Le repère d'un haut, en matrice : ses colonnes sont les axes locaux, dans le monde. */
+export const matriceDuHaut = (h: Haut | undefined): Mat3 => {
+  const r = REPERES[h ?? '+y'];
+  const m: Mat3 = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const ligne = { x: 0, y: 3, z: 6 } as const;
+  for (let i = 0; i < 3; i++) m[ligne[r.axes[i]] + i] = r.signes[i];
+  return m;
 };
 
 /**
@@ -342,6 +460,12 @@ export const transporterRotation = (face: PortalFace, r: Vec3): Vec3 => {
   // porte ordinaire tourne tout autour de la verticale : Ry(δ)·R. Le miroir
   // retourne la main et le lacet : Ry(π + jumelle + face)·D·R·D.
   const R = eulerVersMat(r);
+  // Une face qui n'est pas debout : la rotation complète de la porte, et la
+  // réflexion de la main par le miroir, s'il y en a un (voir plus haut).
+  if (!face.droite || !face.twin.droite) {
+    const M = rotationDeTraversee(face);
+    return matVersEuler(face.miroir ? mulMat(mulMat(M, R), REFLEXION_X) : mulMat(M, R));
+  }
   if (!face.miroir) return matVersEuler(mulMat(matLacet(yawDelta(face)), R));
   const phi = Math.PI + face.twin.yaw + face.yaw;
   return matVersEuler(mulMat(matLacet(phi), mulMat(REFLEXION_X, mulMat(R, REFLEXION_X))));

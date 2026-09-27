@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PLAYER_HEIGHT, TICK_DT, scaleOfLevel } from './core/constants.js';
 import { Simulation } from './core/simulation.js';
 import { conditionsDe } from './core/portals.js';
+import { REPERES as REPERES_DU_HAUT, estDebout, hauteurDans, vecteurHaut, versLocal, type Haut } from './core/pesanteur.js';
 import { InputManager, estUneSaisie } from './input/input.js';
 import { LEVEL_01 } from './levels/level01.js';
 import { LEVEL_02 } from './levels/level02.js';
@@ -44,6 +45,7 @@ import { BOIL_HZ, PAPER, inkUniforms, syncInkUniforms } from './render/ink.js';
 import { PaperPass } from './render/paperPass.js';
 import { PortalRenderer } from './render/portalRenderer.js';
 import { Avatar } from './render/avatar.js';
+import { quaternionDuHaut } from './render/haut.js';
 import { Brush } from './render/brush.js';
 import { CarryableViews } from './render/carryableViews.js';
 import { Feuilles } from './render/feuilles.js';
@@ -548,7 +550,9 @@ for (const v of LEVEL.veilleurs ?? []) {
   // et le bleu planté au fond de sa vasque ne montrait qu'un manche beige
   // sortant de l'eau.
   const taille = 0.55 * scaleOfLevel(v.echelle);
-  p.planter([v.position[0], v.position[1] + 0.6 * taille, v.position[2]], taille);
+  // Planté le long du haut de sa surface : un sol, un mur, un plafond (`VeilleurDef.haut`).
+  const u = vecteurHaut(v.haut ?? '+y');
+  p.planter([v.position[0] + u.x * 0.6 * taille, v.position[1] + u.y * 0.6 * taille, v.position[2] + u.z * 0.6 * taille], taille, v.haut);
   compagnons.set(v.id, p);
   scene.add(p.group);
 }
@@ -684,6 +688,18 @@ const paper = new PaperPass(window.innerWidth, window.innerHeight);
 const ambiance = new Ambiance();
 /** Cadence des pas, en foulées par seconde et par taille de corps. */
 let stepPhase = 0;
+/** Le repère du haut du joueur, pour la caméra. Voir `render/haut.ts`. */
+const tmpQuatHaut = new THREE.Quaternion();
+/**
+ * La vitesse AU SOL du joueur : perpendiculaire à son haut. Debout, la vitesse
+ * horizontale de toujours ; sur un mur, ce qui glisse le long du mur.
+ */
+const vitesseAuSol = (): number => {
+  const v = sim.player.velocity;
+  if (estDebout(sim.player.haut)) return Math.hypot(v.x, v.z);
+  const l = versLocal(REPERES_DU_HAUT[sim.player.haut!], v, { x: 0, y: 0, z: 0 });
+  return Math.hypot(l.x, l.z);
+};
 /** Retard vertical de l'œil sur le corps, après une marche. Toujours ≤ 0. */
 let lissageMarche = 0;
 /** Vrai pendant le plan de fin, où l'on voit beaucoup plus loin que d'habitude. */
@@ -1372,6 +1388,9 @@ const REPERES: Repere[] =
     sim.player.position = { x: r.position[0], y: r.position[1], z: r.position[2] };
     sim.player.velocity = { x: 0, y: 0, z: 0 };
     sim.player.scaleLevel = r.echelle;
+    // Un repère sur un mur ou au plafond pose le joueur avec ce haut-là : la
+    // demi-seconde de chute ci-dessous tombe alors vers SON sol, pas vers −y.
+    sim.player.haut = estDebout(r.haut) ? undefined : r.haut;
     sim.player.yaw = r.lacet;
     sim.player.pitch = 0;
     input.setYaw(r.lacet);
@@ -1813,7 +1832,10 @@ function frame(now: number): void {
     const raw = input.sample();
     // Souris relâchée : on garde l'orientation mais on coupe les déplacements.
     const command = input.locked ? raw : { ...raw, forward: 0, strafe: 0, jump: false };
-    const avantY = sim.player.position.y;
+    // La hauteur se mesure le long du haut du joueur : une marche montée sur un
+    // mur se lisse comme une marche montée au sol. Debout, c'est `position.y`.
+    const repereAvant = REPERES_DU_HAUT[sim.player.haut ?? '+y'];
+    const avantY = hauteurDans(repereAvant, sim.player.position);
     const events = sim.step(command, TICK_DT);
     accumulator -= TICK_DT;
 
@@ -1832,7 +1854,7 @@ function frame(now: number): void {
     // monter. C'est ce que font tous les jeux à la première personne, et c'est
     // invisible tant qu'on ne l'a pas enlevé.
     if (!events.traversed && sim.player.grounded) {
-      const montee = sim.player.position.y - avantY;
+      const montee = hauteurDans(repereAvant, sim.player.position) - avantY;
       // Borné à l'enjambée : au-delà, ce n'est plus une marche mais un
       // ascenseur, une chute rattrapée ou une téléportation, et retarder le
       // regard n'aurait aucun sens.
@@ -1889,6 +1911,8 @@ function frame(now: number): void {
           ? 'Cette porte est scellée. Quelque chose, ici, l’ouvrira.'
           : events.refused.reason === 'tooBig'
           ? 'Trop grand pour cette porte. Il faudrait rapetisser.'
+          : events.refused.reason === 'pesanteur'
+          ? 'Cette porte est plantée de biais : on ne la passe pas la tête de ce côté.'
           : events.refused.versLePetit
             ? 'Plus petit, il n’y a plus rien. Cette porte ne mène nulle part.'
             : 'Plus grand, il n’y a plus rien. Cette porte ne mène nulle part.',
@@ -2296,8 +2320,22 @@ function frame(now: number): void {
 
   if (!sacre.update(dt, camera)) {
     const eye = sim.eyePosition();
-    camera.position.set(eye.x, eye.y + lissageMarche, eye.z);
-    camera.rotation.set(sim.player.pitch, sim.player.yaw + Math.PI, 0);
+    const haut = sim.player.haut;
+    if (estDebout(haut)) {
+      camera.position.set(eye.x, eye.y + lissageMarche, eye.z);
+      camera.rotation.set(sim.player.pitch, sim.player.yaw + Math.PI, 0);
+    } else {
+      // ═══════════════════════════════════════════════════════════════════
+      // LA CAMÉRA DANS LE REPÈRE DU JOUEUR : le lacet et l'inclinaison de
+      // toujours, puis le repère de son haut à gauche. Aucun roulis à animer
+      // en passant une porte qui bascule : la vue par la porte était déjà
+      // cette caméra-là (vérifié dans le harnais, `verifierPesanteur`).
+      // ═══════════════════════════════════════════════════════════════════
+      const u = vecteurHaut(haut!);
+      camera.position.set(eye.x + u.x * lissageMarche, eye.y + u.y * lissageMarche, eye.z + u.z * lissageMarche);
+      camera.rotation.set(sim.player.pitch, sim.player.yaw + Math.PI, 0);
+      camera.quaternion.premultiply(quaternionDuHaut(haut, tmpQuatHaut));
+    }
   }
 
   // --- Grain « dessiné », figé à 10 Hz ----------------------------------------
@@ -2317,7 +2355,7 @@ function frame(now: number): void {
   ambiance.setEchelle(scale);
   surveillerLeSilence();
   if (sim.player.grounded) {
-    const parcouru = Math.hypot(sim.player.velocity.x, sim.player.velocity.z) * dt;
+    const parcouru = vitesseAuSol() * dt;
     stepPhase += parcouru / (scale * PLAYER_HEIGHT);
     if (stepPhase >= 0.55) {
       stepPhase = 0;
@@ -2476,8 +2514,7 @@ function frame(now: number): void {
   if (presenceActive) {
     // La vitesse est transmise en tailles de corps par seconde : le destinataire
     // peut alors animer la démarche sans rien savoir de l'échelle de l'émetteur.
-    const speedInBodies =
-      Math.hypot(sim.player.velocity.x, sim.player.velocity.z) / (scale * PLAYER_HEIGHT);
+    const speedInBodies = vitesseAuSol() / (scale * PLAYER_HEIGHT);
     // On renseigne ses caisses AVANT de publier : sans quoi le paquet partirait
     // avec l'état de l'image précédente, et une caisse posée arriverait chez
     // l'autre un dixième de seconde en retard sur le bruit qu'elle fait.
@@ -2716,10 +2753,13 @@ function frame(now: number): void {
     level = sim.player.scaleLevel,
     yaw?: number,
     pitch?: number,
+    /** Le haut du joueur ('+x' : debout sur un mur ouest). Omis : on garde le sien. */
+    haut?: Haut,
   ) {
     sim.player.position = { x, y, z };
     sim.player.velocity = { x: 0, y: 0, z: 0 };
     sim.player.scaleLevel = level;
+    if (haut !== undefined) sim.player.haut = estDebout(haut) ? undefined : haut;
     if (yaw !== undefined) {
       sim.player.yaw = yaw;
       input.setYaw(yaw);

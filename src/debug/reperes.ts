@@ -1,3 +1,4 @@
+import type { Haut } from '../core/pesanteur.js';
 import { SALLES_MONTEE } from '../levels/montee.js';
 import { SALLES_DESCENTE } from '../levels/descente.js';
 import { SALLES_MESURE } from '../levels/mesure.js';
@@ -53,8 +54,10 @@ export interface Repere {
   position: [number, number, number];
   /** Palier d'échelle. 0 = 1,80 m, 1 = ×4, 2 = ×16, −1 = ×1/4. */
   echelle: number;
-  /** Lacet, en radians. 0 regarde vers +Z. */
+  /** Lacet, en radians. 0 regarde vers +Z. Sur un mur, lu dans le repère du haut. */
   lacet: number;
+  /** Le haut du joueur ici, s'il n'est pas '+y' : un repère posé sur un mur ou au plafond. */
+  haut?: Haut;
   /**
    * Les pigments qui doivent DÉJÀ être rapportés en arrivant ici. Décide du
    * rechargement — voir l'en-tête.

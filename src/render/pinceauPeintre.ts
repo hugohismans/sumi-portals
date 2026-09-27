@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { Haut } from '../core/pesanteur.js';
+import { quaternionDuHaut } from './haut.js';
 import { createCelMaterial, createOutlineMaterial, syncInkUniforms } from './ink.js';
 import { buildWorldGeometry } from './worldMesh.js';
 
@@ -150,9 +152,12 @@ export class PinceauPeintre {
    * traversant les portes, et l'emboîtement final — mais on ne le dessine plus.
    * C'est le pinceau qu'on voit, planté dans le sol, la touffe en l'air.
    */
-  planter(ou: [number, number, number], echelle: number): void {
+  planter(ou: [number, number, number], echelle: number, haut?: Haut): void {
     if (this.etat !== 'dormant') return;
     this.group.position.set(ou[0], ou[1], ou[2]);
+    // Planté dans un mur ou un plafond : dressé le long de SON haut (voir
+    // `VeilleurDef.haut`). Le biais et la respiration restent les siens.
+    quaternionDuHaut(haut, this.group.quaternion);
     this.corps.scale.setScalar(echelle);
     // Planté : légèrement de biais, comme un pinceau qu'on a laissé là.
     this.corps.rotation.set(0, 0.6, 0.22);
@@ -170,6 +175,8 @@ export class PinceauPeintre {
     this.etat = 'compagnon';
     this.temps = 0;
     this.plante = false;
+    // Éveillé, il se redresse : un compagnon vole debout, quel que soit le mur où il dormait.
+    this.group.quaternion.identity();
     this.group.position.copy(ou);
     this.group.visible = true;
   }

@@ -196,7 +196,21 @@ class PortalFaceView {
   constructor(face: PortalFace, color: number, width: number, height: number) {
     this.face = face;
     this.group.position.set(face.position.x, face.position.y, face.position.z);
-    this.group.rotation.y = face.yaw;
+    // Une face debout tourne autour de la verticale ; les autres — couchées
+    // contre un mur, en trappe — prennent leur repère entier (droite, haut,
+    // normale). Tout le reste de ce fichier vit dans le repère du groupe ou en
+    // matrices — cadre, dos, plan ancré par le bas, caméra virtuelle, plan de
+    // coupe — et suit sans rien changer.
+    if (face.droite) this.group.rotation.y = face.yaw;
+    else {
+      this.group.quaternion.setFromRotationMatrix(
+        new THREE.Matrix4().makeBasis(
+          new THREE.Vector3(face.lateral.x, face.lateral.y, face.lateral.z),
+          new THREE.Vector3(face.haut.x, face.haut.y, face.haut.z),
+          new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z),
+        ),
+      );
+    }
 
     const makeTarget = (): THREE.WebGLRenderTarget => {
       const rt = new THREE.WebGLRenderTarget(width, height, {

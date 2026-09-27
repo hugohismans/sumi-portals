@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { PLAYER_HEIGHT, scaleOfLevel } from '../core/constants.js';
 import { wrapAngle } from '../core/math.js';
+import { REPERES, estDebout, versMonde } from '../core/pesanteur.js';
 import type { PlayerState } from '../core/types.js';
-import { colorForUid, type RemoteSnapshot } from '../net/presence.js';
+import { colorForUid, hautRecu, type RemoteSnapshot } from '../net/presence.js';
 import { estUnSaut } from '../core/saut.js';
 import { Avatar } from './avatar.js';
 
@@ -60,6 +61,7 @@ export class RemotePlayers {
             // son corps, jamais son point de vue.
             gauchere: false,
             grounded: snap.sol === 1,
+            haut: hautRecu(snap.g),
           },
           target: { x: snap.x, y: snap.y, z: snap.z, yaw: snap.yaw },
           speedInBodies: 0,
@@ -69,7 +71,9 @@ export class RemotePlayers {
       // UNE PORTE N'EST PAS UN DÉPLACEMENT : on ne la lisse pas, on la pose.
       // Sans ça, celui qui regarde voit l'autre GLISSER à travers la pierre sur
       // cent cinquante mètres en changeant de taille. Voir `src/core/saut.ts`.
-      if (estUnSaut(t.target, snap, snap.lvl, t.shown.scaleLevel)) {
+      // Et un haut qui change, c'est une porte qui bascule : on ne le lisse pas non plus.
+      const haut = hautRecu(snap.g);
+      if (estUnSaut(t.target, snap, snap.lvl, t.shown.scaleLevel) || haut !== t.shown.haut) {
         t.shown.position.x = snap.x;
         t.shown.position.y = snap.y;
         t.shown.position.z = snap.z;
@@ -81,6 +85,7 @@ export class RemotePlayers {
       t.target.yaw = snap.yaw;
       t.shown.scaleLevel = snap.lvl;
       t.shown.grounded = snap.sol === 1;
+      t.shown.haut = haut;
       t.speedInBodies = snap.mv;
     }
 
@@ -110,7 +115,10 @@ export class RemotePlayers {
       // observé : le lissage écraserait les à-coups et les jambes traîneraient.
       const speed = t.speedInBodies * scale * PLAYER_HEIGHT;
       t.shown.velocity.x = speed;
+      t.shown.velocity.y = 0;
       t.shown.velocity.z = 0;
+      // Au sol de SON repère, pour que la démarche la lise (voir `Avatar.update`).
+      if (!estDebout(t.shown.haut)) versMonde(REPERES[t.shown.haut!], { x: speed, y: 0, z: 0 }, t.shown.velocity);
 
       t.avatar.update(t.shown, scale, dt);
       // Les autres sont vus de l'extérieur : ils gardent leur tête.

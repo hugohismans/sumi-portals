@@ -1,5 +1,6 @@
 import { IDENTITE, appliquerMat, eulerVersMat, vec3, type Mat3, type Vec3 } from './math.js';
 import type { Carryable } from './carryables.js';
+import { estDebout } from './pesanteur.js';
 import type { SocketDef } from './types.js';
 
 /** Les blocs d'une forme, en unités de −0,5 à +0,5 — ceux d'une pièce. */
@@ -281,6 +282,8 @@ export class Sockets {
    * lirait comme une panne.
    */
   logementQuiAccepterait(c: Carryable): Socket | null {
+    // Un logement est au sol : une pièce d'un autre haut n'y entre pas.
+    if (!estDebout(c.haut)) return null;
     let best: { socket: Socket; d: number } | null = null;
     for (const socket of this.items) {
       if (socket.filledBy !== null || !this.fits(socket, c)) continue;
@@ -292,6 +295,7 @@ export class Sockets {
   }
 
   refusLePlusProche(c: Carryable): { socket: Socket; raison: RaisonDuRefus } | null {
+    if (!estDebout(c.haut)) return null;
     let best: { socket: Socket; raison: RaisonDuRefus; d: number } | null = null;
     for (const socket of this.items) {
       if (socket.filledBy !== null) continue;
@@ -350,6 +354,9 @@ export class Sockets {
 
       for (const c of carryables) {
         if (c.held || c.locked) continue;
+        // Un logement est au sol ('+y') : une pièce d'un autre haut — posée sur
+        // un mur, sous un plafond — ne s'y loge pas.
+        if (!estDebout(c.haut)) continue;
         // UN CREUX NE HAPPE PAS UNE PIÈCE EN VOL. Il attend qu'elle se soit
         // posée : sans ça, une vrille lancée à travers une porte et qui
         // passait à portée d'un creux en pleine course s'y logeait d'un coup —

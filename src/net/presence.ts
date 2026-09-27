@@ -7,6 +7,7 @@ import {
   type DatabaseReference,
 } from 'firebase/database';
 import type { PlayerState } from '../core/types.js';
+import { HAUTS, type Haut } from '../core/pesanteur.js';
 import { getNet, signIn } from './connection.js';
 import { Fraicheur } from '../core/fraicheur.js';
 
@@ -48,9 +49,20 @@ export interface RemoteSnapshot {
   duo?: number;
   /** Salon rejoint, une fois apparié. Vide tant qu'on attend. */
   salon?: string;
+  /**
+   * Son haut, s'il n'est pas '+y' — il marche sur un mur ou au plafond. Voir
+   * `PlayerState.haut`. Absent pour tous les autres : la fiche ne grossit pas.
+   * C'est une donnée du réseau : on la vérifie avant de s'en servir
+   * (`hautRecu`).
+   */
+  g?: Haut;
   /** Les caisses dont ce joueur répond. Voir net/caisses.ts. */
   caisses?: Record<string, { x: number; y: number; z: number; s: number; m?: number; l?: number }>;
 }
+
+/** Le haut annoncé par un autre joueur, s'il est l'un des six ; sinon debout. */
+export const hautRecu = (g: unknown): Haut | undefined =>
+  typeof g === 'string' && g !== '+y' && (HAUTS as readonly string[]).includes(g) ? (g as Haut) : undefined;
 
 /** Palette des joueurs. Teintes d'encre, lisibles sur le papier crème. */
 const COLORS = [
@@ -169,6 +181,8 @@ export class Presence {
       lvl: state.scaleLevel,
       mv: round(speedInBodies),
       sol: state.grounded ? 1 : 0,
+      // `null` efface la clé : un joueur debout ne l'envoie pas.
+      g: state.haut ?? null,
       t: Date.now(),
       duo: this.duoDepuis,
       salon: this.salon,

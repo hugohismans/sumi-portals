@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { PLAYER_HEIGHT } from '../core/constants.js';
+import { REPERES, estDebout, versLocal } from '../core/pesanteur.js';
+import type { Vec3 } from '../core/math.js';
 import type { PlayerState } from '../core/types.js';
+import { quaternionDuHaut } from './haut.js';
 import { createCelMaterial, createOutlineMaterial, syncInkUniforms } from './ink.js';
 import { buildWorldGeometry } from './worldMesh.js';
 
@@ -66,6 +69,8 @@ const makeBlock = (
 
 export class Avatar {
   readonly group = new THREE.Group();
+  private readonly repere = new THREE.Quaternion();
+  private readonly vLocale: Vec3 = { x: 0, y: 0, z: 0 };
 
   private readonly cel: THREE.ShaderMaterial;
   private readonly outline: THREE.ShaderMaterial;
@@ -134,12 +139,16 @@ export class Avatar {
   update(state: PlayerState, scale: number, dt: number): void {
     const p = state.position;
     this.group.position.set(p.x, p.y, p.z);
-    this.group.rotation.y = state.yaw;
+    // Debout dans SON repère : le lacet autour de son haut (voir `PlayerState.haut`).
+    this.group.rotation.set(0, state.yaw, 0);
+    if (!estDebout(state.haut)) this.group.quaternion.premultiply(quaternionDuHaut(state.haut, this.repere));
     this.group.scale.setScalar(scale);
 
     // Vitesse ramenée en « tailles de corps par seconde » : la démarche est
-    // ainsi la même qu'on soit minuscule ou géant.
-    const speed = Math.hypot(state.velocity.x, state.velocity.z) / (scale * PLAYER_HEIGHT);
+    // ainsi la même qu'on soit minuscule ou géant. Au sol, c'est-à-dire
+    // perpendiculairement à son haut.
+    const v = estDebout(state.haut) ? state.velocity : versLocal(REPERES[state.haut!], state.velocity, this.vLocale);
+    const speed = Math.hypot(v.x, v.z) / (scale * PLAYER_HEIGHT);
     const gait = Math.min(1, speed / 3.4);
 
     this.phase += speed * dt * 5.2;

@@ -27,6 +27,8 @@ import { LACET_PAR_DEFAUT } from '../levels/salles/contrat.js';
 import { piloterDescente } from './__pilote_descente.js';
 import { Tracage } from '../render/tracage.js';
 import { piloterMontee } from './__pilote_montee.js';
+import { verifierPesanteur } from './__gravite.js';
+import { vecteurHaut } from './pesanteur.js';
 import { REFUS_PETITE } from '../levels/salles/refus.js';
 import { BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
 
@@ -1323,11 +1325,13 @@ console.log('\n— Rien ne naît enterré dans la pierre —');
     const fautes: string[] = [];
     for (const c of niveau.carryables ?? []) {
       // Le centre du CUBE, pas son point d'ancrage : c'est lui qui doit avoir
-      // de la place.
+      // de la place. Une pièce posée sur un mur a son ancre sur SA face
+      // d'appui : le centre est à une demi-arête le long de son haut.
+      const u = vecteurHaut(c.haut ?? '+y');
       const centre: [number, number, number] = [
-        c.position[0],
-        c.position[1] + c.size * 0.5,
-        c.position[2],
+        c.position[0] + u.x * c.size * 0.5,
+        c.position[1] + u.y * c.size * 0.5,
+        c.position[2] + u.z * c.size * 0.5,
       ];
       const dans = dansUnSolide(niveau, centre);
       if (dans) fautes.push(`${c.id} enterré dans ${dans}`);
@@ -5165,6 +5169,8 @@ console.log('\n— Le dernier coup de pinceau va à la porte qu’on trace —')
 // l'atelier du haut plantées à l'envers).
 piloterDescente(check);
 piloterMontee(check);
+// La pesanteur par axe : marcher aux murs et au plafond. Voir `pesanteur.ts`.
+verifierPesanteur(check);
 
 // =============================================================================
 console.log('\n— Une porte scellée fait mur aux pièces, et l’on en ressort au ras du sol —');
@@ -5488,6 +5494,37 @@ console.log('\n— Les trois tableaux du guide sont alignés —');
     const fautes = verifierParcelle(m);
     check(`${m.region.name} ne déborde pas`, fautes.length === 0, fautes[0] ?? '');
   }
+}
+
+{
+  console.log('\n— Le dos d’une porte le dit quand on pousse dessus, une fois —');
+  // `freinerDevantLeDos` arrête le corps au ras du plan AVANT le pas : le
+  // rappel d'après n'avait plus rien à ramener, et « C'est le dos de la
+  // porte » ne se disait jamais en marchant droit dessus.
+  const niveau: LevelDef = {
+    name: 'dos',
+    spawn: [0, 0, 5],
+    spawnYaw: 0,
+    boxes: [{ min: [-21, -1, -21], max: [21, 0, 21] }],
+    portals: [{ id: 'p', colorBig: 0, colorSmall: 0, plane: true, big: { position: [0, 0.05, 0], yaw: 0 }, small: { position: [10, 0.05, 0], yaw: 0 } }],
+    goal: { position: [0, -100, 0], radius: 0.1 },
+  };
+  const sim = new Simulation(niveau);
+  sim.player.position = { x: 0, y: 0, z: -3 };
+  let dits = 0;
+  let zMax = -Infinity;
+  const marcher = (yaw: number, forward: number, ticks: number): void => {
+    for (let i = 0; i < ticks; i++) {
+      if (sim.step(ordre(sim, { yaw, forward }), TICK_DT).dos) dits++;
+      zMax = Math.max(zMax, sim.player.position.z);
+    }
+  };
+  marcher(0, 1, 180);
+  check('on pousse sur le dos : il le dit, une fois, et l’on reste au ras du plan', dits === 1 && near(zMax, -PLAYER_RADIUS, 1e-9), `${dits} fois, z ${zMax}`);
+  marcher(0, 0, 30);
+  marcher(Math.PI, 1, 30);
+  marcher(0, 1, 120);
+  check('on recule, on y revient : il le redit, une fois de plus', dits === 2, `${dits} fois`);
 }
 
 console.log(failures === 0 ? '\nTout passe.\n' : `\n${failures} vérification(s) en échec.\n`);

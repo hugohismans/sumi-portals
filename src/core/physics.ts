@@ -1,6 +1,7 @@
 import { PLAYER_HEIGHT, PLAYER_RADIUS, STEP_FRACTION } from './constants.js';
 import type { Vec3 } from './math.js';
-import { overlaps, type Aabb, type World } from './world.js';
+import { overlaps, type Aabb } from './world.js';
+import type { Collisions } from './pesanteur.js';
 
 /** Boîte de collision du joueur. `p` est la position des PIEDS. */
 export const playerAabb = (p: Vec3, scale: number, out: Aabb): Aabb => {
@@ -20,7 +21,7 @@ const scratchAvant: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 
 const scratchHits: Aabb[] = [];
 
 /** Le joueur tient-il à cette position sans chevaucher un solide ? */
-export const isClear = (world: World, p: Vec3, scale: number): boolean => {
+export const isClear = (world: Collisions, p: Vec3, scale: number): boolean => {
   playerAabb(p, scale, scratchBox);
   return world.query(scratchBox, scratchHits).length === 0;
 };
@@ -47,13 +48,13 @@ const unUlp = (x: number, sens: 1 | -1): number => {
   return f64[0];
 };
 /** La plus grande position `r` telle que `r + debord <= face`. */
-const auRasDessous = (face: number, debord: number): number => {
+export const auRasDessous = (face: number, debord: number): number => {
   let r = face - debord;
   while (r + debord > face) r = unUlp(r, -1);
   return r;
 };
 /** La plus petite position `r` telle que `r - debord >= face`. */
-const auRasDessus = (face: number, debord: number): number => {
+export const auRasDessus = (face: number, debord: number): number => {
   let r = face + debord;
   while (r - debord < face) r = unUlp(r, 1);
   return r;
@@ -65,7 +66,7 @@ const auRasDessus = (face: number, debord: number): number => {
  * stable, déterministe, et parfaitement adapté à un monde fait de boîtes.
  */
 const moveAxis = (
-  world: World,
+  world: Collisions,
   p: Vec3,
   scale: number,
   axis: Axis,
@@ -241,7 +242,7 @@ const moveAxis = (
  * Rend vrai si le corps a été reposé.
  * ═══════════════════════════════════════════════════════════════════════════
  */
-export const reposerSurLeSol = (world: World, p: Vec3, scale: number, portee: number): boolean => {
+export const reposerSurLeSol = (world: Collisions, p: Vec3, scale: number, portee: number): boolean => {
   const corps = playerAabb(p, scale, scratchAvant);
   let dessus = -Infinity;
   for (const h of world.queryStatic(corps, scratchHits)) {
@@ -301,7 +302,7 @@ export interface MoveResult {
 const ESSAIS_DE_MARCHE = [0.08, 0.25, 0.5, 1] as const;
 
 export const moveAndCollide = (
-  world: World,
+  world: Collisions,
   p: Vec3,
   velocity: Vec3,
   scale: number,

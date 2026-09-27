@@ -19,12 +19,26 @@ import { Sockets } from './sockets.js';
 import { Familles } from './familles.js';
 import { surLaGomme, viser } from './canevas.js';
 import { clamp, eulerVersMat, matVersEuler, mulMat, quartDeTour, rotateY, vec3, wrapAngle, yawToForward, type Mat3, type Vec3 } from './math.js';
+import {
+  REPERES,
+  boiteVersLocal,
+  estDebout,
+  hauteurDans,
+  versLocal,
+  versMonde,
+  vueDe,
+  type Collisions,
+  type Haut,
+} from './pesanteur.js';
 import { moveAndCollide, playerAabb, reposerSurLeSol } from './physics.js';
 import {
   buildFaces,
   canPass,
+  depuisFace,
   estScelle,
+  hautApres,
   signedDistance,
+  versFace,
   transformPoint,
   transformVector,
   traversalLevelDelta,
@@ -36,7 +50,7 @@ import {
 } from './portals.js';
 import type { InputCommand, LevelDef, PlayerState, TickEvents } from './types.js';
 import { World, type Aabb } from './world.js';
-import { aabbOfCarryable, type Carryable } from './carryables.js';
+import { aabbOfCarryable, hauteurDePiece, poserSelon, type Carryable } from './carryables.js';
 
 /**
  * Une porte miroir échange la gauche et la droite de ce qui la traverse.
@@ -92,14 +106,27 @@ const seuilScratch: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 
 const sondeAppui: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
 const corpsAppui: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
 const touchesAppui: Aabb[] = [];
+/** Vecteurs de travail pour la physique en repère (voir `pesanteur.ts`). */
+const vLocale: Vec3 = { x: 0, y: 0, z: 0 };
+const pLocale: Vec3 = { x: 0, y: 0, z: 0 };
+const pAppui: Vec3 = { x: 0, y: 0, z: 0 };
 
-/** Un endroit où l'on s'est tenu debout, et la taille qu'on y faisait. */
+/** Un endroit où l'on s'est tenu debout, la taille qu'on y faisait, et le haut qu'on y avait. */
 interface Appui {
   x: number;
   y: number;
   z: number;
   echelle: number;
+  haut?: Haut;
 }
+
+/**
+ * La vitesse retenue par le dos d'une porte au-delà de laquelle on POUSSE
+ * dessus, en m/s à taille d'homme. Poussé des deux mains, on en retient plus
+ * d'un mètre par seconde à chaque pas ; lâché, plus rien.
+ */
+const POUSSEE_SUR_LE_DOS = 0.05;
+
 /** Combien d'appuis on garde : assez pour remonter hors d'un piège, pas davantage. */
 const APPUIS_GARDES = 8;
 
@@ -210,6 +237,8 @@ export class Simulation {
 
   /** Le pas qui suit une porte : voir `moveAndCollide`, `apresPorte`. */
   private apresPorte = false;
+  /** On pousse déjà contre le dos d'une porte : on ne le redit pas à chaque pas. */
+  private pousseDos = false;
   /** Front montant de la touche d'action : on saisit au clic, pas en continu. */
   private interactHeld = false;
   private throwHeld = false;
@@ -240,6 +269,7 @@ export class Simulation {
       scaleLevel: this.world.level.spawnScale ?? 0,
       grounded: false,
       gauchere: false,
+      ...(estDebout(this.world.level.spawnHaut) ? {} : { haut: this.world.level.spawnHaut }),
     };
   }
 
@@ -250,6 +280,7 @@ export class Simulation {
     this.familles.reset();
     this.peintures.clear();
     this.apresPorte = false;
+    this.pousseDos = false;
     this.goalReached = false;
     this.seuilFranchi = false;
     this.scellerLesPortesADessiner();
@@ -273,8 +304,10 @@ export class Simulation {
    * des pieds — un joueur posé sur une arête y tient tant qu'il ne bouge pas,
    * et glisse au premier pas — et le corps hors de la pierre. Le décor fixe
    * seulement : une caisse peut être déplacée, et l'appui avec elle.
+   *
+   * `p` et `monde` sont dans le repère du joueur (voir `pesanteur.ts`).
    */
-  private appuiSur(p: Vec3, scale: number): boolean {
+  private appuiSur(p: Vec3, scale: number, monde: Collisions = this.world): boolean {
     const r = PLAYER_RADIUS * scale * 0.25;
     sondeAppui.minX = p.x - r;
     sondeAppui.maxX = p.x + r;
@@ -283,7 +316,7 @@ export class Simulation {
     sondeAppui.minY = p.y - 0.05 * scale;
     sondeAppui.maxY = p.y - 1e-6;
     let porte = false;
-    for (const h of this.world.queryStatic(sondeAppui, touchesAppui)) {
+    for (const h of monde.queryStatic(sondeAppui, touchesAppui)) {
       if (h.maxY >= p.y - 0.02 * scale) porte = true;
     }
     if (!porte) return false;
@@ -295,22 +328,23 @@ export class Simulation {
     corpsAppui.maxY -= marge;
     corpsAppui.minZ += marge;
     corpsAppui.maxZ -= marge;
-    return this.world.queryStatic(corpsAppui, touchesAppui).length === 0;
+    return monde.queryStatic(corpsAppui, touchesAppui).length === 0;
   }
 
   /** Note un appui sûr. Tout près du dernier, il le remplace : on garde des endroits, pas des pas. */
-  private noterAppui(p: Vec3, echelle: number, scale: number): void {
+  private noterAppui(p: Vec3, echelle: number, scale: number, haut: Haut | undefined): void {
     const dernier = this.appuis[this.appuis.length - 1];
     if (
       dernier &&
       dernier.echelle === echelle &&
+      dernier.haut === haut &&
       Math.hypot(p.x - dernier.x, p.y - dernier.y, p.z - dernier.z) < PLAYER_HEIGHT * scale
     ) {
       dernier.x = p.x;
       dernier.y = p.y;
       dernier.z = p.z;
     } else {
-      this.appuis.push({ x: p.x, y: p.y, z: p.z, echelle });
+      this.appuis.push(haut === undefined ? { x: p.x, y: p.y, z: p.z, echelle } : { x: p.x, y: p.y, z: p.z, echelle, haut });
       if (this.appuis.length > APPUIS_GARDES) this.appuis.shift();
     }
     this.rattrapagesSansAppui = 0;
@@ -341,7 +375,9 @@ export class Simulation {
     // Une caisse posée là depuis : on ne repose personne dedans.
     while (this.appuis.length > 0) {
       const r = this.appuis[this.appuis.length - 1];
-      if (this.world.query(playerAabb(r, scaleOfLevel(r.echelle), corpsAppui), touchesAppui).length === 0) break;
+      const vue = vueDe(this.world, r.haut);
+      const ici = estDebout(r.haut) ? r : versLocal(REPERES[r.haut!], r, pAppui);
+      if (vue.query(playerAabb(ici, scaleOfLevel(r.echelle), corpsAppui), touchesAppui).length === 0) break;
       this.appuis.pop();
     }
     const retour = this.appuis[this.appuis.length - 1] ?? null;
@@ -394,7 +430,12 @@ export class Simulation {
    */
   eyePosition(): Vec3 {
     const p = this.player.position;
-    return vec3(p.x, p.y + PLAYER_HEIGHT * EYE_FRACTION * this.scale, p.z);
+    const h = this.player.haut;
+    if (estDebout(h)) return vec3(p.x, p.y + PLAYER_HEIGHT * EYE_FRACTION * this.scale, p.z);
+    // Le long de SON haut : dans le repère, c'est la même ligne qu'au-dessus.
+    const l = versLocal(REPERES[h!], p, vec3());
+    l.y += PLAYER_HEIGHT * EYE_FRACTION * this.scale;
+    return versMonde(REPERES[h!], l, l);
   }
 
   /** Un tick de simulation, à pas fixe. */
@@ -451,49 +492,83 @@ export class Simulation {
     const sprint = input.sprint ? (pl.grounded ? SPRINT_MULTIPLIER : SPRINT_EN_L_AIR) : 1;
     const targetSpeed = MOVE_SPEED * sprint * scale * Math.min(1, wishLen);
 
+    // ─── LA PESANTEUR DU JOUEUR ────────────────────────────────────────────
+    //
+    // Tout ce qui suit — le souhait, le frottement, le saut, la chute —
+    // parle d'« horizontal » (x, z) et de « vertical » (y). C'est vrai DANS
+    // LE REPÈRE du joueur : on y travaille, et l'on revient au monde après.
+    // Debout, le repère est l'identité et l'on écrit directement dans l'état,
+    // exactement comme avant.
+    const haut: Haut = pl.haut ?? '+y';
+    const rep = REPERES[haut];
+    const vue = vueDe(this.world, haut);
+    const tourne = haut !== '+y';
+    const v = tourne ? versLocal(rep, pl.velocity, vLocale) : pl.velocity;
     if (pl.grounded) {
       const friction = Math.max(0, 1 - GROUND_FRICTION * dt);
-      pl.velocity.x *= friction;
-      pl.velocity.z *= friction;
+      v.x *= friction;
+      v.z *= friction;
       const accel = GROUND_FRICTION * dt;
-      pl.velocity.x += (wishX * targetSpeed - pl.velocity.x) * accel;
-      pl.velocity.z += (wishZ * targetSpeed - pl.velocity.z) * accel;
+      v.x += (wishX * targetSpeed - v.x) * accel;
+      v.z += (wishZ * targetSpeed - v.z) * accel;
     } else {
-      pl.velocity.x += wishX * targetSpeed * AIR_CONTROL * dt * 6;
-      pl.velocity.z += wishZ * targetSpeed * AIR_CONTROL * dt * 6;
-      const speed = Math.hypot(pl.velocity.x, pl.velocity.z);
+      v.x += wishX * targetSpeed * AIR_CONTROL * dt * 6;
+      v.z += wishZ * targetSpeed * AIR_CONTROL * dt * 6;
+      const speed = Math.hypot(v.x, v.z);
       const maxAir = targetSpeed * 1.25 + 0.001;
       if (speed > maxAir) {
-        pl.velocity.x *= maxAir / speed;
-        pl.velocity.z *= maxAir / speed;
+        v.x *= maxAir / speed;
+        v.z *= maxAir / speed;
       }
     }
 
     if (input.jump && pl.grounded) {
-      pl.velocity.y = JUMP_SPEED * scale;
+      v.y = JUMP_SPEED * scale;
       pl.grounded = false;
     }
 
-    pl.velocity.y -= GRAVITY * scale * dt;
+    v.y -= GRAVITY * scale * dt;
+    if (tourne) versMonde(rep, v, pl.velocity);
 
     // --- Déplacement -----------------------------------------------------------
     const prevEye = this.eyePosition();
     const prevPos = vec3(pl.position.x, pl.position.y, pl.position.z);
 
-    this.freinerDevantLeDos(scale, dt);
-    const move = moveAndCollide(
-      this.world,
-      pl.position,
-      pl.velocity,
-      scale,
-      dt,
-      pl.grounded,
-      this.apresPorte,
-    );
+    const frein = this.freinerDevantLeDos(scale, dt);
+    let move;
+    if (tourne) {
+      // DANS LE REPÈRE DE LA PESANTEUR : la physique d'origine, telle quelle,
+      // sur un monde vu de biais. Les conversions sont exactes (pesanteur.ts).
+      const lp = versLocal(rep, pl.position, pLocale);
+      const lv = versLocal(rep, pl.velocity, vLocale);
+      move = moveAndCollide(vue, lp, lv, scale, dt, pl.grounded, this.apresPorte);
+      versMonde(rep, lp, pl.position);
+      versMonde(rep, lv, pl.velocity);
+    } else {
+      move = moveAndCollide(
+        this.world,
+        pl.position,
+        pl.velocity,
+        scale,
+        dt,
+        pl.grounded,
+        this.apresPorte,
+      );
+    }
     this.apresPorte = false;
     pl.grounded = move.grounded;
     const dos = this.dosDesPortes(prevPos, scale);
-    if (dos) events.dos = { pairId: dos.pairId };
+    // ─── LE DOS D'UNE PORTE LE DIT QUAND ON POUSSE DESSUS ─────────────────
+    //
+    // Il ne le disait plus. `dosDesPortes` ne parlait que lorsqu'il devait
+    // ramener le corps en arrière ; or depuis que `freinerDevantLeDos` arrête
+    // le corps au ras du plan AVANT le pas, il n'y a plus rien à ramener, et
+    // « C'est le dos de la porte » ne s'affichait jamais en marchant droit
+    // dessus. Le frein dit donc lui aussi contre quelle porte il retient — et
+    // l'on ne le dit qu'au début de la poussée, pas à chaque image.
+    const pousse = frein ?? dos;
+    if (pousse && !this.pousseDos) events.dos = { pairId: pousse.pairId };
+    this.pousseDos = pousse !== null;
 
     // ═══════════════════════════════════════════════════════════════════════
     // LE RATTRAPAGE — la règle « on ne piège jamais » cesse d'être une promesse
@@ -542,15 +617,19 @@ export class Simulation {
     if (!pl.grounded) this.depuisAppui = 0;
     else if (++this.depuisAppui > 12) {
       this.depuisAppui = 0;
-      if (this.appuiSur(pl.position, scale)) this.noterAppui(pl.position, pl.scaleLevel, scale);
+      const ici = tourne ? versLocal(rep, pl.position, pLocale) : pl.position;
+      if (this.appuiSur(ici, scale, vue)) this.noterAppui(pl.position, pl.scaleLevel, scale, pl.haut);
     }
-    if (pl.position.y < this.world.plancher - 20 * scale) {
+    // Le seuil se mesure LE LONG DU HAUT : vingt tailles sous le point le plus
+    // bas du décor, vu depuis ce haut. Debout : `position.y` et le plancher.
+    if (hauteurDans(rep, pl.position) < vue.plancher - 20 * scale) {
       const retour = this.choisirRetour();
       if (retour) {
         pl.position.x = retour.x;
         pl.position.y = retour.y;
         pl.position.z = retour.z;
         pl.scaleLevel = retour.echelle;
+        if (pl.haut !== retour.haut) pl.haut = retour.haut;
       } else {
         // Jamais posé le pied nulle part : on ne peut que revenir au départ.
         const d = this.world.level.spawn;
@@ -558,6 +637,8 @@ export class Simulation {
         pl.position.y = d[1];
         pl.position.z = d[2];
         pl.scaleLevel = this.world.level.spawnScale ?? 0;
+        const hd = estDebout(this.world.level.spawnHaut) ? undefined : this.world.level.spawnHaut;
+        if (pl.haut !== hd) pl.haut = hd;
       }
       pl.velocity.x = 0;
       pl.velocity.y = 0;
@@ -573,6 +654,7 @@ export class Simulation {
           pl.yaw,
           pl.pitch,
           scaleOfLevel(pl.scaleLevel),
+          pl.haut,
         );
       }
     }
@@ -589,14 +671,18 @@ export class Simulation {
       // Une porte scellée fait mur exactement comme une porte trop petite. Le
       // joueur n'a pas à connaître la différence : dans les deux cas, il ne
       // passe pas, et dans les deux cas la raison est visible dans le monde.
-      const reason: 'tooBig' | 'scaleLimit' | 'scelle' | null =
+      // Et une porte qui ne saurait pas où mettre notre haut — plantée de biais
+      // pour qui marche sur un mur — refuse aussi : voir `hautApres`.
+      const reason: 'tooBig' | 'scaleLimit' | 'scelle' | 'pesanteur' | null =
         this.portesFermees.has(face.pairId) || estScelle(face, this.conditionsRemplies)
           ? 'scelle'
-          : !canPass(face, scale)
+          : !canPass(face, scale, pl.haut)
             ? 'tooBig'
             : nextLevel < SCALE_MIN_LEVEL || nextLevel > SCALE_MAX_LEVEL
               ? 'scaleLimit'
-              : null;
+              : hautApres(face, pl.haut) === null
+                ? 'pesanteur'
+                : null;
 
       if (reason) {
         pl.position.x = prevPos.x;
@@ -634,7 +720,7 @@ export class Simulation {
       // village serait faux. On regarde donc s'il y a de la pierre juste
       // derrière le plan, à portée du corps.
       const dessus = this.findCrossing(prevEye, newEye, 4);
-      if (dessus && !canPass(dessus.face, scale)) {
+      if (dessus && !canPass(dessus.face, scale, pl.haut)) {
         const n = dessus.face.normal;
         const t = dessus.t;
         const hit = vec3(
@@ -643,7 +729,7 @@ export class Simulation {
           prevEye.z + (newEye.z - prevEye.z) * t,
         );
         const portee = PLAYER_RADIUS * scale * 2 + 0.8;
-        const derriere = vec3(hit.x - n.x * portee, hit.y, hit.z - n.z * portee);
+        const derriere = vec3(hit.x - n.x * portee, hit.y - n.y * portee, hit.z - n.z * portee);
         if (!this.world.segmentLibre(hit, derriere)) {
           events.refused = { pairId: dessus.face.pairId, face: dessus.face.kind, reason: 'tooBig', versLePetit: false };
         }
@@ -653,7 +739,7 @@ export class Simulation {
     // --- Caisses : suivi du porteur, puis chute des autres ----------------------
     const held = this.carryables.held;
     if (held) {
-      this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale);
+      this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale, pl.haut);
       // ═══════════════════════════════════════════════════════════════════
       // CE QU'ON PORTE BUTE CONTRE UNE PORTE QU'IL NE PASSE PAS.
       //
@@ -675,7 +761,7 @@ export class Simulation {
           pl.position.z = prevPos.z;
           pl.velocity.x = 0;
           pl.velocity.z = 0;
-          this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale);
+          this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale, pl.haut);
         }
         const encore = this.porteQuiRetient(held);
         if (encore) {
@@ -709,7 +795,8 @@ export class Simulation {
     // reposait — voir `Carryable.appui`.
     for (const c of this.carryables.items) {
       if (c.held || c.locked) continue;
-      if (c.position.y >= this.world.plancher - 20) continue;
+      // Le long de SON haut, sous le point le plus bas du décor vu de là.
+      if (estDebout(c.haut) ? c.position.y >= this.world.plancher - 20 : hauteurDePiece(c) >= vueDe(this.world, c.haut).plancher - 20) continue;
       this.carryables.rattraper(c);
       events.pieceRattrapee = { id: c.id };
     }
@@ -866,6 +953,7 @@ export class Simulation {
         this.player.yaw,
         this.player.pitch,
         scale,
+        this.player.haut,
       );
       // ET UNE PORTE FERMÉE FAIT MUR À CE QU'ON POSE. Une pièce tenue à bout
       // de bras est souvent DÉJÀ de l'autre côté du plan d'une porte quand on
@@ -894,6 +982,7 @@ export class Simulation {
           this.player.yaw,
           this.player.pitch,
           scale,
+          this.player.haut,
         );
         events.noRoom = true;
         return;
@@ -901,6 +990,8 @@ export class Simulation {
       held.held = false;
       held.lancee = false;
       held.velocity.y = 0;
+      // Ce qu'on pose prend NOTRE haut : il tombe vers le sol qu'on a sous les pieds.
+      if (held.haut !== this.player.haut) held.haut = this.player.haut;
       held.releasedAt = this.eyePosition();
       events.carry = { id: held.id, taken: false };
       // ON POSE, DONC ON DEMANDE. Reposer une pièce à côté d'un creux est une
@@ -910,7 +1001,7 @@ export class Simulation {
       return;
     }
 
-    const target = this.carryables.targeted(this.player.position, this.player.yaw, scale, this.world);
+    const target = this.carryables.targeted(this.player.position, this.player.yaw, scale, this.world, this.player.haut);
     // Rien à prendre : la touche d'action ne PEINT plus. On peint au clic,
     // avec le pinceau choisi dans l'inventaire — voir `peindreCeQuOnVise`.
     if (!target) return;
@@ -961,14 +1052,25 @@ export class Simulation {
       if (devant >= demi + 0.02) continue;
       // Et DANS le cadre, élargi de la demi-pièce : à côté d'une porte, c'est
       // un mur, et une pièce tenue traverse les murs comme avant.
-      const n = face.normal;
-      const lat = Math.hypot(n.x, n.z) || 1;
-      const u = ((centre.x - face.position.x) * n.z - (centre.z - face.position.z) * n.x) / lat;
-      const v = centre.y - face.position.y;
+      let u: number;
+      let v: number;
+      let uo: number;
+      if (face.droite) {
+        const n = face.normal;
+        const lat = Math.hypot(n.x, n.z) || 1;
+        u = ((centre.x - face.position.x) * n.z - (centre.z - face.position.z) * n.x) / lat;
+        v = centre.y - face.position.y;
+        uo = ((oeil.x - face.position.x) * n.z - (oeil.z - face.position.z) * n.x) / lat;
+      } else {
+        // Une face qui n'est pas debout : ses deux axes à elle.
+        const lc = versFace(face, vec3(centre.x - face.position.x, centre.y - face.position.y, centre.z - face.position.z));
+        u = lc.x;
+        v = lc.y;
+        uo = versFace(face, vec3(oeil.x - face.position.x, oeil.y - face.position.y, oeil.z - face.position.z)).x;
+      }
       if (Math.abs(u) > face.width * 0.5 + demi || v < -demi || v > face.height + demi) continue;
       // L'œil lui-même doit être en face du cadre : une porte loin sur le côté
       // n'a rien à retenir.
-      const uo = ((oeil.x - face.position.x) * n.z - (oeil.z - face.position.z) * n.x) / lat;
       if (Math.abs(uo) > face.width * 0.5 + demi + c.size * 4) continue;
       if (!pire || devant < pire.devant) pire = { face, devant, cote, raison };
     }
@@ -991,7 +1093,10 @@ export class Simulation {
       const parDerriere = devant === null;
 
       const face = crossing.face;
-      const fits = pieceFits(face, c.size);
+      // Le haut de la pièce passe la porte comme le nôtre ; s'il ne tombe pas
+      // sur un axe, elle bute comme une pièce trop grosse (voir `hautApres`).
+      const hautLa = hautApres(face, c.haut);
+      const fits = pieceFits(face, c.size) && hautLa !== null;
       // UNE PORTE SCELLÉE FAIT MUR AUX PIÈCES COMME AU JOUEUR. Elle ne le
       // faisait qu'au joueur : une graine lancée — ou simplement posée — vers
       // la sortie scellée du grain passait de l'autre côté, dans une salle où
@@ -1056,7 +1161,18 @@ export class Simulation {
       // n'a pas de corps, alors on la pose au ras du sol, jamais dedans.
       // ═══════════════════════════════════════════════════════════════════
       c.position.y = newCenter.y - c.size * 0.5;
-      c.position.y = this.world.dessusDuSol(aabbOfCarryable(c, seuilScratch), c.size * 0.5);
+      if (estDebout(c.haut) && hautLa === '+y') {
+        c.position.y = this.world.dessusDuSol(aabbOfCarryable(c, seuilScratch), c.size * 0.5);
+      } else {
+        // LE MÊME RAS DU SOL, LE LONG DE SON HAUT D'ARRIVÉE. Une pièce lancée
+        // par une porte qui bascule ressort avec un autre haut : on la pose au
+        // ras de CE sol-là, au contact exact, jamais dedans.
+        const h = hautLa!;
+        if (c.haut !== (h === '+y' ? undefined : h)) c.haut = h === '+y' ? undefined : h;
+        const locale = boiteVersLocal(REPERES[h], aabbOfCarryable(c, seuilScratch), { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 });
+        const dessus = vueDe(this.world, h).dessusDuSol(locale, c.size * 0.5);
+        if (dessus > locale.minY) poserSelon(c, h, dessus);
+      }
       c.velocity.x = newVel.x;
       c.velocity.y = newVel.y;
       c.velocity.z = newVel.z;
@@ -1087,6 +1203,7 @@ export class Simulation {
         this.player.pitch,
         scale,
         stylo.size,
+        estDebout(this.player.haut) ? undefined : this.regard(),
       );
       if (impact) events.trace = { ...impact, encre: stylo.encre };
       return;
@@ -1101,7 +1218,7 @@ export class Simulation {
       return;
     }
     held.releasedAt = this.eyePosition();
-    this.carryables.throwIt(held, this.player.yaw, this.player.pitch, scale);
+    this.carryables.throwIt(held, this.player.yaw, this.player.pitch, scale, this.player.haut);
     events.thrown = { id: held.id };
   }
 
@@ -1123,7 +1240,7 @@ export class Simulation {
   viserPeinture(): { index: number; distance: number; aPortee: boolean } | null {
     const scale = this.scale;
     const o = this.eyePosition();
-    const d = lookDirection(this.player.yaw, this.player.pitch);
+    const d = this.regard();
     const loin = Simulation.PORTEE_PINCEAU * scale * 4;
     let meilleur = -1;
     let tMin = loin;
@@ -1168,11 +1285,26 @@ export class Simulation {
       const px = o.x + d.x * t - f.position.x;
       const py = o.y + d.y * t - f.position.y;
       const pz = o.z + d.z * t - f.position.z;
+      if (!f.droite) {
+        // Une face qui n'est pas debout : son rectangle, sur ses deux axes.
+        const l = versFace(f, vec3(px, py, pz));
+        if (Math.abs(l.x) <= f.width / 2 && l.y >= 0 && l.y <= f.height) return null;
+        continue;
+      }
       // La droite de la face est horizontale et perpendiculaire à sa normale.
       const lateral = (px * n.z - pz * n.x) / Math.max(1e-9, Math.hypot(n.x, n.z));
       if (Math.abs(lateral) <= f.width / 2 && py >= 0 && py <= f.height) return null;
     }
     return { index: meilleur, distance: tMin, aPortee: tMin <= Simulation.PORTEE_PINCEAU * scale };
+  }
+
+  /**
+   * LA DIRECTION DU REGARD, DANS LE MONDE : le lacet et l'inclinaison se
+   * lisent dans le repère du joueur. Debout, exactement `lookDirection`.
+   */
+  regard(): Vec3 {
+    const d = lookDirection(this.player.yaw, this.player.pitch);
+    return estDebout(this.player.haut) ? d : versMonde(REPERES[this.player.haut!], d, d);
   }
 
   /**
@@ -1262,7 +1394,15 @@ export class Simulation {
         R = mulMat(quartDeTour(TOUR_DE_MOLETTE[c.tour % 12], -1), R);
       }
     }
-    for (let i = 0; i < Math.abs(lacet); i++) R = mulMat(quartDeTour('y', lacet > 0 ? 1 : -1), R);
+    // Les quarts de tour « à volonté » se donnent autour des axes DU JOUEUR :
+    // son haut, et l'horizontale la plus proche de sa droite. Un axe du
+    // repère est un axe du monde, au signe près (voir `pesanteur.ts`), donc
+    // le quart de tour reste exact. Debout, ce sont les axes du monde.
+    const rep = REPERES[this.player.haut ?? '+y'];
+    const indice = { x: 0, y: 1, z: 2 } as const;
+    const quart = (axe: 'x' | 'y' | 'z', sens: 1 | -1): Mat3 =>
+      quartDeTour(rep.axes[indice[axe]], (sens * rep.signes[indice[axe]]) as 1 | -1);
+    for (let i = 0; i < Math.abs(lacet); i++) R = mulMat(quart('y', lacet > 0 ? 1 : -1), R);
     if (bascule !== 0) {
       // L'axe couché le plus proche de la droite du joueur, orienté pour que
       // le haut de la pièce parte vers l'avant.
@@ -1270,7 +1410,7 @@ export class Simulation {
       const [axe, sens]: ['x' | 'z', 1 | -1] =
         Math.abs(f.z) >= Math.abs(f.x) ? ['x', f.z >= 0 ? 1 : -1] : ['z', f.x >= 0 ? -1 : 1];
       for (let i = 0; i < Math.abs(bascule); i++) {
-        R = mulMat(quartDeTour(axe, (bascule > 0 ? sens : -sens) as 1 | -1), R);
+        R = mulMat(quart(axe, (bascule > 0 ? sens : -sens) as 1 | -1), R);
       }
     }
 
@@ -1342,13 +1482,23 @@ export class Simulation {
    * plan, par la même règle ; le pas passe ensuite par la collision, et le
    * rappel d'après ne sert plus que de garde-fou.
    */
-  private freinerDevantLeDos(scale: number, dt: number): void {
+  /** Rend la face contre laquelle on pousse vraiment, s'il y en a une. */
+  private freinerDevantLeDos(scale: number, dt: number): PortalFace | null {
     const pl = this.player;
+    let retient: PortalFace | null = null;
     const r = PLAYER_RADIUS * scale;
     const h = PLAYER_HEIGHT * scale;
     const marge = Math.hypot(pl.velocity.x, pl.velocity.z) * dt;
     const margeY = Math.abs(pl.velocity.y) * dt + PLAYER_HEIGHT * STEP_FRACTION * scale;
+    const debout = estDebout(pl.haut);
     for (const face of this.faces) {
+      // Une face couchée, ou un joueur qui ne l'est pas : la même règle, lue
+      // sur les axes de la face (voir `corpsDansLaFace`). Les autres gardent
+      // la formule d'origine, au bit près.
+      if (!debout || !face.droite) {
+        if (this.freinerFace(face, scale, dt)) retient = face;
+        continue;
+      }
       const d0 = signedDistance(face, pl.position);
       if (d0 >= 0) continue;
       const local = rotateY(
@@ -1365,8 +1515,82 @@ export class Simulation {
         const coupe = along - permis;
         pl.velocity.x -= n.x * coupe;
         pl.velocity.z -= n.z * coupe;
+        if (coupe > POUSSEE_SUR_LE_DOS * scale) retient = face;
       }
     }
+    return retient;
+  }
+
+  /**
+   * LE CORPS VU DEPUIS UNE FACE : son centre et ses demi-emprises sur les
+   * trois axes de la face (droite, haut, profondeur). Juste pour toute face et
+   * tout haut : la boîte est droite, les axes de la face aussi.
+   */
+  private corpsDansLaFace(face: PortalFace, scale: number): { c: Vec3; e: Vec3 } {
+    const pl = this.player;
+    const rep = REPERES[pl.haut ?? '+y'];
+    const r = PLAYER_RADIUS * scale;
+    const h = PLAYER_HEIGHT * scale;
+    const l = versLocal(rep, pl.position, vec3());
+    l.y += h * 0.5;
+    const cm = versMonde(rep, l, l);
+    const c = versFace(face, vec3(cm.x - face.position.x, cm.y - face.position.y, cm.z - face.position.z));
+    const ex = rep.axes[1] === 'x' ? h * 0.5 : r;
+    const ey = rep.axes[1] === 'y' ? h * 0.5 : r;
+    const ez = rep.axes[1] === 'z' ? h * 0.5 : r;
+    const emprise = (a: Vec3): number => Math.abs(a.x) * ex + Math.abs(a.y) * ey + Math.abs(a.z) * ez;
+    return { c, e: vec3(emprise(face.lateral), emprise(face.haut), emprise(face.normal)) };
+  }
+
+  /** `freinerDevantLeDos` pour une face, sur ses propres axes. */
+  private freinerFace(face: PortalFace, scale: number, dt: number): boolean {
+    const pl = this.player;
+    const { c, e } = this.corpsDansLaFace(face, scale);
+    if (c.z >= 0) return false;
+    const marge = Math.hypot(pl.velocity.x, pl.velocity.y, pl.velocity.z) * dt;
+    const margeY = marge + PLAYER_HEIGHT * STEP_FRACTION * scale;
+    if (Math.abs(c.x) > face.width * 0.5 + e.x + marge) return false;
+    if (c.y + e.y < -margeY || c.y - e.y > face.height + margeY) return false;
+    const n = face.normal;
+    const along = pl.velocity.x * n.x + pl.velocity.y * n.y + pl.velocity.z * n.z;
+    if (along <= 0) return false;
+    const permis = Math.max(0, -e.z - c.z) / dt;
+    if (along > permis) {
+      const coupe = along - permis;
+      pl.velocity.x -= n.x * coupe;
+      pl.velocity.y -= n.y * coupe;
+      pl.velocity.z -= n.z * coupe;
+      return coupe > POUSSEE_SUR_LE_DOS * scale;
+    }
+    return false;
+  }
+
+  /** `dosDesPortes` pour une face, sur ses propres axes. Vrai si l'on a poussé dessus. */
+  private dosFace(face: PortalFace, prev: Vec3, scale: number): boolean {
+    const pl = this.player;
+    // La profondeur d'avant, prise au CENTRE du corps : les pieds d'avant plus
+    // la demi-taille le long du haut, projetée sur la normale.
+    const rep = REPERES[pl.haut ?? '+y'];
+    const hautSurN = rep.signes[1] * face.normal[rep.axes[1]];
+    const d0 = signedDistance(face, prev) + (hautSurN * PLAYER_HEIGHT * scale) / 2;
+    if (d0 >= 0) return false;
+    const { c, e } = this.corpsDansLaFace(face, scale);
+    const d1 = c.z;
+    if (d1 <= d0 || d1 <= -e.z) return false;
+    if (Math.abs(c.x) > face.width * 0.5 + e.x) return false;
+    if (c.y + e.y < 0 || c.y - e.y > face.height) return false;
+    const cible = Math.max(d0, -e.z);
+    const n = face.normal;
+    pl.position.x -= n.x * (d1 - cible);
+    pl.position.y -= n.y * (d1 - cible);
+    pl.position.z -= n.z * (d1 - cible);
+    const along = pl.velocity.x * n.x + pl.velocity.y * n.y + pl.velocity.z * n.z;
+    if (along > 0) {
+      pl.velocity.x -= n.x * along;
+      pl.velocity.y -= n.y * along;
+      pl.velocity.z -= n.z * along;
+    }
+    return d1 - cible > 1e-4;
   }
 
   private dosDesPortes(prev: Vec3, scale: number): PortalFace | null {
@@ -1374,7 +1598,12 @@ export class Simulation {
     const r = PLAYER_RADIUS * scale;
     const h = PLAYER_HEIGHT * scale;
     let bute: PortalFace | null = null;
+    const debout = estDebout(pl.haut);
     for (const face of this.faces) {
+      if (!debout || !face.droite) {
+        if (this.dosFace(face, prev, scale)) bute = face;
+        continue;
+      }
       const d0 = signedDistance(face, prev);
       if (d0 >= 0) continue;
       const d1 = signedDistance(face, pl.position);
@@ -1423,6 +1652,10 @@ export class Simulation {
    * ═══════════════════════════════════════════════════════════════════════
    */
   private ressortirDansLOuverture(arrivee: PortalFace, echelle: number): void {
+    if (!arrivee.droite || !estDebout(this.player.haut)) {
+      this.ressortirEnRepere(arrivee, echelle);
+      return;
+    }
     const pl = this.player;
     const r = PLAYER_RADIUS * echelle;
     const local = rotateY(vec3(pl.position.x - arrivee.position.x, 0, pl.position.z - arrivee.position.z), -arrivee.yaw);
@@ -1448,6 +1681,44 @@ export class Simulation {
     if (!libreDeCote()) poser(x1, local.z);
   }
 
+  /**
+   * `ressortirDansLOuverture`, pour une face qui n'est pas debout ou un joueur
+   * qui ne l'est pas. L'œil est ramené dans le RECTANGLE de la face — sur ses
+   * deux axes : une trappe a deux largeurs —, le corps posé le long de son
+   * haut ; s'il heurte le décor au-dessus d'une marche, on le recentre et on le
+   * pose devant le plan. Si même là il est gêné, on garde le premier placement.
+   */
+  private ressortirEnRepere(arrivee: PortalFace, echelle: number): void {
+    const pl = this.player;
+    const haut = pl.haut ?? '+y';
+    const rep = REPERES[haut];
+    const vue = vueDe(this.world, haut);
+    const r = PLAYER_RADIUS * echelle;
+    const hOeil = PLAYER_HEIGHT * EYE_FRACTION * echelle;
+    const oeil = this.eyePosition();
+    const loc = versFace(arrivee, vec3(oeil.x - arrivee.position.x, oeil.y - arrivee.position.y, oeil.z - arrivee.position.z));
+    const poser = (lx: number, ly: number, lz: number): void => {
+      const w = depuisFace(arrivee, vec3(lx, ly, lz));
+      const l = versLocal(rep, vec3(arrivee.position.x + w.x, arrivee.position.y + w.y, arrivee.position.z + w.z), vec3());
+      l.y -= hOeil;
+      versMonde(rep, l, pl.position);
+    };
+    const libreDeCote = (): boolean => {
+      playerAabb(versLocal(rep, pl.position, pLocale), echelle, corpsAppui);
+      corpsAppui.minY += PLAYER_HEIGHT * STEP_FRACTION * echelle;
+      return vue.queryStatic(corpsAppui, touchesAppui).length === 0;
+    };
+    const demi = arrivee.width / 2;
+    const x1 = Math.max(-demi, Math.min(demi, loc.x));
+    const y1 = Math.max(0, Math.min(arrivee.height, loc.y));
+    poser(x1, y1, loc.z);
+    if (libreDeCote()) return;
+    const jeu = 0.005 * echelle;
+    const lim = Math.max(0, demi - r - jeu);
+    poser(Math.max(-lim, Math.min(lim, x1)), y1, Math.max(loc.z, r + jeu));
+    if (!libreDeCote()) poser(x1, y1, loc.z);
+  }
+
   private teleport(face: PortalFace, eye: Vec3, nextLevel: number): void {
     const pl = this.player;
     const newEye = transformPoint(face, eye);
@@ -1457,12 +1728,26 @@ export class Simulation {
     pl.scaleLevel = nextLevel;
     // UN MIROIR CHANGE LA MAIN DU MONDE. Voir `PlayerState.gauchere`.
     if (face.miroir === true) pl.gauchere = !pl.gauchere;
+    // LA PESANTEUR PASSE LA PORTE COMME UNE VITESSE (voir `hautApres`). Par
+    // deux faces debout, elle reste '+y' et rien de ce qui suit ne change.
+    const hautAvant: Haut = pl.haut ?? '+y';
+    const hautNeuf = hautApres(face, hautAvant)!;
+    if (hautNeuf !== hautAvant) pl.haut = hautNeuf === '+y' ? undefined : hautNeuf;
+    const tourne = hautAvant !== '+y' || hautNeuf !== '+y';
+    const repNeuf = REPERES[hautNeuf];
     // On repasse des yeux aux pieds, avec la NOUVELLE taille. Comme la hauteur
     // d'œil est proportionnelle à la taille, un joueur posé au sol devant une
     // face ressort exactement posé au sol devant l'autre.
-    pl.position.x = newEye.x;
-    pl.position.y = newEye.y - PLAYER_HEIGHT * EYE_FRACTION * newScale;
-    pl.position.z = newEye.z;
+    if (!tourne) {
+      pl.position.x = newEye.x;
+      pl.position.y = newEye.y - PLAYER_HEIGHT * EYE_FRACTION * newScale;
+      pl.position.z = newEye.z;
+    } else {
+      // Le long du NOUVEAU haut : les pieds se mappent encore sur les pieds.
+      const l = versLocal(repNeuf, newEye, vec3());
+      l.y -= PLAYER_HEIGHT * EYE_FRACTION * newScale;
+      versMonde(repNeuf, l, pl.position);
+    }
     this.ressortirDansLOuverture(face.twin, newScale);
     pl.velocity.x = newVel.x;
     pl.velocity.y = newVel.y;
@@ -1474,8 +1759,18 @@ export class Simulation {
     // angle de rotation : il n'y a rien à additionner. En transportant le
     // vecteur du regard puis en relisant sa direction, les deux cas se traitent
     // de la même façon, et c'est le miroir qui dicte la forme la plus générale.
-    const regard = transformVector(face, yawToForward(pl.yaw), false);
-    pl.yaw = Math.atan2(regard.x, regard.z);
+    if (!tourne) {
+      const regard = transformVector(face, yawToForward(pl.yaw), false);
+      pl.yaw = Math.atan2(regard.x, regard.z);
+    } else {
+      // Le regard horizontal, remis dans le monde, transporté, puis relu dans
+      // le repère d'arrivée. Il y reste horizontal — la porte tourne notre haut
+      // avec nous —, et l'inclinaison ne change pas : la vue d'après est la vue
+      // d'avant transportée, sans roulis à rattraper.
+      const avant = versMonde(REPERES[hautAvant], yawToForward(pl.yaw), vec3());
+      const regard = versLocal(repNeuf, transformVector(face, avant, false), vec3());
+      pl.yaw = Math.atan2(regard.x, regard.z);
+    }
     pl.grounded = false;
     // ARRIVÉ DANS LA PIERRE, ON EN SORT PAR LE DESSUS, une fois, tout de suite.
     // Une face est plantée à quelques centimètres de son sol, et cet écart ne
@@ -1483,7 +1778,12 @@ export class Simulation {
     // l'estrade d'arrivée, l'œil dans la pierre. On le repose sur ce qui le
     // contient si c'est à moins de sa propre hauteur (au moins celle d'un
     // homme) et que la place est libre — voir `reposerSurLeSol`.
-    reposerSurLeSol(this.world, pl.position, newScale, PLAYER_HEIGHT * Math.max(newScale, 1));
+    if (!tourne) reposerSurLeSol(this.world, pl.position, newScale, PLAYER_HEIGHT * Math.max(newScale, 1));
+    else {
+      const l = versLocal(repNeuf, pl.position, pLocale);
+      reposerSurLeSol(vueDe(this.world, hautNeuf), l, newScale, PLAYER_HEIGHT * Math.max(newScale, 1));
+      versMonde(repNeuf, l, pl.position);
+    }
     this.apresPorte = true;
 
     // La caisse portée subit exactement le même sort que son porteur. C'est
@@ -1528,7 +1828,7 @@ export class Simulation {
       // `transporterRotation`.
       // ═══════════════════════════════════════════════════════════════════
       tournerAvecLaPorte(held, face);
-      this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale);
+      this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, newScale, pl.haut);
     }
   }
 }

@@ -1,5 +1,7 @@
 import { GRAVITY, PLAYER_HEIGHT, PLAYER_RADIUS, EYE_FRACTION } from './constants.js';
 import { vec3, type Vec3 } from './math.js';
+import { REPERES, boiteVersLocal, estDebout, hauteurDans, vecteurHaut, versLocal, versMonde, vueDe, type Haut } from './pesanteur.js';
+import { auRasDessous, auRasDessus } from './physics.js';
 import type { CarryableDef } from './types.js';
 import type { Aabb, World } from './world.js';
 
@@ -83,7 +85,7 @@ export interface Carryable {
    * puis perdue doit revenir telle qu'elle était AVANT le lancer, sinon le
    * rattrapage garde la moitié d'un geste qu'il annule.
    */
-  appui: { x: number; y: number; z: number; size: number; main?: 'L' | 'D'; rotation: Vec3 } | null;
+  appui: { x: number; y: number; z: number; size: number; main?: 'L' | 'D'; rotation: Vec3; haut?: Haut } | null;
   /** Images passées au sol depuis le dernier appui noté. */
   depuisAppui: number;
   /**
@@ -128,6 +130,16 @@ export interface Carryable {
    * traversée se déclenche comme elle le doit.
    */
   releasedAt: Vec3 | null;
+  /**
+   * LE HAUT DE CETTE PIÈCE — vers où elle tombe, à l'opposé. Absent : '+y'.
+   *
+   * Celui de qui la lâche ou la lance, tourné par chaque porte qui n'est pas
+   * debout. Sa boîte, elle, ne change pas : un cube a la même dans tous les
+   * repères, et `position` reste partout le centre de sa face la plus basse
+   * DANS LE MONDE (min y) — aucune des lectures de `position.y + size / 2`
+   * n'a donc à le savoir. Voir `pasDePieceTournee`.
+   */
+  haut?: Haut;
 }
 
 export const aabbOfCarryable = (c: Carryable, out: Aabb): Aabb => {
@@ -202,7 +214,7 @@ export class Carryables {
     for (const d of this.defs) {
       this.items.push({
         id: d.id,
-        position: vec3(d.position[0], d.position[1], d.position[2]),
+        position: ancreDeDef(d),
         velocity: vec3(0, 0, 0),
         rotation: vec3(0, 0, 0),
         spin: vec3(0, 0, 0),
@@ -222,6 +234,7 @@ export class Carryables {
         lanceeDite: false,
         tour: 0,
         tourne: 0,
+        ...(estDebout(d.haut) ? {} : { haut: d.haut }),
       });
     }
   }
@@ -242,12 +255,16 @@ export class Carryables {
       c.position.z = a.z;
       c.size = a.size;
       c.main = a.main;
+      if (c.haut !== a.haut) c.haut = a.haut;
     } else if (def) {
-      c.position.x = def.position[0];
-      c.position.y = def.position[1];
-      c.position.z = def.position[2];
+      const p = ancreDeDef(def);
+      c.position.x = p.x;
+      c.position.y = p.y;
+      c.position.z = p.z;
       c.size = def.size;
       c.main = def.main;
+      const h = estDebout(def.haut) ? undefined : def.haut;
+      if (c.haut !== h) c.haut = h;
     }
     c.velocity.x = 0;
     c.velocity.y = 0;
@@ -307,7 +324,8 @@ export class Carryables {
    * le dallage, ce qui est exactement la leçon que ces salles voulaient donner.
    * ═══════════════════════════════════════════════════════════════════════════
    */
-  targeted(playerPos: Vec3, yaw: number, playerScale: number, world?: World): Carryable | null {
+  targeted(playerPos: Vec3, yaw: number, playerScale: number, world?: World, haut?: Haut): Carryable | null {
+    if (!estDebout(haut)) return this.viseeEnRepere(playerPos, yaw, playerScale, world, haut!);
     const reach = PLAYER_HEIGHT * playerScale * REACH;
     const eyeY = playerPos.y + PLAYER_HEIGHT * playerScale * 0.6;
     const fwd = lookDirection(yaw, 0);
@@ -340,6 +358,35 @@ export class Carryables {
     return best;
   }
 
+  /** `targeted`, la même règle lue dans le repère du joueur. */
+  private viseeEnRepere(playerPos: Vec3, yaw: number, playerScale: number, world: World | undefined, haut: Haut): Carryable | null {
+    const r = REPERES[haut];
+    const vue = world ? vueDe(world, haut) : undefined;
+    const lp = versLocal(r, playerPos, vec3());
+    const reach = PLAYER_HEIGHT * playerScale * REACH;
+    const eyeY = lp.y + PLAYER_HEIGHT * playerScale * 0.6;
+    const fwd = lookDirection(yaw, 0);
+    let best: Carryable | null = null;
+    let bestDist = Infinity;
+    for (const c of this.items) {
+      if (c.held || c.locked) continue;
+      const lc = versLocal(r, vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z), vec3());
+      const cx = lc.x - lp.x;
+      const cy = lc.y - eyeY;
+      const cz = lc.z - lp.z;
+      const dist = Math.hypot(cx, cy, cz);
+      if (dist > reach + c.size * 0.5) continue;
+      const flat = Math.hypot(cx, cz) || 1;
+      if ((cx / flat) * fwd.x + (cz / flat) * fwd.z < 0.25) continue;
+      if (vue && !vue.segmentLibre(vec3(lp.x, eyeY, lp.z), lc)) continue;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = c;
+      }
+    }
+    return best;
+  }
+
   /**
    * Position de portage : au bout du regard, inclinaison comprise.
    *
@@ -353,8 +400,11 @@ export class Carryables {
     yaw: number,
     pitch: number,
     playerScale: number,
+    haut?: Haut,
   ): void {
-    const p = holdPoint(c, playerPos, yaw, pitch, playerScale, 1);
+    const p = estDebout(haut)
+      ? holdPoint(c, playerPos, yaw, pitch, playerScale, 1)
+      : pointDePortageEnRepere(c, playerPos, yaw, pitch, playerScale, 1, haut!);
     c.position.x = p.x;
     c.position.y = p.y;
     c.position.z = p.z;
@@ -384,7 +434,9 @@ export class Carryables {
     yaw: number,
     pitch: number,
     playerScale: number,
+    haut?: Haut,
   ): boolean {
+    if (!estDebout(haut)) return this.placeForDropEnRepere(c, world, playerPos, yaw, pitch, playerScale, haut!);
     // L'écart horizontal étant déjà garanti par holdPoint, il ne reste qu'à
     // éviter le décor. On se rapproche progressivement pour pouvoir caler la
     // caisse contre un mur sans l'y encastrer.
@@ -422,8 +474,47 @@ export class Carryables {
     return false;
   }
 
+  /**
+   * `placeForDrop` dans le repère du porteur. Les essais se bâtissent dans le
+   * repère, mais les tests de collision se font DANS LE MONDE, sur la boîte
+   * que la pièce aura vraiment : on ne pose pas une pièce à un ulp dans un mur.
+   */
+  private placeForDropEnRepere(c: Carryable, world: World, playerPos: Vec3, yaw: number, pitch: number, playerScale: number, haut: Haut): boolean {
+    const r = REPERES[haut];
+    const vue = vueDe(world, haut);
+    const lp = versLocal(r, playerPos, vec3());
+    const oeil = versMonde(r, vec3(lp.x, lp.y + PLAYER_HEIGHT * EYE_FRACTION * playerScale, lp.z), vec3());
+    const locale: Aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+    const steps = 8;
+    for (let step = 0; step <= steps; step++) {
+      const closeness = 1 - (1 - DROP_CLOSENESS_FLOOR) * (step / steps);
+      const p = pointDePortageEnRepere(c, playerPos, yaw, pitch, playerScale, closeness, haut);
+      c.position.x = p.x;
+      c.position.y = p.y;
+      c.position.z = p.z;
+      aabbOfCarryable(c, scratch);
+      if (world.queryStatic(scratch, hits).length !== 0) {
+        // Viser une table, c'est y poser — sur SA face du dessus, le long du haut.
+        boiteVersLocal(r, scratch, locale);
+        const dessus = vue.dessusDuSol(locale, c.size * 0.5);
+        if (dessus <= locale.minY) continue;
+        poserSelon(c, haut, dessus);
+        aabbOfCarryable(c, scratch);
+        if (world.queryStatic(scratch, hits).length !== 0) continue;
+      }
+      if (!world.segmentLibre(oeil, vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z))) continue;
+      return true;
+    }
+    return false;
+  }
+
   /** Lance la caisse dans la direction du regard, avec une culbute. */
-  throwIt(c: Carryable, yaw: number, pitch: number, playerScale: number): void {
+  throwIt(c: Carryable, yaw: number, pitch: number, playerScale: number, haut?: Haut): void {
+    if (!estDebout(haut)) {
+      lancerEnRepere(c, yaw, pitch, playerScale, haut!);
+      return;
+    }
+    if (c.haut !== undefined) c.haut = undefined;
     const look = lookDirection(yaw, pitch);
     const speed = THROW_SPEED * PLAYER_HEIGHT * playerScale;
     c.held = false;
@@ -452,6 +543,10 @@ export class Carryables {
   step(world: World, dt: number): void {
     for (const c of this.items) {
       if (c.held || c.locked) continue;
+      if (!estDebout(c.haut)) {
+        pasDePieceTournee(c, world, dt, c.haut!);
+        continue;
+      }
 
       c.velocity.y -= GRAVITY * dt;
       c.grounded = false;
@@ -507,6 +602,165 @@ export class Carryables {
 
 const nearestRightAngle = (a: number): number =>
   Math.round(a / (Math.PI / 2)) * (Math.PI / 2);
+
+/**
+ * OÙ NAÎT UNE PIÈCE DU NIVEAU. Debout, sa `position` telle quelle ; sinon
+ * le centre de sa face d'appui (voir `CarryableDef.haut`), ramené au centre
+ * de sa face la plus basse dans le monde, qui est l'ancre de partout.
+ */
+const ancreDeDef = (d: CarryableDef): Vec3 => {
+  if (estDebout(d.haut)) return vec3(d.position[0], d.position[1], d.position[2]);
+  const u = vecteurHaut(d.haut!);
+  const h = d.size * 0.5;
+  return vec3(d.position[0] + u.x * h, d.position[1] + u.y * h - h, d.position[2] + u.z * h);
+};
+
+/**
+ * Le point de portage calculé dans le repère du porteur — `holdPoint` tel
+ * quel — puis remis dans le monde en passant par le CENTRE de la pièce.
+ */
+const pointDePortageEnRepere = (
+  c: Carryable,
+  playerPos: Vec3,
+  yaw: number,
+  pitch: number,
+  playerScale: number,
+  closeness: number,
+  haut: Haut,
+): Vec3 => {
+  const r = REPERES[haut];
+  const l = holdPoint(c, versLocal(r, playerPos, vec3()), yaw, pitch, playerScale, closeness);
+  l.y += c.size * 0.5;
+  const w = versMonde(r, l, l);
+  w.y -= c.size * 0.5;
+  return w;
+};
+
+/** Le lancer, dans le repère du lanceur : la pièce prend sa pesanteur. */
+const lancerEnRepere = (c: Carryable, yaw: number, pitch: number, playerScale: number, haut: Haut): void => {
+  const r = REPERES[haut];
+  const speed = THROW_SPEED * PLAYER_HEIGHT * playerScale;
+  const l = lookDirection(yaw, pitch);
+  const v = versMonde(r, vec3(l.x * speed, l.y * speed + speed * 0.18, l.z * speed), vec3());
+  const look = versMonde(r, l, vec3());
+  c.held = false;
+  c.lancee = true;
+  c.lanceeDite = false;
+  c.haut = haut;
+  c.velocity.x = v.x;
+  c.velocity.y = v.y;
+  c.velocity.z = v.z;
+  const tumble = 6;
+  c.spin.x = -look.z * tumble;
+  c.spin.z = look.x * tumble;
+  c.spin.y = (look.x - look.z) * tumble * 0.2;
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA CHUTE D'UNE PIÈCE QUI N'EST PAS DEBOUT.
+ *
+ * Dans le monde, sans changer d'ancre : on choisit seulement l'axe de la
+ * chute, les deux autres étant ses « horizontales ». Et l'on pose AU CONTACT
+ * EXACT, au ulp près (`auRasDessous`/`auRasDessus`, les mêmes que pour le
+ * joueur). C'est obligatoire et non cosmétique : une pièce couchée sur un mur
+ * y repose par un contact LATÉRAL dans le monde, et un ulp de chevauchement
+ * laissé là serait « résolu » au pas transversal suivant comme un mur qu'on
+ * vient de percuter — la catapulte que `physics.ts` raconte pour le joueur.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export const pasDePieceTournee = (c: Carryable, world: World, dt: number, haut: Haut): void => {
+  const r = REPERES[haut];
+  const chute = r.axes[1];
+  const sg = r.signes[1];
+  c.velocity[chute] -= sg * GRAVITY * dt;
+  c.grounded = false;
+  moveCarryableAxisExact(c, world, r.axes[0], c.velocity[r.axes[0]] * dt, chute);
+  moveCarryableAxisExact(c, world, r.axes[2], c.velocity[r.axes[2]] * dt, chute);
+  const vertical = sg * c.velocity[chute];
+  if (moveCarryableAxisExact(c, world, chute, c.velocity[chute] * dt, chute)) {
+    if (vertical < 0) {
+      c.grounded = true;
+      c.velocity[chute] = -c.velocity[chute] * BOUNCE;
+      if (Math.abs(c.velocity[chute]) < GRAVITY * dt * 3) c.velocity[chute] = 0;
+    } else {
+      c.velocity[chute] = 0;
+    }
+  }
+  if (c.grounded) {
+    const keep = Math.pow(GROUND_DRAG, dt);
+    c.velocity[r.axes[0]] *= keep;
+    c.velocity[r.axes[2]] *= keep;
+    c.spin.x *= keep;
+    c.spin.y *= keep;
+    c.spin.z *= keep;
+    if (++c.depuisAppui > 12 && Math.hypot(c.velocity[r.axes[0]], c.velocity[r.axes[2]]) < 1) {
+      c.depuisAppui = 0;
+      c.appui = {
+        x: c.position.x, y: c.position.y, z: c.position.z, size: c.size, main: c.main,
+        rotation: vec3(c.rotation.x, c.rotation.y, c.rotation.z), haut,
+      };
+    }
+  } else {
+    c.depuisAppui = 0;
+  }
+  c.rotation.x += c.spin.x * dt;
+  c.rotation.y += c.spin.y * dt;
+  c.rotation.z += c.spin.z * dt;
+  if (c.grounded && Math.hypot(c.spin.x, c.spin.y, c.spin.z) < 0.6) {
+    const settle = 1 - Math.exp(-dt / 0.12);
+    c.rotation.x += (nearestRightAngle(c.rotation.x) - c.rotation.x) * settle;
+    c.rotation.y += (nearestRightAngle(c.rotation.y) - c.rotation.y) * settle;
+    c.rotation.z += (nearestRightAngle(c.rotation.z) - c.rotation.z) * settle;
+  }
+};
+
+/** `moveCarryableAxis`, posée au contact exact. `chute` : l'axe qui ne s'arrête pas net. */
+const moveCarryableAxisExact = (
+  c: Carryable,
+  world: World,
+  axis: 'x' | 'y' | 'z',
+  amount: number,
+  chute: 'x' | 'y' | 'z',
+): boolean => {
+  if (amount === 0) return false;
+  c.position[axis] += amount;
+  const half = c.size * 0.5;
+  const posExtent = axis === 'y' ? c.size : half;
+  const negExtent = axis === 'y' ? 0 : half;
+  aabbOfCarryable(c, scratch);
+  const touching = world.queryStatic(scratch, hits);
+  if (touching.length === 0) return false;
+  const minKey = axis === 'x' ? 'minX' : axis === 'y' ? 'minY' : 'minZ';
+  const maxKey = axis === 'x' ? 'maxX' : axis === 'y' ? 'maxY' : 'maxZ';
+  let resolved = c.position[axis];
+  if (amount > 0) {
+    for (const h of touching) resolved = Math.min(resolved, auRasDessous(h[minKey], posExtent));
+  } else {
+    for (const h of touching) resolved = Math.max(resolved, negExtent === 0 ? h[maxKey] : auRasDessus(h[maxKey], negExtent));
+  }
+  c.position[axis] = resolved;
+  if (axis !== chute) c.velocity[axis] = 0;
+  return true;
+};
+
+/**
+ * Pose la pièce sur `dessus` — une hauteur mesurée le long de son haut, dans
+ * le repère — au contact exact.
+ */
+export const poserSelon = (c: Carryable, haut: Haut, dessus: number): void => {
+  const r = REPERES[haut];
+  const axe = r.axes[1];
+  const half = c.size * 0.5;
+  // Débords de la boîte sous et sur l'ancre, le long de cet axe du monde.
+  const dessous = axe === 'y' ? 0 : half;
+  const dessusAncre = axe === 'y' ? c.size : half;
+  if (r.signes[1] > 0) c.position[axe] = dessous === 0 ? dessus : auRasDessus(dessus, dessous);
+  else c.position[axe] = auRasDessous(-dessus, dessusAncre);
+};
+
+/** La hauteur de la pièce le long de son propre haut — pour la juger tombée hors du monde. */
+export const hauteurDePiece = (c: Carryable): number => hauteurDans(REPERES[c.haut ?? '+y'], c.position);
 
 /** Déplace la caisse sur un axe puis la ressort de tout décor pénétré. */
 const moveCarryableAxis = (
