@@ -28,6 +28,7 @@ import { piloterDescente } from './__pilote_descente.js';
 import { Tracage } from '../render/tracage.js';
 import { piloterMontee } from './__pilote_montee.js';
 import { verifierPesanteur } from './__gravite.js';
+import { verifierRelecturePesanteur } from './__gravite_relecture.js';
 import { vecteurHaut } from './pesanteur.js';
 import { REFUS_PETITE } from '../levels/salles/refus.js';
 import { BLANCHIMENT_GRANDE, BLANCHIMENT_TAILLE } from '../levels/salles/blanchiment.js';
@@ -5171,6 +5172,7 @@ piloterDescente(check);
 piloterMontee(check);
 // La pesanteur par axe : marcher aux murs et au plafond. Voir `pesanteur.ts`.
 verifierPesanteur(check);
+verifierRelecturePesanteur(check);
 
 // =============================================================================
 console.log('\n— Une porte scellée fait mur aux pièces, et l’on en ressort au ras du sol —');

@@ -661,7 +661,11 @@ export class Simulation {
 
     // --- Traversée de portail --------------------------------------------------
     const newEye = this.eyePosition();
-    const crossing = this.findCrossing(prevEye, newEye);
+    // Rattrapé à cette image : le segment d'avant court du fond du vide
+    // jusqu'au point d'appui, et il ne raconte aucun pas. Il traversait la
+    // trappe d'un plafond sur le chemin — et l'on ressortait en l'air, sur un
+    // mur, à l'instant même où l'on avait été reposé debout.
+    const crossing = events.rattrape ? null : this.findCrossing(prevEye, newEye);
     if (crossing) {
       const face = crossing.face;
       const nextLevel = pl.scaleLevel + traversalLevelDelta(face);
@@ -756,11 +760,21 @@ export class Simulation {
       // ═══════════════════════════════════════════════════════════════════
       const bute = this.porteQuiRetient(held);
       if (bute && !events.traversed) {
-        if (pl.position.x !== prevPos.x || pl.position.z !== prevPos.z) {
-          pl.position.x = prevPos.x;
-          pl.position.z = prevPos.z;
-          pl.velocity.x = 0;
-          pl.velocity.z = 0;
+        // Le pas refusé se compte dans le repère du joueur : pour qui marche
+        // sur un mur, l'horizontale n'est plus x-z, et remettre x à sa valeur
+        // d'avant annulait la chute au lieu du pas. Et pas à l'image d'un
+        // rattrapage : « d'avant », c'est le fond du vide.
+        const rep = REPERES[pl.haut ?? '+y'];
+        const ici = versLocal(rep, pl.position, vec3());
+        const avant = versLocal(rep, prevPos, vec3());
+        if (!events.rattrape && (ici.x !== avant.x || ici.z !== avant.z)) {
+          ici.x = avant.x;
+          ici.z = avant.z;
+          versMonde(rep, ici, pl.position);
+          const v = versLocal(rep, pl.velocity, vec3());
+          v.x = 0;
+          v.z = 0;
+          versMonde(rep, v, pl.velocity);
           this.carryables.followCarrier(held, pl.position, pl.yaw, pl.pitch, this.scale, pl.haut);
         }
         const encore = this.porteQuiRetient(held);
@@ -771,7 +785,7 @@ export class Simulation {
           held.position.y += n.y * pousse;
           held.position.z += n.z * pousse;
         }
-        events.pieceRetenue = { pairId: bute.face.pairId, raison: bute.raison, joueurPasse: bute.raison === 'dos' ? false : canPass(bute.face, this.scale) };
+        events.pieceRetenue = { pairId: bute.face.pairId, raison: bute.raison, joueurPasse: bute.raison === 'dos' ? false : canPass(bute.face, this.scale, pl.haut) };
       }
     }
     // Les caisses libres franchissent les portails comme le joueur : on note
@@ -1161,17 +1175,46 @@ export class Simulation {
       // n'a pas de corps, alors on la pose au ras du sol, jamais dedans.
       // ═══════════════════════════════════════════════════════════════════
       c.position.y = newCenter.y - c.size * 0.5;
-      if (estDebout(c.haut) && hautLa === '+y') {
-        c.position.y = this.world.dessusDuSol(aabbOfCarryable(c, seuilScratch), c.size * 0.5);
-      } else {
-        // LE MÊME RAS DU SOL, LE LONG DE SON HAUT D'ARRIVÉE. Une pièce lancée
-        // par une porte qui bascule ressort avec un autre haut : on la pose au
-        // ras de CE sol-là, au contact exact, jamais dedans.
-        const h = hautLa!;
-        if (c.haut !== (h === '+y' ? undefined : h)) c.haut = h === '+y' ? undefined : h;
-        const locale = boiteVersLocal(REPERES[h], aabbOfCarryable(c, seuilScratch), { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 });
-        const dessus = vueDe(this.world, h).dessusDuSol(locale, c.size * 0.5);
-        if (dessus > locale.minY) poserSelon(c, h, dessus);
+      // Jusqu'où elle peut s'enfoncer : sa demi-taille, plus les cinq
+      // centimètres sous le seuil que `withinFaceRect` laisse passer, à la
+      // taille d'arrivée. Sans ces cinq centimètres agrandis, une bille qui
+      // glissait par une petite face ressortait de la grande quinze
+      // centimètres dans le plancher — trop pour sa demi-taille — et la dalle
+      // la catapultait hors de la salle au premier pas.
+      const enfoncement = c.size * 0.5 + 0.05 * s;
+      const auRasDuSol = (): void => {
+        if (estDebout(c.haut) && hautLa === '+y') {
+          c.position.y = this.world.dessusDuSol(aabbOfCarryable(c, seuilScratch), enfoncement);
+        } else {
+          // LE MÊME RAS DU SOL, LE LONG DE SON HAUT D'ARRIVÉE. Une pièce lancée
+          // par une porte qui bascule ressort avec un autre haut : on la pose au
+          // ras de CE sol-là, au contact exact, jamais dedans.
+          const h = hautLa!;
+          if (c.haut !== (h === '+y' ? undefined : h)) c.haut = h === '+y' ? undefined : h;
+          const locale = boiteVersLocal(REPERES[h], aabbOfCarryable(c, seuilScratch), { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 });
+          const dessus = vueDe(this.world, h).dessusDuSol(locale, enfoncement);
+          if (dessus > locale.minY) poserSelon(c, h, dessus);
+        }
+      };
+      auRasDuSol();
+      // ─── NI DANS LE MUR CONTRE LEQUEL LA JUMELLE EST PLAQUÉE ─────────────
+      //
+      // Son centre ressort juste devant le plan de la jumelle : sa moitié
+      // arrière restait dans le mur où la face est posée, et le premier pas
+      // la résolvait par l'autre bout du mur — hors de la salle. Le joueur
+      // est déjà reposé devant le plan (`ressortirDansLOuverture`) ; la pièce
+      // l'est aussi, et seulement quand elle touche quelque chose : au milieu
+      // d'une salle, elle ressort là où elle a franchi.
+      if (this.world.queryStatic(aabbOfCarryable(c, seuilScratch), touchesAppui).length !== 0) {
+        const jumelle = face.twin;
+        const manque =
+          c.size * 0.5 + 0.02 - signedDistance(jumelle, vec3(c.position.x, c.position.y + c.size * 0.5, c.position.z));
+        if (manque > 0) {
+          c.position.x += jumelle.normal.x * manque;
+          c.position.y += jumelle.normal.y * manque;
+          c.position.z += jumelle.normal.z * manque;
+          auRasDuSol();
+        }
       }
       c.velocity.x = newVel.x;
       c.velocity.y = newVel.y;
